@@ -1,0 +1,117 @@
+body {
+  margin: 0;
+  font-family: 'Nekst', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+  color: #0088cc;
+  background-color: rgba(0, 136, 204, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+/* Font weight utility classes */
+.font-light {
+  font-weight: 300;
+}
+
+.font-regular {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(0, 136, 204, 0.2);
+  color: #ffffff;
+}
+
+/* Hide navbar when needed */
+body.hide-navbar nav,
+body.hide-navbar header {
+  display: none !important;
+}
+
+/* Dark theme background */
+body.hide-navbar {
+  background-color: #000000 !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* Toast notifications styling */
+.Toastify__toast {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.Toastify__toast--success {
+  border-left: 4px solid #4caf50 !important;
+}
+
+.Toastify__toast--error {
+  border-left: 4px solid #f44336 !important;
+}
+
+.Toastify__toast--warning {
+  border-left: 4px solid #ff9800 !important;
+}
+
+.Toastify__toast--info {
+  border-left: 4px solid #0088cc !important;
+}
+
+/* Link styling */
+a {
+  color: #0088cc;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #33a0d4;
+}
+
+/* Transition for theme changes */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
