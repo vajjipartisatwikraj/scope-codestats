@@ -228,6 +228,7 @@ router.put('/update-scores', auth, platformLimits.leetcode, async (req, res) => 
     let totalScore = 0;
     let totalProblemsSolved = 0;
     const updatedProfiles = [];
+    const platformTimings = {}; // Object to track how long each platform update takes
     
     // Initialize platform-specific data to store in user collection
     const userProfilesData = {};
@@ -259,6 +260,9 @@ router.put('/update-scores', auth, platformLimits.leetcode, async (req, res) => 
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Timeout')), 10000)
         );
+        
+        // Add a timestamp for tracking how long each platform takes
+        const platformStartTime = Date.now();
         
         // Fetch profile data with timeout
         const platformDataPromise = platformAPIService.getProfileData(

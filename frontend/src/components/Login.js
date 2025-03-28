@@ -90,9 +90,16 @@ const Login = () => {
       
       toast.success('Login successful!');
       
-      // Ensure navigation happens after login is complete
+      // Check if user has completed registration
+      const isNewUser = response.data.user.newUser;
+      
+      // Redirect based on registration status
       setTimeout(() => {
-        navigate('/dashboard');
+        if (isNewUser || isNewUser === undefined || isNewUser === null) {
+          navigate('/register', { state: { activeStep: 1 } }); // Go to profile completion step
+        } else {
+          navigate('/dashboard');
+        }
       }, 500);
     } catch (error) {
       console.error('Login error:', error);

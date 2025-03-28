@@ -11,6 +11,78 @@ const dotenv = require('dotenv');
 dotenv.config();
 const GITHUB_ACCESS_TOKEN = process.env.GITHUB_ACCESS_TOKEN;
 
+// Platform-specific rate limiting settings
+const platformRateLimits = {
+  github: 1000,        // 1 request per second
+  leetcode: 2000,      // 1 request per 2 seconds
+  codeforces: 5000,    // 1 request per 5 seconds
+  codechef: 6000,      // 1 request per 6 seconds
+  geeksforgeeks: 2000, // 1 request per 2 seconds
+  hackerrank: 1500     // 1 request per 1.5 seconds
+};
+
+// Track last request time per platform
+const lastRequestByPlatform = {
+  github: 0,
+  leetcode: 0,
+  codeforces: 0,
+  codechef: 0,
+  geeksforgeeks: 0,
+  hackerrank: 0
+};
+
+// Track active requests per platform
+const activeRequestsByPlatform = {
+  github: 0,
+  leetcode: 0,
+  codeforces: 0,
+  codechef: 0,
+  geeksforgeeks: 0,
+  hackerrank: 0
+};
+
+/**
+ * Simple rate limiting function for platform API calls
+ * @param {string} platform - Platform name
+ * @param {boolean} wasRateLimited - Whether previous request was rate limited
+ * @returns {Function} - Function to call when request is complete
+ */
+async function applyRateLimit(platform, wasRateLimited = false) {
+  const now = Date.now();
+  let requiredDelay = platformRateLimits[platform] || 1000;
+  
+  // Increase delay if rate limited
+  if (wasRateLimited) {
+    if (platform === 'codechef' || platform === 'codeforces') {
+      requiredDelay = requiredDelay * 5;
+      console.log(`⚠️ Using 5x backoff delay for ${platform}: ${requiredDelay}ms`);
+    } else if (platform === 'leetcode') {
+      requiredDelay = requiredDelay * 3;
+      console.log(`⚠️ Using 3x backoff delay for ${platform}: ${requiredDelay}ms`);
+    } else {
+      requiredDelay = requiredDelay * 2;
+    }
+  }
+  
+  const timeSinceLastRequest = now - (lastRequestByPlatform[platform] || 0);
+  
+  // Wait if needed
+  if (timeSinceLastRequest < requiredDelay) {
+    const delayMs = requiredDelay - timeSinceLastRequest;
+    console.log(`⏱ Waiting ${delayMs}ms before next ${platform} request`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+  
+  // Update last request time
+  lastRequestByPlatform[platform] = Date.now();
+  activeRequestsByPlatform[platform] = (activeRequestsByPlatform[platform] || 0) + 1;
+  
+  // Return function to call when request is complete
+  return () => {
+    activeRequestsByPlatform[platform] = Math.max(0, activeRequestsByPlatform[platform] - 1);
+  };
+}
+
 class PlatformAPI {
   /**
    * Initialize the API client
@@ -455,10 +527,10 @@ class PlatformAPI {
       console.log(`CodeChef ${username} rating: ${rating}`);
       
       // 2. Extract global rank with fallbacks
-      let globalRank = 0;
+        let globalRank = 0;
       $('.inline-list li, .user-details-container li').each((_, el) => {
         const text = $(el).text().trim().toLowerCase();
-        if (text.includes('global rank')) {
+          if (text.includes('global rank')) {
           const rankMatch = text.match(/(\d+)/);
           if (rankMatch && rankMatch[1]) {
             globalRank = parseInt(rankMatch[1]);
@@ -466,10 +538,10 @@ class PlatformAPI {
         }
       });
       console.log(`CodeChef ${username} global rank: ${globalRank}`);
-      
+        
       // 3. Extract problems solved with multiple approaches
-      let problemsSolved = 0;
-      
+        let problemsSolved = 0;
+        
       // Approach 1: Direct h5 heading + next element
       $('h5, .h5-style').each((_, el) => {
         const text = $(el).text().trim();
@@ -485,7 +557,7 @@ class PlatformAPI {
       });
       
       // Approach 2: Look for problems-solved sections
-      if (problemsSolved === 0) {
+        if (problemsSolved === 0) {
         $('.problems-solved, .rating-data-section').find('h5, .h5-style').each((_, el) => {
           const text = $(el).text().trim();
           if (text.includes('Fully Solved') || text.includes('Problems Solved')) {
@@ -511,7 +583,7 @@ class PlatformAPI {
       console.log(`CodeChef ${username} problems solved: ${problemsSolved}`);
       
       // 4. Extract contests participated by counting rating history entries
-      let contestsParticipated = 0;
+        let contestsParticipated = 0;
 
       // Log the HTML of rating table for debugging
       console.log(`Looking for contest participation data for ${username}`);
@@ -526,7 +598,7 @@ class PlatformAPI {
       });
 
       // Second approach: Look for contests participated count in profile details
-      if (contestsParticipated === 0) {
+        if (contestsParticipated === 0) {
         $('.contest-participated-count, .rating-data-section strong, .user-details-container strong').each((_, el) => {
           const text = $(el).text().trim();
           const parentText = $(el).parent().text().trim().toLowerCase();
@@ -628,10 +700,10 @@ class PlatformAPI {
       
       // 6. Calculate score
       const score = this.calculateCodeChefScore(
-        rating, 
-        problemsSolved, 
+          rating,
+          problemsSolved,
         globalRank, 
-        contestsParticipated
+          contestsParticipated
       );
       
       return {
@@ -1066,8 +1138,138 @@ class PlatformAPI {
    * @returns {Object} - User profile data
    */
   async getProfileByPlatform(platform, username) {
-    return this.getProfileData(platform, username);
+    // Skip if username is empty
+    if (!username || username.trim() === '') {
+      throw new Error(`No username provided for ${platform}`);
+    }
+    
+    console.log(`Fetching ${platform} profile for user: ${username}`);
+    
+    // Default to no rate limiting
+    let wasRateLimited = false;
+    
+    // Track the start time for performance monitoring
+    const startTime = Date.now();
+    
+    try {
+      // Apply rate limiting - use the new version that returns a cleanup function
+      const releaseRateLimit = await applyRateLimit(platform, wasRateLimited);
+      
+      // Retry logic for handling rate limits and server errors
+      const MAX_RETRIES = platform === 'leetcode' ? 2 : 1; // More retries for LeetCode due to 500 errors
+      let retryCount = 0;
+      let lastError = null;
+      
+      while (retryCount <= MAX_RETRIES) {
+        try {
+          let data;
+          
+          // Get profile data based on platform
+          switch (platform) {
+            case 'leetcode':
+              data = await this.getLeetCodeProfile(username);
+              break;
+            case 'codeforces':
+              data = await this.getCodeforcesProfile(username);
+              break;
+            case 'codechef':
+              data = await this.getCodeChefProfile(username);
+              break;
+            case 'geeksforgeeks':
+              data = await this.getGeeksforGeeksProfile(username);
+              break;
+            case 'hackerrank':
+              data = await this.getHackerRankProfile(username);
+              break;
+            case 'github':
+              data = await this.getGitHubProfile(username);
+              break;
+            default:
+              throw new Error(`Unsupported platform: ${platform}`);
+          }
+          
+          // Release the rate limit token
+          if (typeof releaseRateLimit === 'function') {
+            releaseRateLimit();
+          }
+          
+          // Calculate elapsed time
+          const elapsed = Date.now() - startTime;
+          console.log(`✅ Successfully fetched ${platform} profile for ${username} in ${elapsed}ms`);
+          
+          return data;
+        } catch (error) {
+          lastError = error;
+          
+          // Handle different types of errors
+          if (error.response) {
+            const statusCode = error.response.status;
+            
+            // Handle rate limiting
+            if (statusCode === 429) {
+              wasRateLimited = true;
+              console.error(`⚠️ Rate limited on ${platform} for ${username} (429). Retry ${retryCount + 1}/${MAX_RETRIES + 1}`);
+              
+              // Exponential backoff for rate limits
+              const backoffTime = 2000 * Math.pow(4, retryCount); // 2s, 8s, 32s...
+              await new Promise(resolve => setTimeout(resolve, backoffTime));
+            } 
+            // Handle server errors (especially for LeetCode)
+            else if (statusCode >= 500) {
+              console.error(`⚠️ Server error on ${platform} for ${username} (${statusCode}). Retry ${retryCount + 1}/${MAX_RETRIES + 1}`);
+              
+              // Use a shorter backoff for server errors
+              const backoffTime = 3000 * Math.pow(2, retryCount); // 3s, 6s, 12s...
+              await new Promise(resolve => setTimeout(resolve, backoffTime));
+            }
+            // For other errors, don't retry
+            else {
+              // Release the rate limit token
+              if (typeof releaseRateLimit === 'function') {
+                releaseRateLimit();
+              }
+              throw error;
+            }
+          } else {
+            // For network errors, retry once with backoff
+            if (retryCount < 1) {
+              console.error(`⚠️ Network error on ${platform} for ${username}. Retrying once.`);
+              await new Promise(resolve => setTimeout(resolve, 5000));
+            } else {
+              // Release the rate limit token
+              if (typeof releaseRateLimit === 'function') {
+                releaseRateLimit();
+              }
+              throw error;
+            }
+          }
+          
+          retryCount++;
+        }
+      }
+      
+      // If we've exhausted all retries, throw the last error
+      // Release the rate limit token
+      if (typeof releaseRateLimit === 'function') {
+        releaseRateLimit();
+      }
+      
+      console.error(`❌ Failed to fetch ${platform} profile for ${username} after ${MAX_RETRIES + 1} attempts`);
+      throw lastError;
+    } catch (error) {
+      // Track the error for monitoring
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ Error fetching ${platform} profile for ${username} after ${elapsed}ms: ${error.message}`);
+      
+      // Add platform-specific information to the error
+      error.platform = platform;
+      error.username = username;
+      error.elapsedMs = elapsed;
+      
+      throw error;
+    }
   }
 }
 
+module.exports = new PlatformAPI();
 module.exports = new PlatformAPI();

@@ -7,6 +7,10 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  newUser: {
+    type: Boolean,
+    default: true
+  },
   name: {
     type: String,
     required: true,

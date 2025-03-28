@@ -70,20 +70,6 @@ router.post('/register',
     // Name validation
     body('name').trim().notEmpty().withMessage('Name is required'),
     
-    // Roll number validation
-    body('rollNumber').trim().notEmpty().withMessage('Roll number is required')
-      .custom(async value => {
-        const user = await User.findOne({ rollNumber: value });
-        if (user) {
-          throw new Error('Roll number already registered');
-        }
-        return true;
-      }),
-    
-    // Gender validation
-    body('gender').isIn(['Male', 'Female'])
-      .withMessage('Gender must be Male or Female'),
-    
     // Email validation
     body('email').trim().isEmail().withMessage('Invalid email address')
       .custom(value => {
@@ -96,29 +82,6 @@ router.post('/register',
         const user = await User.findOne({ email: value.toLowerCase() });
         if (user) {
           throw new Error('Email already registered');
-        }
-        return true;
-      }),
-    
-    // Department validation
-    body('department').isIn(validDepartments)
-      .withMessage('Invalid department selected'),
-    
-    // Section validation
-    body('section').isIn(validSections)
-      .withMessage('Invalid section selected'),
-    
-    // Graduating year validation
-    body('graduatingYear').isInt({ min: 2024, max: 2030 })
-      .withMessage('Graduating year must be between 2024 and 2030'),
-    
-    // Mobile number validation
-    body('mobileNumber').matches(/^[6-9]\d{9}$/)
-      .withMessage('Please enter a valid 10-digit mobile number')
-      .custom(async value => {
-        const user = await User.findOne({ mobileNumber: value });
-        if (user) {
-          throw new Error('Mobile number already registered');
         }
         return true;
       }),
@@ -136,7 +99,6 @@ router.post('/register',
       }
       return true;
     }),
-    
   ],
   async (req, res) => {
     try {
@@ -147,43 +109,51 @@ router.post('/register',
 
       const {
         name,
-        rollNumber,
-        gender,
         email,
-        department,
-        section,
-        graduatingYear,
-        mobileNumber,
         password,
-        linkedinUrl = '',
-        about = '',
-        skills = '',
-        interests = '',
-        profiles = {}
       } = req.body;
+
+      // Extract roll number from email
+      let rollNumber = '';
+      let department = '';
+      let graduatingYear = '';
+      
+      const emailParts = email.split('@');
+      if (emailParts.length === 2) {
+        rollNumber = emailParts[0].toUpperCase();
+        
+        // Extract department code (assumed to be at positions 5-7)
+        if (rollNumber.length >= 8) {
+          const deptCode = rollNumber.substring(5, 8);
+          // Map department code to department
+          const DEPARTMENT_CODES = {
+            'A05': 'CSE',
+            'A06': 'CSC',
+            'A33': 'CSIT',
+            'A12': 'IT',
+            'A67': 'CSD',
+            'A66': 'CSM'
+          };
+          department = DEPARTMENT_CODES[deptCode] || '';
+        }
+        
+        // Calculate graduating year
+        if (rollNumber.length >= 2) {
+          const yearCode = rollNumber.substring(0, 2);
+          const admissionYear = 2000 + parseInt(yearCode, 10);
+          graduatingYear = admissionYear + 4;
+          console.log(`Calculated graduation year for ${rollNumber}: ${graduatingYear}`);
+        }
+      }
 
       const user = new User({
         name,
-        rollNumber,
-        gender,
         email: email.toLowerCase(),
-        department,
-        section,
-        graduatingYear,
-        mobileNumber,
         password,
-        linkedinUrl,
-        about,
-        skills: typeof skills === 'string' ? skills.split(',').map(s => s.trim()) : skills,
-        interests: typeof interests === 'string' ? interests.split(',').map(i => i.trim()) : interests,
-        profiles: {
-          geeksforgeeks: profiles?.geeksforgeeks || '',
-          codechef: profiles?.codechef || '',
-          codeforces: profiles?.codeforces || '',
-          leetcode: profiles?.leetcode || '',
-          hackerrank: profiles?.hackerrank || '',
-          github: profiles?.github || ''
-        }
+        rollNumber,
+        department,
+        graduatingYear,
+        newUser: true
       });
 
       await user.save();
@@ -201,9 +171,10 @@ router.post('/register',
           name: user.name,
           email: user.email,
           department: user.department,
-          section: user.section,
           rollNumber: user.rollNumber,
-          userType: user.userType
+          userType: user.userType,
+          newUser: user.newUser,
+          graduatingYear: user.graduatingYear
         }
       });
     } catch (err) {
@@ -253,7 +224,9 @@ router.post('/login',
           department: user.department,
           section: user.section,
           rollNumber: user.rollNumber,
-          userType: user.userType
+          userType: user.userType,
+          newUser: user.newUser,
+          graduatingYear: user.graduatingYear
         }
       });
     } catch (err) {
@@ -293,6 +266,78 @@ router.post('/validate', async (req, res) => {
   } catch (err) {
     console.error('Validation error:', err);
     res.status(500).json({ message: 'Server error during validation' });
+  }
+});
+
+// Update user profile (complete registration)
+router.post('/completeRegistration', auth, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    const {
+      section,
+      gender,
+      mobileNumber,
+      linkedinUrl,
+      about,
+      skills,
+      interests,
+      profiles,
+    } = req.body;
+    
+    // Update user fields
+    if (section) user.section = section;
+    if (gender) user.gender = gender;
+    if (mobileNumber) user.mobileNumber = mobileNumber;
+    if (linkedinUrl !== undefined) user.linkedinUrl = linkedinUrl;
+    if (about !== undefined) user.about = about;
+    
+    // Handle skills and interests (convert from string to array if needed)
+    if (skills !== undefined) {
+      user.skills = typeof skills === 'string' 
+        ? skills.split(',').map(s => s.trim())
+        : skills;
+    }
+    
+    if (interests !== undefined) {
+      user.interests = typeof interests === 'string'
+        ? interests.split(',').map(i => i.trim())
+        : interests;
+    }
+    
+    // Update profiles
+    if (profiles) {
+      user.profiles = {
+        geeksforgeeks: profiles.geeksforgeeks || user.profiles.geeksforgeeks || '',
+        codechef: profiles.codechef || user.profiles.codechef || '',
+        codeforces: profiles.codeforces || user.profiles.codeforces || '',
+        leetcode: profiles.leetcode || user.profiles.leetcode || '',
+        hackerrank: profiles.hackerrank || user.profiles.hackerrank || '',
+        github: profiles.github || user.profiles.github || ''
+      };
+    }
+    
+    // Mark registration as complete
+    user.newUser = false;
+    
+    await user.save();
+    
+    res.json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        department: user.department,
+        section: user.section,
+        rollNumber: user.rollNumber,
+        userType: user.userType,
+        newUser: user.newUser,
+        graduatingYear: user.graduatingYear
+      }
+    });
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

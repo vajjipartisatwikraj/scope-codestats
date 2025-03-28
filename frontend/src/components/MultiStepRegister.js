@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import './MultiStepRegister.css';
 import {
   Box,
@@ -37,8 +37,9 @@ const graduatingYears = Array.from({ length: 7 }, (_, i) => currentYear + i);
 const MultiStepRegister = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(location?.state?.activeStep || 0);
 
   const [formData, setFormData] = useState({
     // Basic Registration
@@ -85,6 +86,111 @@ const MultiStepRegister = () => {
     };
   }, []);
 
+  // Initialize form data if coming from login redirect
+  useEffect(() => {
+    // Check if we're starting on step 1 (profile completion) which means we came from login
+    if (activeStep === 1 && location?.state?.activeStep === 1) {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (currentUser) {
+        // Make sure graduation year is a valid number
+        let graduatingYear = currentUser.graduatingYear;
+        if (graduatingYear) {
+          graduatingYear = Number(graduatingYear);
+        } else {
+          // Default to current year + 4 if none set
+          graduatingYear = new Date().getFullYear() + 4;
+        }
+        
+        console.log('Setting initial data on login redirect:', { 
+          graduatingYear, 
+          rollNumber: currentUser.rollNumber
+        });
+        
+        setFormData(prev => ({
+          ...prev,
+          name: currentUser.name || '',
+          email: currentUser.email || '',
+          rollNumber: currentUser.rollNumber || '',
+          department: currentUser.department || '',
+          graduatingYear: graduatingYear,
+          section: currentUser.section || '',
+          gender: currentUser.gender || 'Male',
+        }));
+      }
+    }
+  }, []);
+
+  // Load user data when component mounts, especially for redirected users after login
+  useEffect(() => {
+    // Check if we're on the profile completion step (step 1)
+    if (activeStep === 1) {
+      try {
+        // Get current user data from localStorage
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Calculate the correct graduation year from roll number
+        let graduatingYear = currentUser.graduatingYear;
+        
+        // If the roll number exists, recalculate to ensure correct graduation year
+        if (currentUser.rollNumber && currentUser.rollNumber.length >= 2) {
+          // Extract year from roll number (first 2 digits)
+          const yearCode = currentUser.rollNumber.substring(0, 2);
+          const admissionYear = 2000 + parseInt(yearCode, 10);
+          // Standard 4-year degree
+          const calculatedYear = admissionYear + 4;
+          
+          console.log('Graduation year calculation:', {
+            rollNumber: currentUser.rollNumber,
+            yearCode,
+            admissionYear,
+            calculatedYear,
+            storedYear: graduatingYear
+          });
+          
+          // Use the calculated year rather than the stored one to ensure consistency
+          graduatingYear = calculatedYear;
+        } else if (graduatingYear) {
+          // If no roll number but graduation year exists, convert to number
+          graduatingYear = Number(graduatingYear);
+        }
+        
+        // Update form data with user information
+        setFormData(prev => ({
+          ...prev,
+          // Set these values from user data if available
+          name: currentUser.name || prev.name,
+          email: currentUser.email || prev.email,
+          rollNumber: currentUser.rollNumber || prev.rollNumber,
+          department: currentUser.department || prev.department,
+          graduatingYear: graduatingYear || prev.graduatingYear, // Use the recalculated year
+          section: currentUser.section || prev.section,
+          mobileNumber: currentUser.mobileNumber || prev.mobileNumber,
+          gender: currentUser.gender || prev.gender,
+          linkedinUrl: currentUser.linkedinUrl || prev.linkedinUrl
+        }));
+        
+        console.log('Loaded user data for profile completion:', {
+          rollNumber: currentUser.rollNumber,
+          department: currentUser.department,
+          graduatingYear: graduatingYear
+        });
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    }
+  }, [activeStep]);
+
+  // Log when formData changes to debug the graduation year issue
+  useEffect(() => {
+    if (activeStep === 1) {
+      console.log('Current formData:', {
+        graduatingYear: formData.graduatingYear,
+        typeOfGraduatingYear: typeof formData.graduatingYear,
+        availableYears: graduatingYears
+      });
+    }
+  }, [formData, activeStep]);
+
   const validateBasicRegistration = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Name is required';
@@ -103,23 +209,24 @@ const MultiStepRegister = () => {
   const validateProfileCompletion = async () => {
     const newErrors = {};
     // Skip validation for pre-filled fields
-    // if (!formData.rollNumber.trim()) newErrors.rollNumber = 'Roll number is required';
-    // if (!formData.graduatingYear) newErrors.graduatingYear = 'Graduating year is required';
-    // if (!formData.department) newErrors.department = 'Department is required';
     
     if (!formData.section) newErrors.section = 'Section is required';
     if (!formData.mobileNumber.trim()) newErrors.mobileNumber = 'Mobile number is required';
     else if (!/^[6-9]\d{9}$/.test(formData.mobileNumber)) newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number';
     if (!formData.gender) newErrors.gender = 'Gender is required';
 
-    // Check for uniqueness of mobile number only (roll number is pre-filled)
+    // Only validate mobile number uniqueness if it has changed
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/validate', {
-        mobileNumber: formData.mobileNumber
-      });
-      
-      if (response.data.mobileNumberExists) {
-        newErrors.mobileNumber = 'This mobile number is already registered';
+      // Check mobile number only if different from what's stored in local storage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!currentUser.mobileNumber || currentUser.mobileNumber !== formData.mobileNumber) {
+        const response = await axios.post('http://localhost:5000/api/auth/validate', {
+          mobileNumber: formData.mobileNumber
+        });
+        
+        if (response.data.mobileNumberExists) {
+          newErrors.mobileNumber = 'This mobile number is already registered';
+        }
       }
     } catch (err) {
       console.error('Validation error:', err);
@@ -150,70 +257,62 @@ const MultiStepRegister = () => {
         isValid = validateBasicRegistration();
         if (isValid) {
           try {
-            // Only validate email in the first step (if available)
-            const response = await axios.post('http://localhost:5000/api/auth/validate', {
-              email: formData.email
+            // Register user after step 1
+            await registerUser({
+              name: formData.name,
+              email: formData.email,
+              password: formData.password,
+              confirmPassword: formData.confirmPassword
             });
-            
-            if (response.data.emailExists) {
-              setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
-              isValid = false;
-            } else {
-              // Extract roll number from email
-              const emailParts = formData.email.split('@');
-              if (emailParts.length === 2) {
-                const rollNumber = emailParts[0].toUpperCase();
-                
-                // Extract department code (assumed to be at positions 5-7)
-                let department = '';
-                if (rollNumber.length >= 8) {
-                  const deptCode = rollNumber.substring(5, 8);
-                  // Map department code to department
-                  const DEPARTMENT_CODES = {
-                    'A05': 'CSE',
-                    'A06': 'CSC',
-                    'A33': 'CSIT',
-                    'A12': 'IT',
-                    'A67': 'CSD',
-                    'A66': 'CSM'
-                  };
-                  department = DEPARTMENT_CODES[deptCode] || '';
-                }
-                
-                // Calculate graduating year
-                let graduatingYear = '';
-                if (rollNumber.length >= 2) {
-                  const yearCode = rollNumber.substring(0, 2);
-                  const admissionYear = 2000 + parseInt(yearCode, 10);
-                  graduatingYear = admissionYear + 4;
-                }
-                
-                // Update form data with extracted information
-                setFormData(prev => ({
-                  ...prev,
-                  rollNumber,
-                  department,
-                  graduatingYear
-                }));
-              }
-            }
+            setActiveStep((prevStep) => prevStep + 1);
           } catch (err) {
-            console.error('Validation error:', err);
-            toast.error('Error validating email information');
+            console.error('Registration error:', err);
             isValid = false;
           }
         }
         break;
       case 1:
         isValid = await validateProfileCompletion();
+        if (isValid) {
+          setActiveStep((prevStep) => prevStep + 1);
+        }
         break;
       default:
         isValid = true;
+        setActiveStep((prevStep) => prevStep + 1);
         break;
     }
+  };
 
-    if (isValid) {
-      setActiveStep((prevStep) => prevStep + 1);
+  // Function to register user after completing step 1
+  const registerUser = async (userData) => {
+    try {
+      const registerRes = await axios.post('/api/auth/register', userData);
+      
+      if (registerRes.data && registerRes.data.token && registerRes.data.user) {
+        const { token, user } = registerRes.data;
+        await login(user, token);
+        toast.success('Account created successfully! Please complete your profile.');
+        
+        // Pre-fill form data with info from the registration
+        setFormData(prev => ({
+          ...prev,
+          rollNumber: user.rollNumber || prev.rollNumber,
+          department: user.department || prev.department,
+          graduatingYear: user.graduatingYear || prev.graduatingYear
+        }));
+        
+        return true;
+      } else {
+        throw new Error('Invalid registration response');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Registration failed';
+      toast.error(errorMessage);
+      throw error;
     }
   };
 
@@ -229,16 +328,9 @@ const MultiStepRegister = () => {
     try {
       setIsSubmitting(true);
       
-      // Map form data to match backend schema
-      const registrationData = {
-        name: formData.name,
-        rollNumber: formData.rollNumber,
-        email: formData.email,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        department: formData.department,
+      // Create profile update payload
+      const profileData = {
         section: formData.section,
-        graduatingYear: formData.graduatingYear,
         mobileNumber: formData.mobileNumber,
         gender: formData.gender,
         linkedinUrl: formData.linkedinUrl || '',
@@ -250,33 +342,40 @@ const MultiStepRegister = () => {
           hackerrank: formData.hackerrank || '',
           codeforces: formData.codeforces || '',
           codechef: formData.codechef || '',
-          github: formData.github || '',
           geeksforgeeks: formData.geeksforgeeks || '',
+          github: formData.github || '',
         }
       };
 
-      // Register the user only on the last step
-      console.log('Sending registration data to server:', registrationData);
-      const registerRes = await axios.post('/api/auth/register', registrationData);
+      // Send update request
+      console.log('Sending profile update data:', profileData);
+      const updateRes = await axios.post('/api/auth/completeRegistration', profileData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
-      console.log('Registration response:', registerRes.data);
+      console.log('Profile update response:', updateRes.data);
       
-      // Check if response contains the token and user data
-      if (registerRes.data && registerRes.data.token && registerRes.data.user) {
-        const { token, user } = registerRes.data;
+      // Update the user data in context
+      if (updateRes.data && updateRes.data.user) {
+        // Update user in context with the updated profile
+        const user = updateRes.data.user;
+        const token = localStorage.getItem('token');
         await login(user, token);
-        toast.success('Registration successful!');
         
-        // Add slight delay before navigation to ensure state is updated
+        toast.success('Profile completed successfully!');
+        
+        // Navigate to dashboard
         setTimeout(() => {
           navigate('/dashboard');
         }, 500);
       } else {
-        console.error('Invalid registration response:', registerRes.data);
-        toast.error('Registration failed: Invalid server response');
+        console.error('Invalid update response:', updateRes.data);
+        toast.error('Profile update failed: Invalid server response');
       }
     } catch (error) {
-      console.error('Registration error details:', {
+      console.error('Profile update error details:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status
@@ -285,7 +384,7 @@ const MultiStepRegister = () => {
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
                           error.message || 
-                          'Registration failed';
+                          'Profile update failed';
 
       toast.error(errorMessage);
     } finally {
@@ -622,9 +721,10 @@ const MultiStepRegister = () => {
                   </InputLabel>
                   <Select
                     name="graduatingYear"
-                    value={formData.graduatingYear || ''}
+                    value={formData.graduatingYear ? Number(formData.graduatingYear) : ''}
                     onChange={handleChange}
                     displayEmpty
+                    renderValue={(value) => (value !== '' ? value : 'Year of Graduation')}
                     sx={{
                       ...commonSelectStyles,
                       '& .Mui-disabled': {

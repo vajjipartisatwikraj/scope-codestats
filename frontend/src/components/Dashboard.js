@@ -351,6 +351,8 @@ const Dashboard = () => {
         }
       );
 
+      console.log(`${platform} update response:`, response.data);
+
       if (response.data.success) {
         setProfiles(prev => ({
           ...prev,
@@ -360,13 +362,13 @@ const Dashboard = () => {
         // Update platforms data with the new data
         setPlatformData(prev => ({
           ...prev,
-          [platform]: response.data.data
+          [platform]: response.data.data || {}
         }));
         
         // Update profile details with the new data
         setProfileDetails(prev => ({
           ...prev,
-          [platform]: response.data.data.details
+          [platform]: response.data.data?.details || {}
         }));
         
         toast.success(`${platform} profile updated successfully!`);
@@ -413,10 +415,28 @@ const Dashboard = () => {
       if (response.data.success) {
         // Log the successful sync data
         console.log('Profile sync successful:', response.data);
+        console.log('Profiles in response:', JSON.stringify(response.data.profiles));
         
         // Analyze results to count successful and failed updates
-        const successfulUpdates = response.data.profiles.filter(p => p.lastUpdateStatus === 'success');
-        const failedUpdates = response.data.profiles.filter(p => p.lastUpdateStatus === 'error');
+        // Check if lastUpdateStatus is present, otherwise consider all profiles as successful
+        // if they have essential properties (platform, score, etc.)
+        const profiles = response.data.profiles || [];
+        
+        // Modified filtering logic
+        const successfulUpdates = [];
+        const failedUpdates = [];
+        
+        profiles.forEach(profile => {
+          if (profile.error || profile.lastUpdateStatus === 'error') {
+            failedUpdates.push(profile);
+          } else if (profile.platform) {
+            successfulUpdates.push(profile);
+          }
+        });
+        
+        console.log(`Successful updates: ${successfulUpdates.length}, Failed updates: ${failedUpdates.length}`);
+        console.log('Successful profiles:', successfulUpdates.map(p => p.platform));
+        console.log('Failed profiles:', failedUpdates.map(p => p.platform));
         
         // Generate success message with statistics
         toast.success(
@@ -425,8 +445,14 @@ const Dashboard = () => {
         
         // If there were failures, show details in a second toast
         if (failedUpdates.length > 0) {
-          const failedPlatforms = failedUpdates.map(p => p.platform).join(', ');
+          const failedPlatforms = failedUpdates
+            .filter(p => p.platform)
+            .map(p => p.platform)
+            .join(', ');
+            
+          if (failedPlatforms) {
           toast.warning(`Failed to update: ${failedPlatforms}`);
+          }
         }
         
         // Update the UI with the new data directly from the response instead of fetching again
@@ -434,7 +460,7 @@ const Dashboard = () => {
         
         // Update platform details from the response data
         successfulUpdates.forEach(platform => {
-          if (platform.platform && platform) {
+          if (platform.platform) {
             newProfileDetails[platform.platform] = {
               score: platform.score || 0,
               problemsSolved: platform.problemsSolved || 0,
@@ -456,7 +482,9 @@ const Dashboard = () => {
         // Expand only successfully updated profile sections
         const expandedStates = {};
         successfulUpdates.forEach(platform => {
-          expandedStates[platform.platform] = true;
+          if (platform.platform) {
+            expandedStates[platform.platform] = true;
+          }
         });
         setExpandedProfiles(expandedStates);
       } else {
