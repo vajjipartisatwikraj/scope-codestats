@@ -41,8 +41,8 @@ A competitive programming profile tracking application that aggregates and visua
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/yourusername/scope-codestats.git
-   cd scope-codestats
+   git clone https://github.com/besta4/codestats.git
+   cd codestats
    ```
 
 2. Install backend dependencies
@@ -60,9 +60,20 @@ A competitive programming profile tracking application that aggregates and visua
 4. Configure environment variables
    - Create a `.env` file in the backend directory using the example below:
      ```
+     NODE_ENV=development
+     PORT=5000
      MONGODB_URI=mongodb://127.0.0.1:27017/scope_codestats
      JWT_SECRET=your-secret-key-for-jwt-tokens
-     PORT=5000
+     JWT_EXPIRE=30d
+     CRON_API_KEY=your_cron_api_key_here
+     API_BASE_URL=http://localhost:5000/api
+     NODE_NO_WARNINGS=1
+     ```
+   
+   - Create a `.env` file in the frontend directory:
+     ```
+     VITE_API_URL=http://localhost:5000/api
+     NODE_NO_WARNINGS=1
      ```
 
 ### Running the Application
@@ -84,7 +95,27 @@ A competitive programming profile tracking application that aggregates and visua
    yarn start
    ```
 
-4. Access the application at `http://localhost:3000`
+4. Access the application at `http://localhost:5000` for the backend API and `http://localhost:3000` for the frontend
+
+## Handling Dependency Conflicts
+
+If you encounter dependency conflicts, we've included configurations to help:
+
+1. Backend and frontend `.npmrc` files with:
+   ```
+   node-option=--no-warnings
+   legacy-peer-deps=true
+   ```
+
+2. We've updated React dependencies to ensure compatibility, specifically replacing outdated packages with modern alternatives.
+
+## MongoDB Connection
+
+We use an explicit IPv4 address for MongoDB connection to avoid IPv6 resolution issues:
+```
+mongodb://127.0.0.1:27017/scope_codestats
+```
+Instead of `localhost` which may attempt to resolve to IPv6 first.
 
 ## Deployment
 
