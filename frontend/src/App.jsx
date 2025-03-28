@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider as MuiThemeProvider, CssBaseline, Box, Container } from '@mui/material';
+import { ThemeProvider as MuiThemeProvider, CssBaseline, Box, Container, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import axios from './utils/axiosConfig';
 
 import Navbar from './components/Navbar';
 import Login from './components/Login';

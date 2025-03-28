@@ -1,3 +1,19 @@
+// At the very top of the file - suppress specific experimental warnings
+// This must be the first code in the file
+process.env.NODE_NO_WARNINGS = '1';
+// Patch the default emitWarning function to filter out specific warnings
+const originalEmit = process.emitWarning;
+process.emitWarning = function(warning, ...args) {
+  // Filter out the specific warnings about CommonJS loading ES modules
+  if (warning && typeof warning === 'string' && 
+      (warning.includes('CommonJS module') || 
+       warning.includes('loading ES Module') || 
+       warning.includes('using require'))) {
+    return; // Suppress this specific warning
+  }
+  return originalEmit.call(this, warning, ...args);
+};
+
 require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/db');

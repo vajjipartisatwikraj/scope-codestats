@@ -71,7 +71,7 @@ import {
   Area
 } from 'recharts';
 import axios from 'axios';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'exceljs';
 
 // Color palette for charts
 const PLATFORM_COLORS = {
@@ -277,53 +277,34 @@ const AdminDashboard = () => {
 
   const fetchExportData = async () => {
     try {
-      toast.info('Preparing detailed export data, please wait...');
+      setLoading(true);
+      const token = localStorage.getItem('token');
       
-      // Get detailed user data including coding profiles
-      const response = await axios.get('http://localhost:5000/api/leaderboard/export', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await axios.get('http://localhost:5000/api/admin/leaderboard', {
+        headers: { 'x-auth-token': token }
       });
       
-      // Debug: Log the structure of the first user in the response
-      if (response.data && response.data.length > 0) {
-        console.log('First user data sample:', response.data[0]);
+      // Process the data for export
+      const exportData = response.data.map((user, index) => {
+        const leetcode = user.platformScores?.leetcode || {};
+        const codeforces = user.platformScores?.codeforces || {};
+        const codechef = user.platformScores?.codechef || {};
+        const geeksforgeeks = user.platformScores?.geeksforgeeks || {};
+        const hackerrank = user.platformScores?.hackerrank || {};
+        const github = user.platformScores?.github || {};
         
-        // Check GitHub profile data specifically
-        const firstUser = response.data[0];
-        if (firstUser.codingProfiles && firstUser.codingProfiles.github) {
-          console.log('GitHub profile data:', firstUser.codingProfiles.github);
-        } else {
-          console.log('No GitHub profile data found');
-        }
-      }
-      
-      // Format the data for Excel export with all the requested fields
-      const exportData = response.data.map(user => {
-        // Get profile data from the user object
-        const codingProfiles = user.codingProfiles || {};
+        // Calculate GitHub metrics from detailed data
+        const githubContributions = github.contributionsCount || 0;
+        const githubCommits = github.commitCount || 0;
+        const githubRepos = github.repoCount || 0;
         
-        // Extract coding profiles
-        const leetcode = codingProfiles.leetcode || {};
-        const codeforces = codingProfiles.codeforces || {};
-        const codechef = codingProfiles.codechef || {};
-        const geeksforgeeks = codingProfiles.geeksforgeeks || {};
-        const hackerrank = codingProfiles.hackerrank || {};
-        const github = codingProfiles.github || {};
-        
-        // Extract GitHub data
-        const githubContributions = github.totalCommits || 0;
-        const githubCommits = github.totalCommits || 0;
-        const githubRepos = github.publicRepos || 0;
-        
-        // Create a comprehensive user record with all requested fields
         return {
-          // Basic user information
-          'Rank': user.rank || '-',
-          'Name': user.name || '-',
+          'Rank': index + 1,
+          'Name': user.name,
           'Roll Number': user.rollNumber || '-',
-          'Email': user.email || '-',
+          'Email': user.email,
           'Total Score': user.totalScore || 0,
-          'Total Problems': user.totalProblemsSolved || 0,
+          'Total Problems': user.problemsSolved || 0,
           
           // LeetCode data
           'LeetCode Username': leetcode.username || '-',
@@ -359,63 +340,79 @@ const AdminDashboard = () => {
         };
       });
 
-      // Create a worksheet with the data
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      // Create a workbook and worksheet using exceljs
+      const workbook = new XLSX.Workbook();
+      const worksheet = workbook.addWorksheet('Leaderboard');
       
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 5 },  // Rank
-        { wch: 25 }, // Name
-        { wch: 15 }, // Roll Number
-        { wch: 25 }, // Email
-        { wch: 10 }, // Total Score
-        { wch: 12 }, // Total Problems
+      // Add headers
+      if (exportData.length > 0) {
+        const headers = Object.keys(exportData[0]);
+        worksheet.columns = headers.map(header => ({
+          header,
+          key: header,
+          width: header.length + 5 // Dynamic width based on header length
+        }));
         
-        { wch: 20 }, // LeetCode Username
-        { wch: 15 }, // LeetCode Problems
-        { wch: 15 }, // LeetCode Rating
-        { wch: 15 }, // LeetCode Contests
+        // Customize column widths
+        const colWidths = {
+          'Rank': 5,
+          'Name': 25,
+          'Roll Number': 15,
+          'Email': 25,
+          'Total Score': 10,
+          'Total Problems': 12
+        };
         
-        { wch: 20 }, // CodeForces Username
-        { wch: 15 }, // CodeForces Problems
-        { wch: 15 }, // CodeForces Rating
-        { wch: 15 }, // CodeForces Contests
-        
-        { wch: 20 }, // CodeChef Username
-        { wch: 15 }, // CodeChef Problems
-        { wch: 15 }, // CodeChef Rating
-        { wch: 15 }, // CodeChef Contests
-        
-        { wch: 20 }, // GFG Username
-        { wch: 15 }, // GFG Problems
-        
-        { wch: 20 }, // HackerRank Username
-        { wch: 15 }, // HackerRank Problems
-        
-        { wch: 20 }, // GitHub Username
-        { wch: 15 }, // GitHub Contributions
-        { wch: 15 }, // GitHub Commits
-        { wch: 15 }  // GitHub Repositories
-      ];
+        worksheet.columns.forEach(column => {
+          if (colWidths[column.header]) {
+            column.width = colWidths[column.header];
+          } else if (column.header.includes('Username')) {
+            column.width = 20;
+          } else {
+            column.width = 15;
+          }
+        });
+      }
       
-      // Apply column widths
-      worksheet['!cols'] = colWidths;
+      // Add data rows
+      exportData.forEach(data => {
+        worksheet.addRow(data);
+      });
       
-      // Create a workbook and append the worksheet
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Leaderboard");
+      // Add generated date
+      const dateCell = worksheet.getCell(`A${exportData.length + 3}`);
+      dateCell.value = `Generated: ${new Date().toLocaleString()}`;
       
-      // Add sheet date in a cell
-      const dateCell = XLSX.utils.encode_cell({r: 0, c: exportData[0] ? Object.keys(exportData[0]).length + 1 : 0});
-      worksheet[dateCell] = { t: 's', v: `Generated: ${new Date().toLocaleString()}` };
+      // Style the headers
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '4167B8' }
+      };
+      worksheet.getRow(1).font = {
+        bold: true,
+        color: { argb: 'FFFFFF' }
+      };
       
-      // Write the file
-      XLSX.writeFile(workbook, "CodeTracker_Detailed_Leaderboard.xlsx");
-
+      // Generate Excel file
+      const buffer = await workbook.xlsx.writeBuffer();
+      
+      // Create a blob and trigger download
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'CodeTracker_Detailed_Leaderboard.xlsx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
       toast.success('Detailed leaderboard data exported successfully');
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export data. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

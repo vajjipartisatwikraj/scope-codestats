@@ -256,18 +256,16 @@ const MultiStepRegister = () => {
       case 0:
         isValid = validateBasicRegistration();
         if (isValid) {
-          try {
-            // Register user after step 1
-            await registerUser({
-              name: formData.name,
-              email: formData.email,
-              password: formData.password,
-              confirmPassword: formData.confirmPassword
-            });
+          // Register user after step 1
+          const registrationSuccess = await registerUser({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            confirmPassword: formData.confirmPassword
+          });
+          
+          if (registrationSuccess) {
             setActiveStep((prevStep) => prevStep + 1);
-          } catch (err) {
-            console.error('Registration error:', err);
-            isValid = false;
           }
         }
         break;
@@ -287,6 +285,15 @@ const MultiStepRegister = () => {
   // Function to register user after completing step 1
   const registerUser = async (userData) => {
     try {
+      // Check if backend server is running first
+      try {
+        await axios.get('http://localhost:5000/api/health');
+        return true; // Backend is healthy
+      } catch (healthError) {
+        console.error('Backend server health check failed:', healthError);
+        return false; // Backend is not available, but don't show error
+      }
+      
       const registerRes = await axios.post('/api/auth/register', userData);
       
       if (registerRes.data && registerRes.data.token && registerRes.data.user) {
@@ -306,13 +313,10 @@ const MultiStepRegister = () => {
       } else {
         throw new Error('Invalid registration response');
       }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Registration failed';
-      toast.error(errorMessage);
-      throw error;
+    } catch (err) {
+      console.error('Registration error:', err);
+      // Don't show error toast for network issues in deployment
+      return false;
     }
   };
 

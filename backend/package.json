@@ -4,9 +4,9 @@
   "description": "Competitive Programming Profile Tracker Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "update-profiles": "node scripts/runProfileUpdate.js",
+    "start": "cross-env NODE_OPTIONS=--no-warnings node server.js",
+    "dev": "cross-env NODE_OPTIONS=--no-warnings nodemon server.js",
+    "update-profiles": "cross-env NODE_OPTIONS=--no-warnings node scripts/runProfileUpdate.js",
     "setup-cron": "bash scripts/deploy-cron-job.sh",
     "setup-cron-win": "scripts\\deploy-cron-job.bat"
   },
@@ -19,12 +19,13 @@
     "cheerio": "^1.0.0",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.4.7",
     "express": "^4.18.2",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.1",
+    "mongodb": "5.9.2",
     "mongoose": "^7.5.0",
     "node-cron": "^3.0.3",
     "passport": "^0.7.0",
@@ -32,6 +33,7 @@
     "puppeteer": "^24.4.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.0.1"
   }
 }

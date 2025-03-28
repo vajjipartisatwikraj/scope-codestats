@@ -33,10 +33,10 @@ import {
   Zoom,
   Tab,
   Tabs,
-  SwipeableViews,
   Menu,
   Pagination
 } from '@mui/material';
+import { useSwipeable } from 'react-swipeable';
 import {
   Search,
   FilterList,
