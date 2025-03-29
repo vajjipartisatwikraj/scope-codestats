@@ -111,11 +111,18 @@ If you encounter dependency conflicts, we've included configurations to help:
 
 ## MongoDB Connection
 
-We use an explicit IPv4 address for MongoDB connection to avoid IPv6 resolution issues:
+We support both local MongoDB and MongoDB Atlas:
+
+1. For local development:
 ```
-mongodb://127.0.0.1:27017/scope_codestats
+MONGODB_URI=mongodb://127.0.0.1:27017/scope_codestats
 ```
-Instead of `localhost` which may attempt to resolve to IPv6 first.
+We use an explicit IPv4 address to avoid IPv6 resolution issues that can occur with `localhost`.
+
+2. For production with MongoDB Atlas:
+```
+MONGODB_URI=mongodb+srv://username:password@cluster0.example.mongodb.net/?retryWrites=true&w=majority&appName=ClusterName
+```
 
 ## Deployment
 
