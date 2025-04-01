@@ -86,8 +86,13 @@ const Navbar = () => {
   }, [token, user?.userType, isAuthPage]);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    const logoutSuccessful = logout();
+    
+    if (logoutSuccessful) {
+      navigate('/login');
+    }
+    
+    handleCloseUserMenu();
   };
 
   const handleOpenNavMenu = (event) => {
@@ -111,22 +116,49 @@ const Navbar = () => {
     handleCloseNavMenu();
   };
 
+  // Theme-aware colors
+  const themeColors = {
+    appBar: darkMode 
+      ? 'rgba(26, 26, 26, 0.8)'
+      : 'rgba(255, 255, 255, 0.8)',
+    text: darkMode ? '#ffffff' : '#000000',
+    border: darkMode 
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.1)',
+    menuHover: darkMode
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.05)',
+    iconColor: darkMode ? '#ffffff' : '#000000',
+    menuBg: darkMode ? '#1e1e1e' : '#ffffff',
+  };
+
   // Render simplified navbar for auth pages or when not authenticated
   if (!token || isAuthPage) {
     return (
-      <AppBar position="fixed" sx={appBarStyles}>
+      <AppBar position="fixed" sx={{
+        ...appBarStyles,
+        background: themeColors.appBar,
+        borderBottom: `1px solid ${themeColors.border}`,
+      }}>
         <Container maxWidth="xl">
           <Toolbar disableGutters>
             <Box sx={{ flexGrow: 1 }}>
               <Logo />
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
+              <IconButton sx={{ ml: 1 }} onClick={toggleTheme} color="inherit">
+                {darkMode ? (
+                  <Brightness7Icon sx={{ color: themeColors.iconColor }} />
+                ) : (
+                  <Brightness4Icon sx={{ color: themeColors.iconColor }} />
+                )}
+              </IconButton>
               <Button
                 color="inherit"
                 component={RouterLink}
                 to="/login"
                 sx={{
-                  color: location.pathname === '/login' ? '#0088cc' : 'white',
+                  color: location.pathname === '/login' ? '#0088cc' : themeColors.text,
                   '&:hover': { color: '#0088cc' }
                 }}
               >
@@ -137,8 +169,8 @@ const Navbar = () => {
                 to="/register"
                 variant="outlined"
                 sx={{
-                  borderColor: location.pathname.includes('/register') ? '#0088cc' : 'rgba(255, 255, 255, 0.3)',
-                  color: location.pathname.includes('/register') ? '#0088cc' : 'white',
+                  borderColor: location.pathname.includes('/register') ? '#0088cc' : themeColors.border,
+                  color: location.pathname.includes('/register') ? '#0088cc' : themeColors.text,
                   '&:hover': {
                     borderColor: '#0088cc',
                     color: '#0088cc',
@@ -157,7 +189,12 @@ const Navbar = () => {
 
   // Main navbar for authenticated users
   return (
-    <AppBar position="fixed" sx={{ ...appBarStyles, bgcolor: theme.palette.background.paper }}>
+    <AppBar position="fixed" sx={{ 
+      background: themeColors.appBar,
+      backdropFilter: 'blur(10px)',
+      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+      borderBottom: `1px solid ${themeColors.border}`,
+    }}>
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           {/* Logo for desktop */}
@@ -173,7 +210,7 @@ const Navbar = () => {
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleOpenNavMenu}
-              color="inherit"
+              sx={{ color: themeColors.iconColor }}
             >
               <MenuIcon />
             </IconButton>
@@ -194,15 +231,21 @@ const Navbar = () => {
               sx={{
                 display: { xs: 'block', md: 'none' },
               }}
+              PaperProps={{
+                sx: { 
+                  backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+                  color: themeColors.text
+                }
+              }}
             >
               {menuItems?.map((item) => (
                 <MenuItem 
                   key={item.text} 
                   onClick={() => handleMenuClick(item.path)}
                   sx={{
-                    color: 'white',
+                    color: themeColors.text,
                     '&:hover': {
-                      background: 'rgba(255, 255, 255, 0.1)',
+                      background: themeColors.menuHover,
                     }
                   }}
                 >
@@ -258,46 +301,35 @@ const Navbar = () => {
             ))}
             </Box>
             
-          {/* Theme toggle button */}
-          <Box sx={{ mr: 2 }}>
-            <Tooltip title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
-              <IconButton onClick={toggleTheme} color="inherit">
+          {/* User menu and theme toggle */}
+          <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center' }}>
+            <Tooltip title="Toggle Theme">
+              <IconButton onClick={toggleTheme} sx={{ color: themeColors.iconColor, mr: 2 }}>
                 {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
               </IconButton>
             </Tooltip>
-          </Box>
 
-          {/* User menu */}
-          <Box sx={{ flexGrow: 0, ml: 4 }}>
-            <Tooltip title="Account settings">
+            {/* Add User Profile Section */}
+            <Tooltip title="Open Profile Menu">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                 <Avatar 
+                  alt={user?.name || 'User'} 
+                  src={user?.profilePicture || '/static/images/avatar.jpg'} 
                   sx={{ 
-                    width: 40,
+                    width: 40, 
                     height: 40,
-                    bgcolor: '#0088cc',
-                    border: '2px solid rgba(255, 255, 255, 0.2)',
-                    transition: 'all 0.3s ease',
+                    border: `2px solid ${themeColors.border}`,
                     '&:hover': {
-                      borderColor: '#0088cc',
+                      boxShadow: '0 0 5px #0088cc'
                     }
-                  }}
-                >
-                  {user?.name?.charAt(0).toUpperCase()}
-                </Avatar>
+                  }} 
+                />
               </IconButton>
             </Tooltip>
+            
+            {/* User menu */}
             <Menu
-              sx={{
-                mt: '45px',
-                '& .MuiPaper-root': {
-                  backgroundColor: 'rgba(26, 26, 26, 0.95)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: 2,
-                  minWidth: 200,
-                }
-              }}
+              sx={{ mt: '45px' }}
               id="menu-appbar"
               anchorEl={anchorElUser}
               anchorOrigin={{
@@ -311,27 +343,35 @@ const Navbar = () => {
               }}
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
+              PaperProps={{
+                sx: { 
+                  backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+                  color: themeColors.text,
+                  borderRadius: 2,
+                  minWidth: 180,
+                }
+              }}
             >
               <Box sx={{ px: 2, py: 2 }}>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                <Typography sx={{ color: themeColors.text, fontWeight: 600 }}>
                   {user?.name}
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', mt: 0.5, fontWeight: 400 }}>
+                <Typography variant="body2" sx={{ color: themeColors.text.secondary || 'rgba(0, 0, 0, 0.6)', mt: 0.5, fontWeight: 400 }}>
                   {user?.email}
                 </Typography>
               </Box>
-              <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+              <Divider sx={{ borderColor: themeColors.border }} />
               <MenuItem 
                 onClick={() => {
-                  handleMenuClick('/profile');
+                  handleMenuClick('/profile?setup=true');
                   handleCloseUserMenu();
                 }}
                 sx={{
                   py: 1.5,
                   px: 2,
-                  color: 'white',
+                  color: themeColors.text,
                   '&:hover': {
-                    background: 'rgba(255, 255, 255, 0.1)',
+                    background: themeColors.menuHover,
                   }
                 }}
               >

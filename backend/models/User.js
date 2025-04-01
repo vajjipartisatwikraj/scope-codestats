@@ -11,6 +11,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  profileCompleted: {
+    type: Boolean,
+    default: false
+  },
   name: {
     type: String,
     required: true,
@@ -55,11 +59,30 @@ const userSchema = new mongoose.Schema({
   mobileNumber: {
     type: String,
     unique: false,
-    match: [/^[6-9]\d{9}$/, 'Please enter a valid 10-digit mobile number']
+    required: false,
+    validate: {
+      validator: function(v) {
+        // Skip validation if empty or undefined
+        if (!v || v.length === 0) return true;
+        
+        // Remove any spaces or special characters
+        const cleanNumber = v.replace(/[\s-]/g, '');
+        
+        // Accept 10-digit numbers starting with 6-9
+        if (/^[6-9]\d{9}$/.test(cleanNumber)) return true;
+        
+        // Accept 11-digit numbers starting with 0 (like 09XXXXXXXXX)
+        if (/^0[6-9]\d{9}$/.test(cleanNumber)) return true;
+        
+        // If none of the above patterns match, validation fails
+        return false;
+      },
+      message: 'Please enter a valid 10-digit mobile number (or 11-digit with leading 0)'
+    }
   },
   password: {
     type: String,
-    required: true
+    required: false
   },
   profiles: {
     geeksforgeeks: {

@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 const Profile = require('../models/Profile');
 const User = require('../models/User');
 const platformAPI = require('../services/platformAPIs');
-const platformLimits = require('../services/rateLimiter');
+const { checkProfileUpdateRateLimit } = require('../services/rateLimiter');
 const mongoose = require('mongoose');
 
 // Use the platformAPI module directly as it's already an instance
@@ -30,7 +30,45 @@ router.post('/:platform', auth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    
+    // Check rate limiting
+    const rateLimitCheck = await checkProfileUpdateRateLimit(req.user.id, platform);
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({ 
+        success: false, 
+        message: rateLimitCheck.message,
+        remainingTime: rateLimitCheck.remainingTime
+      });
+    }
+    
+    // Update the platform username in User model
+    if (!user.profiles) {
+      user.profiles = {};
+    }
+    user.profiles[platform] = username;
+    await user.save();
+    
+    console.log(`Updated ${platform} username to ${username} in User.profiles`);
 
+    // Check if profile already exists but don't update lastUpdateAttempt yet
+    let profile = await Profile.findOne({ userId: req.user.id, platform });
+
+    if (profile) {
+      // If profile exists, just update the username but don't increment attempts 
+      // or update lastUpdateAttempt until we've successfully fetched data
+      profile.username = username;
+      await profile.save();
+    } else {
+      // Create new profile with minimal fields, don't set lastUpdateAttempt yet
+      profile = new Profile({
+        userId: req.user.id,
+        platform,
+        username
+      });
+      await profile.save();
+    }
+
+    // Fetch initial data for the profile (async)
     try {
       // Get platform data
       let platformData;
@@ -38,9 +76,18 @@ router.post('/:platform', auth, async (req, res) => {
       try {
         // Try to fetch platform data
         platformData = await platformAPIService.getProfileData(platform, username);
+        
+        // Additional validation for platforms that might return empty data for non-existent users
+        if (platform === 'codeforces') {
+          // For Codeforces - check if essential data exists
+          if (platformData.rating === undefined && platformData.rank === undefined && 
+               platformData.problemsSolved === undefined && platformData.score === undefined) {
+            throw new Error(`Codeforces user '${username}' not found or has no public data available`);
+          }
+        }
       } catch (fetchError) {
-        // Special handling for GeeksforGeeks - create a placeholder profile
-        if (platform === 'geeksforgeeks' && fetchError.message.includes('not found')) {
+        // Special handling for GeeksforGeeks - create a placeholder profile only if explicitly mentioned in error
+        if (platform === 'geeksforgeeks' && fetchError.message.includes('placeholder requested')) {
           console.log(`Creating placeholder profile for GeeksforGeeks user: ${username}`);
           
           // Create placeholder data for GeeksforGeeks
@@ -66,21 +113,25 @@ router.post('/:platform', auth, async (req, res) => {
       }
       
       if (!platformData || !platformData.username) {
-        throw new Error(`Failed to fetch ${platform} profile data`);
+        throw new Error(`Failed to fetch ${platform} profile data for user '${username}'`);
       }
 
-      let profile = await Profile.findOne({
+      // Re-fetch the profile to ensure we have the latest version
+      profile = await Profile.findOne({
         userId: req.user.id,
         platform
       });
 
+      // Now we've successfully fetched the data, update lastUpdateAttempt and increment attempts
       const profileData = {
         userId: req.user.id,
         platform,
         username,
         lastUpdateStatus: 'success',
         lastUpdated: new Date(),
-        lastUpdateError: null
+        lastUpdateError: null,
+        lastUpdateAttempt: new Date(),
+        updateAttempts: (profile.updateAttempts || 0) + 1
       };
 
       // Update platform-specific fields
@@ -133,11 +184,6 @@ router.post('/:platform', auth, async (req, res) => {
 
       await profile.save();
 
-      // Update user's profiles
-      await User.findByIdAndUpdate(req.user.id, {
-        [`profiles.${platform}`]: username
-      });
-
       // Format response data
       const responseData = {
         username: profile.username,
@@ -162,6 +208,11 @@ router.post('/:platform', auth, async (req, res) => {
 
       res.json({
         success: true,
+        data: {
+          platform,
+          username,
+          details: responseData.details
+        },
         profile: {
           platform,
           username,
@@ -170,12 +221,20 @@ router.post('/:platform', auth, async (req, res) => {
           } : {
             details: responseData.details
           })
-        },
-        data: responseData
+        }
       });
 
     } catch (error) {
       console.error(`Error updating ${platform} profile:`, error);
+      
+      // Update the profile with error information, but don't update lastUpdateAttempt 
+      // since this was a failed attempt (not a successful update that should trigger cooldown)
+      if (profile) {
+        profile.lastUpdateStatus = 'error';
+        profile.lastUpdateError = error.message;
+        await profile.save();
+      }
+      
       res.status(500).json({ 
         success: false, 
         message: `Failed to update ${platform} profile: ${error.message}` 
@@ -222,9 +281,127 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Update profile scores
-router.put('/update-scores', auth, platformLimits.leetcode, async (req, res) => {
+router.put('/update-scores', auth, async (req, res) => {
   try {
-    const profiles = await Profile.find({ userId: req.user.id });
+    // Check if usernames were provided in the request
+    const providedUsernames = req.body.usernames || {};
+    const preserveExistingUsernames = req.body.preserveExistingUsernames === true;
+    console.log('Received usernames from request:', providedUsernames);
+    console.log('Preserve existing usernames flag:', preserveExistingUsernames);
+    
+    // Get existing profiles
+    const existingProfiles = await Profile.find({ userId: req.user.id });
+    const profiles = [];
+    const existingUsernamesByPlatform = {};
+    
+    // First collect existing usernames for reference
+    for (const profile of existingProfiles) {
+      existingUsernamesByPlatform[profile.platform] = profile.username;
+    }
+    
+    // Get user to check profiles object
+    const user = await User.findById(req.user.id);
+    if (user && user.profiles) {
+      Object.entries(user.profiles).forEach(([platform, username]) => {
+        // If we don't have this username from Profile collection, add it from User object
+        if (!existingUsernamesByPlatform[platform] && username) {
+          const usernameValue = typeof username === 'object' ? 
+            (username.username || '') : String(username);
+          if (usernameValue && usernameValue.trim() !== '') {
+            existingUsernamesByPlatform[platform] = usernameValue.trim();
+          }
+        }
+      });
+    }
+    
+    // Then handle existing profiles, updating usernames if needed
+    for (const profile of existingProfiles) {
+      // If a new username was provided for this platform, check if it's valid
+      if (providedUsernames[profile.platform]) {
+        const newUsername = providedUsernames[profile.platform].trim();
+        
+        if (newUsername && newUsername !== profile.username) {
+          console.log(`Updating username for ${profile.platform} from ${profile.username} to ${newUsername}`);
+          profile.username = newUsername;
+          await profile.save();
+        } else if (!newUsername && preserveExistingUsernames) {
+          console.log(`Keeping existing username for ${profile.platform}: ${profile.username}`);
+          // Keep existing username - don't update with empty value
+        }
+      }
+      profiles.push(profile);
+    }
+    
+    // Then create new profiles for platforms that don't have one yet
+    const existingPlatforms = profiles.map(p => p.platform);
+    for (const [platform, username] of Object.entries(providedUsernames)) {
+      if (!existingPlatforms.includes(platform) && username.trim() !== '') {
+        console.log(`Creating new profile for ${platform} with username ${username}`);
+        const newProfile = new Profile({
+          userId: req.user.id,
+          platform,
+          username: username.trim(),
+          score: 0,
+          problemsSolved: 0,
+          lastUpdated: new Date(),
+          updateAttempts: 0
+        });
+        await newProfile.save();
+        profiles.push(newProfile);
+      }
+    }
+    
+    // Also create profiles for existing usernames from User.profiles that weren't in Profile collection
+    if (preserveExistingUsernames) {
+      for (const [platform, username] of Object.entries(existingUsernamesByPlatform)) {
+        if (!existingPlatforms.includes(platform) && !providedUsernames[platform] && username) {
+          console.log(`Creating new profile for ${platform} with existing username ${username}`);
+          const newProfile = new Profile({
+            userId: req.user.id,
+            platform,
+            username,
+            score: 0,
+            problemsSolved: 0,
+            lastUpdated: new Date(),
+            updateAttempts: 0
+          });
+          await newProfile.save();
+          profiles.push(newProfile);
+        }
+      }
+    }
+    
+    // Update the user.profiles object with the new usernames
+    if (Object.keys(providedUsernames).length > 0) {
+      const profilesUpdate = {};
+      
+      // First, get the final usernames from the profiles array
+      const finalUsernames = {};
+      profiles.forEach(profile => {
+        finalUsernames[profile.platform] = profile.username;
+      });
+      
+      // Then update only those that have a valid username
+      Object.entries(finalUsernames).forEach(([platform, username]) => {
+        if (username && username.trim() !== '') {
+          profilesUpdate[`profiles.${platform}`] = username.trim();
+        } else if (preserveExistingUsernames && user.profiles && user.profiles[platform]) {
+          // Keep existing username in User.profiles if we're preserving existing values
+          // and the new username is empty
+          profilesUpdate[`profiles.${platform}`] = user.profiles[platform];
+        }
+      });
+      
+      if (Object.keys(profilesUpdate).length > 0) {
+        await User.findByIdAndUpdate(
+          req.user.id,
+          { $set: profilesUpdate },
+          { new: true }
+        );
+        console.log('Updated User.profiles with usernames');
+      }
+    }
+    
     let totalScore = 0;
     let totalProblemsSolved = 0;
     const updatedProfiles = [];
@@ -254,6 +431,7 @@ router.put('/update-scores', auth, platformLimits.leetcode, async (req, res) => 
     // Process each profile in parallel with timeouts
     const updatePromises = profiles.map(async (profile) => {
       try {
+        const originalUsername = profile.username; // Store the original username
         profile.updateAttempts += 1;
         
         // Set a timeout for profile fetch operations
@@ -270,7 +448,34 @@ router.put('/update-scores', auth, platformLimits.leetcode, async (req, res) => 
           profile.username
         );
         
-        const platformData = await Promise.race([platformDataPromise, timeoutPromise]);
+        let platformData;
+        try {
+          platformData = await Promise.race([platformDataPromise, timeoutPromise]);
+        } catch (fetchError) {
+          console.error(`Error fetching data for ${profile.platform}/${profile.username}:`, fetchError.message);
+          
+          // If this is a newly updated username and it failed, revert to the original username if available
+          if (providedUsernames[profile.platform] && 
+              providedUsernames[profile.platform] === profile.username &&
+              existingUsernamesByPlatform[profile.platform] && 
+              existingUsernamesByPlatform[profile.platform] !== profile.username) {
+            
+            console.log(`Invalid username detected for ${profile.platform}, reverting to original: ${existingUsernamesByPlatform[profile.platform]}`);
+            
+            // Revert the username
+            profile.username = existingUsernamesByPlatform[profile.platform];
+            await profile.save();
+            
+            // Try again with the original username
+            platformData = await Promise.race([
+              platformAPIService.getProfileData(profile.platform, profile.username),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout on retry')), 10000))
+            ]);
+          } else {
+            // If we can't revert, re-throw the error
+            throw fetchError;
+          }
+        }
 
         // Update profile document
         profile.score = platformData.score;
@@ -367,6 +572,33 @@ router.put('/update-scores', auth, platformLimits.leetcode, async (req, res) => 
         console.error('Error updating profile:', result.reason);
       }
     });
+    
+    // Update User.profiles with the final verified usernames from successful updates
+    const finalVerifiedUsernames = {};
+    updatedProfiles.forEach(profile => {
+      if (profile.lastUpdateStatus === 'success') {
+        finalVerifiedUsernames[profile.platform] = profile.username;
+      }
+    });
+    
+    // Update the User.profiles object with verified usernames
+    if (Object.keys(finalVerifiedUsernames).length > 0) {
+      const profilesUpdate = {};
+      Object.entries(finalVerifiedUsernames).forEach(([platform, username]) => {
+        if (username && username.trim() !== '') {
+          profilesUpdate[`profiles.${platform}`] = username.trim();
+        }
+      });
+      
+      if (Object.keys(profilesUpdate).length > 0) {
+        await User.findByIdAndUpdate(
+          req.user.id,
+          { $set: profilesUpdate },
+          { new: true }
+        );
+        console.log('Updated User.profiles with verified usernames after sync');
+      }
+    }
     
     // Update user document with consolidated data
     const userUpdateData = { 
@@ -813,7 +1045,9 @@ router.get('/me', auth, async (req, res) => {
       Object.keys(user.profiles).forEach(platform => {
         if (user.profiles[platform] && !profile.profiles[platform]?.username) {
           profile.profiles[platform] = {
-            username: user.profiles[platform],
+            username: typeof user.profiles[platform] === 'object' ? 
+              (user.profiles[platform].username || '') : 
+              String(user.profiles[platform]),
             details: null
           };
         }
@@ -830,6 +1064,8 @@ router.get('/me', auth, async (req, res) => {
 // Update current user's profile
 router.put('/me', auth, async (req, res) => {
   try {
+    console.log('Updating profile for user:', req.user.id, JSON.stringify(req.body, null, 2));
+    
     const {
       name,
       phone,
@@ -840,52 +1076,108 @@ router.put('/me', auth, async (req, res) => {
       skills,
       interests,
       about,
-      linkedinUrl
+      linkedinUrl,
+      githubUrl
     } = req.body;
 
+    // Build update fields object
     const updateFields = {
-      name,
       mobileNumber: phone,
-      department,
       section,
-      rollNumber,
-      graduationYear,
       skills: Array.isArray(skills) ? skills : [],
       interests: Array.isArray(interests) ? interests : [],
       about: about || '',
       linkedinUrl: linkedinUrl || ''
     };
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { $set: updateFields },
-      { new: true }
-    ).select('-password');
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    
+    // Only add required fields if they're provided (to avoid potential validation issues)
+    if (name) updateFields.name = name;
+    if (department) updateFields.department = department;
+    if (rollNumber) updateFields.rollNumber = rollNumber;
+    if (graduationYear) updateFields.graduatingYear = graduationYear;
+    
+    // Handle GitHub URL if provided
+    if (githubUrl) {
+      updateFields['profiles.github'] = githubUrl;
     }
 
-    // Format the response
-    const profile = {
-      user: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.mobileNumber || user.phone || '',
-      department: user.department || '',
-      section: user.section || '',
-      rollNumber: user.rollNumber || '',
-      graduationYear: user.graduationYear || new Date().getFullYear(),
-      skills: user.skills || [],
-      interests: user.interests || [],
-      about: user.about || '',
-      linkedinUrl: user.linkedinUrl || ''
-    };
+    try {
+      // First get the user to validate the update
+      const existingUser = await User.findById(req.user.id);
+      
+      if (!existingUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Apply the updates to validate before saving
+      Object.entries(updateFields).forEach(([key, value]) => {
+        if (key.includes('.')) {
+          // Handle nested properties like profiles.github
+          const [parent, child] = key.split('.');
+          if (!existingUser[parent]) existingUser[parent] = {};
+          existingUser[parent][child] = value;
+        } else {
+          existingUser[key] = value;
+        }
+      });
+      
+      // Validate the user
+      await existingUser.validate();
+      
+      // If validation passes, update the user
+      const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { $set: updateFields },
+        { new: true, runValidators: true }
+      ).select('-password');
+      
+      // Format the response
+      const profile = {
+        user: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.mobileNumber || user.phone || '',
+        department: user.department || '',
+        section: user.section || '',
+        rollNumber: user.rollNumber || '',
+        graduationYear: user.graduatingYear || new Date().getFullYear(),
+        skills: user.skills || [],
+        interests: user.interests || [],
+        about: user.about || '',
+        linkedinUrl: user.linkedinUrl || '',
+        githubUrl: user.profiles?.github || ''
+      };
 
-    res.json(profile);
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        profile
+      });
+    } catch (validationError) {
+      console.error('Validation error:', validationError);
+      
+      if (validationError.name === 'ValidationError') {
+        const errors = {};
+        
+        // Format validation errors for response
+        Object.keys(validationError.errors).forEach(field => {
+          errors[field] = validationError.errors[field].message;
+        });
+        
+        return res.status(400).json({
+          message: 'Validation error',
+          errors
+        });
+      }
+      
+      throw validationError; // Re-throw if not a validation error
+    }
   } catch (err) {
     console.error('Error updating profile:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err.message 
+    });
   }
 });
 
@@ -1047,6 +1339,300 @@ router.get('/debug-contests', async (req, res) => {
   } catch (error) {
     console.error('Error fetching contest participation data:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/profiles/quick-sync
+ * @desc    Quickly sync all profiles for the logged-in user
+ * @access  Private
+ */
+router.get('/quick-sync', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get all profiles for the user
+    const profiles = await Profile.find({ userId });
+    
+    if (profiles.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No profiles found to sync',
+        profiles: []
+      });
+    }
+    
+    console.log(`Starting quick sync for user ${userId} with ${profiles.length} profiles`);
+    
+    // Mark profiles as updating
+    await Profile.updateMany(
+      { userId },
+      { 
+        $set: { 
+          lastUpdateAttempt: new Date(),
+          lastUpdateStatus: 'updating'
+        },
+        $inc: { updateAttempts: 1 }
+      }
+    );
+    
+    // Start background sync without waiting for completion
+    // This allows for a quick response to the frontend
+    const syncProfilesInBackground = async () => {
+      try {
+        // Track updates for reporting
+        const updatedProfiles = [];
+        let totalScore = 0;
+        let totalProblemsSolved = 0;
+        
+        // Process each profile
+        for (const profile of profiles) {
+          try {
+            const { platform, username } = profile;
+            console.log(`Background sync: Processing ${platform}/${username}`);
+            
+            const platformData = await platformAPIService.getProfileData(platform, username);
+            
+            // Update profile with fresh data
+            const updates = { 
+              score: platformData.score || 0,
+              problemsSolved: platformData.problemsSolved || 0,
+              lastUpdated: new Date(),
+              lastUpdateStatus: 'success',
+              lastUpdateError: null
+            };
+            
+            // Add platform-specific fields
+            if (platform === 'leetcode') {
+              updates.easyProblemsSolved = platformData.easyProblemsSolved || 0;
+              updates.mediumProblemsSolved = platformData.mediumProblemsSolved || 0;
+              updates.hardProblemsSolved = platformData.hardProblemsSolved || 0;
+              updates.ranking = platformData.ranking || 0;
+              updates.contestsParticipated = platformData.contestsParticipated || 0;
+              updates.rating = platformData.rating || 0;
+            } else if (platform === 'codeforces') {
+              updates.rating = platformData.rating || 0;
+              updates.maxRating = platformData.maxRating || 0;
+              updates.rank = platformData.rank || 'unrated';
+              updates.contestsParticipated = platformData.contestsParticipated || 0;
+            } else if (platform === 'codechef') {
+              updates.rating = platformData.rating || 0;
+              updates.globalRank = platformData.global_rank || 0;
+              updates.countryRank = platformData.country_rank || 0;
+              updates.contestsParticipated = platformData.contestsParticipated || 0;
+            } else if (platform === 'github') {
+              updates.details = {
+                publicRepos: platformData.publicRepos || 0,
+                totalCommits: platformData.totalCommits || 0,
+                followers: platformData.followers || 0,
+                following: platformData.following || 0,
+                starsReceived: platformData.starsReceived || 0,
+                score: platformData.score || 0,
+                lastUpdated: new Date()
+              };
+            }
+            
+            // Save profile updates
+            await Profile.findByIdAndUpdate(profile._id, updates);
+            
+            // Track for total score calculation
+            totalScore += platformData.score || 0;
+            totalProblemsSolved += platformData.problemsSolved || 0;
+            
+            updatedProfiles.push({
+              platform,
+              username,
+              score: platformData.score || 0,
+              problemsSolved: platformData.problemsSolved || 0,
+              lastUpdated: new Date(),
+              lastUpdateStatus: 'success'
+            });
+            
+          } catch (profileError) {
+            console.error(`Error syncing ${profile.platform}/${profile.username}:`, profileError);
+            
+            // Mark this profile as failed
+            await Profile.findByIdAndUpdate(profile._id, {
+              lastUpdateStatus: 'error',
+              lastUpdateError: profileError.message,
+              lastUpdateAttempt: new Date()
+            });
+          }
+        }
+        
+        // Update user document with new totals
+        await User.findByIdAndUpdate(userId, {
+          totalScore,
+          totalProblemsSolved,
+          lastProfileSync: new Date()
+        });
+        
+        console.log(`Background sync completed for user ${userId}. Updated ${updatedProfiles.length}/${profiles.length} profiles.`);
+      } catch (syncError) {
+        console.error(`Background sync error for user ${userId}:`, syncError);
+      }
+    };
+    
+    // Start the background process without waiting
+    syncProfilesInBackground().catch(err => {
+      console.error('Background sync process error:', err);
+    });
+    
+    // Return immediately with profiles that will be updated
+    res.json({
+      success: true,
+      message: `Sync started for ${profiles.length} profiles. Results will be available shortly.`,
+      profiles: profiles.map(p => ({
+        platform: p.platform,
+        username: p.username,
+        lastUpdateStatus: 'updating'
+      }))
+    });
+    
+  } catch (err) {
+    console.error('Quick sync error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error starting sync process', 
+      error: err.message 
+    });
+  }
+});
+
+// Get all coding platform usernames for a user
+router.get('/usernames', auth, async (req, res) => {
+  try {
+    // First get usernames from the User model profiles object
+    const user = await User.findById(req.user.id).select('profiles platformData');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Then get profiles from the Profile collection
+    const profileDocs = await Profile.find({ userId: req.user.id });
+    
+    // Create a combined result with usernames from all sources
+    const platforms = ['leetcode', 'codeforces', 'codechef', 'geeksforgeeks', 'hackerrank', 'github'];
+    const result = {};
+    
+    // Initialize result object with empty values
+    platforms.forEach(platform => {
+      result[platform] = {
+        username: '',
+        lastUpdated: null
+      };
+    });
+    
+    // Add usernames from User.profiles object
+    if (user.profiles) {
+      platforms.forEach(platform => {
+        if (user.profiles[platform]) {
+          // Ensure username is a string
+          const username = user.profiles[platform];
+          result[platform].username = typeof username === 'object' ? 
+            (username.username || '') : // If it's an object with a username property, use that
+            String(username); // Otherwise convert to string
+        }
+      });
+    }
+    
+    // Add usernames from User.platformData object
+    if (user.platformData) {
+      Object.entries(user.platformData).forEach(([platform, data]) => {
+        if (data && data.username) {
+          // Ensure username is a string
+          result[platform].username = typeof data.username === 'object' ?
+            '' : // If it's an object, use empty string
+            String(data.username); // Otherwise convert to string
+          result[platform].lastUpdated = data.lastUpdated;
+        }
+      });
+    }
+    
+    // Override with Profile documents if they exist (most authoritative source)
+    profileDocs.forEach(profile => {
+      if (platforms.includes(profile.platform)) {
+        // Ensure username is a string
+        result[profile.platform].username = typeof profile.username === 'object' ?
+          '' : // If it's an object, use empty string
+          String(profile.username); // Otherwise convert to string
+        result[profile.platform].lastUpdated = profile.lastUpdated;
+      }
+    });
+    
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching user platform usernames:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get all profile stats for the current user
+router.get('/stats', auth, async (req, res) => {
+  try {
+    // Find all profiles for the current user
+    const profiles = await Profile.find({ userId: req.user.id });
+    
+    if (!profiles || profiles.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No profiles found',
+        profiles: []
+      });
+    }
+    
+    // Format the profile data
+    const formattedProfiles = profiles.map(profile => {
+      const baseData = {
+        platform: profile.platform,
+        username: profile.username,
+        score: profile.score || 0,
+        problemsSolved: profile.problemsSolved || 0,
+        lastUpdated: profile.lastUpdated,
+        lastUpdateStatus: profile.lastUpdateStatus
+      };
+      
+      // Add platform-specific fields
+      if (profile.platform === 'github') {
+        return {
+          ...baseData,
+          publicRepos: profile.details?.publicRepos || 0,
+          totalCommits: profile.details?.totalCommits || 0,
+          followers: profile.details?.followers || 0,
+          following: profile.details?.following || 0,
+          starsReceived: profile.details?.starsReceived || 0
+        };
+      } else {
+        return {
+          ...baseData,
+          rating: profile.rating || 0,
+          rank: profile.rank || 'unrated',
+          easyProblemsSolved: profile.easyProblemsSolved || 0,
+          mediumProblemsSolved: profile.mediumProblemsSolved || 0,
+          hardProblemsSolved: profile.hardProblemsSolved || 0,
+          contestsParticipated: profile.contestsParticipated || 0,
+          globalRank: profile.globalRank || 0,
+          countryRank: profile.countryRank || 0
+        };
+      }
+    });
+    
+    // Calculate total score across all platforms
+    const totalScore = profiles.reduce((sum, profile) => sum + (profile.score || 0), 0);
+    
+    res.json({
+      success: true,
+      totalScore,
+      profiles: formattedProfiles
+    });
+    
+  } catch (error) {
+    console.error('Error fetching profile stats:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error fetching profile stats'
+    });
   }
 });
 

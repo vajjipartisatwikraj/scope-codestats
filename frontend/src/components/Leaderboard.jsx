@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -29,17 +29,19 @@ import {
   Stack,
   Divider,
   Slide,
-  Fade,
   Zoom,
   Tab,
   Tabs,
   Menu,
-  Pagination
+  Pagination,
+  Badge,
+  LinearProgress,
+  FormControlLabel,
+  TablePagination
 } from '@mui/material';
 import { useSwipeable } from 'react-swipeable';
 import {
   Search,
-  FilterList,
   EmojiEvents,
   School,
   WorkspacePremium,
@@ -48,7 +50,6 @@ import {
   Code,
   ArrowUpward,
   ArrowDownward,
-  Close,
   Whatshot,
   Public,
   Group,
@@ -64,6 +65,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import { apiUrl } from '../config/apiConfig';
 
 const departments = [
   'ALL', 'CSE', 'CSC', 'CSD', 'ECE', 'IT', 'CSM', 'CSIT', 'AERO', 'MECH', 'OTHER'
@@ -150,7 +152,6 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
-  const [viewCount, setViewCount] = useState(0);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('problemsSolved');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -163,11 +164,9 @@ const Leaderboard = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [leaderboardType, setLeaderboardType] = useState('score');
   const [animateTop3, setAnimateTop3] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const { token } = useAuth();
   const { darkMode } = useTheme();
 
-  console.log(darkMode);
   useEffect(() => {
     if (!token) {
       navigate('/login');
@@ -175,20 +174,6 @@ const Leaderboard = () => {
     }
     fetchLeaderboard();
   }, [department, section, year, leaderboardType, token]);
-
-  useEffect(() => {
-    // Fetch view count from backend
-    const fetchViewCount = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/leaderboard/views');
-        setViewCount(response.data.views);
-      } catch (error) {
-        console.error('Error fetching view count:', error);
-      }
-    };
-    
-    fetchViewCount();
-  }, []);
 
   useEffect(() => {
     // Animate top 3 cards after component mounts
@@ -206,8 +191,6 @@ const Leaderboard = () => {
       const config = leaderboardConfigs[leaderboardType];
       const sortField = config.valueKey;
 
-      console.log(`Sorting by field: ${sortField} in order: ${sortOrder}`);
-
       const params = new URLSearchParams({
         sortBy: sortField,
         order: sortOrder,
@@ -222,31 +205,9 @@ const Leaderboard = () => {
       });
 
       
-      const res = await axios.get(`http://localhost:5000/api/leaderboard?${params}`, {
+      const res = await axios.get(`${apiUrl}/leaderboard?${params}`, {
         headers: { 'x-auth-token': token }
       });
-      console.log(res.data);
-      
-      // First user data logging for debugging
-      if (res.data && res.data.length > 0) {
-        const firstUser = res.data[0];
-        console.log('First user structure:', {
-          name: firstUser.name,
-          totalScore: firstUser.totalScore,
-          problemsSolved: firstUser.problemsSolved,
-          platforms: firstUser.platforms ? Object.keys(firstUser.platforms) : [],
-          platformDetails: firstUser.platforms ? JSON.stringify(firstUser.platforms).substring(0, 100) + '...' : 'none',
-          profilesArray: firstUser.profilesArray ? firstUser.profilesArray.length : 0,
-          platformScores: firstUser.platformScores ? Object.keys(firstUser.platformScores) : []
-        });
-        
-        // Log detailed platform data for debugging
-        if (firstUser.platforms) {
-          Object.entries(firstUser.platforms).forEach(([platform, data]) => {
-            console.log(`Platform data for ${platform}:`, data);
-          });
-        }
-      }
       
       // Process the data to handle both users and profiles collections
       const processedData = res.data.map(user => {
@@ -343,22 +304,9 @@ const Leaderboard = () => {
           valueB = b[sortBy] || 0;
         }
         
-        // Log the values for first few users to debug sorting
-        if (processedData.indexOf(a) < 5 || processedData.indexOf(b) < 5) {
-          console.log(`Sorting: ${a.name} (${valueA}) vs ${b.name} (${valueB})`);
-        }
-        
         // Sort in the requested order
         return sortOrder === 'desc' ? (valueB - valueA) : (valueA - valueB);
       });
-      
-      console.log('First 5 users after frontend sorting:', sortedData.slice(0, 5).map(u => ({
-        name: u.name,
-        totalScore: u.totalScore,
-        problemsSolved: u.problemsSolved,
-        totalContestsParticipated: u.totalContestsParticipated,
-        highestRating: u.highestRating
-      })));
       
       const usersWithRanks = sortedData.map((user, index) => ({
         ...user,
@@ -386,7 +334,6 @@ const Leaderboard = () => {
       setUsers(usersWithAllRanks);
       setFilteredUsers(usersWithAllRanks);
     } catch (err) {
-      console.error('Leaderboard error:', err);
       const message = err.response?.data?.message || 'Failed to fetch leaderboard';
       setError(message);
       toast.error(message);
@@ -433,8 +380,6 @@ const Leaderboard = () => {
     } else if (leaderboardType === 'rating' && sortBy === leaderboardConfigs.rating.valueKey) {
       actualSortField = 'totalRating'; // Use totalRating instead of highestRating
     }
-
-    console.log(`Applying filters with sort field: ${actualSortField} in order: ${sortOrder}`);
 
     filtered.sort((a, b) => {
       const valueA = a[actualSortField] || 0;
@@ -567,11 +512,6 @@ const Leaderboard = () => {
           platformData.ratingHistory?.[(platformData.ratingHistory?.length || 0) - 1]?.rating || // Get latest rating from history if exists
           0;
           
-        // Log the rating value being extracted
-        if (parseInt(ratingValue) > 0) {
-          console.log(`Rating from ${platform} for ${user.name}: ${ratingValue}`);
-        }
-        
         return parseInt(ratingValue) || 0;
       }
     }
@@ -588,18 +528,12 @@ const Leaderboard = () => {
       // Special handling for rating in profiles
       if (key === 'rating' && platformData.rating !== undefined) {
         const ratingValue = platformData.rating;
-        if (parseInt(ratingValue) > 0) {
-          console.log(`Rating from platformScores.${platform} for ${user.name}: ${ratingValue}`);
-        }
         return parseInt(ratingValue) || 0;
       }
       
       // Check if the key is in details
       if (platformData.details && platformData.details[key] !== undefined) {
         const detailValue = platformData.details[key];
-        if (key === 'rating' && parseInt(detailValue) > 0) {
-          console.log(`Rating from platformScores.${platform}.details for ${user.name}: ${detailValue}`);
-        }
         return parseInt(detailValue) || 0;
       }
     }
@@ -959,7 +893,7 @@ const Leaderboard = () => {
           <Typography variant="body2">{user.section || '-'}</Typography>
         </TableCell>
         <TableCell>
-          <Typography variant="body2">{getStudentYear(user.graduatingYear)}</Typography>
+          <Typography variant="body2">{user.graduatingYear}</Typography>
         </TableCell>
         <TableCell>
           <Typography variant="body2" sx={{ color: '#0088cc', fontWeight: 600 }}>
@@ -1436,148 +1370,8 @@ const Leaderboard = () => {
               </MenuItem>
             ))}
           </Menu>
-          
-          <Button
-            variant="outlined"
-            startIcon={showFilters ? <Close /> : <FilterList />}
-            onClick={() => setShowFilters(!showFilters)}
-            sx={{
-              borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
-              color: showFilters ? '#0088cc' : darkMode ? 'white' : 'black',
-              borderRadius: 1,
-              '&:hover': {
-                borderColor: '#0088cc',
-                bgcolor: 'rgba(0,136,204,0.1)',
-              },
-            }}
-          >
-            {showFilters ? 'Hide Filters' : 'More Filters'}
-          </Button>
         </Box>
       </Box>
-
-      {/* Additional Filters Section */}
-      <Fade in={showFilters}>
-        <Box sx={{ 
-          display: showFilters ? 'flex' : 'none',
-          flexDirection: { xs: 'column', sm: 'row' },
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
-          justifyContent: 'center'
-        }}>
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>Section</InputLabel>
-            <Select
-              value={section}
-              label="Section"
-              onChange={(e) => handleFilterChange({ target: { name: 'section', value: e.target.value } })}
-              sx={{ 
-                borderRadius: 1,
-                color: darkMode ? 'white' : 'black',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
-                },
-                '& .MuiSelect-icon': { 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)' 
-                }
-              }}
-            >
-              <MenuItem value="All">All Sections</MenuItem>
-              <MenuItem value="A">A</MenuItem>
-              <MenuItem value="B">B</MenuItem>
-              <MenuItem value="C">C</MenuItem>
-              <MenuItem value="D">D</MenuItem>
-              <MenuItem value="E">E</MenuItem>
-              <MenuItem value="F">F</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>Graduating Year</InputLabel>
-            <Select
-              value={year}
-              label="Graduating Year"
-              onChange={(e) => handleFilterChange({ target: { name: 'year', value: e.target.value } })}
-              sx={{ 
-                borderRadius: 1,
-                color: darkMode ? 'white' : 'black',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
-                },
-                '& .MuiSelect-icon': { 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)' 
-                }
-              }}
-            >
-              <MenuItem value="All">All Years</MenuItem>
-              <MenuItem value="2024">2024 (Graduated)</MenuItem>
-              <MenuItem value="2025">2025 (Fourth Year)</MenuItem>
-              <MenuItem value="2026">2026 (Third Year)</MenuItem>
-              <MenuItem value="2027">2027 (Second Year)</MenuItem>
-              <MenuItem value="2028">2028 (First Year)</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>Sort By</InputLabel>
-            <Select
-              value={sortBy}
-              label="Sort By"
-              onChange={(e) => handleFilterChange({ target: { name: 'sortBy', value: e.target.value } })}
-              sx={{ 
-                borderRadius: 1,
-                color: darkMode ? 'white' : 'black',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
-                },
-                '& .MuiSelect-icon': { 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)' 
-                }
-              }}
-            >
-              <MenuItem value="totalScore">Total Score</MenuItem>
-              <MenuItem value="achievementPoints">Achievement Points</MenuItem>
-              <MenuItem value="contestPoints">Contest Points</MenuItem>
-              <MenuItem value="contributionPoints">Contribution Points</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>Order</InputLabel>
-            <Select
-              value={sortOrder}
-              label="Order"
-              onChange={(e) => handleFilterChange({ target: { name: 'sortOrder', value: e.target.value } })}
-              sx={{ 
-                borderRadius: 1,
-                color: darkMode ? 'white' : 'black',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
-                },
-                '& .MuiSelect-icon': { 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)' 
-                }
-              }}
-            >
-              <MenuItem value="desc">Highest First</MenuItem>
-              <MenuItem value="asc">Lowest First</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-      </Fade>
 
       {/* Navigation Tabs */}
       <Box sx={{ 

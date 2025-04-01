@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider as MuiThemeProvider, CssBaseline, Box, Container, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { BrowserRouter as Router, Routes, Route, useNavigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ThemeProvider as MuiThemeProvider, CssBaseline, Box, Container, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, CircularProgress } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -21,17 +21,32 @@ import PrivateRoute from './components/PrivateRoute';
 import CourseManagement from './components/CourseManagement';
 import OpportunityManagement from './components/OpportunityManagement';
 import UserView from './components/UserView';
-
-// Component to conditionally render Dashboard or AdminDashboard based on user type
-const ConditionalDashboard = () => {
-  const { user } = useAuth();
-  return user?.userType === 'admin' ? <AdminDashboard /> : <Dashboard />;
-};
+import ConditionalDashboard from './components/ConditionalDashboard';
 
 // MainContent component that uses the theme from context
 const MainContent = () => {
   const { theme, darkMode } = useTheme();
-  const { token, user } = useAuth();
+  const { token, user, isAuthenticated, isInitialized } = useAuth();
+  
+  // Show loading indicator while authentication is initializing
+  if (!isInitialized) {
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          backgroundColor: theme.palette.background.default
+        }}
+      >
+        <CircularProgress size={40} />
+        <Typography variant="body1" sx={{ ml: 2 }}>
+          Initializing application...
+        </Typography>
+      </Box>
+    );
+  }
   
   return (
     <MuiThemeProvider theme={theme}>
@@ -55,6 +70,14 @@ const MainContent = () => {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<MultiStepRegister />} />
+              <Route path="/auth/success" element={
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#121212' }}>
+                  <CircularProgress size={60} sx={{ color: '#0088cc' }} />
+                  <Typography variant="h6" sx={{ mt: 4, color: 'white' }}>
+                    Completing your login...
+                  </Typography>
+                </Box>
+              } />
               
               {/* Protected routes */}
               <Route path="/dashboard" element={
@@ -113,9 +136,40 @@ const MainContent = () => {
                 </PrivateRoute>
               } />
               <Route path="/user-view/:username" element={
-                
-                  <UserView />
-                
+                <UserView />
+              } />
+              
+              {/* Catch-all route (404) */}
+              <Route path="*" element={
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  height: '70vh' 
+                }}>
+                  <Typography variant="h4" sx={{ mb: 3 }}>Page Not Found</Typography>
+                  <Typography variant="body1" sx={{ mb: 4, maxWidth: '600px', textAlign: 'center' }}>
+                    The page you're looking for doesn't exist or has been moved.
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        // Redirect to admin dashboard for admin users
+                        if (user?.userType === 'admin') {
+                          window.location.href = '/admin/dashboard';
+                        } else {
+                          window.location.href = '/dashboard';
+                        }
+                      } else {
+                        window.location.href = '/login';
+                      }
+                    }}
+                  >
+                    Go to {isAuthenticated ? (user?.userType === 'admin' ? 'Admin Dashboard' : 'Dashboard') : 'Login'}
+                  </Button>
+                </Box>
               } />
             </Routes>
           </Container>
@@ -139,9 +193,15 @@ const MainContent = () => {
   );
 };
 
+/**
+ * Main App component for CodeStats
+ * 
+ * Note: We use the /auth/success route as part of the OAuth flow
+ * The backend redirects to this route after successful Google authentication
+ */
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <ThemeProvider>
           <MainContent />

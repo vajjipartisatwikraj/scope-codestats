@@ -30,6 +30,10 @@ const cron = require('node-cron');
 const Profile = require('./models/Profile');
 const User = require('./models/User');
 const platformAPI = require('./services/platformAPIs');
+const healthRoutes = require('./routes/healthRoutes');
+const passport = require('passport');
+const session = require('express-session');
+const googleAuthRoutes = require('./routes/auth/googleAuth');
 
 const app = express();
 
@@ -38,10 +42,22 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow frontend requests
+  origin: ['http://localhost:3000', 'http://localhost:3001'], // Allow both frontend origins
   credentials: true
 }));
 app.use(express.json());
+
+// Set up session
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Debug middleware to log requests
 app.use((req, res, next) => {
@@ -87,7 +103,9 @@ cron.schedule('55 11 * * *', async () => {
           console.log(`Syncing ${platform} profile for user ${userId}: ${username}`);
           
           // Get updated profile data
+          console.log(`Fetching REAL data for ${platform}/${username}`);
           const platformData = await platformAPI.getProfileData(platform, username);
+          console.log(`Received platform data:`, JSON.stringify(platformData, null, 2));
           
           // Update profile data
           profile.score = platformData.score || 0;
@@ -288,6 +306,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/achievements', require('./routes/achievements'));
 app.use('/api/courses', coursesRoutes);
 app.use('/api/opportunities', opportunitiesRoutes);
+app.use('/api/health', healthRoutes);
+app.use('/api/auth/google', googleAuthRoutes);
 
 // Test route for CodeChef profile scraping
 app.get('/api/test/codechef/:username', async (req, res) => {
@@ -374,6 +394,19 @@ app.get('/api/test/leetcode/:username', async (req, res) => {
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
+});
+
+// Test route for Google Auth
+app.get('/api/test/google-auth', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Google OAuth test route is working',
+    googleAuthRoute: '/api/auth/google',
+    googleCallbackRoute: '/api/auth/google/callback',
+    clientID: process.env.GOOGLE_CLIENT_ID 
+      ? `Configured (starts with ${process.env.GOOGLE_CLIENT_ID.substring(0, 10)}...)` 
+      : 'Not configured'
+  });
 });
 
 // MongoDB connection

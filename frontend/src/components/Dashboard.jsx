@@ -22,6 +22,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import { apiUrl } from '../config/apiConfig';
 
 const platforms = [
   { 
@@ -259,12 +260,29 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [profiles, setProfiles] = useState({});
   const [profileDetails, setProfileDetails] = useState({});
   const [expandedProfiles, setExpandedProfiles] = useState({});
   const [platformData, setPlatformData] = useState({});
   const [updatingPlatforms, setUpdatingPlatforms] = useState({});
+  const [cooldowns, setCooldowns] = useState({});
+  const [remainingTimes, setRemainingTimes] = useState({});
+
+  // Theme-based colors for reuse
+  const themeColors = {
+    background: 'transparent', // Always transparent background
+    cardBg: darkMode ? '#121212' : '#ffffff',
+    cardBorder: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+    inputBg: darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)',
+    inputBorder: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.15)',
+    text: {
+      primary: darkMode ? '#ffffff' : '#000000',
+      secondary: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+      muted: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+    },
+    statsBg: darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.03)',
+    statsItemBg: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+  };
 
   useEffect(() => {
     if (!auth?.token) {
@@ -274,55 +292,183 @@ const Dashboard = () => {
     fetchUserData();
   }, [auth?.token]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      let updatedTimes = {};
+      let hasActiveCooldowns = false;
+
+      Object.keys(cooldowns).forEach(platform => {
+        const cooldownEnd = cooldowns[platform];
+        if (cooldownEnd && cooldownEnd > now) {
+          const remainingSeconds = Math.ceil((cooldownEnd - now) / 1000);
+          updatedTimes[platform] = remainingSeconds;
+          hasActiveCooldowns = true;
+        } else if (cooldowns[platform]) {
+          setCooldowns(prev => {
+            const updated = { ...prev };
+            delete updated[platform];
+            return updated;
+          });
+        }
+      });
+
+      if (hasActiveCooldowns) {
+        setRemainingTimes(updatedTimes);
+      }
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [cooldowns]);
+
   const fetchUserData = async () => {
     if (!auth?.token) return;
     
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/profiles/me', {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-
-      console.log('Full API Response:', response.data);
       
-      const profileData = response.data;
+      // Try multiple endpoints to get the most complete user data
+      let userData = null;
+      let meResponse = null;
+      let profilesResponse = null;
+      let statsResponse = null;
       
-      // Map profile data to platform data and details
+      // 1. Try to get main user data from /me endpoint
+      try {
+        meResponse = await axios.get(`${apiUrl}/users/me`, {
+          headers: { Authorization: `Bearer ${auth.token}` }
+        });
+        userData = meResponse.data;
+      } catch (meError) {
+        // Silent error handling
+      }
+      
+      // 2. Try to get profiles data if me endpoint failed or returned incomplete data
+      if (!userData || !userData.codingProfiles) {
+        try {
+          profilesResponse = await axios.get(`${apiUrl}/profiles/me`, {
+            headers: { Authorization: `Bearer ${auth.token}` }
+          });
+          userData = {...userData, ...profilesResponse.data};
+        } catch (profilesError) {
+          // Silent error handling
+        }
+      }
+      
+      // 3. Get current stats data to ensure we have the latest
+      try {
+        statsResponse = await axios.get(`${apiUrl}/profiles/stats`, {
+          headers: { Authorization: `Bearer ${auth.token}` }
+        });
+      } catch (statsError) {
+        // Silent error handling
+      }
+      
+      // If we couldn't get any data at all, show error
+      if (!userData && !statsResponse) {
+        throw new Error('Failed to retrieve any user data');
+      }
+      
+      // Process data from all sources to build a complete profile picture
       const platformDataObj = {};
       const profileDetailsObj = {};
       const profilesObj = {};
+      const cooldownsObj = {};
+      const remainingTimesObj = {};
+      const now = Date.now();
 
       platforms.forEach(platform => {
         const key = platform.key;
+        let username = '';
+        let details = null;
+        let lastUpdateAttempt = null;
         
-        // Get username from different possible locations
-        const username = profileData.profiles?.[key]?.username || 
-                        profileData[`${key}Username`] ||         
-                        profileData[key] ||                      
-                        '';                                      
+        // Extract username from userData (various formats)
+        if (userData) {
+          if (userData.profiles && userData.profiles[key]) {
+            username = userData.profiles[key];
+          } else if (userData.codingProfiles && userData.codingProfiles[key]) {
+            username = userData.codingProfiles[key].username || '';
+          } else if (userData[key]) {
+            username = userData[key];
+          }
+          
+          // Normalize username format
+          username = typeof username === 'object' ? (username.username || '') : (username || '');
+          
+          // Extract details from userData (various formats)
+          if (userData.platformData && userData.platformData[key]) {
+            details = userData.platformData[key];
+          } else if (userData.codingProfiles && userData.codingProfiles[key]) {
+            details = userData.codingProfiles[key];
+          } else if (userData[`${key}Details`]) {
+            details = userData[`${key}Details`];
+          }
+          
+          // Check if we have lastUpdateAttempt in the data
+          if (details && details.lastUpdateAttempt) {
+            lastUpdateAttempt = new Date(details.lastUpdateAttempt).getTime();
+          }
+        }
         
-        // Get details from either profiles object or direct details
-        const details = profileData.profiles?.[key]?.details || 
-                       profileData[`${key}Details`] || 
-                       null;
-
-        platformDataObj[key] = {
-          username: username,
-          details: details
-        };
-
+        // Add null check for details
+        if (!details) {
+          details = {
+            score: 0,
+            problemsSolved: 0,
+            lastUpdated: new Date()
+          };
+        }
+        
+        // Update with stats data if available
+        if (statsResponse && statsResponse.data && statsResponse.data.success) {
+          const platformStats = statsResponse.data.profiles.find(p => p.platform === key);
+          if (platformStats) {
+            details = {...details, ...platformStats};
+            if (platformStats.lastUpdateAttempt) {
+              lastUpdateAttempt = new Date(platformStats.lastUpdateAttempt).getTime();
+            }
+          }
+        }
+        
+        // Check if this platform is in cooldown period (updated in the last minute)
+        if (lastUpdateAttempt) {
+          const timeSinceLastAttempt = now - lastUpdateAttempt;
+          const cooldownPeriod = 60 * 1000; // 1 minute in milliseconds
+          
+          if (timeSinceLastAttempt < cooldownPeriod) {
+            // Calculate remaining cooldown time
+            const remainingTimeMs = cooldownPeriod - timeSinceLastAttempt;
+            const remainingTimeSec = Math.ceil(remainingTimeMs / 1000);
+            
+            // Set cooldown for this platform
+            cooldownsObj[key] = now + remainingTimeMs;
+            remainingTimesObj[key] = remainingTimeSec;
+          }
+        }
+        
+        // Store extracted data
+        platformDataObj[key] = { username, details };
         profileDetailsObj[key] = details;
         profilesObj[key] = username;
       });
-
+      
+      // Update state with all the data we've collected
       setPlatformData(platformDataObj);
       setProfileDetails(profileDetailsObj);
       setProfiles(profilesObj);
-      // Initialize all profiles as collapsed
-      setExpandedProfiles({});
+      setCooldowns(cooldownsObj);
+      setRemainingTimes(remainingTimesObj);
+      
+      // Initialize all profiles as collapsed by default
+      const expandedState = {};
+      Object.keys(profilesObj).forEach(key => {
+        expandedState[key] = false; // Always collapsed by default
+      });
+      setExpandedProfiles(expandedState);
+      
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching user data:', error);
       toast.error('Failed to load profile data. Please try again later.');
       setLoading(false);
     }
@@ -337,11 +483,12 @@ const Dashboard = () => {
       
       if (!username.trim()) {
         toast.error('Username cannot be empty');
+        setUpdatingPlatforms(prev => ({ ...prev, [platform]: false }));
         return;
       }
 
       const response = await axios.post(
-        `http://localhost:5000/api/profiles/${platform}`,
+        `${apiUrl}/profiles/${platform}`,
         { username },
         {
           headers: {
@@ -351,9 +498,10 @@ const Dashboard = () => {
         }
       );
 
-      console.log(`${platform} update response:`, response.data);
-
       if (response.data.success) {
+        // Success handling - always show success toast if we get here
+        toast.success(`${platform} profile updated successfully!`);
+        
         setProfiles(prev => ({
           ...prev,
           [platform]: username
@@ -362,198 +510,59 @@ const Dashboard = () => {
         // Update platforms data with the new data
         setPlatformData(prev => ({
           ...prev,
-          [platform]: response.data.data || {}
+          [platform]: response.data.data
         }));
         
         // Update profile details with the new data
         setProfileDetails(prev => ({
           ...prev,
-          [platform]: response.data.data?.details || {}
+          [platform]: response.data.data.details
         }));
         
-        toast.success(`${platform} profile updated successfully!`);
+        // Only set cooldown after successful updates
+        const cooldownEnd = Date.now() + (60 * 1000); // 1 minute in milliseconds
+        setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
+        setRemainingTimes(prev => ({ ...prev, [platform]: 60 }));
       } else {
+        // If the update wasn't successful, don't set a cooldown
         toast.error(response.data.message || 'Failed to update profile');
       }
     } catch (error) {
-      console.error(`Error updating ${platform} profile:`, error);
-      toast.error(error.response?.data?.message || `Failed to update ${platform} profile. Please try again.`);
+      // Check if this is a rate limit error (429)
+      if (error.response?.status === 429) {
+        const remainingTime = error.response.data.remainingTime || 60;
+        
+        // Show toast with time remaining
+        toast.error(error.response.data.message || `Rate limit exceeded. Please try again in ${remainingTime} seconds.`);
+        
+        // Only set a cooldown for rate limit errors
+        const cooldownEnd = Date.now() + (remainingTime * 1000);
+        setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
+        setRemainingTimes(prev => ({ ...prev, [platform]: remainingTime }));
+      } else {
+        // For all other errors (including "profile not found"), don't set a cooldown
+        let errorMessage = error.response?.data?.message || `Failed to update ${platform} profile. Please try again.`;
+        
+        // Format profile not found errors more clearly
+        if (errorMessage.includes('not found') || errorMessage.includes('Profile Not Found')) {
+          const platformName = platforms.find(p => p.key === platform)?.name || platform;
+          
+          // Add specific troubleshooting tips based on the platform
+          if (platform === 'codeforces') {
+            errorMessage = `${errorMessage}. Please check that the username exists and is spelled correctly.`;
+          } else if (platform === 'hackerrank') {
+            errorMessage = `${errorMessage}. Please verify your HackerRank username is correct.`;
+          } else if (platform === 'geeksforgeeks') {
+            errorMessage = `${errorMessage}. Please verify your GeeksforGeeks username is correct.`;
+          } else {
+            errorMessage = `${errorMessage}. Please verify the username and try again.`;
+          }
+        }
+        
+        toast.error(errorMessage);
+      }
     } finally {
       setUpdatingPlatforms(prev => ({ ...prev, [platform]: false }));
-    }
-  };
-
-  // Function to sync all profiles
-  const handleSync = async () => {
-    try {
-      // Set global updating state
-      setUpdating(true);
-      
-      console.log('Starting sync for all profiles...');
-      
-      // Make API request to quick-sync profiles (faster response)
-      const response = await axios.get(
-        'http://localhost:5000/api/profiles/quick-sync',
-        {
-          headers: {
-            Authorization: `Bearer ${auth.token}`
-          },
-          timeout: 10000 // 10 second timeout
-        }
-      );
-      
-      if (response.data.success) {
-        // Log the successful sync request
-        console.log('Profile sync request successful:', response.data);
-        
-        // Even if no profiles were returned, create dummy successful updates
-        // Get usernames from state
-        const platformUsernames = {};
-        Object.keys(profileDetails).forEach(platform => {
-          if (profileDetails[platform] && profileDetails[platform].username) {
-            platformUsernames[platform] = profileDetails[platform].username;
-          }
-        });
-        
-        // Create default successful profiles based on what's already in state
-        const defaultProfiles = Object.keys(platformUsernames).map(platform => ({
-          platform,
-          username: platformUsernames[platform],
-          score: Math.floor(Math.random() * 1000) + 500,
-          problemsSolved: Math.floor(Math.random() * 100) + 20,
-          lastUpdated: new Date(),
-          lastUpdateStatus: 'success'
-        }));
-        
-        // Calculate total score
-        const totalScore = defaultProfiles.reduce((sum, profile) => sum + profile.score, 0);
-        
-        // Update profile details with mock data for immediate feedback
-        const newProfileDetails = {...profileDetails};
-        defaultProfiles.forEach(platform => {
-          if (platform.platform && newProfileDetails[platform.platform]) {
-            newProfileDetails[platform.platform] = {
-              ...newProfileDetails[platform.platform],
-              score: platform.score,
-              problemsSolved: platform.problemsSolved,
-              lastUpdated: new Date()
-            };
-          }
-        });
-        
-        // Trigger UI refresh
-        setProfileDetails({...newProfileDetails});
-        
-        // Show success toast
-        toast.success(
-          `Profiles syncing in background! ${defaultProfiles.length} profiles being processed. Estimated score: ${totalScore}`
-        );
-        
-        // Set up a check to get real data after a delay
-        setTimeout(async () => {
-          try {
-            // Get the real profile data after giving the background sync time to process
-            const updatedResponse = await axios.get(
-              'http://localhost:5000/api/profiles',
-              {
-                headers: {
-                  Authorization: `Bearer ${auth.token}`
-                }
-              }
-            );
-            
-            if (updatedResponse.data.success && updatedResponse.data.profiles) {
-              // Update with real data
-              const freshProfileDetails = {...profileDetails};
-              updatedResponse.data.profiles.forEach(profile => {
-                if (profile.platform && freshProfileDetails[profile.platform]) {
-                  freshProfileDetails[profile.platform] = {
-                    ...freshProfileDetails[profile.platform],
-                    ...profile
-                  };
-                }
-              });
-              
-              // Refresh UI
-              setProfileDetails({...freshProfileDetails});
-              
-              // Show updated toast
-              toast.info('Profile sync complete with latest data');
-            }
-          } catch (refreshError) {
-            console.error('Error refreshing profiles after sync:', refreshError);
-          }
-        }, 5000); // Check after 5 seconds
-      } else {
-        toast.error('Failed to start profile sync. Creating mock data for testing.');
-        
-        // Create mock successful updates for all platforms
-        const mockUpdates = platforms.map(platform => ({
-          platform: platform.key,
-          username: profileDetails[platform.key]?.username || 'user123',
-          score: Math.floor(Math.random() * 1000) + 500,
-          problemsSolved: Math.floor(Math.random() * 100) + 20,
-          lastUpdated: new Date(),
-          lastUpdateStatus: 'success'
-        }));
-        
-        // Update profile details with mock data
-        const newProfileDetails = {...profileDetails};
-        mockUpdates.forEach(platform => {
-          newProfileDetails[platform.platform] = {
-            ...newProfileDetails[platform.platform],
-            score: platform.score || 0,
-            problemsSolved: platform.problemsSolved || 0,
-            lastUpdated: new Date()
-          };
-        });
-        
-        setProfileDetails(newProfileDetails);
-        
-        // Show success toast with mock data
-        toast.success(
-          `Mock profiles synced! ${mockUpdates.length} succeeded. Total score: ${
-            mockUpdates.reduce((sum, p) => sum + p.score, 0)
-          }`
-        );
-      }
-    } catch (err) {
-      console.error('Update scores error:', err);
-      
-      toast.error('Failed to sync profiles. Creating mock data for development.');
-      
-      // Create mock data for all platforms in case of error
-      const mockUpdates = platforms.map(platform => ({
-        platform: platform.key,
-        username: profileDetails[platform.key]?.username || 'user123',
-        score: Math.floor(Math.random() * 1000) + 500,
-        problemsSolved: Math.floor(Math.random() * 100) + 20,
-        lastUpdated: new Date()
-      }));
-      
-      // Update profile details with mock data
-      const newProfileDetails = {...profileDetails};
-      mockUpdates.forEach(platform => {
-        newProfileDetails[platform.platform] = {
-          ...newProfileDetails[platform.platform],
-          score: platform.score || 0,
-          problemsSolved: platform.problemsSolved || 0,
-          lastUpdated: new Date()
-        };
-      });
-      
-      setProfileDetails(newProfileDetails);
-      
-      // Show success toast with mock data
-      toast.success(
-        `Mock profiles synced! ${mockUpdates.length} succeeded. Total score: ${
-          mockUpdates.reduce((sum, p) => sum + p.score, 0)
-        }`
-      );
-    } finally {
-      // Reset all updating states
-      setUpdating(false);
-      setUpdatingPlatforms({});
     }
   };
 
@@ -570,9 +579,11 @@ const Dashboard = () => {
       maxWidth={false} 
       sx={{ 
         py: 6,
-        px: { xs: 2, sm: 3 },
+        px: { xs: 1, sm: 3 },
         maxWidth: '100vw',
-        overflowX: 'hidden'
+        overflowX: 'hidden',
+        bgcolor: 'transparent', // Always transparent regardless of theme
+        minHeight: '100vh'
       }}
     >
       {/* Header Section */}
@@ -583,17 +594,12 @@ const Dashboard = () => {
         maxWidth: '1200px',
         mx: 'auto'
       }}>
-        {/* Background glow effect */}
-        
-        
         <Typography 
           variant="h3" 
           component="h1" 
           sx={{ 
             fontWeight: 700,
-            background: 'linear-gradient(45deg, #0088cc 30%, #00bfff 90%)',
-            backgroundClip: 'text',
-            textFillColor: 'transparent',
+            color: darkMode ? '#00BFFF' : '#0088cc',
             mb: 1,
             fontSize: { xs: '2rem', sm: '2.5rem' }
           }}
@@ -601,46 +607,15 @@ const Dashboard = () => {
           Dashboard
         </Typography>
         <Typography 
-          variant="h6" 
+          variant="subtitle1" 
           sx={{ 
-            color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)', 
+            color: themeColors.text.secondary, 
             mb: 3,
             fontSize: { xs: '0.9rem', sm: '1rem' }
           }}
         >
           Track your progress across multiple competitive programming platforms
         </Typography>
-        
-        {/* Show CodeChef Problems Solved Counter if available */}
-        
-        
-        <Button
-          variant="contained"
-          onClick={handleSync}
-          disabled={updating}
-          sx={{
-            py: 1.5,
-            px: 4,
-            borderRadius: 2,
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #0088cc 30%, #00bfff 90%)',
-            boxShadow: '0 4px 20px 0 rgba(0,136,204,0.25)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #006699 30%, #0099cc 90%)',
-              boxShadow: '0 6px 25px 0 rgba(0,136,204,0.35)',
-            }
-          }}
-        >
-          {updating ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={20} color="inherit" />
-              <span>Syncing All Profiles...</span>
-            </Box>
-          ) : (
-            'Sync All Profiles'
-          )}
-        </Button>
       </Box>
 
       {/* Platforms Grid */}
@@ -649,318 +624,471 @@ const Dashboard = () => {
         spacing={3} 
         sx={{ 
           maxWidth: '1200px',
-          mx: 'auto'
+          mx: 'auto',
+          justifyContent: 'center',
+          width: '100%',
+          pl: { xs: 0 },
+          pr: { xs: 0 }
         }}
       >
         {platforms.map((platform) => (
-          <Grid item xs={12} md={6} key={platform.key}>
+          <Grid 
+            item 
+            xs={12} sm={6} md={4} 
+            key={platform.key}
+            sx={{
+              display: 'flex',
+              justifyContent: 'center'
+            }}
+          >
             <Card 
               sx={{ 
                 width: '100%',
-                bgcolor: darkMode ? '#1a1a1a' : `${platform.color}05`,
-                backgroundImage: darkMode 
-                  ? `linear-gradient(135deg, rgba(26,26,26,0.95) 0%, rgba(26,26,26,0.85) 100%), ${platform.gradient}`
-                  : `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%), ${platform.gradient}`,
-                backgroundPosition: 'center',
-                // Adding subtle pattern background
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  opacity: darkMode ? 0.05 : 0.03,
-                  backgroundImage: darkMode
-                    ? `radial-gradient(${platform.color}30 2px, transparent 2px), radial-gradient(${platform.color}30 2px, transparent 2px)`
-                    : `radial-gradient(${platform.color} 2px, transparent 2px), radial-gradient(${platform.color} 2px, transparent 2px)`,
-                  backgroundSize: '30px 30px',
-                  backgroundPosition: '0 0, 15px 15px',
-                  pointerEvents: 'none',
-                },
-                borderRadius: 4,
+                maxWidth: { xs: '100%', sm: '100%' },
+                bgcolor: 'transparent',
+                borderRadius: 2,
                 overflow: 'hidden',
-                transition: 'transform 0.3s, box-shadow 0.3s',
-                border: darkMode ? `1px solid ${platform.color}30` : `2px solid ${platform.color}`,
-                boxShadow: darkMode 
-                  ? `0 8px 20px rgba(0,0,0,0.4), 0 0 5px ${platform.color}40`
-                  : `0 8px 20px rgba(0,0,0,0.05), 0 0 2px ${platform.color}`,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: 'none',
+                borderTop: `5px solid ${platform.color}`,
+                transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
                 '&:hover': {
-                  transform: 'translateY(-8px)',
-                  boxShadow: darkMode
-                    ? `0 12px 30px 0 ${platform.color}40`
-                    : `0 12px 30px 0 ${platform.color}60`
-                },
-                position: 'relative', // Required for the ::before pseudo-element
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 12px 28px rgba(0,0,0,0.15), 0 0 0 1px ${platform.color}40`,
+                }
               }}
             >
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ 
+                p: 0, 
+                pb: '0 !important',
+                minHeight: '380px',
+                display: 'flex',
+                flexDirection: 'column',
+                bgcolor: darkMode ? '#121212' : '#ffffff',
+              }}>
                 {/* Platform Header */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  px: 3,
+                  py: 2.5,
+                  borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                  background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.95)',
+                }}>
                   <Box 
                     component="img"
                     src={platform.logo}
                     alt={platform.name}
                     sx={{ 
-                      height: 40,
-                      width: 40,
+                      height: 30,
+                      width: 30,
                       mr: 2,
                       objectFit: 'contain',
-                      borderRadius: '50%',
-                      padding: darkMode ? 1 : 0.5,
-                      backgroundColor: darkMode ? 'rgba(0,0,0,0.2)' : 'white',
-                      boxShadow: `0 0 0 2px ${platform.color}`,
-                      border: 'none',
                     }}
                   />
-                  <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: platform.color }}>
-                      {platform.name}
-                    </Typography>
+                  <Typography variant="h6" sx={{ 
+                    fontWeight: 700, 
+                    color: platform.color,
+                    fontSize: '1.2rem',
+                    letterSpacing: '0.02em',
+                  }}>
+                    {platform.name}
+                  </Typography>
+                </Box>
+
+                {/* Card Body Content */}
+                <Box sx={{ 
+                  p: 3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flexGrow: 1
+                }}>
+                  {/* Username Input Field */}
+                  <Box sx={{ mb: 3 }}>
                     <Typography variant="body2" sx={{ 
-                      color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'
+                      mb: 1,
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'
                     }}>
-                      {platform.description}
+                      Username
                     </Typography>
-                  </Box>
-                </Box>
-
-                {/* Username Input */}
-                <Box sx={{ mb: 3 }}>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    placeholder={`${platform.name} Username`}
-                    value={profiles[platform.key] || ''}
-                    onChange={(e) => setProfiles(prev => ({
-                      ...prev,
-                      [platform.key]: e.target.value
-                    }))}
-                    disabled={updatingPlatforms[platform.key]}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: darkMode ? 'rgba(0,0,0,0.2)' : `rgba(255,255,255,0.9)`,
-                        borderRadius: 2,
-                        '& fieldset': {
-                          borderColor: darkMode ? `${platform.color}30` : `${platform.color}70`,
-                          borderWidth: '2px',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: `${platform.color}80`,
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: platform.color,
-                        },
-                      },
-                      '& input': {
-                        color: darkMode ? 'white' : 'rgba(0,0,0,0.8)',
-                        '&::placeholder': {
-                          color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
-                          opacity: 1,
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-
-                {/* Update Button */}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => handleSubmit(platform.key)}
-                  disabled={updatingPlatforms[platform.key] || updating}
-                  sx={{
-                    py: 1.5,
-                    bgcolor: platform.color,
-                    backgroundImage: platform.gradient,
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    '&:hover': {
-                      bgcolor: platform.color,
-                      opacity: 0.9,
-                    },
-                  }}
-                >
-                  {updatingPlatforms[platform.key] ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CircularProgress size={20} color="inherit" />
-                      <span>Updating Profile...</span>
-                    </Box>
-                  ) : (
-                    'Update Profile'
-                  )}
-                </Button>
-
-                {/* Profile Details Section */}
-                <Box sx={{ mt: 3 }}>
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
+                    <Box sx={{
+                      display: 'flex',
                       alignItems: 'center',
-                      cursor: updating ? 'default' : 'pointer',
-                      py: 2,
-                      px: 3,
+                      justifyContent: 'space-between',
+                      bgcolor: darkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.02)',
                       borderRadius: 2,
-                      bgcolor: updatingPlatforms[platform.key] 
-                        ? `${platform.color}15` 
-                        : darkMode 
-                          ? 'rgba(0,0,0,0.2)' 
-                          : `${platform.color}15`,
-                      transition: 'background-color 0.3s, box-shadow 0.3s',
-                      boxShadow: updatingPlatforms[platform.key] 
-                        ? `0 0 10px ${platform.color}40` 
-                        : `0 0 0 1px ${platform.color}40`,
-                      '&:hover': {
-                        bgcolor: updating 
-                          ? (updatingPlatforms[platform.key] 
-                            ? `${platform.color}15` 
-                            : darkMode 
-                              ? 'rgba(0,0,0,0.2)' 
-                              : `${platform.color}15`) 
-                          : darkMode 
-                            ? 'rgba(0,0,0,0.3)' 
-                            : `${platform.color}25`,
-                      },
+                      border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
                       position: 'relative',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        opacity: 0.03,
-                        backgroundImage: 
-                          `repeating-linear-gradient(135deg, ${platform.color}20, ${platform.color}20 5px, transparent 5px, transparent 15px)`,
-                        borderRadius: 2,
-                        pointerEvents: 'none',
+                      overflow: 'hidden',
+                      transition: 'all 0.2s ease',
+                      '&:focus-within': {
+                        border: `1px solid ${platform.color}`,
+                        boxShadow: `0 0 0 3px ${platform.color}25`,
                       }
-                    }}
-                    onClick={() => {
-                      if (!updating) {
+                    }}>
+                      <input
+                        value={typeof profiles[platform.key] === 'object' ? '' : (profiles[platform.key] || '')}
+                        onChange={(e) => setProfiles(prev => ({
+                          ...prev,
+                          [platform.key]: e.target.value
+                        }))}
+                        placeholder={`Enter ${platform.name} username`}
+                        disabled={updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key])}
+                        style={{
+                          width: '100%',
+                          height: '46px',
+                          padding: '0 15px',
+                          paddingRight: '50px',
+                          background: 'transparent',
+                          color: darkMode ? 'white' : 'black',
+                          border: 'none',
+                          outline: 'none',
+                          fontSize: '15px',
+                          fontWeight: '500',
+                        }}
+                      />
+                      
+                      <Box 
+                        sx={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'absolute',
+                          right: 0,
+                          height: '100%',
+                          width: '48px',
+                          bgcolor: cooldowns[platform.key] ? `${platform.color}40` : platform.color,
+                          color: '#fff',
+                          opacity: cooldowns[platform.key] ? 0.5 : 0.9,
+                          transition: '0.2s',
+                          cursor: cooldowns[platform.key] ? 'not-allowed' : 'pointer',
+                          '&:hover': {
+                            opacity: cooldowns[platform.key] ? 0.5 : 1
+                          }
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </Box>
+                    </Box>
+                  </Box>
+                  
+                  {/* Current Username Display - Always show */}
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1, 
+                      mb: 3,
+                      p: 2,
+                      borderRadius: 2,
+                    bgcolor: profiles[platform.key] 
+                      ? (darkMode ? `${platform.color}10` : `${platform.color}08`) 
+                      : (darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+                    border: profiles[platform.key] 
+                      ? `1px dashed ${platform.color}40`
+                      : `1px dashed ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
+                    }}>
+                      <Box sx={{ 
+                        p: 1, 
+                        borderRadius: '50%', 
+                      bgcolor: profiles[platform.key] ? platform.color : (darkMode ? 'rgba(255,80,80,0.8)' : 'rgba(255,60,60,0.8)'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.7rem',
+                        color: '#fff'
+                      }}>
+                      {profiles[platform.key] ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      )}
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="caption" sx={{ 
+                        color: profiles[platform.key] ? platform.color : (darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'),
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          Current Username
+                        </Typography>
+                        <Typography sx={{ 
+                          fontFamily: 'monospace',
+                          fontSize: '0.9rem',
+                        color: profiles[platform.key] 
+                          ? (darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)') 
+                          : (darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'),
+                        fontWeight: profiles[platform.key] ? 600 : 400,
+                        fontStyle: profiles[platform.key] ? 'normal' : 'italic'
+                      }}>
+                        {profiles[platform.key] ? profiles[platform.key] : 'Not provided'}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                  {/* Action Buttons */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 2,
+                    mt: 'auto',
+                    flexDirection: 'column'
+                  }}>
+                    <Button
+                      variant="contained"
+                      onClick={() => handleSubmit(platform.key)}
+                      disabled={updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key])}
+                      sx={{
+                        py: 1.6,
+                        bgcolor: cooldowns[platform.key] ? `${platform.color}70` : platform.color,
+                        borderRadius: 2,
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        width: '100%',
+                        '&:hover': {
+                          bgcolor: cooldowns[platform.key] ? `${platform.color}70` : platform.color,
+                          opacity: cooldowns[platform.key] ? 1 : 0.9,
+                          boxShadow: cooldowns[platform.key] ? 'none' : `0 6px 12px ${platform.color}40`,
+                          transform: cooldowns[platform.key] ? 'none' : 'translateY(-2px)',
+                          cursor: cooldowns[platform.key] ? 'not-allowed' : 'pointer',
+                        },
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {updatingPlatforms[platform.key] ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : cooldowns[platform.key] ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <CircularProgress
+                            variant="determinate"
+                            value={(remainingTimes[platform.key] / 60) * 100}
+                            size={20}
+                            sx={{ 
+                              color: 'rgba(255,255,255,0.9)',
+                              position: 'absolute',
+                              left: '15px',
+                            }}
+                          />
+                          <Typography component="span" sx={{ 
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            letterSpacing: '0.01em',
+                          }}>
+                            Update in {remainingTimes[platform.key]}s
+                          </Typography>
+                        </Box>
+                      ) : (
+                        'Update Profile'
+                      )}
+                    </Button>
+                    
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
                         setExpandedProfiles(prev => ({
                           ...prev,
                           [platform.key]: !prev[platform.key]
                         }));
-                      }
-                    }}
-                  >
-                    <Typography variant="subtitle1" sx={{ 
-                      fontWeight: 600, 
-                      color: updatingPlatforms[platform.key] 
-                        ? platform.color 
-                        : darkMode 
-                          ? 'white' 
-                          : 'rgba(0,0,0,0.8)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
-                    }}>
-                      {updatingPlatforms[platform.key] && <CircularProgress size={16} sx={{ color: platform.color }} />}
-                      Profile Statistics
-                    </Typography>
-                    <Chip 
-                      label={expandedProfiles[platform.key] ? 'Hide' : 'Show'} 
-                      size="small"
-                      sx={{
-                        bgcolor: expandedProfiles[platform.key] ? platform.color : 'transparent',
-                        color: expandedProfiles[platform.key] ? 'white' : platform.color,
-                        borderColor: platform.color,
-                        fontWeight: 500,
-                        opacity: updating ? 0.7 : 1
                       }}
-                    />
-                  </Box>
-                  
-                  <Collapse in={expandedProfiles[platform.key]} timeout="auto">
-                    <Box 
-                      sx={{ 
-                        mt: 2,
-                        p: 3,
+                      sx={{
+                        py: 1.4,
+                        borderColor: expandedProfiles[platform.key] 
+                          ? (darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') 
+                          : `${platform.color}30`,
+                        color: expandedProfiles[platform.key] 
+                          ? (darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)')
+                          : platform.color,
                         borderRadius: 2,
-                        bgcolor: darkMode ? 'rgba(0,0,0,0.2)' : `${platform.color}05`,
-                        border: darkMode ? `1px solid ${platform.color}20` : `1px solid ${platform.color}30`,
-                        position: 'relative',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          opacity: darkMode ? 0.03 : 0.02,
-                          backgroundImage: 
-                            `repeating-linear-gradient(45deg, ${platform.color}10, ${platform.color}10 10px, transparent 10px, transparent 20px)`,
-                          borderRadius: 2,
-                          pointerEvents: 'none',
-                        }
+                        fontSize: '0.85rem',
+                        fontWeight: 500,
+                        borderWidth: '1px',
+                        boxShadow: 'none',
+                        backgroundColor: 'transparent',
+                        '&:hover': {
+                          borderColor: expandedProfiles[platform.key] 
+                            ? (darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)')
+                            : platform.color,
+                          bgcolor: 'transparent',
+                          boxShadow: 'none',
+                        },
                       }}
                     >
-                      {profileDetails[platform.key] ? (
-                        <Grid container spacing={2}>
-                          {renderPlatformDetails(platform.key, profileDetails[platform.key]).map((detail, index) => (
-                            <Grid item xs={12} sm={6} key={index}>
-                              <Box sx={{ 
-                                p: 2,
-                                borderRadius: 1,
-                                bgcolor: detail.highlight 
-                                  ? `${platformColors[platform.key]}15` 
-                                  : darkMode 
-                                    ? 'rgba(255,255,255,0.05)' 
-                                    : 'rgba(255,255,255,0.9)',
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 1,
-                                position: 'relative',
-                                border: detail.highlight 
-                                  ? `2px solid ${platformColors[platform.key]}` 
-                                  : darkMode 
-                                    ? `1px solid ${platform.color}20` 
-                                    : `1px solid ${platform.color}40`,
-                                boxShadow: darkMode 
-                                  ? 'none' 
-                                  : '0 2px 8px rgba(0,0,0,0.05)'
-                              }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: detail.highlight 
-                                    ? platformColors[platform.key] 
-                                    : darkMode 
-                                      ? 'rgba(255,255,255,0.7)' 
-                                      : 'rgba(0,0,0,0.6)',
-                                  fontWeight: detail.highlight ? 600 : 400
-                                }}>
-                                  {detail.label}
-                                </Typography>
-                                <Typography variant="h6" sx={{ 
-                                  color: darkMode ? 'white' : 'rgba(0,0,0,0.8)', 
-                                  fontWeight: 600,
-                                  wordBreak: 'break-word'
-                                }}>
-                                  {detail.value}
-                                </Typography>
-                                {detail.description && (
-                                  <Typography variant="caption" sx={{ 
-                                    color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
-                                    fontStyle: 'italic',
-                                    fontSize: '0.7rem'
-                                  }}>
-                                    {detail.description}
-                                  </Typography>
-                                )}
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        <Typography sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>
-                          No profile data available. Update your profile to see statistics.
-                        </Typography>
-                      )}
-                    </Box>
-                  </Collapse>
+                      {expandedProfiles[platform.key] ? 'Hide Stats' : 'Show Stats'}
+                    </Button>
+                  </Box>
                 </Box>
+                
+                {/* Profile Stats (Collapsed) */}
+                <Collapse in={expandedProfiles[platform.key]} timeout="auto">
+                  <Box 
+                    sx={{ 
+                      p: 3,
+                      pt: 0,
+                      pb: 3,
+                    }}
+                  >
+                    {profileDetails[platform.key] ? (
+                            <Box sx={{ 
+                        bgcolor: darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.8)',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        border: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                      }}>
+                        {/* Stats header */}
+                        <Box sx={{
+                          bgcolor: darkMode ? `${platform.color}30` : `${platform.color}15`,
+                          px: 2.5,
+                          py: 1.5,
+                          borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                              display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <Typography sx={{
+                                color: platform.color,
+                            fontWeight: 600,
+                            fontSize: '0.8rem',
+                                textTransform: 'uppercase',
+                            letterSpacing: '0.03em',
+                          }}>
+                            {platform.name} Stats
+                          </Typography>
+                          <Typography variant="caption" sx={{
+                            color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                            fontSize: '0.7rem',
+                          }}>
+                            {profileDetails[platform.key].lastUpdated ? 
+                              `Last updated: ${new Date(profileDetails[platform.key].lastUpdated).toLocaleDateString()}` :
+                              'Not synced yet'}
+                          </Typography>
+                        </Box>
+
+                        {/* Stats body */}
+                        <Box sx={{ p: 0 }}>
+                          {renderPlatformDetails(platform.key, profileDetails[platform.key])
+                            .filter(detail => detail.label !== 'Last Updated') // Remove last updated since we show it in header
+                            .map((detail, index) => (
+                            <Box 
+                              key={index}
+                              sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                px: 2.5,
+                                py: 1.8,
+                                borderBottom: index !== renderPlatformDetails(platform.key, profileDetails[platform.key]).length - 2 ? 
+                                  `1px solid ${darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}` : 'none',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)',
+                                }
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box sx={{ 
+                                  width: 8, 
+                                  height: 8, 
+                                  borderRadius: '50%', 
+                                  bgcolor: platform.color,
+                                  mr: 1.5,
+                                  opacity: 0.7
+                                }} />
+                                <Typography sx={{ 
+                                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 500,
+                              }}>
+                                {detail.label}
+                              </Typography>
+                              </Box>
+                              
+                              <Typography sx={{ 
+                                fontFamily: 'nekst, monospace',
+                                color: platform.color,
+                                fontWeight: detail.label === 'Score' || detail.label === 'Problems Solved' || detail.label.includes('Rating') ? 700 : 600,
+                                fontSize: detail.label === 'Score' || detail.label === 'Problems Solved' || detail.label.includes('Rating') ? '1.15rem' : '0.95rem',
+                                lineHeight: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                pl: 1,
+                              }}>
+                                {detail.value}
+                              </Typography>
+                            </Box>
+                        ))}
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box sx={{
+                        p: 3,
+                        borderRadius: 2,
+                        bgcolor: darkMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.8)',
+                        border: `1px solid ${darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                      }}>
+                        {profiles[platform.key] ? (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={platform.color + '90'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <Typography sx={{ 
+                              color: platform.color,
+                              textAlign: 'center',
+                              fontWeight: 500,
+                              fontSize: '0.85rem',
+                              mt: 2
+                            }}>
+                              Profile found but not synced yet
+                            </Typography>
+                            <Typography sx={{ 
+                              color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                              textAlign: 'center',
+                              fontWeight: 400,
+                              fontSize: '0.75rem',
+                              mt: 1
+                            }}>
+                              Click "Update Profile" to sync your stats
+                            </Typography>
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={platform.color + '90'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                              <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                            </svg>
+                            <Typography sx={{ 
+                              color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                              textAlign: 'center',
+                              fontWeight: 500,
+                              fontSize: '0.85rem',
+                              mt: 2
+                            }}>
+                              No stats available yet
+                            </Typography>
+                          </>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                </Collapse>
               </CardContent>
             </Card>
           </Grid>

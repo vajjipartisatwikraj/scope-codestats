@@ -200,4 +200,32 @@ ProfileSchema.post('findOneAndUpdate', async function(doc) {
   }
 });
 
+// Add validation to the Profile model
+
+// Pre-save middleware to validate profiles
+ProfileSchema.pre('save', function(next) {
+  // Check if username matches expected patterns for the platform
+  const isValid = this.validateProfileFormat();
+  if (!isValid) {
+    const error = new Error('Invalid profile format');
+    return next(error);
+  }
+  next();
+});
+
+ProfileSchema.methods.validateProfileFormat = function() {
+  // Add platform-specific validation logic
+  switch (this.platform) {
+    case 'leetcode':
+      // LeetCode usernames are alphanumeric
+      return /^[a-zA-Z0-9_-]+$/.test(this.username);
+    case 'github':
+      // GitHub usernames have specific requirements
+      return /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/.test(this.username);
+    // Add cases for other platforms
+    default:
+      return true;
+  }
+};
+
 module.exports = mongoose.model('Profile', ProfileSchema);

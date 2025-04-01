@@ -11,78 +11,6 @@ const dotenv = require('dotenv');
 dotenv.config();
 const GITHUB_ACCESS_TOKEN = process.env.GITHUB_ACCESS_TOKEN;
 
-// Platform-specific rate limiting settings
-const platformRateLimits = {
-  github: 1000,        // 1 request per second
-  leetcode: 2000,      // 1 request per 2 seconds
-  codeforces: 5000,    // 1 request per 5 seconds
-  codechef: 6000,      // 1 request per 6 seconds
-  geeksforgeeks: 2000, // 1 request per 2 seconds
-  hackerrank: 1500     // 1 request per 1.5 seconds
-};
-
-// Track last request time per platform
-const lastRequestByPlatform = {
-  github: 0,
-  leetcode: 0,
-  codeforces: 0,
-  codechef: 0,
-  geeksforgeeks: 0,
-  hackerrank: 0
-};
-
-// Track active requests per platform
-const activeRequestsByPlatform = {
-  github: 0,
-  leetcode: 0,
-  codeforces: 0,
-  codechef: 0,
-  geeksforgeeks: 0,
-  hackerrank: 0
-};
-
-/**
- * Simple rate limiting function for platform API calls
- * @param {string} platform - Platform name
- * @param {boolean} wasRateLimited - Whether previous request was rate limited
- * @returns {Function} - Function to call when request is complete
- */
-async function applyRateLimit(platform, wasRateLimited = false) {
-  const now = Date.now();
-  let requiredDelay = platformRateLimits[platform] || 1000;
-  
-  // Increase delay if rate limited
-  if (wasRateLimited) {
-    if (platform === 'codechef' || platform === 'codeforces') {
-      requiredDelay = requiredDelay * 5;
-      console.log(`⚠️ Using 5x backoff delay for ${platform}: ${requiredDelay}ms`);
-    } else if (platform === 'leetcode') {
-      requiredDelay = requiredDelay * 3;
-      console.log(`⚠️ Using 3x backoff delay for ${platform}: ${requiredDelay}ms`);
-    } else {
-      requiredDelay = requiredDelay * 2;
-    }
-  }
-  
-  const timeSinceLastRequest = now - (lastRequestByPlatform[platform] || 0);
-  
-  // Wait if needed
-  if (timeSinceLastRequest < requiredDelay) {
-    const delayMs = requiredDelay - timeSinceLastRequest;
-    console.log(`⏱ Waiting ${delayMs}ms before next ${platform} request`);
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-  }
-  
-  // Update last request time
-  lastRequestByPlatform[platform] = Date.now();
-  activeRequestsByPlatform[platform] = (activeRequestsByPlatform[platform] || 0) + 1;
-  
-  // Return function to call when request is complete
-  return () => {
-    activeRequestsByPlatform[platform] = Math.max(0, activeRequestsByPlatform[platform] - 1);
-  };
-}
-
 class PlatformAPI {
   /**
    * Initialize the API client
@@ -263,102 +191,150 @@ class PlatformAPI {
     try {
       console.log(`Fetching LeetCode profile for user: ${username}`);
       
-      // Use the LeetCode Stats API endpoint
-      const apiUrl = `https://leetcode-stats-api.herokuapp.com/${username}`;
-      console.log(`Making request to LeetCode Stats API: ${apiUrl}`);
+      // LeetCode GraphQL endpoint
+      const graphqlEndpoint = 'https://leetcode.com/graphql';
       
-      const response = await this.axiosInstance.get(apiUrl, {
-        timeout: 30000, // 30 seconds timeout
+      // GraphQL query to fetch user profile data
+      const graphqlQuery = {
+        query: `
+          query getUserProfile($username: String!) {
+            matchedUser(username: $username) {
+              username
+              submitStats: submitStatsGlobal {
+                acSubmissionNum {
+                  difficulty
+                  count
+                  submissions
+                }
+              }
+              profile {
+                reputation
+                ranking
+                starRating
+              }
+              contestBadge {
+                name
+              }
+              userCalendar {
+                streak
+                totalActiveDays
+              }
+            }
+          }
+        `,
+        variables: {
+          username: username
+        }
+      };
+      
+      console.log(`Making GraphQL request to LeetCode API for user: ${username}`);
+      
+      // Make the GraphQL request
+      const response = await this.axiosInstance.post(graphqlEndpoint, graphqlQuery, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Content-Type': 'application/json',
+          'Referer': 'https://leetcode.com'
         }
       });
       
-      // Check if request was successful
-      if (!response.data || response.data.status === 'error' || response.data.status === 'failed') {
-        console.error(`LeetCode API error for ${username}:`, response.data);
-        
-        // Return dummy data for testing purposes
-        console.log(`Creating dummy data for LeetCode user ${username}`);
-        return {
-          username,
-          problemsSolved: 100,
-          ranking: 50000,
-          score: 2000,
-          reputation: 100,
-          easyProblemsSolved: 50,
-          mediumProblemsSolved: 30,
-          hardProblemsSolved: 20,
-          contestsParticipated: 5,
-          rating: 1500,
-          lastUpdated: new Date()
-        };
+      // Check if the response contains valid data
+      if (!response.data || !response.data.data || !response.data.data.matchedUser) {
+        throw new Error(`User ${username} not found on LeetCode or API response invalid`);
       }
       
-      const data = response.data;
-      console.log(`LeetCode Stats API data received for ${username}:`, {
-        totalSolved: data.totalSolved,
-        byDifficulty: {
-          easy: data.easySolved,
-          medium: data.mediumSolved,
-          hard: data.hardSolved
-        },
-        ranking: data.ranking,
-        contributionPoints: data.contributionPoints,
-        reputation: data.reputation
+      const userData = response.data.data.matchedUser;
+      
+      console.log(`LeetCode GraphQL API data received for ${username}:`, userData);
+      
+      // Extract problem solving statistics
+      const submitStats = userData.submitStats?.acSubmissionNum || [];
+      
+      // Initialize difficulty counts
+      let allSolved = 0;
+      let easySolved = 0;
+      let mediumSolved = 0;
+      let hardSolved = 0;
+      
+      // Process submission stats by difficulty
+      submitStats.forEach(stat => {
+        const count = stat.count || 0;
+        
+        switch (stat.difficulty) {
+          case 'All':
+            allSolved = count;
+            break;
+          case 'Easy':
+            easySolved = count;
+            break;
+          case 'Medium':
+            mediumSolved = count;
+            break;
+          case 'Hard':
+            hardSolved = count;
+            break;
+        }
       });
+      
+      // Extract profile data
+      const profile = userData.profile || {};
       
       // Map the difficulty data to our existing format
       const difficultyMap = {
-        all: data.totalSolved || 0,
-        easy: data.easySolved || 0,
-        medium: data.mediumSolved || 0,
-        hard: data.hardSolved || 0
+        all: allSolved,
+        easy: easySolved,
+        medium: mediumSolved,
+        hard: hardSolved
       };
       
       // Calculate a score using our scoring algorithm
       const score = this.calculateLeetCodeScore(
-        data.totalSolved, 
-        data.ranking, 
+        allSolved, 
+        profile.ranking || 0, 
         difficultyMap
       );
       
+      // Get user stats from calendar if available
+      const calendar = userData.userCalendar || {};
+      const streak = calendar.streak || 0;
+      const activeDays = calendar.totalActiveDays || 0;
+      
       return {
         username,
-        problemsSolved: data.totalSolved || 0,
-        ranking: data.ranking || 0,
+        problemsSolved: allSolved,
+        ranking: profile.ranking || 0,
         score,
-        reputation: data.reputation || 0,
-        starRating: 0, // Not provided by the new API
-        easyProblemsSolved: data.easySolved || 0,
-        mediumProblemsSolved: data.mediumSolved || 0,
-        hardProblemsSolved: data.hardSolved || 0,
-        contestsParticipated: 5, // Default value since API doesn't provide this
-        rating: 1500, // Default value since API doesn't provide this
-        contestRanking: 0, // Not provided by the new API
-        contestBadge: '', // Not provided by the new API
+        reputation: profile.reputation || 0,
+        starRating: profile.starRating || 0,
+        easyProblemsSolved: easySolved,
+        mediumProblemsSolved: mediumSolved,
+        hardProblemsSolved: hardSolved,
+        contestsParticipated: 0, // Not available in this query
+        rating: 0, // Not available in this query
+        contestRanking: 0, // Not available in this query
+        contestBadge: userData.contestBadge?.name || '',
+        streak: streak,
+        activeDays: activeDays,
         lastUpdated: new Date()
       };
     } catch (error) {
       console.error(`Error fetching LeetCode profile for ${username}:`, error);
       
-      // Return dummy data for testing purposes
-      console.log(`Creating dummy data for LeetCode user ${username} due to error`);
-      return {
-        username,
-        problemsSolved: 100,
-        ranking: 50000,
-        score: 2000,
-        reputation: 100,
-        easyProblemsSolved: 50,
-        mediumProblemsSolved: 30,
-        hardProblemsSolved: 20,
-        contestsParticipated: 5, 
-        rating: 1500,
-        lastUpdated: new Date()
-      };
+      if (error.response) {
+        console.error('LeetCode API Response Status:', error.response.status);
+        console.error('LeetCode API Response Headers:', error.response.headers);
+        console.error('LeetCode API Response Data:', error.response.data);
+      }
+      
+      // Provide more specific error message
+      if (error.message.includes('not found')) {
+        throw new Error(`User ${username} not found on LeetCode`);
+      } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        throw new Error(`LeetCode API request timed out. Please try again later.`);
+      } else if (error.response?.status === 429) {
+        throw new Error(`LeetCode API rate limit exceeded. Please try again later.`);
+      }
+      
+      throw new Error(`Failed to fetch LeetCode profile: ${error.message}`);
     }
   }
 
@@ -460,6 +436,12 @@ class PlatformAPI {
         console.log(`Problem difficulty breakdown - Easy: ${easyProblemsSolved}, Medium: ${mediumProblemsSolved}, Hard: ${hardProblemsSolved}`);
       }
       
+      // Validate that we found meaningful data - a user might exist but have no activity
+      if (problemsSolved === 0 && contestsParticipated === 0 && (userData.rating === undefined || userData.rating === 0)) {
+        console.log(`Codeforces user ${username} exists but has no activity data`);
+        throw new Error(`Codeforces user '${username}' exists but has no public activity data. The user might be inactive.`);
+      }
+      
       // 4. Calculate score using our scoring algorithm
       const score = this.calculateCodeforcesScore(
         userData.rating || 0, 
@@ -487,7 +469,7 @@ class PlatformAPI {
       
       // Provide specific error for not found users
       if (error.response?.status === 400 || error.message.includes('not found')) {
-        throw new Error(`User ${username} not found on Codeforces`);
+        throw new Error(`User ${username} not found on Codeforces. Please check the spelling and try again.`);
       }
       
       // Handle rate limiting
@@ -520,275 +502,254 @@ class PlatformAPI {
       
       // Use axios with enhanced headers to appear more like a browser
       const profileUrl = `https://www.codechef.com/users/${username}`;
-      try {
-        const response = await this.axiosInstance.get(profileUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Cache-Control': 'max-age=0',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Referer': 'https://www.codechef.com/'
-          },
-          // Handle redirects and 404s
-          maxRedirects: 5,
-          validateStatus: status => status === 200,
-          timeout: 30000 // 30 seconds timeout
-        });
-        
-        // Check if we were redirected away from the profile page
-        const finalUrl = response.request.res.responseUrl;
-        if (!finalUrl.includes(`/users/${username}`)) {
-          console.log(`User ${username} not found on CodeChef - redirected to ${finalUrl}`);
-          throw new Error(`User ${username} not found on CodeChef`);
+      const response = await this.axiosInstance.get(profileUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Cache-Control': 'max-age=0',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Referer': 'https://www.codechef.com/'
+        },
+        // Handle redirects and 404s
+        maxRedirects: 5,
+        validateStatus: status => status === 200
+      });
+      
+      // Check if we were redirected away from the profile page
+      const finalUrl = response.request.res.responseUrl;
+      if (!finalUrl.includes(`/users/${username}`)) {
+        console.log(`User ${username} not found on CodeChef - redirected to ${finalUrl}`);
+        throw new Error(`User ${username} not found on CodeChef`);
+      }
+      
+      // Load HTML content into cheerio for parsing
+      const $ = cheerio.load(response.data);
+      
+      // Check if we're actually on a user profile page
+      const usernameHeader = $('h1.h2-style, .user-details-container h1').text().trim();
+      if (!usernameHeader || !$('.rating-number').length) {
+        throw new Error(`User ${username} not found on CodeChef`);
+      }
+      
+      // Extract data with multiple fallback selectors for robustness
+      
+      // 1. Extract rating - try multiple selectors
+      let rating = 0;
+      const ratingText = $('.rating-number').text().trim();
+      if (ratingText) {
+        const ratingMatch = ratingText.match(/(\d+)/);
+        if (ratingMatch && ratingMatch[1]) {
+          rating = parseInt(ratingMatch[1]);
         }
-        
-        // Load HTML content into cheerio for parsing
-        const $ = cheerio.load(response.data);
-        
-        // Check if we're actually on a user profile page
-        const usernameHeader = $('h1.h2-style, .user-details-container h1').text().trim();
-        if (!usernameHeader || !$('.rating-number').length) {
-          throw new Error(`User ${username} not found on CodeChef`);
-        }
-        
-        // Extract data with multiple fallback selectors for robustness
-        
-        // 1. Extract rating - try multiple selectors
-        let rating = 0;
-        const ratingText = $('.rating-number').text().trim();
-        if (ratingText) {
-          const ratingMatch = ratingText.match(/(\d+)/);
-          if (ratingMatch && ratingMatch[1]) {
-            rating = parseInt(ratingMatch[1]);
+      }
+      console.log(`CodeChef ${username} rating: ${rating}`);
+      
+      // 2. Extract global rank with fallbacks
+      let globalRank = 0;
+      $('.inline-list li, .user-details-container li').each((_, el) => {
+        const text = $(el).text().trim().toLowerCase();
+        if (text.includes('global rank')) {
+          const rankMatch = text.match(/(\d+)/);
+          if (rankMatch && rankMatch[1]) {
+            globalRank = parseInt(rankMatch[1]);
           }
         }
-        console.log(`CodeChef ${username} rating: ${rating}`);
-        
-        // 2. Extract global rank with fallbacks
-          let globalRank = 0;
-        $('.inline-list li, .user-details-container li').each((_, el) => {
-          const text = $(el).text().trim().toLowerCase();
-            if (text.includes('global rank')) {
-            const rankMatch = text.match(/(\d+)/);
-            if (rankMatch && rankMatch[1]) {
-              globalRank = parseInt(rankMatch[1]);
+      });
+      console.log(`CodeChef ${username} global rank: ${globalRank}`);
+      
+      // 3. Extract problems solved with multiple approaches
+      let problemsSolved = 0;
+      
+      // Approach 1: Direct h5 heading + next element
+      $('h5, .h5-style').each((_, el) => {
+        const text = $(el).text().trim();
+        if (text.includes('Fully Solved') || text.includes('Problems Solved')) {
+          const next = $(el).next();
+          if (next.length) {
+            const problemsMatch = next.text().trim().match(/(\d+)/);
+            if (problemsMatch && problemsMatch[1]) {
+              problemsSolved = parseInt(problemsMatch[1]);
             }
           }
-        });
-        console.log(`CodeChef ${username} global rank: ${globalRank}`);
-          
-        // 3. Extract problems solved with multiple approaches
-          let problemsSolved = 0;
-          
-        // Approach 1: Direct h5 heading + next element
-        $('h5, .h5-style').each((_, el) => {
+        }
+      });
+      
+      // Approach 2: Look for problems-solved sections
+      if (problemsSolved === 0) {
+        $('.problems-solved, .rating-data-section').find('h5, .h5-style').each((_, el) => {
           const text = $(el).text().trim();
           if (text.includes('Fully Solved') || text.includes('Problems Solved')) {
-            const next = $(el).next();
-            if (next.length) {
-              const problemsMatch = next.text().trim().match(/(\d+)/);
-              if (problemsMatch && problemsMatch[1]) {
-                problemsSolved = parseInt(problemsMatch[1]);
-              }
+            const parentDiv = $(el).parent();
+            const problemsText = parentDiv.text().replace(text, '').trim();
+            const problemsMatch = problemsText.match(/(\d+)/);
+            if (problemsMatch && problemsMatch[1]) {
+              problemsSolved = parseInt(problemsMatch[1]);
             }
           }
         });
-        
-        // Approach 2: Look for problems-solved sections
-          if (problemsSolved === 0) {
-          $('.problems-solved, .rating-data-section').find('h5, .h5-style').each((_, el) => {
-            const text = $(el).text().trim();
-            if (text.includes('Fully Solved') || text.includes('Problems Solved')) {
-              const parentDiv = $(el).parent();
-              const problemsText = parentDiv.text().replace(text, '').trim();
-              const problemsMatch = problemsText.match(/(\d+)/);
-              if (problemsMatch && problemsMatch[1]) {
-                problemsSolved = parseInt(problemsMatch[1]);
-              }
-            }
-          });
-        }
-        
-        // Approach 3: Full text search - last resort
-        if (problemsSolved === 0) {
-          const fullText = $('body').text();
-          const matches = fullText.match(/Fully Solved\s*:?\s*(\d+)/i) || 
-                          fullText.match(/Problems Solved\s*:?\s*(\d+)/i);
-          if (matches && matches[1]) {
-            problemsSolved = parseInt(matches[1]);
-          }
-        }
-        console.log(`CodeChef ${username} problems solved: ${problemsSolved}`);
-        
-        // 4. Extract contests participated by counting rating history entries
-          let contestsParticipated = 0;
-
-        // Log the HTML of rating table for debugging
-        console.log(`Looking for contest participation data for ${username}`);
-
-        // First approach: Count rows in rating table
-        $('.rating-table tbody tr, table.dataTable tbody tr').each((_, el) => {
-          // Only count if it looks like a contest row (has rating data)
-          const rowText = $(el).text().trim();
-          if (rowText.includes('Rated') || /\d+\s*→\s*\d+/.test(rowText)) {
-            contestsParticipated++;
-          }
-        });
-
-        // Second approach: Look for contests participated count in profile details
-          if (contestsParticipated === 0) {
-          $('.contest-participated-count, .rating-data-section strong, .user-details-container strong').each((_, el) => {
-            const text = $(el).text().trim();
-            const parentText = $(el).parent().text().trim().toLowerCase();
-            
-            // Check if this is the contests element
-            if ((parentText.includes('contest') && parentText.includes('participated')) || 
-                (text.match(/^\d+$/) && parentText.includes('contest'))) {
-              const matches = text.match(/\d+/);
-              if (matches) {
-                contestsParticipated = parseInt(matches[0]);
-                console.log(`Found contest count in profile details: ${contestsParticipated}`);
-              }
-            }
-          });
-        }
-
-        // Third approach: Look in section headings and nearby elements
-        if (contestsParticipated === 0) {
-          $('h3, h4, h5, .h3-style, .h4-style, .h5-style').each((_, el) => {
-            const headingText = $(el).text().trim().toLowerCase();
-            
-            if (headingText.includes('contest') || headingText.includes('rating history')) {
-              // Check if the heading itself contains a number
-              const headingMatch = headingText.match(/(\d+)\s+contest/i);
-              if (headingMatch && headingMatch[1]) {
-                contestsParticipated = parseInt(headingMatch[1]);
-                console.log(`Found contest count in heading: ${contestsParticipated}`);
-              } else {
-                // Look in nearby elements
-                const parentDiv = $(el).parent();
-                const siblingText = parentDiv.text().replace(headingText, '').trim();
-                const siblingMatch = siblingText.match(/(\d+)\s+contest/i) || 
-                                     siblingText.match(/participated\s+in\s+(\d+)/i);
-                
-                if (siblingMatch && siblingMatch[1]) {
-                  contestsParticipated = parseInt(siblingMatch[1]);
-                  console.log(`Found contest count near heading: ${contestsParticipated}`);
-                }
-              }
-            }
-          });
-        }
-
-        // Fourth approach: Parse the full page text as a last resort
-        if (contestsParticipated === 0) {
-          const fullText = $('body').text();
-          
-          // Try multiple patterns for robustness
-          const patterns = [
-            /participated\s+in\s+(\d+)\s+contests/i,
-            /(\d+)\s+contests?\s+participated/i,
-            /contests?\s+participated\s*:?\s*(\d+)/i,
-            /rating\s+history\s*\(\s*(\d+)\s*\)/i
-          ];
-          
-          for (const pattern of patterns) {
-            const matches = fullText.match(pattern);
-            if (matches && matches[1]) {
-              contestsParticipated = parseInt(matches[1]);
-              console.log(`Found contest count in full text: ${contestsParticipated}`);
-              break;
-            }
-          }
-        }
-
-        // If no contest data found, try to find any data tables that might contain contests
-        if (contestsParticipated === 0) {
-          const tableCount = $('table').length;
-          console.log(`Found ${tableCount} tables on the page`);
-          
-          // Check tables that might be contest tables
-          $('table').each((i, table) => {
-            const tableHeading = $(table).prev('h3, h4, h5, .h3-style, .h4-style, .h5-style').text().toLowerCase();
-            const tableCaption = $(table).find('caption').text().toLowerCase();
-            
-            // If the table is likely a contest table, count its rows
-            if (tableHeading.includes('contest') || tableHeading.includes('rating') || 
-                tableCaption.includes('contest') || tableCaption.includes('rating')) {
-              let rowCount = 0;
-              $(table).find('tbody tr').each((_, row) => {
-                rowCount++;
-              });
-              
-              if (rowCount > 0) {
-                console.log(`Table ${i+1} appears to be a contest table with ${rowCount} rows`);
-                contestsParticipated = rowCount;
-              }
-            }
-          });
-        }
-
-        console.log(`Final CodeChef ${username} contests participated: ${contestsParticipated}`);
-        
-        // 5. Extract stars if available
-        let stars = 0;
-        $('.rating-star').each((_, el) => {
-          stars++;
-        });
-        
-        // 6. Calculate score
-        const score = this.calculateCodeChefScore(
-            rating,
-            problemsSolved,
-          globalRank, 
-            contestsParticipated
-        );
-        
-        return {
-          username,
-          rating,
-          global_rank: globalRank,
-          problemsSolved,
-          contestsParticipated,
-          stars,
-          score,
-          lastUpdated: new Date()
-        };
-      } catch (requestError) {
-        console.error(`Error fetching CodeChef profile for ${username}:`, requestError.message);
-        
-        // Return dummy data for testing purposes
-        console.log(`Creating dummy data for CodeChef user ${username}`);
-        return {
-          username,
-          rating: 1500,
-          global_rank: 10000,
-          country_rank: 1000,
-          problemsSolved: 80,
-          contestsParticipated: 10,
-          stars: 3,
-          score: 1000,
-          lastUpdated: new Date()
-        };
       }
+      
+      // Approach 3: Full text search - last resort
+      if (problemsSolved === 0) {
+        const fullText = $('body').text();
+        const matches = fullText.match(/Fully Solved\s*:?\s*(\d+)/i) || 
+                        fullText.match(/Problems Solved\s*:?\s*(\d+)/i);
+        if (matches && matches[1]) {
+          problemsSolved = parseInt(matches[1]);
+        }
+      }
+      console.log(`CodeChef ${username} problems solved: ${problemsSolved}`);
+      
+      // 4. Extract contests participated by counting rating history entries
+      let contestsParticipated = 0;
+
+      // Log the HTML of rating table for debugging
+      console.log(`Looking for contest participation data for ${username}`);
+
+      // First approach: Count rows in rating table
+      $('.rating-table tbody tr, table.dataTable tbody tr').each((_, el) => {
+        // Only count if it looks like a contest row (has rating data)
+        const rowText = $(el).text().trim();
+        if (rowText.includes('Rated') || /\d+\s*→\s*\d+/.test(rowText)) {
+          contestsParticipated++;
+        }
+      });
+
+      // Second approach: Look for contests participated count in profile details
+      if (contestsParticipated === 0) {
+        $('.contest-participated-count, .rating-data-section strong, .user-details-container strong').each((_, el) => {
+          const text = $(el).text().trim();
+          const parentText = $(el).parent().text().trim().toLowerCase();
+          
+          // Check if this is the contests element
+          if ((parentText.includes('contest') && parentText.includes('participated')) || 
+              (text.match(/^\d+$/) && parentText.includes('contest'))) {
+            const matches = text.match(/\d+/);
+            if (matches) {
+              contestsParticipated = parseInt(matches[0]);
+              console.log(`Found contest count in profile details: ${contestsParticipated}`);
+            }
+          }
+        });
+      }
+
+      // Third approach: Look in section headings and nearby elements
+      if (contestsParticipated === 0) {
+        $('h3, h4, h5, .h3-style, .h4-style, .h5-style').each((_, el) => {
+          const headingText = $(el).text().trim().toLowerCase();
+          
+          if (headingText.includes('contest') || headingText.includes('rating history')) {
+            // Check if the heading itself contains a number
+            const headingMatch = headingText.match(/(\d+)\s+contest/i);
+            if (headingMatch && headingMatch[1]) {
+              contestsParticipated = parseInt(headingMatch[1]);
+              console.log(`Found contest count in heading: ${contestsParticipated}`);
+            } else {
+              // Look in nearby elements
+              const parentDiv = $(el).parent();
+              const siblingText = parentDiv.text().replace(headingText, '').trim();
+              const siblingMatch = siblingText.match(/(\d+)\s+contest/i) || 
+                                   siblingText.match(/participated\s+in\s+(\d+)/i);
+              
+              if (siblingMatch && siblingMatch[1]) {
+                contestsParticipated = parseInt(siblingMatch[1]);
+                console.log(`Found contest count near heading: ${contestsParticipated}`);
+              }
+            }
+          }
+        });
+      }
+
+      // Fourth approach: Parse the full page text as a last resort
+      if (contestsParticipated === 0) {
+        const fullText = $('body').text();
+        
+        // Try multiple patterns for robustness
+        const patterns = [
+          /participated\s+in\s+(\d+)\s+contests/i,
+          /(\d+)\s+contests?\s+participated/i,
+          /contests?\s+participated\s*:?\s*(\d+)/i,
+          /rating\s+history\s*\(\s*(\d+)\s*\)/i
+        ];
+        
+        for (const pattern of patterns) {
+          const matches = fullText.match(pattern);
+          if (matches && matches[1]) {
+            contestsParticipated = parseInt(matches[1]);
+            console.log(`Found contest count in full text: ${contestsParticipated}`);
+            break;
+          }
+        }
+      }
+
+      // If no contest data found, try to find any data tables that might contain contests
+      if (contestsParticipated === 0) {
+        const tableCount = $('table').length;
+        console.log(`Found ${tableCount} tables on the page`);
+        
+        // Check tables that might be contest tables
+        $('table').each((i, table) => {
+          const tableHeading = $(table).prev('h3, h4, h5, .h3-style, .h4-style, .h5-style').text().toLowerCase();
+          const tableCaption = $(table).find('caption').text().toLowerCase();
+          
+          // If the table is likely a contest table, count its rows
+          if (tableHeading.includes('contest') || tableHeading.includes('rating') || 
+              tableCaption.includes('contest') || tableCaption.includes('rating')) {
+            let rowCount = 0;
+            $(table).find('tbody tr').each((_, row) => {
+              rowCount++;
+            });
+            
+            if (rowCount > 0) {
+              console.log(`Table ${i+1} appears to be a contest table with ${rowCount} rows`);
+              contestsParticipated = rowCount;
+            }
+          }
+        });
+      }
+
+      console.log(`Final CodeChef ${username} contests participated: ${contestsParticipated}`);
+      
+      // 5. Extract stars if available
+      let stars = 0;
+      $('.rating-star').each((_, el) => {
+        stars++;
+      });
+      
+      // 6. Calculate score
+      const score = this.calculateCodeChefScore(
+        rating, 
+        problemsSolved, 
+        globalRank, 
+        contestsParticipated
+      );
+      
+      return {
+        username,
+        rating,
+        global_rank: globalRank,
+        problemsSolved,
+        contestsParticipated,
+        stars,
+        score,
+        lastUpdated: new Date()
+      };
     } catch (error) {
       console.error(`Error fetching CodeChef profile for ${username}:`, error);
       
-      // Return dummy data when there's an error
-      console.log(`Creating dummy data for CodeChef user ${username} due to error`);
-      return {
-        username,
-        rating: 1500,
-        global_rank: 10000,
-        country_rank: 1000,
-        problemsSolved: 80,
-        contestsParticipated: 10,
-        stars: 3,
-        score: 1000,
-        lastUpdated: new Date()
-      };
+      // Standardize error message
+      if (error.message.includes('not found') || error.message.includes('does not exist')) {
+        throw new Error(`User ${username} not found on CodeChef`);
+      }
+      
+      // Network error handling
+      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+        throw new Error(`CodeChef request timed out. The service may be temporarily unavailable.`);
+      }
+      
+      throw new Error(`Failed to fetch CodeChef profile: ${error.message}`);
     }
   }
 
@@ -805,36 +766,46 @@ class PlatformAPI {
       const apiUrl = `https://geeks-for-geeks-api.vercel.app/${username}`;
       console.log(`Making request to GFG API: ${apiUrl}`);
       
-      const response = await this.axiosInstance.get(apiUrl);
+      const response = await this.axiosInstance.get(apiUrl, {
+        // Accept any status code to handle ourselves
+        validateStatus: function (status) {
+          return status >= 200 && status < 500;
+        },
+        timeout: 20000 // Increase timeout for sometimes slow third-party API
+      });
       
-      // Check if response has valid data
-      if (!response.data || !response.data.info) {
-        throw new Error(`User ${username} not found on GeeksforGeeks or API response invalid`);
+      // Check if the response indicates the user doesn't exist
+      // This is the correct way to detect a non-existent user according to the API format
+      if (response.data && response.data.error === "Profile Not Found") {
+        throw new Error(`User '${username}' not found on GeeksforGeeks. Please check the spelling and try again.`);
+      }
+      
+      // Additional check for empty responses
+      if (!response.data || response.status !== 200) {
+        throw new Error(`GeeksforGeeks API returned an invalid response for user '${username}'. Please try again later.`);
+      }
+      
+      // Check if we have the required info object
+      if (!response.data.info) {
+        throw new Error(`GeeksforGeeks user '${username}' profile data could not be retrieved. The profile may be private or not yet complete.`);
       }
       
       // Extract user info and solved stats from API response
-      const { info, solvedStats } = response.data;
+      const { info, solvedStats = {} } = response.data;
       
-      console.log(`GFG API data received for ${username}:`, {
-        codingScore: info.codingScore,
-        totalProblemsSolved: info.totalProblemsSolved,
-        instituteRank: info.instituteRank,
-        availableDifficulties: solvedStats ? Object.keys(solvedStats) : []
-      });
+      // Calculate total problems by difficulty levels - handle possible undefined values
+      const easyProblemsSolved = solvedStats?.easy?.count || 0;
+      const mediumProblemsSolved = solvedStats?.medium?.count || 0;
+      const hardProblemsSolved = solvedStats?.hard?.count || 0;
+      const basicProblemsSolved = solvedStats?.basic?.count || 0;
+      const schoolProblemsSolved = solvedStats?.school?.count || 0;
       
-      // Calculate total problems by difficulty levels
-      const easyProblemsSolved = solvedStats.easy?.count || 0;
-      const mediumProblemsSolved = solvedStats.medium?.count || 0;
-      const hardProblemsSolved = solvedStats.hard?.count || 0;
-      const basicProblemsSolved = solvedStats.basic?.count || 0;
-      const schoolProblemsSolved = solvedStats.school?.count || 0;
-      
-      // Verify if total problems solved matches the sum of individual categories
+      // Calculate total problems solved
       const totalByCategories = easyProblemsSolved + mediumProblemsSolved + hardProblemsSolved + basicProblemsSolved + schoolProblemsSolved;
-      const problemsSolved = info.totalProblemsSolved || totalByCategories;
+      const problemsSolved = info.totalProblemsSolved || totalByCategories || 0;
       
       console.log(`GFG API data for ${username}:`, {
-        codingScore: info.codingScore,
+        codingScore: info.codingScore || 0,
         totalProblems: problemsSolved,
         byDifficulty: {
           easy: easyProblemsSolved,
@@ -842,15 +813,11 @@ class PlatformAPI {
           hard: hardProblemsSolved,
           basic: basicProblemsSolved,
           school: schoolProblemsSolved
-        },
-        instituteRank: info.instituteRank,
-        currentStreak: info.currentStreak,
-        maxStreak: info.maxStreak,
-        monthlyScore: info.monthlyScore
+        }
       });
       
       // Calculate total score using our scoring algorithm
-      const score = this.calculateGeeksforGeeksScore(info.codingScore, problemsSolved, info.instituteRank);
+      const score = this.calculateGeeksforGeeksScore(info.codingScore || 0, problemsSolved, info.instituteRank || 0);
 
       // Determine rank based on score
       const rank = this.getGeeksforGeeksRank(score);
@@ -877,8 +844,13 @@ class PlatformAPI {
     } catch (error) {
       console.error(`Error fetching GeeksforGeeks profile for ${username}:`, error);
       
+      // Just pass through user not found errors
       if (error.message.includes('not found')) {
-        throw new Error(`User ${username} not found on GeeksforGeeks`);
+        throw error;
+      }
+      
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        throw new Error(`GeeksforGeeks API request timed out. Please try again later.`);
       }
       
       throw new Error(`Failed to fetch GeeksforGeeks profile: ${error.message}`);
@@ -1075,21 +1047,68 @@ class PlatformAPI {
     try {
       console.log(`Fetching HackerRank profile for user: ${username}`);
       
-      // Make a direct request to the badges API endpoint
-      const response = await this.axiosInstance.get(`https://www.hackerrank.com/rest/hackers/${username}/badges`, {
+      // First, check if the user exists by requesting the profile page
+      const profileCheckUrl = `https://www.hackerrank.com/rest/hackers/${username}/profile`;
+      console.log(`Checking if HackerRank user exists: ${profileCheckUrl}`);
+      
+      const profileResponse = await this.axiosInstance.get(profileCheckUrl, {
         headers: {
           'Accept': 'application/json'
         },
-        // Don't throw on 404, we'll handle it explicitly
-        validateStatus: status => (status >= 200 && status < 300) || status === 404
+        // Accept any status code to handle ourselves
+        validateStatus: status => status >= 200 && status < 500
       });
       
-      // Check if the request was successful
-      if (response.status === 404 || !response.data || response.data.status !== true) {
-        throw new Error(`User ${username} not found on HackerRank`);
+      // Check if the response indicates the user doesn't exist - correct format according to feedback
+      if (profileResponse.data && profileResponse.data.error === "Profile Not Found") {
+        throw new Error(`User '${username}' not found on HackerRank. Please check the spelling and try again.`);
       }
       
-      const badgesData = response.data.models || [];
+      // Also check for 404 status as a fallback
+      if (profileResponse.status === 404) {
+        throw new Error(`User '${username}' not found on HackerRank. Please check the spelling and try again.`);
+      }
+      
+      // Additional check for invalid responses
+      if (!profileResponse.data || profileResponse.status !== 200) {
+        throw new Error(`HackerRank API returned an invalid response for user '${username}'. Please try again later.`);
+      }
+      
+      // Make a direct request to the badges API endpoint
+      console.log(`Attempting to fetch HackerRank badges for: ${username}`);
+      let badgesData = [];
+      
+      try {
+        const badgesResponse = await this.axiosInstance.get(`https://www.hackerrank.com/rest/hackers/${username}/badges`, {
+          headers: {
+            'Accept': 'application/json'
+          },
+          // Accept any status code
+          validateStatus: status => status >= 200 && status < 500
+        });
+        
+        // Check for the error format in badge response too
+        if (badgesResponse.data && badgesResponse.data.error === "Profile Not Found") {
+          throw new Error(`User '${username}' found on HackerRank but badge data could not be retrieved.`);
+        }
+        
+        // Only use badge data if we got a successful response
+        if (badgesResponse.status === 200 && badgesResponse.data && badgesResponse.data.models) {
+          badgesData = badgesResponse.data.models || [];
+          console.log(`Successfully retrieved ${badgesData.length} badges for HackerRank user: ${username}`);
+        } else {
+          console.log(`No badge data available for HackerRank user: ${username}, status: ${badgesResponse.status}`);
+        }
+      } catch (badgeError) {
+        // If this is a "profile not found" error for badges, we should throw it
+        if (badgeError.message.includes('not found')) {
+          throw badgeError;
+        }
+        
+        // Otherwise, log but continue with empty badge data
+        console.warn(`Error fetching HackerRank badges for ${username}: ${badgeError.message}`);
+        console.log(`Continuing with profile creation with default values`);
+      }
       
       // Calculate total problems solved by summing up all badges
       let totalProblemsSolved = 0;
@@ -1121,6 +1140,8 @@ class PlatformAPI {
         }
       });
       
+      console.log(`HackerRank user ${username} profile summary: problems solved: ${totalProblemsSolved}, stars: ${totalStars}, badges: ${Object.keys(languageBadges).length + Object.keys(skillBadges).length}`);
+      
       // Calculate score based on problems solved and stars earned
       const score = this.calculateHackerRankScore(totalProblemsSolved, totalStars);
       
@@ -1128,6 +1149,7 @@ class PlatformAPI {
         username,
         problemsSolved: totalProblemsSolved,
         totalStars,
+        badges: Object.keys(languageBadges).length + Object.keys(skillBadges).length,
         languageBadges,
         skillBadges,
         score,
@@ -1136,8 +1158,9 @@ class PlatformAPI {
     } catch (error) {
       console.error(`Error fetching HackerRank profile for ${username}:`, error);
       
+      // Just pass through user not found errors
       if (error.message.includes('not found')) {
-        throw new Error(`User ${username} not found on HackerRank`);
+        throw error;
       }
       
       throw new Error(`Failed to fetch HackerRank profile: ${error.message}`);
@@ -1152,32 +1175,50 @@ class PlatformAPI {
    */
   async getProfileData(platform, username) {
     try {
+      // Validate inputs
+      if (!username || typeof username !== 'string' || username.trim() === '') {
+        throw new Error(`Username is required for ${platform}`);
+      }
+      
+      // Normalize inputs
+      const normalizedPlatform = platform.toLowerCase().trim();
+      const normalizedUsername = username.trim();
+      
+      console.log(`Getting profile data for ${normalizedPlatform}/${normalizedUsername}`);
+      
       let profileData;
       
-      switch (platform.toLowerCase()) {
+      switch (normalizedPlatform) {
         case 'leetcode':
-          profileData = await this.getLeetCodeProfile(username);
+          profileData = await this.getLeetCodeProfile(normalizedUsername);
           break;
         case 'codeforces':
-          profileData = await this.getCodeforcesProfile(username);
+          profileData = await this.getCodeforcesProfile(normalizedUsername);
           break;
         case 'codechef':
-          profileData = await this.getCodeChefProfile(username);
+          profileData = await this.getCodeChefProfile(normalizedUsername);
           break;
         case 'geeksforgeeks':
-          profileData = await this.getGeeksforGeeksProfile(username);
+          profileData = await this.getGeeksforGeeksProfile(normalizedUsername);
           break;
         case 'hackerrank':
-          profileData = await this.getHackerRankProfile(username);
+          profileData = await this.getHackerRankProfile(normalizedUsername);
           break;
         case 'github':
-          profileData = await this.getGitHubProfile(username);
+          profileData = await this.getGitHubProfile(normalizedUsername);
           break;
         default:
-          throw new Error(`Unsupported platform: ${platform}`);
+          throw new Error(`Unsupported platform: ${normalizedPlatform}`);
+      }
+
+      // Validate that we actually got a proper result
+      if (!profileData || typeof profileData !== 'object') {
+        console.error(`Invalid profile data returned for ${normalizedPlatform}/${normalizedUsername}`);
+        throw new Error(`Failed to retrieve valid profile data for ${normalizedUsername} on ${normalizedPlatform}`);
       }
 
       // Ensure required fields have default values
+      profileData.username = profileData.username || normalizedUsername;
       profileData.problemsSolved = profileData.problemsSolved || 0;
       profileData.score = profileData.score || 0;
       profileData.rating = profileData.rating || 0;
@@ -1185,7 +1226,13 @@ class PlatformAPI {
 
       return profileData;
     } catch (error) {
-      console.error(`Error in getProfileData for ${platform}:`, error);
+      console.error(`Error in getProfileData for ${platform}/${username}:`, error);
+      
+      // For user not found errors, add more helpful text if not already present
+      if (error.message.includes('not found') && !error.message.includes('Please check')) {
+        throw new Error(`${error.message}. Please check the spelling and try again.`);
+      }
+      
       throw error;
     }
   }
@@ -1197,136 +1244,7 @@ class PlatformAPI {
    * @returns {Object} - User profile data
    */
   async getProfileByPlatform(platform, username) {
-    // Skip if username is empty
-    if (!username || username.trim() === '') {
-      throw new Error(`No username provided for ${platform}`);
-    }
-    
-    console.log(`Fetching ${platform} profile for user: ${username}`);
-    
-    // Default to no rate limiting
-    let wasRateLimited = false;
-    
-    // Track the start time for performance monitoring
-    const startTime = Date.now();
-    
-    try {
-      // Apply rate limiting - use the new version that returns a cleanup function
-      const releaseRateLimit = await applyRateLimit(platform, wasRateLimited);
-      
-      // Retry logic for handling rate limits and server errors
-      const MAX_RETRIES = platform === 'leetcode' ? 2 : 1; // More retries for LeetCode due to 500 errors
-      let retryCount = 0;
-      let lastError = null;
-      
-      while (retryCount <= MAX_RETRIES) {
-        try {
-          let data;
-          
-          // Get profile data based on platform
-          switch (platform) {
-            case 'leetcode':
-              data = await this.getLeetCodeProfile(username);
-              break;
-            case 'codeforces':
-              data = await this.getCodeforcesProfile(username);
-              break;
-            case 'codechef':
-              data = await this.getCodeChefProfile(username);
-              break;
-            case 'geeksforgeeks':
-              data = await this.getGeeksforGeeksProfile(username);
-              break;
-            case 'hackerrank':
-              data = await this.getHackerRankProfile(username);
-              break;
-            case 'github':
-              data = await this.getGitHubProfile(username);
-              break;
-            default:
-              throw new Error(`Unsupported platform: ${platform}`);
-          }
-          
-          // Release the rate limit token
-          if (typeof releaseRateLimit === 'function') {
-            releaseRateLimit();
-          }
-          
-          // Calculate elapsed time
-          const elapsed = Date.now() - startTime;
-          console.log(`✅ Successfully fetched ${platform} profile for ${username} in ${elapsed}ms`);
-          
-          return data;
-        } catch (error) {
-          lastError = error;
-          
-          // Handle different types of errors
-          if (error.response) {
-            const statusCode = error.response.status;
-            
-            // Handle rate limiting
-            if (statusCode === 429) {
-              wasRateLimited = true;
-              console.error(`⚠️ Rate limited on ${platform} for ${username} (429). Retry ${retryCount + 1}/${MAX_RETRIES + 1}`);
-              
-              // Exponential backoff for rate limits
-              const backoffTime = 2000 * Math.pow(4, retryCount); // 2s, 8s, 32s...
-              await new Promise(resolve => setTimeout(resolve, backoffTime));
-            } 
-            // Handle server errors (especially for LeetCode)
-            else if (statusCode >= 500) {
-              console.error(`⚠️ Server error on ${platform} for ${username} (${statusCode}). Retry ${retryCount + 1}/${MAX_RETRIES + 1}`);
-              
-              // Use a shorter backoff for server errors
-              const backoffTime = 3000 * Math.pow(2, retryCount); // 3s, 6s, 12s...
-              await new Promise(resolve => setTimeout(resolve, backoffTime));
-            }
-            // For other errors, don't retry
-            else {
-              // Release the rate limit token
-              if (typeof releaseRateLimit === 'function') {
-                releaseRateLimit();
-              }
-              throw error;
-            }
-          } else {
-            // For network errors, retry once with backoff
-            if (retryCount < 1) {
-              console.error(`⚠️ Network error on ${platform} for ${username}. Retrying once.`);
-              await new Promise(resolve => setTimeout(resolve, 5000));
-            } else {
-              // Release the rate limit token
-              if (typeof releaseRateLimit === 'function') {
-                releaseRateLimit();
-              }
-              throw error;
-            }
-          }
-          
-          retryCount++;
-        }
-      }
-      
-      // If we've exhausted all retries, throw the last error
-      // Release the rate limit token
-      if (typeof releaseRateLimit === 'function') {
-        releaseRateLimit();
-      }
-      
-      console.error(`❌ Failed to fetch ${platform} profile for ${username} after ${MAX_RETRIES + 1} attempts`);
-      throw lastError;
-    } catch (error) {
-      // Track the error for monitoring
-      const elapsed = Date.now() - startTime;
-      console.error(`❌ Error fetching ${platform} profile for ${username} after ${elapsed}ms: ${error.message}`);
-      
-      // Add platform-specific information to the error
-      error.platform = platform;
-      error.username = username;
-      error.elapsedMs = elapsed;
-      
-      throw error;
-    }
+    return this.getProfileData(platform, username);
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, 
   Typography, 
@@ -46,6 +46,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { apiUrl } from '../config/apiConfig';
 
 const Opportunities = () => {
   const muiTheme = useMuiTheme();
@@ -85,12 +86,9 @@ const Opportunities = () => {
     : '0 20px 40px rgba(0, 0, 0, 0.1)';
 
   useEffect(() => {
-    console.log('Auth token:', token);
     if (token) {
-      console.log('Token found, fetching opportunities...');
       fetchOpportunities();
     } else {
-      console.log('No token found, setting error state');
       setError('Please log in to view opportunities');
       setLoading(false);
     }
@@ -99,32 +97,23 @@ const Opportunities = () => {
   const fetchOpportunities = async () => {
     try {
       setLoading(true);
-      console.log('Making request with token:', token);
       
       if (!token) {
-        console.log('No token available for request');
         setError('Please log in to view opportunities');
         setLoading(false);
         return;
       }
       
-      const response = await axios.get('http://localhost:5000/api/opportunities', {
+      const response = await axios.get(`${apiUrl}/opportunities`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      console.log('Opportunities API Response:', response);
-      console.log('Opportunities data:', response.data);
       setOpportunities(response.data);
       
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching opportunities:', err);
-      console.error('Error response:', err.response);
-      console.error('Error request:', err.request);
-      console.error('Error config:', err.config);
-      
       if (err.response?.status === 401) {
         setError('Authentication error. Please log in again.');
         // Optionally redirect to login
@@ -328,11 +317,11 @@ const Opportunities = () => {
             },
           }}
         >
-          <Tab label="All Opportunities" />
-          <Tab label="Competitions" />
-          <Tab label="Hackathons" />
-          <Tab label="Internships" />
-          <Tab label="Workshops" />
+          <Tab key="all" label="All Opportunities" />
+          <Tab key="competitions" label="Competitions" />
+          <Tab key="hackathons" label="Hackathons" />
+          <Tab key="internships" label="Internships" />
+          <Tab key="workshops" label="Workshops" />
         </Tabs>
       </Box>
 
@@ -340,7 +329,7 @@ const Opportunities = () => {
       <Grid container spacing={3}>
         {filteredOpportunities.length > 0 ? (
           filteredOpportunities.map((opportunity, index) => (
-            <Grid item xs={12} sm={6} md={4} key={opportunity.id}>
+            <Grid item xs={12} sm={6} md={4} key={opportunity._id}>
               <Grow in={true} timeout={(index + 1) * 200}>
                 <Card 
                   sx={{ 

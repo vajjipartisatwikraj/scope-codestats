@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -34,7 +34,14 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  TablePagination
+  TablePagination,
+  TextField,
+  LinearProgress,
+  TableSortLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   BarChart as BarChartIcon,
@@ -45,8 +52,10 @@ import {
   FilterList,
   Code,
   PieChart as PieChartIcon,
-  Leaderboard,
-  FileDownload
+  Leaderboard as LeaderboardIcon,
+  FileDownload as FileDownloadIcon,
+  Sync as SyncIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -72,6 +81,8 @@ import {
 } from 'recharts';
 import axios from 'axios';
 import * as XLSX from 'exceljs';
+import { activeSyncState } from '../contexts/AuthContext';
+import { apiUrl } from '../config/apiConfig';
 
 // Color palette for charts
 const PLATFORM_COLORS = {
@@ -131,6 +142,349 @@ const getOrderedWeeklyData = (data) => {
   return result;
 };
 
+// Create a new component for profile sync management
+const ProfileSyncTab = ({ token }) => {
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [syncId, setSyncId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [statusPolling, setStatusPolling] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [openConfirmation, setOpenConfirmation] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  // Function to start profile sync
+  const startSync = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.post(`${apiUrl}/admin/sync-profiles`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data.success && response.data.syncId) {
+        setSyncId(response.data.syncId);
+        toast.success('Profile synchronization started');
+        
+        // Set global active sync state
+        activeSyncState.setInProgress(true);
+        
+        // Start polling for status updates
+        const intervalId = setInterval(() => {
+          checkSyncStatus(response.data.syncId);
+        }, 3000);
+        
+        setStatusPolling(intervalId);
+      }
+    } catch (err) {
+      console.error('Error starting profile sync:', err);
+      setError(err.response?.data?.message || 'Failed to start profile synchronization');
+      toast.error('Failed to start profile synchronization');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Function to cancel sync
+  const cancelSync = async () => {
+    if (!syncId) return;
+    
+    try {
+      setCancelLoading(true);
+      
+      const response = await axios.post(`${apiUrl}/admin/cancel-sync/${syncId}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data.success) {
+        toast.info('Profile synchronization cancelled');
+        
+        // Update the status immediately
+        if (syncStatus) {
+          setSyncStatus({
+            ...syncStatus,
+            inProgress: false,
+            cancelled: true
+          });
+        }
+        
+        // Update global active sync state
+        activeSyncState.setInProgress(false);
+        
+        // Stop polling
+        if (statusPolling) {
+          clearInterval(statusPolling);
+          setStatusPolling(null);
+        }
+      }
+    } catch (err) {
+      console.error('Error cancelling sync:', err);
+      toast.error('Failed to cancel synchronization');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+  
+  // Function to check sync status
+  const checkSyncStatus = async (id) => {
+    try {
+      const response = await axios.get(`${apiUrl}/admin/sync-status/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setSyncStatus(response.data);
+      
+      // If sync is complete, stop polling
+      if (!response.data.inProgress) {
+        // Update global active sync state
+        activeSyncState.setInProgress(false);
+        
+        if (statusPolling) {
+          clearInterval(statusPolling);
+          setStatusPolling(null);
+        }
+        
+        if (response.data.error) {
+          toast.error(`Sync completed with errors: ${response.data.error}`);
+        } else if (response.data.cancelled) {
+          toast.info('Profile synchronization was cancelled');
+        } else {
+          toast.success('Profile synchronization completed successfully');
+        }
+      }
+    } catch (err) {
+      console.error('Error checking sync status:', err);
+      // Don't set error state here to avoid UI disruption
+      // Just log the error and continue polling
+    }
+  };
+
+  // Handle confirmation dialog
+  const handleConfirmationClose = (shouldProceed) => {
+    setOpenConfirmation(false);
+    
+    if (shouldProceed && pendingAction === 'cancel') {
+      cancelSync();
+    } else if (pendingAction === 'unload' && shouldProceed) {
+      // Allow the page to unload
+      window.onbeforeunload = null;
+    }
+    
+    setPendingAction(null);
+  };
+  
+  // Setup beforeunload event handler
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (syncStatus && syncStatus.inProgress) {
+        // Standard way to show a confirmation dialog when leaving the page
+        e.preventDefault();
+        e.returnValue = 'Profile sync is in progress. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    
+    if (syncStatus && syncStatus.inProgress) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    } else {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [syncStatus]);
+  
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (statusPolling) {
+        clearInterval(statusPolling);
+      }
+    };
+  }, [statusPolling]);
+  
+  // Update global active sync state when component unmounts
+  useEffect(() => {
+    return () => {
+      if (syncStatus && !syncStatus.inProgress) {
+        activeSyncState.setInProgress(false);
+      }
+    };
+  }, [syncStatus]);
+  
+  return (
+    <Box>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Profile Synchronization
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Manually trigger the synchronization of all user profiles with external platforms.
+              This process normally runs automatically at 2:00 AM daily.
+            </Typography>
+            
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            )}
+            
+            <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<SyncIcon />}
+                onClick={startSync}
+                disabled={loading || (syncStatus && syncStatus.inProgress)}
+              >
+                {loading ? 'Starting...' : 'Sync All Profiles'}
+              </Button>
+              
+              {syncStatus && syncStatus.inProgress && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    setOpenConfirmation(true);
+                    setPendingAction('cancel');
+                  }}
+                  disabled={cancelLoading}
+                  startIcon={cancelLoading ? <CircularProgress size={20} /> : null}
+                >
+                  {cancelLoading ? 'Cancelling...' : 'Cancel Sync'}
+                </Button>
+              )}
+            </Box>
+            
+            {syncStatus && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Sync Progress {syncStatus.inProgress ? '(In Progress)' : syncStatus.cancelled ? '(Cancelled)' : '(Completed)'}
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={syncStatus.progress} 
+                    color={syncStatus.error ? "error" : syncStatus.cancelled ? "warning" : "primary"}
+                    sx={{ height: 10, borderRadius: 5 }}
+                  />
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {syncStatus.progress}% Complete
+                  </Typography>
+                </Box>
+                
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h5">
+                        {syncStatus.processedUsers}/{syncStatus.totalUsers}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Users Processed
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h5" color="success.main">
+                        {syncStatus.updatedProfiles}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Profiles Updated
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h5" color="error.main">
+                        {syncStatus.failedProfiles}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Profiles Failed
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h5">
+                        {syncStatus.elapsedTime}s
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Elapsed Time
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+                
+                {syncStatus.error && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    Error: {syncStatus.error}
+                  </Alert>
+                )}
+                
+                {syncStatus.cancelled && !syncStatus.inProgress && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    Profile synchronization was cancelled.
+                  </Alert>
+                )}
+                
+                {!syncStatus.inProgress && !syncStatus.error && !syncStatus.cancelled && (
+                  <Alert severity="success" sx={{ mt: 2 }}>
+                    Profile synchronization completed successfully!
+                  </Alert>
+                )}
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+      
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmation}
+        onClose={() => handleConfirmationClose(false)}
+      >
+        <DialogTitle>
+          {pendingAction === 'cancel' ? 'Cancel Synchronization?' : 'Leave Page?'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            {pendingAction === 'cancel' 
+              ? 'Are you sure you want to cancel the profile synchronization? This will stop updating any remaining user profiles.'
+              : 'Profile synchronization is still in progress. Leaving this page will not stop the process, but you won\'t be able to see the progress. Are you sure you want to leave?'
+            }
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => handleConfirmationClose(false)} color="primary">
+            No, Stay
+          </Button>
+          <Button onClick={() => handleConfirmationClose(true)} color="error" variant="contained">
+            Yes, {pendingAction === 'cancel' ? 'Cancel Sync' : 'Leave Page'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
 const AdminDashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -143,12 +497,14 @@ const AdminDashboard = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('weekly');
   const [activePieIndex, setActivePieIndex] = useState(0);
   const [leaderboardData, setLeaderboardData] = useState([]);
+  // Add state to track if component is mounted
+  const [isMounted, setIsMounted] = useState(false);
 
   // Fetch admin stats
   const fetchAdminStats = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/stats', {
+      const response = await axios.get(`${apiUrl}/admin/stats`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -225,7 +581,7 @@ const AdminDashboard = () => {
         
         // Fetch leaderboard data for export
         try {
-          const leaderboardResponse = await axios.get('http://localhost:5000/api/leaderboard', {
+          const leaderboardResponse = await axios.get(`${apiUrl}/leaderboard`, {
             headers: { 
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -256,6 +612,11 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchAdminStats();
+    // Set isMounted to true after initial render
+    setIsMounted(true);
+    
+    // Cleanup function to set isMounted to false when component unmounts
+    return () => setIsMounted(false);
   }, [token]);
   
   const handleTabChange = (event, newValue) => {
@@ -275,68 +636,114 @@ const AdminDashboard = () => {
     setActivePieIndex(index);
   };
 
+  const exportToExcel = () => {
+    toast.info('Preparing data for export...', { autoClose: 2000 });
+    fetchExportData();
+  };
+
   const fetchExportData = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      const response = await axios.get('http://localhost:5000/api/admin/leaderboard', {
-        headers: { 'x-auth-token': token }
+      // Use the dedicated export endpoint instead of the general leaderboard endpoint
+      const response = await axios.get(`${apiUrl}/leaderboard/export`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          includeComplete: 'true',
+          debug: 'true'  // This will enable debug logging on the server
+        }
       });
+      
+      // Check if we have valid data
+      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+        toast.error('No data available for export');
+        setLoading(false);
+        return;
+      }
+      
+      // Log the first user object to see its structure
+      if (response.data && response.data.length > 0) {
+        console.log('Sample user data structure from export endpoint:', JSON.stringify(response.data[0], null, 2));
+      }
+      
+      toast.info(`Processing export data for ${response.data.length} users...`, { autoClose: 2000 });
       
       // Process the data for export
       const exportData = response.data.map((user, index) => {
-        const leetcode = user.platformScores?.leetcode || {};
-        const codeforces = user.platformScores?.codeforces || {};
-        const codechef = user.platformScores?.codechef || {};
-        const geeksforgeeks = user.platformScores?.geeksforgeeks || {};
-        const hackerrank = user.platformScores?.hackerrank || {};
-        const github = user.platformScores?.github || {};
+        // Extract coding profiles data from the dedicated codingProfiles object
+        const codingProfiles = user.codingProfiles || {};
         
-        // Calculate GitHub metrics from detailed data
-        const githubContributions = github.contributionsCount || 0;
-        const githubCommits = github.commitCount || 0;
-        const githubRepos = github.repoCount || 0;
+        // Get platform-specific data from codingProfiles
+        const leetcode = codingProfiles.leetcode || {};
+        const codeforces = codingProfiles.codeforces || {};
+        const codechef = codingProfiles.codechef || {};
+        const geeksforgeeks = codingProfiles.geeksforgeeks || {};
+        const hackerrank = codingProfiles.hackerrank || {};
+        const github = codingProfiles.github || {};
+        
+        // Also try platformData as fallback
+        const leetcodeData = user.platformData?.leetcode || {};
+        const codeforcesData = user.platformData?.codeforces || {};
+        const codechefData = user.platformData?.codechef || {};
+        const geeksforgeeksData = user.platformData?.geeksforgeeks || {};
+        const hackerrankData = user.platformData?.hackerrank || {};
+        
+        // Get GitHub specific metrics from various sources
+        const githubContributions = github.contributionsLastYear || user.githubStats?.contributionsLastYear || 0;
+        const githubCommits = github.totalCommits || user.githubStats?.totalCommits || 0;
+        const githubRepos = github.publicRepos || user.githubStats?.publicRepos || 0;
+        
+        // Get usernames from profiles object
+        const profiles = user.profiles || {};
         
         return {
-          'Rank': index + 1,
+          'Rank': user.rank || index + 1,
           'Name': user.name,
           'Roll Number': user.rollNumber || '-',
           'Email': user.email,
           'Total Score': user.totalScore || 0,
-          'Total Problems': user.problemsSolved || 0,
+          'Total Problems': user.totalProblemsSolved || 0,
           
           // LeetCode data
-          'LeetCode Username': leetcode.username || '-',
-          'LeetCode Problems': leetcode.problemsSolved || 0,
-          'LeetCode Rating': leetcode.rating || 0,
-          'LeetCode Contests': leetcode.contestsParticipated || 0,
+          'LeetCode Username': leetcode.username || leetcodeData.username || profiles.leetcode || '-',
+          'LeetCode Problems': leetcode.problemsSolved || leetcodeData.totalSolved || 0,
+          'LeetCode Rating': leetcode.rating || leetcodeData.rating || 0,
+          'LeetCode Contests': leetcode.contestsParticipated || leetcodeData.contestsParticipated || 0,
           
           // CodeForces data
-          'CodeForces Username': codeforces.username || '-',
-          'CodeForces Problems': codeforces.problemsSolved || 0,
-          'CodeForces Rating': codeforces.rating || 0,
-          'CodeForces Contests': codeforces.contestsParticipated || 0,
+          'CodeForces Username': codeforces.username || codeforcesData.username || profiles.codeforces || '-',
+          'CodeForces Problems': codeforces.problemsSolved || codeforcesData.problemsSolved || 0,
+          'CodeForces Rating': codeforces.rating || codeforcesData.rating || 0,
+          'CodeForces Contests': codeforces.contestsParticipated || codeforcesData.contestsParticipated || 0,
           
           // CodeChef data
-          'CodeChef Username': codechef.username || '-',
-          'CodeChef Problems': codechef.problemsSolved || 0,
-          'CodeChef Rating': codechef.rating || 0,
-          'CodeChef Contests': codechef.contestsParticipated || 0,
+          'CodeChef Username': codechef.username || codechefData.username || profiles.codechef || '-',
+          'CodeChef Problems': codechef.problemsSolved || codechefData.problemsSolved || 0,
+          'CodeChef Rating': codechef.rating || codechefData.rating || 0,
+          'CodeChef Contests': codechef.contestsParticipated || codechefData.contestsParticipated || 0,
           
           // GeeksforGeeks data
-          'GFG Username': geeksforgeeks.username || '-',
-          'GFG Problems': geeksforgeeks.problemsSolved || 0,
+          'GFG Username': geeksforgeeks.username || geeksforgeeksData.username || profiles.geeksforgeeks || '-',
+          'GFG Problems': geeksforgeeks.problemsSolved || geeksforgeeksData.problemsSolved || 0,
+          'GFG Rating': geeksforgeeks.rating || geeksforgeeksData.codingScore || 0,
+          'GFG Institute Rank': geeksforgeeks.instituteRank || geeksforgeeksData.instituteRank || 0,
           
           // HackerRank data
-          'HackerRank Username': hackerrank.username || '-',
-          'HackerRank Problems': hackerrank.problemsSolved || 0,
+          'HackerRank Username': hackerrank.username || hackerrankData.username || profiles.hackerrank || '-',
+          'HackerRank Problems': hackerrank.problemsSolved || hackerrankData.problemsSolved || 0,
+          'HackerRank Certificates': hackerrank.certificates || hackerrankData.certificates || 0,
           
           // GitHub data
-          'GitHub Username': github.username || '-',
+          'GitHub Username': github.username || profiles.github || '-',
           'GitHub Contributions': githubContributions,
           'GitHub Commits': githubCommits,
           'GitHub Repositories': githubRepos,
+          'GitHub Stars': github.starsReceived || user.githubStats?.starsReceived || 0,
+          'GitHub Followers': github.followers || user.githubStats?.followers || 0,
         };
       });
 
@@ -395,6 +802,8 @@ const AdminDashboard = () => {
         color: { argb: 'FFFFFF' }
       };
       
+      toast.info('Generating Excel file...', { autoClose: 1500 });
+      
       // Generate Excel file
       const buffer = await workbook.xlsx.writeBuffer();
       
@@ -407,17 +816,24 @@ const AdminDashboard = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Detailed leaderboard data exported successfully');
+      toast.success(`Successfully exported data for ${exportData.length} users`);
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export data. Please try again.');
+      let errorMessage = 'Failed to export data. Please try again.';
+      
+      if (error.response) {
+        // Server responded with a status code outside of 2xx range
+        errorMessage = `Server error ${error.response.status}: ${error.response.data?.message || 'Failed to fetch data'}`;
+        console.error('Server response details:', error.response.data);
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'No response from server. Please check your connection.';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
-
-  const exportToExcel = () => {
-    fetchExportData();
   };
 
   const renderActiveShape = (props) => {
@@ -549,7 +965,7 @@ const AdminDashboard = () => {
             <Button
               variant="contained"
               color="secondary"
-                startIcon={<FileDownload />}
+                startIcon={<FileDownloadIcon />}
                 onClick={exportToExcel}
                 sx={{ 
                   bgcolor: 'white', 
@@ -702,7 +1118,7 @@ const AdminDashboard = () => {
               <CardContent sx={{ height: 'calc(100% - 5px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <Avatar sx={{ bgcolor: 'rgba(255, 152, 0, 0.1)', color: '#FF9800', mr: 2 }}>
-                    <Leaderboard />
+                    <LeaderboardIcon />
                   </Avatar>
                   <Typography color="textSecondary" fontWeight="medium">
                     Top Performer
@@ -743,6 +1159,7 @@ const AdminDashboard = () => {
           >
             <Tab label="Problem Analytics" icon={<BarChartIcon />} iconPosition={isMobile ? "top" : "start"} />
             <Tab label="Department Stats" icon={<PieChartIcon />} iconPosition={isMobile ? "top" : "start"} />
+            <Tab label="Profile Sync" icon={<SyncIcon />} iconPosition={isMobile ? "top" : "start"} />
           </Tabs>
         </Box>
 
@@ -785,59 +1202,67 @@ const AdminDashboard = () => {
                   {selectedTimeframe === 'weekly' ? 'Last 7 days' : selectedTimeframe === 'monthly' ? 'Last 3 months' : 'Overall comparison'}
                 </Typography>
                 
-                <Box sx={{ height: isTablet ? 300 : 400, mt: isMobile ? 1 : 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={stats?.problemsStats?.platformStats
-                        ?.filter(platform => platform.platform !== 'github')
-                        ?.map(platform => ({
-                          name: capitalize(platform.platform),
-                          totalProblems: platform.totalProblems,
-                          avgProblems: platform.avgProblems,
-                          userCount: platform.userCount,
-                          fill: PLATFORM_COLORS[platform.platform] || CHART_COLORS[0]
-                        })) || []}
-                      margin={{ top: 20, right: 30, left: isMobile ? 0 : 20, bottom: isMobile ? 120 : 80 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={isMobile ? 120 : 80}
-                      />
-                      <YAxis />
-                      <RechartsTooltip 
-                        formatter={(value, name, props) => {
-                          if (name === 'totalProblems') return [`${value} problems`, 'Total Problems'];
-                          if (name === 'avgProblems') return [`${value} problems/user`, 'Avg Per User'];
-                          if (name === 'userCount') return [`${value} users`, 'Users'];
-                          return [value, name];
-                        }}
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid rgba(0,0,0,0.1)',
-                          borderRadius: '4px',
-                          color: '#000'
-                        }}
-                        labelStyle={{ color: '#333' }}
-                      />
-                      <Legend />
-                      <Bar 
-                        dataKey="totalProblems" 
-                        name="Total Problems" 
-                        fill={theme.palette.primary.main}
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar 
-                        dataKey="avgProblems" 
-                        name="Avg Per User" 
-                        fill={theme.palette.secondary.main}
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <Box sx={{ 
+                  height: isTablet ? 300 : 400, 
+                  mt: isMobile ? 1 : 2,
+                  minHeight: 300,
+                  minWidth: 200,
+                  position: 'relative'
+                }}>
+                  {activeTab === 0 && (
+                    <ResponsiveContainer width="100%" height="100%" aspect={isTablet ? 1.5 : 2}>
+                      <BarChart
+                        data={stats?.problemsStats?.platformStats
+                          ?.filter(platform => platform.platform !== 'github')
+                          ?.map(platform => ({
+                            name: capitalize(platform.platform),
+                            totalProblems: platform.totalProblems,
+                            avgProblems: platform.avgProblems,
+                            userCount: platform.userCount,
+                            fill: PLATFORM_COLORS[platform.platform] || CHART_COLORS[0]
+                          })) || []}
+                        margin={{ top: 20, right: 30, left: isMobile ? 0 : 20, bottom: isMobile ? 120 : 80 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fontSize: isMobile ? 10 : 12 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={isMobile ? 120 : 80}
+                        />
+                        <YAxis />
+                        <RechartsTooltip 
+                          formatter={(value, name, props) => {
+                            if (name === 'totalProblems') return [`${value} problems`, 'Total Problems'];
+                            if (name === 'avgProblems') return [`${value} problems/user`, 'Avg Per User'];
+                            if (name === 'userCount') return [`${value} users`, 'Users'];
+                            return [value, name];
+                          }}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            borderRadius: '4px',
+                            color: '#000'
+                          }}
+                          labelStyle={{ color: '#333' }}
+                        />
+                        <Legend />
+                        <Bar 
+                          dataKey="totalProblems" 
+                          name="Total Problems" 
+                          fill={theme.palette.primary.main}
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey="avgProblems" 
+                          name="Avg Per User" 
+                          fill={theme.palette.secondary.main}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </Box>
                 </Paper>
               </Grid>
@@ -937,7 +1362,13 @@ const AdminDashboard = () => {
                   </Tooltip>
                 </Box>
                 
-                <Box sx={{ height: isMobile ? 300 : 400, mt: isMobile ? 2 : 3 }}>
+                <Box sx={{ 
+                  height: isMobile ? 300 : 400, 
+                  mt: isMobile ? 2 : 3,
+                  minHeight: 300,
+                  minWidth: 200,
+                  position: 'relative'
+                }}>
                   {loading ? (
                     <Box sx={{ 
                       display: 'flex', 
@@ -953,103 +1384,105 @@ const AdminDashboard = () => {
                       </Typography>
                     </Box>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        margin={{ top: 20, right: 30, left: isMobile ? 0 : 20, bottom: isMobile ? 20 : 10 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis 
-                          dataKey="day" 
-                          type="category" 
-                          allowDuplicatedCategory={false}
-                          tick={{ fontSize: isMobile ? 10 : 12 }}
-                        />
-                        <YAxis />
-                        <RechartsTooltip 
-                          formatter={(value, name) => [`${value} problems`, capitalize(name)]}
-                          labelFormatter={(label) => {
-                            // If it's a day abbreviation, get the full day name
-                            if (typeof label === 'string' && label.length === 3) {
-                              const days = {
-                                'Sun': 'Sunday',
-                                'Mon': 'Monday',
-                                'Tue': 'Tuesday',
-                                'Wed': 'Wednesday',
-                                'Thu': 'Thursday',
-                                'Fri': 'Friday',
-                                'Sat': 'Saturday'
-                              };
-                              return days[label] || label;
-                            }
-                            return label;
-                          }}
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid rgba(0,0,0,0.1)',
-                            borderRadius: '4px',
-                            color: '#000'
-                          }}
-                          labelStyle={{ color: '#333' }}
-                        />
-                        <Legend layout={isMobile ? "horizontal" : "vertical"} verticalAlign={isMobile ? "bottom" : "middle"} align={isMobile ? "center" : "right"} />
-                        
-                        {selectedTimeframe === 'weekly' && stats?.problemsStats?.weeklyProblemsByPlatform?.length > 0
-                          ? stats?.problemsStats?.weeklyProblemsByPlatform?.map((platform, index) => (
+                    activeTab === 0 && (
+                      <ResponsiveContainer width="100%" height="100%" aspect={isMobile ? 1.2 : 2}>
+                        <LineChart
+                          margin={{ top: 20, right: 30, left: isMobile ? 0 : 20, bottom: isMobile ? 20 : 10 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis 
+                            dataKey="day" 
+                            type="category" 
+                            allowDuplicatedCategory={false}
+                            tick={{ fontSize: isMobile ? 10 : 12 }}
+                          />
+                          <YAxis />
+                          <RechartsTooltip 
+                            formatter={(value, name) => [`${value} problems`, capitalize(name)]}
+                            labelFormatter={(label) => {
+                              // If it's a day abbreviation, get the full day name
+                              if (typeof label === 'string' && label.length === 3) {
+                                const days = {
+                                  'Sun': 'Sunday',
+                                  'Mon': 'Monday',
+                                  'Tue': 'Tuesday',
+                                  'Wed': 'Wednesday',
+                                  'Thu': 'Thursday',
+                                  'Fri': 'Friday',
+                                  'Sat': 'Saturday'
+                                };
+                                return days[label] || label;
+                              }
+                              return label;
+                            }}
+                            contentStyle={{
+                              backgroundColor: 'white',
+                              border: '1px solid rgba(0,0,0,0.1)',
+                              borderRadius: '4px',
+                              color: '#000'
+                            }}
+                            labelStyle={{ color: '#333' }}
+                          />
+                          <Legend layout={isMobile ? "horizontal" : "vertical"} verticalAlign={isMobile ? "bottom" : "middle"} align={isMobile ? "center" : "right"} />
+                          
+                          {selectedTimeframe === 'weekly' && stats?.problemsStats?.weeklyProblemsByPlatform?.length > 0
+                            ? stats?.problemsStats?.weeklyProblemsByPlatform?.map((platform, index) => (
+                                <Line
+                                  key={platform.platform}
+                                  data={platform.data}
+                                  name={capitalize(platform.platform)}
+                                  type="monotone"
+                                  dataKey="problemsSolved"
+                                  stroke={PLATFORM_COLORS[platform.platform] || CHART_COLORS[index % CHART_COLORS.length]}
+                                  activeDot={{ r: isMobile ? 6 : 8 }}
+                                  strokeWidth={isMobile ? 1.5 : 2}
+                                  connectNulls={true}
+                                />
+                              ))
+                            : selectedTimeframe === 'monthly' && stats?.problemsStats?.monthlyProblemsByPlatform?.length > 0
+                            ? stats?.problemsStats?.monthlyProblemsByPlatform?.map((platform, index) => (
+                                <Line
+                                  key={platform.platform}
+                                  data={platform.data}
+                                  name={capitalize(platform.platform)}
+                                  type="monotone"
+                                  dataKey="problemsSolved"
+                                  stroke={PLATFORM_COLORS[platform.platform] || CHART_COLORS[index % CHART_COLORS.length]}
+                                  activeDot={{ r: isMobile ? 6 : 8 }}
+                                  strokeWidth={isMobile ? 1.5 : 2}
+                                  connectNulls={true}
+                                />
+                              ))
+                            : stats?.problemsStats?.yearlyProblemsByPlatform?.length > 0
+                            ? stats?.problemsStats?.yearlyProblemsByPlatform?.map((platform, index) => (
+                                <Line
+                                  key={platform.platform}
+                                  data={platform.data}
+                                  name={capitalize(platform.platform)}
+                                  type="monotone"
+                                  dataKey="problemsSolved"
+                                  stroke={PLATFORM_COLORS[platform.platform] || CHART_COLORS[index % CHART_COLORS.length]}
+                                  activeDot={{ r: isMobile ? 6 : 8 }}
+                                  strokeWidth={isMobile ? 1.5 : 2}
+                                  connectNulls={true}
+                                />
+                              ))
+                            : (
                               <Line
-                                key={platform.platform}
-                                data={platform.data}
-                                name={capitalize(platform.platform)}
+                                key="placeholder"
+                                data={[{day: 'No Data', problemsSolved: 0}]}
+                                name="No Data Available"
                                 type="monotone"
                                 dataKey="problemsSolved"
-                                stroke={PLATFORM_COLORS[platform.platform] || CHART_COLORS[index % CHART_COLORS.length]}
-                                activeDot={{ r: isMobile ? 6 : 8 }}
-                                strokeWidth={isMobile ? 1.5 : 2}
+                                stroke="#ccc"
+                                strokeDasharray="5 5"
                                 connectNulls={true}
                               />
-                            ))
-                          : selectedTimeframe === 'monthly' && stats?.problemsStats?.monthlyProblemsByPlatform?.length > 0
-                          ? stats?.problemsStats?.monthlyProblemsByPlatform?.map((platform, index) => (
-                              <Line
-                                key={platform.platform}
-                                data={platform.data}
-                                name={capitalize(platform.platform)}
-                                type="monotone"
-                                dataKey="problemsSolved"
-                                stroke={PLATFORM_COLORS[platform.platform] || CHART_COLORS[index % CHART_COLORS.length]}
-                                activeDot={{ r: isMobile ? 6 : 8 }}
-                                strokeWidth={isMobile ? 1.5 : 2}
-                                connectNulls={true}
-                              />
-                            ))
-                          : stats?.problemsStats?.yearlyProblemsByPlatform?.length > 0
-                          ? stats?.problemsStats?.yearlyProblemsByPlatform?.map((platform, index) => (
-                              <Line
-                                key={platform.platform}
-                                data={platform.data}
-                                name={capitalize(platform.platform)}
-                                type="monotone"
-                                dataKey="problemsSolved"
-                                stroke={PLATFORM_COLORS[platform.platform] || CHART_COLORS[index % CHART_COLORS.length]}
-                                activeDot={{ r: isMobile ? 6 : 8 }}
-                                strokeWidth={isMobile ? 1.5 : 2}
-                                connectNulls={true}
-                              />
-                            ))
-                          : (
-                            <Line
-                              key="placeholder"
-                              data={[{day: 'No Data', problemsSolved: 0}]}
-                              name="No Data Available"
-                              type="monotone"
-                              dataKey="problemsSolved"
-                              stroke="#ccc"
-                              strokeDasharray="5 5"
-                              connectNulls={true}
-                            />
-                          )
-                        }
-                      </LineChart>
-                    </ResponsiveContainer>
+                            )
+                          }
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )
                   )}
                 </Box>
               </Paper>
@@ -1070,33 +1503,42 @@ const AdminDashboard = () => {
                   User count by department
                 </Typography>
                 
-                <Box sx={{ height: isMobile ? 300 : 400, display: 'flex', justifyContent: 'center' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        activeIndex={activePieIndex}
-                        activeShape={renderActiveShape}
-                        data={stats?.departmentStats?.map((dept, index) => ({
-                          department: dept.department,
-                          value: dept.userCount
-                        })) || []}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={isMobile ? 50 : 70}
-                        outerRadius={isMobile ? 80 : 100}
-                        dataKey="value"
-                        onMouseEnter={onPieEnter}
-                      >
-                        {stats?.departmentStats?.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={CHART_COLORS[index % CHART_COLORS.length]} 
-                          />
-                        )) || []}
-                      </Pie>
-                      <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <Box sx={{ 
+                  height: isMobile ? 300 : 400, 
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  minHeight: 300,
+                  minWidth: 200,
+                  position: 'relative'
+                }}>
+                  {activeTab === 1 && (
+                    <ResponsiveContainer width="100%" height="100%" aspect={isMobile ? 1 : 1.5}>
+                      <PieChart>
+                        <Pie
+                          activeIndex={activePieIndex}
+                          activeShape={renderActiveShape}
+                          data={stats?.departmentStats?.map((dept, index) => ({
+                            department: dept.department,
+                            value: dept.userCount
+                          })) || []}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={isMobile ? 50 : 70}
+                          outerRadius={isMobile ? 80 : 100}
+                          dataKey="value"
+                          onMouseEnter={onPieEnter}
+                        >
+                          {stats?.departmentStats?.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={CHART_COLORS[index % CHART_COLORS.length]} 
+                            />
+                          )) || []}
+                        </Pie>
+                        <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </Box>
               </Paper>
             </Grid>
@@ -1113,80 +1555,89 @@ const AdminDashboard = () => {
                 
                 <Box sx={{ 
                   height: isMobile ? 300 : 400,
-                  mt: 6  // Add margin top to move chart down
+                  mt: 6,
+                  minHeight: 300,
+                  minWidth: 200,
+                  position: 'relative'
                 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={stats?.departmentStats?.map((dept, index) => ({
-                        name: dept.department,
-                        score: dept.avgScore,
-                        fill: CHART_COLORS[index % CHART_COLORS.length]
-                      })) || []}
-                      margin={{ 
-                        top: 20, 
-                        right: 30, 
-                        left: 40,  // Increased left margin for Y-axis label
-                        bottom: isMobile ? 80 : 50 
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis 
-                        dataKey="name"
-                        tick={{ 
-                          fontSize: isMobile ? 10 : 12,
-                          fill: 'rgba(255,255,255,0.7)'
+                  {activeTab === 1 && (
+                    <ResponsiveContainer width="100%" height="100%" aspect={isMobile ? 1 : 1.5}>
+                      <BarChart
+                        data={stats?.departmentStats?.map((dept, index) => ({
+                          name: dept.department,
+                          score: dept.avgScore,
+                          fill: CHART_COLORS[index % CHART_COLORS.length]
+                        })) || []}
+                        margin={{ 
+                          top: 20, 
+                          right: 30, 
+                          left: 40,
+                          bottom: isMobile ? 80 : 50 
                         }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={isMobile ? 80 : 60}
-                        interval={0}
-                      />
-                      <YAxis 
-                        type="number"
-                        tick={{ 
-                          fontSize: isMobile ? 10 : 12,
-                          fill: 'rgba(255,255,255,0.7)'
-                        }}
-                        label={{ 
-                          value: 'Average Score', 
-                          angle: -90, 
-                          position: 'insideLeft',
-                          offset: -30,  // Adjusted offset for better positioning
-                          style: { 
-                            textFill: 'rgba(255,255,255,0.7)',
-                            fontSize: 12
-                          }
-                        }}
-                      />
-                      <RechartsTooltip 
-                        formatter={(value) => [`${value} points`, 'Avg Score']}
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid rgba(0,0,0,0.1)',
-                          borderRadius: '4px',
-                          color: '#000'
-                        }}
-                        labelStyle={{ color: '#333' }}
-                      />
-                      <Bar 
-                        dataKey="score" 
-                        name="Average Score" 
-                        radius={[4, 4, 0, 0]}
-                        maxBarSize={60}
                       >
-                        {stats?.departmentStats?.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={CHART_COLORS[index % CHART_COLORS.length]} 
-                          />
-                        )) || []}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis 
+                          dataKey="name"
+                          tick={{ 
+                            fontSize: isMobile ? 10 : 12,
+                            fill: 'rgba(255,255,255,0.7)'
+                          }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={isMobile ? 80 : 60}
+                          interval={0}
+                        />
+                        <YAxis 
+                          type="number"
+                          tick={{ 
+                            fontSize: isMobile ? 10 : 12,
+                            fill: 'rgba(255,255,255,0.7)'
+                          }}
+                          label={{ 
+                            value: 'Average Score', 
+                            angle: -90, 
+                            position: 'insideLeft',
+                            offset: -30,  // Adjusted offset for better positioning
+                            style: { 
+                              textFill: 'rgba(255,255,255,0.7)',
+                              fontSize: 12
+                            }
+                          }}
+                        />
+                        <RechartsTooltip 
+                          formatter={(value) => [`${value} points`, 'Avg Score']}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            borderRadius: '4px',
+                            color: '#000'
+                          }}
+                          labelStyle={{ color: '#333' }}
+                        />
+                        <Bar 
+                          dataKey="score" 
+                          name="Average Score" 
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={60}
+                        >
+                          {stats?.departmentStats?.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={CHART_COLORS[index % CHART_COLORS.length]} 
+                            />
+                          )) || []}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </Box>
                 </Paper>
               </Grid>
           </Grid>
+        </Box>
+        
+        <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
+          <ProfileSyncTab token={token} />
         </Box>
       </Container>
     </Box>

@@ -1,27 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Button,
-  TextField,
   Typography,
-  IconButton,
-  InputAdornment,
 } from '@mui/material';
-import { Visibility, VisibilityOff, ArrowBack } from '@mui/icons-material';
-import { toast } from 'react-toastify';
-import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import { ArrowBack } from '@mui/icons-material';
+import GoogleIcon from '@mui/icons-material/Google';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [errors, setErrors] = useState({});
 
   // Hide navbar and set dark background
   useEffect(() => {
@@ -33,100 +21,29 @@ const Login = () => {
     };
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
+  const handleGoogleLogin = () => {
+    // Build the Google OAuth URL carefully
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!formData.email.toLowerCase().endsWith('@mlrit.ac.in') && 
-               !formData.email.toLowerCase().endsWith('@mlrinstitutions.ac.in')) {
-      newErrors.email = 'Please use your MLRIT college email';
+    // Make sure we have the correct API URL format
+    let apiUrl;
+    if (baseUrl.endsWith('/api')) {
+      apiUrl = baseUrl;
+    } else if (baseUrl.endsWith('/')) {
+      apiUrl = `${baseUrl}api`;
+    } else {
+      apiUrl = `${baseUrl}/api`;
     }
     
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    try {
-      // Format email to lowercase to ensure consistency
-      const loginData = {
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password
-      };
-
-      // Add proper error handling and logging
-      console.log('Attempting login with:', { email: loginData.email });
-      
-      const response = await axios.post('http://localhost:5000/api/auth/login', loginData);
-      
-      if (!response.data || !response.data.token || !response.data.user) {
-        console.error('Invalid response format:', response.data);
-        toast.error('Invalid server response format');
-        return;
-      }
-
-      // Store user data and token in auth context
-      await login(response.data.user, response.data.token);
-      
-      toast.success('Login successful!');
-      
-      // Check if user has completed registration
-      const isNewUser = response.data.user.newUser;
-      
-      // Redirect based on registration status
-      setTimeout(() => {
-        if (isNewUser || isNewUser === undefined || isNewUser === null) {
-          navigate('/register', { state: { activeStep: 1 } }); // Go to profile completion step
-        } else {
-          navigate('/dashboard');
-        }
-      }, 500);
-    } catch (error) {
-      console.error('Login error:', error);
-      
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        const message = error.response.data?.message || 
-                       error.response.data?.error || 
-                       'Invalid credentials';
-        toast.error(message);
-        
-        if (error.response.status === 400) {
-          // Handle validation errors
-          const validationErrors = error.response.data?.errors;
-          if (validationErrors) {
-            setErrors(validationErrors);
-          }
-        }
-      } else if (error.request) {
-        // The request was made but no response was received
-        toast.error('No response from server. Please check your connection.');
-      } else {
-        // Something happened in setting up the request
-        toast.error('An error occurred while trying to log in');
-      }
-    }
+    console.log('GoogleLogin: Redirecting to', `${apiUrl}/auth/google`);
+    
+    // Before redirecting, clear ALL user data from localStorage to prevent using old data
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    console.log('GoogleLogin: Cleared localStorage before redirecting to Google OAuth');
+    
+    // Redirect directly to Google OAuth
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
@@ -159,7 +76,7 @@ const Login = () => {
               letterSpacing: '0.5px'
             }}
           >
-            Welcome Back!
+            Welcome to CodeStats!
           </Typography>
           <Typography 
             variant="body1" 
@@ -171,7 +88,7 @@ const Login = () => {
               lineHeight: 1.5
             }}
           >
-            Sign in to continue your journey with us.
+            Sign in with your Google account to continue your journey.
           </Typography>
         </Box>
       </Box>
@@ -223,7 +140,7 @@ const Login = () => {
                   fontWeight: 300,
                   letterSpacing: '0.5px',
                   color: 'white',
-                  textAlign: 'left'
+                  textAlign: 'center'
                 }}
               >
                 Welcome to
@@ -234,144 +151,63 @@ const Login = () => {
                   fontWeight: 600,
                   letterSpacing: '0.5px',
                   color: 'white',
-                  textAlign: 'left'
+                  textAlign: 'center'
                 }}
               >
                 SCOPE CODESTATS
               </Typography>
             </Box>
 
-            <Box sx={{ mt: 4 }}>
-              {/* Email and Password Fields */}
-              <TextField
-                fullWidth
-                variant="standard"
-                placeholder="College Email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                error={!!errors.email}
-                helperText={errors.email}
+            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {/* Google Login Button */}
+              <Typography
+                variant="body1"
                 sx={{
-                  mb: 4,
-                  '& .MuiInput-underline:before': {
-                    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '& .MuiInput-underline:hover:before': {
-                    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
-                  },
-                  '& .MuiInput-underline:after': {
-                    borderBottomColor: '#0088cc',
-                  },
-                  '& input': {
-                    color: 'white',
-                    fontSize: '1rem',
-                    height: '32px',
-                    '&::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.5)',
-                      opacity: 1,
-                    },
-                  },
-                  '& .MuiFormHelperText-root': {
-                    color: 'error.main',
-                  },
+                  color: 'white',
+                  mb: 3,
+                  textAlign: 'center',
+                  maxWidth: '80%',
+                  opacity: 0.8
                 }}
-              />
-
-              <TextField
+              >
+                Sign in with your MLRIT college email to track your competitive programming progress.
+              </Typography>
+              
+              <Button
                 fullWidth
-                variant="standard"
-                placeholder="Password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleChange}
-                error={!!errors.password}
-                helperText={errors.password}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton 
-                        onClick={() => setShowPassword(!showPassword)}
-                        sx={{ color: 'rgba(255, 255, 255, 0.5)' }}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
+                variant="outlined"
+                startIcon={<GoogleIcon />}
+                onClick={handleGoogleLogin}
                 sx={{
-                  mb: 5,
-                  '& .MuiInput-underline:before': {
-                    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '& .MuiInput-underline:hover:before': {
-                    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
-                  },
-                  '& .MuiInput-underline:after': {
-                    borderBottomColor: '#0088cc',
-                  },
-                  '& input': {
-                    color: 'white',
-                    fontSize: '1rem',
-                    height: '32px',
-                    '&::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.5)',
-                      opacity: 1,
-                    },
-                  },
-                  '& .MuiFormHelperText-root': {
-                    color: 'error.main',
+                  mb: 3,
+                  color: 'white',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  textTransform: 'none',
+                  fontSize: '1.1rem',
+                  height: '54px',
+                  maxWidth: '320px',
+                  borderRadius: '8px',
+                  '&:hover': {
+                    borderColor: 'white',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   },
                 }}
-              />
-
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mt: 1
-              }}>
-                <Button
-                  component={Link}
-                  to="/register"
-                  variant="outlined"
-                  sx={{
-                    color: '#0088cc',
-                    borderColor: '#0088cc',
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    height: '45px',
-                    minWidth: '120px',
-                    px: 4,
-                    '&:hover': {
-                      borderColor: '#0088cc',
-                      backgroundColor: 'transparent',
-                    },
-                  }}
-                >
-                  Register
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={handleSubmit}
-                  sx={{
-                    bgcolor: '#0088cc',
-                    color: 'white',
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    height: '45px',
-                    minWidth: '120px',
-                    px: 4,
-                    '&:hover': {
-                      bgcolor: '#0077b3',
-                    },
-                  }}
-                >
-                  Login
-                </Button>
-              </Box>
+              >
+                Sign in with Google
+              </Button>
+              
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  mt: 4,
+                  textAlign: 'center',
+                  fontSize: '0.8rem'
+                }}
+              >
+                Only MLRIT college emails (@mlrit.ac.in or @mlrinstitutions.ac.in) are allowed.
+              </Typography>
             </Box>
           </Box>
         </Box>

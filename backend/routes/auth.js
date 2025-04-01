@@ -64,177 +64,30 @@ router.get('/user', auth, async (req, res) => {
 const validDepartments = ['AERO', 'CSC', 'CSD', 'CSE', 'CSM', 'CSIT', 'IT', 'ECE', 'MECH', 'EEE'];
 const validSections = ['None', 'A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
-// Register user
-router.post('/register',
-  [
-    // Name validation
-    body('name').trim().notEmpty().withMessage('Name is required'),
-    
-    // Email validation
-    body('email').trim().isEmail().withMessage('Invalid email address')
-      .custom(value => {
-        if (!value.endsWith('@mlrit.ac.in') && !value.endsWith('@mlrinstitutions.ac.in')) {
-          throw new Error('Please use your MLRIT college email address');
-        }
-        return true;
-      })
-      .custom(async value => {
-        const user = await User.findOne({ email: value.toLowerCase() });
-        if (user) {
-          throw new Error('Email already registered');
-        }
-        return true;
-      }),
-    
-    // Password validation
-    body('password').isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters long')
-      .matches(/\d/).withMessage('Password must contain at least one number')
-      .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter'),
-    
-    // Confirm password validation
-    body('confirmPassword').custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Passwords do not match');
-      }
-      return true;
-    }),
-  ],
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+// Google OAuth Only Info
+router.get('/info', (req, res) => {
+  res.json({
+    message: 'This service uses Google OAuth for authentication',
+    googleAuthRoute: '/api/auth/google',
+    requiredEmail: '@mlrit.ac.in or @mlrinstitutions.ac.in'
+  });
+});
 
-      const {
-        name,
-        email,
-        password,
-      } = req.body;
+// Traditional Register route - DISABLED (Google OAuth only)
+router.post('/register', (req, res) => {
+  res.status(403).json({
+    message: 'Traditional registration is disabled. Please use Google OAuth.',
+    googleAuthRoute: '/api/auth/google'
+  });
+});
 
-      // Extract roll number from email
-      let rollNumber = '';
-      let department = '';
-      let graduatingYear = '';
-      
-      const emailParts = email.split('@');
-      if (emailParts.length === 2) {
-        rollNumber = emailParts[0].toUpperCase();
-        
-        // Extract department code (assumed to be at positions 5-7)
-        if (rollNumber.length >= 8) {
-          const deptCode = rollNumber.substring(5, 8);
-          // Map department code to department
-          const DEPARTMENT_CODES = {
-            'A05': 'CSE',
-            'A06': 'CSC',
-            'A33': 'CSIT',
-            'A12': 'IT',
-            'A67': 'CSD',
-            'A66': 'CSM'
-          };
-          department = DEPARTMENT_CODES[deptCode] || '';
-        }
-        
-        // Calculate graduating year
-        if (rollNumber.length >= 2) {
-          const yearCode = rollNumber.substring(0, 2);
-          const admissionYear = 2000 + parseInt(yearCode, 10);
-          graduatingYear = admissionYear + 4;
-          console.log(`Calculated graduation year for ${rollNumber}: ${graduatingYear}`);
-        }
-      }
-
-      const user = new User({
-        name,
-        email: email.toLowerCase(),
-        password,
-        rollNumber,
-        department,
-        graduatingYear,
-        newUser: true
-      });
-
-      await user.save();
-
-      const token = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.json({
-        token,
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          department: user.department,
-          rollNumber: user.rollNumber,
-          userType: user.userType,
-          newUser: user.newUser,
-          graduatingYear: user.graduatingYear
-        }
-      });
-    } catch (err) {
-      console.error('Registration error:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  }
-);
-
-// Login user
-router.post('/login',
-  [
-    body('email').isEmail().withMessage('Invalid email address'),
-    body('password').exists().withMessage('Password is required')
-  ],
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      const { email, password } = req.body;
-
-      const user = await User.findOne({ email: email.toLowerCase() });
-      if (!user) {
-        return res.status(400).json({ message: 'Invalid credentials' });
-      }
-
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
-      }
-
-      const token = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.json({
-        token,
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          department: user.department,
-          section: user.section,
-          rollNumber: user.rollNumber,
-          userType: user.userType,
-          newUser: user.newUser,
-          graduatingYear: user.graduatingYear
-        }
-      });
-    } catch (err) {
-      console.error('Login error:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  }
-);
+// Traditional Login route - DISABLED (Google OAuth only)
+router.post('/login', (req, res) => {
+  res.status(403).json({
+    message: 'Traditional login is disabled. Please use Google OAuth.',
+    googleAuthRoute: '/api/auth/google'
+  });
+});
 
 // Validate user details
 router.post('/validate', async (req, res) => {
@@ -272,25 +125,65 @@ router.post('/validate', async (req, res) => {
 // Update user profile (complete registration)
 router.post('/completeRegistration', auth, async (req, res) => {
   try {
-    const user = req.user;
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    console.log('Received completeRegistration request:', JSON.stringify(req.body, null, 2));
     
     const {
+      name,
+      phone,
+      department,
       section,
+      rollNumber,
+      graduationYear,
       gender,
       mobileNumber,
       linkedinUrl,
+      githubUrl,
       about,
       skills,
       interests,
       profiles,
+      profileCompleted,
+      imageUrl
     } = req.body;
     
+    // Validate required fields
+    const requiredFields = [];
+    if (!user.name && !name) requiredFields.push('name');
+    if (!user.rollNumber && !rollNumber) requiredFields.push('rollNumber');
+    if (!user.department && !department) requiredFields.push('department');
+    
+    if (requiredFields.length > 0) {
+      return res.status(400).json({
+        message: 'Missing required fields',
+        errors: requiredFields.reduce((obj, field) => {
+          obj[field] = `${field} is required`;
+          return obj;
+        }, {})
+      });
+    }
+    
     // Update user fields
+    if (name) user.name = name;
+    if (department) user.department = department;
     if (section) user.section = section;
+    if (rollNumber) user.rollNumber = rollNumber;
+    if (graduationYear) user.graduatingYear = graduationYear;
     if (gender) user.gender = gender;
     if (mobileNumber) user.mobileNumber = mobileNumber;
+    if (phone) user.mobileNumber = phone; // Map phone to mobileNumber
     if (linkedinUrl !== undefined) user.linkedinUrl = linkedinUrl;
+    if (githubUrl !== undefined) user.profiles = { 
+      ...user.profiles, 
+      github: githubUrl 
+    };
     if (about !== undefined) user.about = about;
+    if (imageUrl !== undefined) user.profilePicture = imageUrl;
     
     // Handle skills and interests (convert from string to array if needed)
     if (skills !== undefined) {
@@ -308,36 +201,89 @@ router.post('/completeRegistration', auth, async (req, res) => {
     // Update profiles
     if (profiles) {
       user.profiles = {
-        geeksforgeeks: profiles.geeksforgeeks || user.profiles.geeksforgeeks || '',
-        codechef: profiles.codechef || user.profiles.codechef || '',
-        codeforces: profiles.codeforces || user.profiles.codeforces || '',
-        leetcode: profiles.leetcode || user.profiles.leetcode || '',
-        hackerrank: profiles.hackerrank || user.profiles.hackerrank || '',
-        github: profiles.github || user.profiles.github || ''
+        geeksforgeeks: profiles.geeksforgeeks || user.profiles?.geeksforgeeks || '',
+        codechef: profiles.codechef || user.profiles?.codechef || '',
+        codeforces: profiles.codeforces || user.profiles?.codeforces || '',
+        leetcode: profiles.leetcode || user.profiles?.leetcode || '',
+        hackerrank: profiles.hackerrank || user.profiles?.hackerrank || '',
+        github: profiles.github || githubUrl || user.profiles?.github || ''
       };
     }
     
     // Mark registration as complete
     user.newUser = false;
     
-    await user.save();
+    // Update profile completion status if provided
+    if (profileCompleted !== undefined) {
+      user.profileCompleted = Boolean(profileCompleted);
+    }
     
-    res.json({
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        department: user.department,
-        section: user.section,
-        rollNumber: user.rollNumber,
-        userType: user.userType,
-        newUser: user.newUser,
-        graduatingYear: user.graduatingYear
-      }
+    console.log('Saving user with updated data:', {
+      name: user.name,
+      department: user.department,
+      section: user.section,
+      skills: user.skills,
+      newUser: user.newUser,
+      profileCompleted: user.profileCompleted
     });
+    
+    try {
+      await user.save();
+      
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          department: user.department,
+          section: user.section,
+          rollNumber: user.rollNumber,
+          userType: user.userType,
+          newUser: user.newUser,
+          profileCompleted: user.profileCompleted,
+          graduatingYear: user.graduatingYear
+        }
+      });
+    } catch (saveError) {
+      console.error('Error saving user:', saveError);
+      
+      if (saveError.name === 'ValidationError') {
+        const validationErrors = {};
+        
+        // Extract validation error messages for each field
+        Object.keys(saveError.errors).forEach(field => {
+          validationErrors[field] = saveError.errors[field].message;
+        });
+        
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: validationErrors
+        });
+      }
+      
+      throw saveError; // Pass to the outer catch block
+    }
   } catch (err) {
     console.error('Profile update error:', err);
-    res.status(500).json({ message: 'Server error' });
+    
+    // Provide more detailed error for debugging
+    if (err.name === 'ValidationError') {
+      console.error('Validation error details:', err.errors);
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: Object.keys(err.errors).reduce((result, key) => {
+          result[key] = err.errors[key].message;
+          return result;
+        }, {})
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err.message 
+    });
   }
 });
 

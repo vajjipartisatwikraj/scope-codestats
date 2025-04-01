@@ -45,6 +45,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { apiUrl } from '../config/apiConfig';
 
 const Courses = () => {
   const muiTheme = useMuiTheme();
@@ -74,12 +75,10 @@ const Courses = () => {
     : `${baseColor}15`;
 
   useEffect(() => {
-    console.log('Auth token:', token);
     if (token) {
-      console.log('Token found, fetching courses...');
       fetchCourses();
+      fetchSavedCourses();
     } else {
-      console.log('No token found, setting error state');
       setError('Please log in to view courses');
       setLoading(false);
     }
@@ -88,43 +87,23 @@ const Courses = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      console.log('Making request with token:', token);
       
       if (!token) {
-        console.log('No token available for request');
         setError('Please log in to view courses');
         setLoading(false);
         return;
       }
       
-      const response = await axios.get('http://localhost:5000/api/courses', {
+      const response = await axios.get(`${apiUrl}/courses`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      console.log('Courses API Response:', response);
-      console.log('Courses data:', response.data);
       setCourses(response.data);
-      
-      // Get saved courses for the user
-      const savedResponse = await axios.get('http://localhost:5000/api/courses/saved', {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log('Saved courses API Response:', savedResponse);
-      console.log('Saved courses data:', savedResponse.data);
-      setSavedCourses(savedResponse.data.map(course => course._id));
       
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching courses:', err);
-      console.error('Error response:', err.response);
-      console.error('Error request:', err.request);
-      console.error('Error config:', err.config);
-      
       if (err.response?.status === 401) {
         setError('Authentication error. Please log in again.');
         // Optionally redirect to login
@@ -133,6 +112,20 @@ const Courses = () => {
         setError('Failed to load courses. Please try again later.');
       }
       setLoading(false);
+    }
+  };
+
+  const fetchSavedCourses = async () => {
+    try {
+      const savedResponse = await axios.get(`${apiUrl}/courses/saved`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      setSavedCourses(savedResponse.data);
+    } catch (err) {
+      setError('Failed to load saved courses');
     }
   };
 
@@ -148,20 +141,19 @@ const Courses = () => {
     
     try {
       if (savedCourses.includes(courseId)) {
-        await axios.delete(`http://localhost:5000/api/courses/${courseId}/save`, {
+        await axios.delete(`${apiUrl}/courses/${courseId}/save`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setSavedCourses(savedCourses.filter(id => id !== courseId));
         toast.success('Course removed from saved courses');
       } else {
-        await axios.post(`http://localhost:5000/api/courses/${courseId}/save`, {}, {
+        await axios.post(`${apiUrl}/courses/${courseId}/save`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setSavedCourses([...savedCourses, courseId]);
         toast.success('Course saved successfully');
       }
     } catch (err) {
-      console.error('Error toggling course save:', err);
       if (err.response?.status === 401) {
         toast.error('Authentication error. Please log in again.');
       } else {
@@ -177,14 +169,13 @@ const Courses = () => {
     }
     
     try {
-      await axios.post(`http://localhost:5000/api/courses/${courseId}/enroll`, {}, {
+      await axios.post(`${apiUrl}/courses/${courseId}/enroll`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Successfully enrolled in the course!');
       // Optionally redirect to course page
       navigate(`/courses/${courseId}`);
     } catch (err) {
-      console.error('Error enrolling in course:', err);
       if (err.response?.status === 401) {
         toast.error('Authentication error. Please log in again.');
       } else {

@@ -14,7 +14,20 @@ const connectDB = async () => {
     });
 
     console.log('MongoDB Connected Successfully');
-    console.log('Database URL:', process.env.MONGODB_URI.split('@')[1]); // Log only part of the URL for security
+    
+    // Safely log part of the connection string, hiding credentials if present
+    const connectionString = process.env.MONGODB_URI;
+    let logSafeDbUrl = 'localhost database';
+    
+    if (connectionString.includes('@')) {
+      // For URIs with credentials (user:pass@host/db)
+      logSafeDbUrl = connectionString.split('@')[1];
+    } else if (connectionString.includes('://')) {
+      // For URIs without credentials (mongodb://host/db)
+      logSafeDbUrl = connectionString.split('://')[1];
+    }
+    
+    console.log('Database URL:', logSafeDbUrl);
     
     return conn;
   } catch (err) {

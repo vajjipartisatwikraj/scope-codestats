@@ -29,7 +29,9 @@ import {
   useTheme,
   useMediaQuery,
   Avatar,
-  Paper
+  Paper,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,11 +42,14 @@ import {
   Timer as TimerIcon,
   Group as GroupIcon,
   Search as SearchIcon,
-  Book as BookIcon
+  Book as BookIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+import { apiUrl } from '../config/apiConfig';
 
 const CourseManagement = () => {
   const theme = useTheme();
@@ -86,7 +91,7 @@ const CourseManagement = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/admin/courses', {
+      const response = await axios.get(`${apiUrl}/admin/courses`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCourses(response.data);
@@ -145,14 +150,14 @@ const CourseManagement = () => {
     try {
       if (editingCourse) {
         await axios.put(
-          `http://localhost:5000/api/admin/courses/${editingCourse._id}`,
+          `${apiUrl}/admin/courses/${editingCourse._id}`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success('Course updated successfully');
       } else {
         await axios.post(
-          'http://localhost:5000/api/admin/courses',
+          `${apiUrl}/admin/courses`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -169,7 +174,7 @@ const CourseManagement = () => {
   const handleDelete = async (courseId) => {
     if (window.confirm('Are you sure you want to delete this course?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/admin/courses/${courseId}`, {
+        await axios.delete(`${apiUrl}/admin/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Course deleted successfully');

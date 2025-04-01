@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -17,13 +17,16 @@ import {
   CardContent,
   IconButton,
   Button,
+  Tooltip,
+  Link as MuiLink,
 } from '@mui/material';
-import { PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Legend, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import 'github-calendar/dist/github-calendar.css';
 import GitHubCalendar from 'github-calendar';
 import { OpenInNew } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
+import { apiUrl } from '../config/apiConfig';
 
 const achievementTypes = [
   { value: 'project', label: 'Project' },
@@ -37,10 +40,6 @@ const getYear = (graduationYear) => {
   // Parse graduation year to ensure it's an integer
   const gradYear = parseInt(graduationYear, 10);
   const yearsToGraduation = gradYear - currentYear;
-  
-  console.log("Current Year:", currentYear);
-  console.log("Graduation Year:", gradYear);
-  console.log("Years to Graduation:", yearsToGraduation);
   
   switch (yearsToGraduation) {
     case 3:
@@ -110,26 +109,28 @@ const preparePieChartData = (codingProfiles, type) => {
 };
 
 const fetchGitHubRepos = async (username) => {
-  try {
-    const response = await axios.get(`https://api.github.com/users/${username}`);
-    return response.data.public_repos;
-  } catch (error) {
-    console.error('Error fetching GitHub repos:', error);
-    return 0;
-  }
+  // Return 0 instead of making GitHub API call that causes 401 errors
+  return 0;
 };
 
 const fetchGitHubContributions = async (username) => {
-  try {
-    const response = await axios.get(`https://api.github.com/users/${username}/events`);
-    const contributions = response.data.filter(event => 
-      ['PushEvent', 'PullRequestEvent', 'IssuesEvent', 'CommitCommentEvent'].includes(event.type)
-    ).length;
-    return contributions;
-  } catch (error) {
-    console.error('Error fetching GitHub contributions:', error);
-    return 0;
+  // Return 0 instead of making GitHub API call that causes 401 errors
+  return 0;
+};
+
+// Helper function to validate and format image URLs
+const formatImageUrl = (url) => {
+  if (!url) return "https://via.placeholder.com/150";
+  
+  // Remove spaces and replace quotes if they were accidentally copied
+  url = url.trim().replace(/['"]/g, '');
+  
+  // Ensure URL starts with http:// or https://
+  if (!url.match(/^https?:\/\//)) {
+    url = 'https://' + url;
   }
+  
+  return url;
 };
 
 const UserView = () => {
@@ -163,24 +164,21 @@ const UserView = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/users/${username}`);
+        const response = await axios.get(`${apiUrl}/users/${username}`);
         const userData = response.data;
-        console.log(userData.codingProfiles);
         
         if (userData.codingProfiles?.github?.username) {
-          const [reposCount, contributionsCount] = await Promise.all([
-            fetchGitHubRepos(userData.codingProfiles.github.username),
-            fetchGitHubContributions(userData.codingProfiles.github.username)
-          ]);
-          
+          // Instead of making API calls that cause 401 errors, 
+          // just use the data we already have from the backend
           setUserData({
             ...userData,
             codingProfiles: {
               ...userData.codingProfiles,
               github: {
                 ...userData.codingProfiles.github,
-                publicRepos: reposCount,
-                totalContributions: contributionsCount
+                // Use existing values or default to 0
+                publicRepos: userData.codingProfiles.github.publicRepos || 0,
+                totalContributions: userData.codingProfiles.github.totalContributions || 0
               }
             }
           });
@@ -812,8 +810,6 @@ const UserView = () => {
                   <Typography sx={{ color: getTextColor(0.5) }}>
                     Year
                   </Typography>
-                  {console.log("userData:", userData)}
-                  {console.log("graduatingYear:", userData.graduatingYear)}
                   <Typography>{userData.graduatingYear ? `${getYear(userData.graduatingYear)}` : 'N/A'}</Typography>
                 </Box>
                 <Box sx={{ 
@@ -926,9 +922,9 @@ const UserView = () => {
                 backdropFilter: 'blur(5px)',
                 borderRadius: 1
               }}>
+                <ResponsiveContainer width="100%" height="100%">
                 <PieChart 
-                  width={isMobile ? 300 : 400} 
-                  height={isMobile ? 300 : 400}
+                    margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
                 >
                   <Pie
                     data={preparePieChartData(userData.codingProfiles, activeChartTab)}
@@ -936,23 +932,60 @@ const UserView = () => {
                     cy="50%"
                     innerRadius={isMobile ? 60 : 80}
                     outerRadius={isMobile ? 80 : 120}
-                    paddingAngle={2}
+                      paddingAngle={4}
                     dataKey="value"
+                      activeIndex={-1}
+                      animationBegin={200}
+                      animationDuration={800}
+                      activeShape={(props) => {
+                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                        return (
+                          <g>
+                            <path 
+                              d={`M ${cx},${cy} L ${cx + outerRadius * Math.cos(startAngle)},${cy + outerRadius * Math.sin(startAngle)} A ${outerRadius},${outerRadius} 0 0,1 ${cx + outerRadius * Math.cos(endAngle)},${cy + outerRadius * Math.sin(endAngle)} Z`}
+                              fill={fill}
+                              stroke={darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}
+                              strokeWidth={1}
+                            />
+                          </g>
+                        );
+                      }}
                   >
                     {preparePieChartData(userData.codingProfiles, activeChartTab).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color}
+                          style={{ cursor: 'pointer', filter: 'brightness(1)' }}
+                          stroke={darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}
+                          strokeWidth={1}
+                        />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <RechartsTooltip
                     contentStyle={{ 
-                      backgroundColor: darkMode ? '#333' : 'white',
+                      backgroundColor: darkMode ? '#1E1E1E' : 'white',
                       color: darkMode ? 'white' : '#333',
-                      border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                      border: darkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
                       borderRadius: '8px',
                       padding: '12px',
                       fontSize: '14px',
-                      boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)'
+                      boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.5)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                      zIndex: 1000
                     }}
+                    labelStyle={{
+                      fontWeight: 'bold',
+                      marginBottom: '6px',
+                      color: darkMode ? '#0088cc' : '#0066aa'
+                    }}
+                    wrapperStyle={{
+                      outline: 'none'
+                    }}
+                    itemStyle={{
+                      color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+                      padding: '2px 0'
+                    }}
+                    isAnimationActive={true}
+                    cursor={{ fill: 'transparent' }}
                     formatter={(value, name) => {
                       let label = value;
                       switch (activeChartTab) {
@@ -976,13 +1009,25 @@ const UserView = () => {
                     layout="horizontal"
                     align="center"
                     verticalAlign="bottom"
-                    iconSize={8}
+                    iconSize={10}
                     wrapperStyle={{
                       fontSize: '12px',
-                      paddingTop: '20px'
+                      paddingTop: '20px',
+                      color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)'
                     }}
+                    formatter={(value, entry) => (
+                      <span style={{ 
+                        color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+                        fontWeight: 500,
+                        padding: '4px 8px',
+                        cursor: 'pointer'
+                      }}>
+                        {value}
+                      </span>
+                    )}
                   />
                 </PieChart>
+                </ResponsiveContainer>
                 {/* Center Text */}
                 <Box sx={{
                   position: 'absolute',
@@ -1000,7 +1045,8 @@ const UserView = () => {
                   border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
                   boxShadow: darkMode ? '0 4px 8px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.1)',
                   borderRadius: '50%',
-                  zIndex: -5
+                  zIndex: -5,
+                  pointerEvents: 'none' // This ensures hover events pass through to the chart
                 }}>
                   <Typography 
                     variant="h4" 
@@ -1392,18 +1438,24 @@ const UserView = () => {
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        p: 2,
-                        
+                        p: 0,
+                        overflow: 'hidden',
+                        minHeight: '250px',
                       }}
                     >
                       <Box 
                         component="img"
-                        src={achievement.image || "https://via.placeholder.com/150"}
+                        src={formatImageUrl(achievement.imageUrl)}
                         alt={achievement.title}
                         sx={{ 
-                          width: '90%',
-                          height: 'auto',
-                          objectFit: 'contain',
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.src = "https://via.placeholder.com/150";
                         }}
                       />
                     </Box>

@@ -7,6 +7,7 @@ const Opportunity = require('../models/Opportunity');
 const User = require('../models/User');
 const Profile = require('../models/Profile');
 const mongoose = require('mongoose');
+const updateAllUserProfiles = require('../scripts/updateUserProfiles');
 
 // Course Management Routes
 router.get('/courses', [auth, adminAuth], async (req, res) => {
@@ -584,6 +585,141 @@ router.get('/department-analytics', [auth, adminAuth], async (req, res) => {
       message: 'Error fetching department analytics',
       error: error.message
     });
+  }
+});
+
+// Manual profile synchronization for admin
+router.post('/sync-profiles', [auth, adminAuth], async (req, res) => {
+  try {
+    // Create a shared state object for tracking progress
+    const progressState = {
+      totalUsers: 0,
+      processedUsers: 0,
+      updatedProfiles: 0,
+      failedProfiles: 0,
+      totalProfiles: 0,
+      inProgress: true,
+      error: null,
+      startTime: Date.now(),
+      // Store in global state so it can be accessed by the status endpoint
+      id: Date.now().toString()
+    };
+    
+    // Store in global app state for status check endpoint
+    if (!req.app.locals.syncProgress) {
+      req.app.locals.syncProgress = {};
+    }
+    req.app.locals.syncProgress[progressState.id] = progressState;
+    
+    // Start the profile update process in the background
+    console.log(`Admin ${req.user.id} initiated manual profile sync with job ID: ${progressState.id}`);
+    
+    // Start profile update in background
+    updateAllUserProfiles(progressState)
+      .then(() => {
+        progressState.inProgress = false;
+        progressState.completedTime = Date.now();
+        console.log(`Profile sync ${progressState.id} completed successfully`);
+      })
+      .catch(err => {
+        progressState.inProgress = false;
+        progressState.error = err.message;
+        progressState.completedTime = Date.now();
+        console.error(`Profile sync ${progressState.id} failed:`, err.message);
+      });
+    
+    // Immediately return to client with job ID
+    res.json({ 
+      success: true, 
+      message: 'Profile synchronization started',
+      syncId: progressState.id
+    });
+  } catch (err) {
+    console.error('Error starting profile sync:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Check progress of profile synchronization
+router.get('/sync-status/:syncId', [auth, adminAuth], async (req, res) => {
+  try {
+    const { syncId } = req.params;
+    
+    // Get progress state
+    const progressState = req.app.locals.syncProgress && req.app.locals.syncProgress[syncId];
+    
+    if (!progressState) {
+      return res.status(404).json({ message: 'Sync job not found' });
+    }
+    
+    // Calculate progress percentage
+    let progress = 0;
+    if (progressState.totalUsers > 0) {
+      progress = Math.floor((progressState.processedUsers / progressState.totalUsers) * 100);
+    }
+    
+    // Calculate elapsed time
+    const elapsedSeconds = Math.floor((Date.now() - progressState.startTime) / 1000);
+    
+    // Return status
+    res.json({
+      id: syncId,
+      inProgress: progressState.inProgress,
+      progress: progress,
+      totalUsers: progressState.totalUsers,
+      processedUsers: progressState.processedUsers,
+      updatedProfiles: progressState.updatedProfiles,
+      failedProfiles: progressState.failedProfiles,
+      totalProfiles: progressState.totalProfiles,
+      elapsedTime: elapsedSeconds,
+      error: progressState.error,
+      startTime: new Date(progressState.startTime).toISOString(),
+      completedTime: progressState.completedTime ? new Date(progressState.completedTime).toISOString() : null
+    });
+  } catch (err) {
+    console.error('Error checking sync status:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Cancel an ongoing profile synchronization
+router.post('/cancel-sync/:syncId', [auth, adminAuth], async (req, res) => {
+  try {
+    const { syncId } = req.params;
+    
+    // Get progress state
+    const progressState = req.app.locals.syncProgress && req.app.locals.syncProgress[syncId];
+    
+    if (!progressState) {
+      return res.status(404).json({ message: 'Sync job not found' });
+    }
+    
+    // If job is already completed, return appropriate message
+    if (!progressState.inProgress) {
+      return res.json({
+        success: true,
+        message: 'Sync job already completed, no need to cancel',
+        cancelled: false
+      });
+    }
+    
+    // Mark the job as cancelled
+    progressState.inProgress = false;
+    progressState.cancelled = true;
+    progressState.completedTime = Date.now();
+    
+    // Log the cancellation
+    console.log(`Admin ${req.user.id} cancelled profile sync job ${syncId}`);
+    
+    // Return status
+    res.json({
+      success: true,
+      message: 'Profile synchronization cancelled',
+      cancelled: true
+    });
+  } catch (err) {
+    console.error('Error cancelling sync job:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 

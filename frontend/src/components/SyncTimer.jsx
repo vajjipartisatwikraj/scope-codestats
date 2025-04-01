@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Tooltip, CircularProgress } from '@mui/material
 import { SyncOutlined } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { apiUrl } from '../config/apiConfig';
 
 const SyncTimer = ({ onSyncRequired }) => {
   const [syncInfo, setSyncInfo] = useState(null);
@@ -30,7 +31,7 @@ const SyncTimer = ({ onSyncRequired }) => {
   const fetchSyncInfo = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/profiles/sync-info', {
+      const response = await axios.get(`${apiUrl}/profiles/sync-info`, {
         headers: { Authorization: `Bearer ${auth.token}` }
       });
       
