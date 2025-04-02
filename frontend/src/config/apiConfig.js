@@ -6,7 +6,7 @@
  */
 
 // Get the API URL from environment variables or use the default
-export const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const apiUrl = import.meta.env.VITE_API_URL;
 
 // Export other API-related configurations as needed
 export const apiConfig = {

@@ -393,8 +393,13 @@ const Dashboard = () => {
             username = userData[key];
           }
           
-          // Normalize username format
-          username = typeof username === 'object' ? (username.username || '') : (username || '');
+          // Normalize username format - ensure we only store the actual username string
+          if (typeof username === 'object') {
+            username = username.username || '';
+          }
+          
+          // Make sure username is a string and not undefined/null
+          username = username ? String(username) : '';
           
           // Extract details from userData (various formats)
           if (userData.platformData && userData.platformData[key]) {
@@ -425,6 +430,13 @@ const Dashboard = () => {
           const platformStats = statsResponse.data.profiles.find(p => p.platform === key);
           if (platformStats) {
             details = {...details, ...platformStats};
+            
+            // Update the username from stats if needed for consistency
+            if (platformStats.username && !username) {
+              username = typeof platformStats.username === 'object' ? 
+                platformStats.username.username || '' : platformStats.username || '';
+            }
+            
             if (platformStats.lastUpdateAttempt) {
               lastUpdateAttempt = new Date(platformStats.lastUpdateAttempt).getTime();
             }
@@ -445,6 +457,11 @@ const Dashboard = () => {
             cooldownsObj[key] = now + remainingTimeMs;
             remainingTimesObj[key] = remainingTimeSec;
           }
+        }
+        
+        // Ensure details has a username property
+        if (details && username && !details.username) {
+          details.username = username;
         }
         
         // Store extracted data
@@ -502,6 +519,7 @@ const Dashboard = () => {
         // Success handling - always show success toast if we get here
         toast.success(`${platform} profile updated successfully!`);
         
+        // Only update the username in profiles state if API confirmed it's valid
         setProfiles(prev => ({
           ...prev,
           [platform]: username
@@ -526,6 +544,13 @@ const Dashboard = () => {
       } else {
         // If the update wasn't successful, don't set a cooldown
         toast.error(response.data.message || 'Failed to update profile');
+        
+        // Reset the input field to the previous valid username
+        // This ensures incorrect usernames don't replace correct ones
+        setProfiles(prev => ({
+          ...prev,
+          [platform]: platformData[platform]?.username || prev[platform]
+        }));
       }
     } catch (error) {
       // Check if this is a rate limit error (429)
@@ -560,6 +585,13 @@ const Dashboard = () => {
         }
         
         toast.error(errorMessage);
+        
+        // Reset the input field to the previous valid username
+        // This ensures incorrect usernames don't replace correct ones
+        setProfiles(prev => ({
+          ...prev,
+          [platform]: platformData[platform]?.username || prev[platform]
+        }));
       }
     } finally {
       setUpdatingPlatforms(prev => ({ ...prev, [platform]: false }));
@@ -639,7 +671,7 @@ const Dashboard = () => {
             sx={{
               display: 'flex',
               justifyContent: 'center'
-            }}
+          }}  
           >
             <Card 
               sx={{ 
@@ -730,10 +762,13 @@ const Dashboard = () => {
                     }}>
                       <input
                         value={typeof profiles[platform.key] === 'object' ? '' : (profiles[platform.key] || '')}
-                        onChange={(e) => setProfiles(prev => ({
-                          ...prev,
-                          [platform.key]: e.target.value
-                        }))}
+                        onChange={(e) => {
+                          // Only update the input field, don't persist to backend until submission
+                          setProfiles(prev => ({
+                            ...prev,
+                            [platform.key]: e.target.value
+                          }));
+                        }}
                         placeholder={`Enter ${platform.name} username`}
                         disabled={updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key])}
                         style={{
@@ -749,6 +784,41 @@ const Dashboard = () => {
                           fontWeight: '500',
                         }}
                       />
+                      
+                      {/* Add reset button if text field value differs from stored valid username */}
+                      {profiles[platform.key] !== platformData[platform.key]?.username && 
+                       platformData[platform.key]?.username && (
+                        <Box 
+                          sx={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'absolute',
+                            right: '48px',
+                            height: '100%',
+                            width: '48px',
+                            color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                            transition: '0.2s',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              color: platform.color,
+                            }
+                          }}
+                          onClick={() => {
+                            // Reset to the last valid username
+                            setProfiles(prev => ({
+                              ...prev,
+                              [platform.key]: platformData[platform.key]?.username || ''
+                            }));
+                            toast.info(`Reset to last valid ${platform.name} username`);
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                          </svg>
+                        </Box>
+                      )}
                       
                       <Box 
                         sx={{ 

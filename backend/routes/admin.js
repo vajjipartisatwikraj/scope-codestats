@@ -601,6 +601,8 @@ router.post('/sync-profiles', [auth, adminAuth], async (req, res) => {
       inProgress: true,
       error: null,
       startTime: Date.now(),
+      // Add flag to indicate this job is initiated from admin panel
+      isAdminInitiated: true,
       // Store in global state so it can be accessed by the status endpoint
       id: Date.now().toString()
     };

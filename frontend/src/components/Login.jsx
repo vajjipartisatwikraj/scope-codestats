@@ -23,7 +23,7 @@ const Login = () => {
 
   const handleGoogleLogin = () => {
     // Build the Google OAuth URL carefully
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const baseUrl = import.meta.env.VITE_API_URL;
     
     // Make sure we have the correct API URL format
     let apiUrl;

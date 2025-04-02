@@ -34,25 +34,30 @@ class PlatformAPI {
    * @param {Object} difficulty - Problems solved by difficulty
    * @returns {number} - Calculated score
    */
-  calculateLeetCodeScore(totalSolved, ranking, difficulty = {}) {
-    // Points by difficulty:
-    // Easy: 20 points
-    // Medium: 40 points
-    // Hard: 80 points
-    const difficultyPoints = {
-      easy: (difficulty.easy || 0) * 20,
-      medium: (difficulty.medium || 0) * 40,
-      hard: (difficulty.hard || 0) * 80
-    };
+  calculateLeetCodeScore(totalSolved, ranking, difficulty = {}, contestsParticipated = 0) {
+    // New formula: (LCPS*10 + (LCR-1300)^2/10 + LCNC*50)
+    // Where LCPS = Problems solved, LCR = Rating, LCNC = Number of contests participated
     
-    // Base score from all problems
-    const baseScore = Object.values(difficultyPoints).reduce((a, b) => a + b, 0);
+    // Use total solved problems
+    const problemsScore = totalSolved * 10;
     
-    // Ranking bonus (max 2000 points for top ranks)
-    // Better ranks get exponentially more points
-    const rankingBonus = ranking > 0 ? Math.max(0, 2000 * Math.exp(-ranking / 10000)) : 0;
+    // For LeetCode, we often don't have a direct "rating" value, 
+    // so we'll use ranking if available (inverted since lower rank is better)
+    let ratingScore = 0;
+    if (ranking > 0) {
+      // We don't have LeetCode rating directly, so we'll approximate based on ranking
+      // Assuming 3000 - ranking/100 as an approximation for rating
+      const approximatedRating = Math.max(1300, 3000 - ranking/100);
+      ratingScore = Math.pow(approximatedRating - 1300, 2) / 10;
+    }
     
-    return Math.round(baseScore + rankingBonus);
+    // Contests score
+    const contestsScore = contestsParticipated * 50;
+    
+    // Calculate total score
+    const score = problemsScore + ratingScore + contestsScore;
+    
+    return Math.round(score);
   }
 
   /**
@@ -63,32 +68,25 @@ class PlatformAPI {
    * @returns {number} - Calculated score
    */
   calculateCodeforcesScore(rating, problemsSolved, contestsParticipated = 0) {
-    // Rating has a significant impact, especially at higher levels
-    // Rating above 1900 is considered expert level and above
+    // New formula: (CFPS*2 + (CFR-800)^2/10 + CFNC*50)
+    // Where CFPS = Problems solved, CFR = Rating, CFNC = Number of contests participated
+    
+    // Problems solved component
+    const problemsScore = problemsSolved * 2;
+    
+    // Rating component - only if the user has a rating
     let ratingScore = 0;
     if (rating > 0) {
-      if (rating < 1200) {
-        ratingScore = rating * 0.2;
-      } else if (rating < 1900) {
-        ratingScore = 240 + (rating - 1200) * 0.5;
-      } else if (rating < 2400) {
-        ratingScore = 590 + (rating - 1900) * 0.8;
-      } else {
-        ratingScore = 990 + (rating - 2400) * 1.2;
-      }
+      ratingScore = Math.pow(Math.max(0, rating - 800), 2) / 10;
     }
     
-    // Problems solved provides a base score
-    const problemsScore = Math.min(problemsSolved * 20, 1000); // Cap at 1000 for problems
+    // Contests participated component
+    const contestsScore = contestsParticipated * 50;
     
-    // Contest participation shows commitment
-    const contestScore = Math.min(contestsParticipated * 30, 600); // Cap at 600 for contests
+    // Calculate total score
+    const score = problemsScore + ratingScore + contestsScore;
     
-    // Calculate the total score with a bias towards rating
-    const rawScore = (ratingScore * 1.5) + problemsScore + contestScore;
-    
-    // Cap the score at 10000 and ensure it's an integer
-    return Math.min(Math.round(rawScore), 10000);
+    return Math.round(score);
   }
 
   /**
@@ -100,22 +98,25 @@ class PlatformAPI {
    * @returns {number} - Calculated score
    */
   calculateCodeChefScore(rating, problemsSolved, globalRank, contestsParticipated = 0) {
-    // Base rating score (max 3000)
-    const ratingScore = rating ? Math.min(3000, rating) : 0;
+    // New formula: (CCPS*2 + (CCR-1200)^2/10 + CCNC*50)
+    // Where CCPS = Problems solved, CCR = Rating, CCNC = Number of contests participated
     
-    // Problems score based on difficulty
-    let problemsScore = 0;
-    if (problemsSolved > 0) {
-      problemsScore = problemsSolved * 30;
+    // Problems solved component
+    const problemsScore = problemsSolved * 2;
+    
+    // Rating component - only if the user has a rating
+    let ratingScore = 0;
+    if (rating > 0) {
+      ratingScore = Math.pow(Math.max(0, rating - 1200), 2) / 10;
     }
     
-    // Rank bonus (max 1000 points, exponential decay)
-    const rankBonus = globalRank > 0 ? Math.round(1000 * Math.exp(-globalRank / 10000)) : 0;
+    // Contests participated component
+    const contestsScore = contestsParticipated * 50;
     
-    // Contest participation bonus (50 points per contest, up to 1000 points)
-    const contestsBonus = Math.min(1000, contestsParticipated * 50);
+    // Calculate total score
+    const score = problemsScore + ratingScore + contestsScore;
     
-    return Math.round(ratingScore + problemsScore + rankBonus + contestsBonus);
+    return Math.round(score);
   }
 
   /**
@@ -290,7 +291,8 @@ class PlatformAPI {
       const score = this.calculateLeetCodeScore(
         allSolved, 
         profile.ranking || 0, 
-        difficultyMap
+        difficultyMap,
+        userData.contestBadge ? 1 : 0 // If user has a contest badge, count at least 1 contest
       );
       
       // Get user stats from calendar if available
@@ -308,7 +310,7 @@ class PlatformAPI {
         easyProblemsSolved: easySolved,
         mediumProblemsSolved: mediumSolved,
         hardProblemsSolved: hardSolved,
-        contestsParticipated: 0, // Not available in this query
+        contestsParticipated: userData.contestBadge ? 1 : 0,
         rating: 0, // Not available in this query
         contestRanking: 0, // Not available in this query
         contestBadge: userData.contestBadge?.name || '',
@@ -1047,68 +1049,21 @@ class PlatformAPI {
     try {
       console.log(`Fetching HackerRank profile for user: ${username}`);
       
-      // First, check if the user exists by requesting the profile page
-      const profileCheckUrl = `https://www.hackerrank.com/rest/hackers/${username}/profile`;
-      console.log(`Checking if HackerRank user exists: ${profileCheckUrl}`);
-      
-      const profileResponse = await this.axiosInstance.get(profileCheckUrl, {
+      // Make a direct request to the badges API endpoint
+      const response = await this.axiosInstance.get(`https://www.hackerrank.com/rest/hackers/${username}/badges`, {
         headers: {
           'Accept': 'application/json'
         },
-        // Accept any status code to handle ourselves
-        validateStatus: status => status >= 200 && status < 500
+        // Don't throw on 404, we'll handle it explicitly
+        validateStatus: status => (status >= 200 && status < 300) || status === 404
       });
       
-      // Check if the response indicates the user doesn't exist - correct format according to feedback
-      if (profileResponse.data && profileResponse.data.error === "Profile Not Found") {
-        throw new Error(`User '${username}' not found on HackerRank. Please check the spelling and try again.`);
+      // Check if the request was successful
+      if (response.status === 404 || !response.data || response.data.status !== true) {
+        throw new Error(`User ${username} not found on HackerRank`);
       }
       
-      // Also check for 404 status as a fallback
-      if (profileResponse.status === 404) {
-        throw new Error(`User '${username}' not found on HackerRank. Please check the spelling and try again.`);
-      }
-      
-      // Additional check for invalid responses
-      if (!profileResponse.data || profileResponse.status !== 200) {
-        throw new Error(`HackerRank API returned an invalid response for user '${username}'. Please try again later.`);
-      }
-      
-      // Make a direct request to the badges API endpoint
-      console.log(`Attempting to fetch HackerRank badges for: ${username}`);
-      let badgesData = [];
-      
-      try {
-        const badgesResponse = await this.axiosInstance.get(`https://www.hackerrank.com/rest/hackers/${username}/badges`, {
-          headers: {
-            'Accept': 'application/json'
-          },
-          // Accept any status code
-          validateStatus: status => status >= 200 && status < 500
-        });
-        
-        // Check for the error format in badge response too
-        if (badgesResponse.data && badgesResponse.data.error === "Profile Not Found") {
-          throw new Error(`User '${username}' found on HackerRank but badge data could not be retrieved.`);
-        }
-        
-        // Only use badge data if we got a successful response
-        if (badgesResponse.status === 200 && badgesResponse.data && badgesResponse.data.models) {
-          badgesData = badgesResponse.data.models || [];
-          console.log(`Successfully retrieved ${badgesData.length} badges for HackerRank user: ${username}`);
-        } else {
-          console.log(`No badge data available for HackerRank user: ${username}, status: ${badgesResponse.status}`);
-        }
-      } catch (badgeError) {
-        // If this is a "profile not found" error for badges, we should throw it
-        if (badgeError.message.includes('not found')) {
-          throw badgeError;
-        }
-        
-        // Otherwise, log but continue with empty badge data
-        console.warn(`Error fetching HackerRank badges for ${username}: ${badgeError.message}`);
-        console.log(`Continuing with profile creation with default values`);
-      }
+      const badgesData = response.data.models || [];
       
       // Calculate total problems solved by summing up all badges
       let totalProblemsSolved = 0;
@@ -1140,8 +1095,6 @@ class PlatformAPI {
         }
       });
       
-      console.log(`HackerRank user ${username} profile summary: problems solved: ${totalProblemsSolved}, stars: ${totalStars}, badges: ${Object.keys(languageBadges).length + Object.keys(skillBadges).length}`);
-      
       // Calculate score based on problems solved and stars earned
       const score = this.calculateHackerRankScore(totalProblemsSolved, totalStars);
       
@@ -1149,7 +1102,6 @@ class PlatformAPI {
         username,
         problemsSolved: totalProblemsSolved,
         totalStars,
-        badges: Object.keys(languageBadges).length + Object.keys(skillBadges).length,
         languageBadges,
         skillBadges,
         score,
@@ -1158,9 +1110,8 @@ class PlatformAPI {
     } catch (error) {
       console.error(`Error fetching HackerRank profile for ${username}:`, error);
       
-      // Just pass through user not found errors
       if (error.message.includes('not found')) {
-        throw error;
+        throw new Error(`User ${username} not found on HackerRank`);
       }
       
       throw new Error(`Failed to fetch HackerRank profile: ${error.message}`);

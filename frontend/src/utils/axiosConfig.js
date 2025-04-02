@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Set the base URL for API requests
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 
 // Add request interceptor
 axios.interceptors.request.use(

@@ -6,14 +6,14 @@ import path from 'path';
 
 export default defineConfig({
   // Use empty string as base for relative paths
-  base: '',
+  base: '/',
   plugins: [react(), viteTsconfigPaths()],
   server: {
     open: true,
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://34.204.47.217:5000',
         changeOrigin: true,
         secure: false
       }
