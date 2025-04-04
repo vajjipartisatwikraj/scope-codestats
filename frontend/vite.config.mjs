@@ -10,7 +10,6 @@ export default defineConfig({
   plugins: [react(), viteTsconfigPaths()],
   server: {
     open: true,
-    port: 3000,
     proxy: {
       '/api': {
         target: 'https://codestats.zapto.org',
