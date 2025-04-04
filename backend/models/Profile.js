@@ -220,8 +220,8 @@ ProfileSchema.methods.validateProfileFormat = function() {
       // LeetCode usernames are alphanumeric
       return /^[a-zA-Z0-9_-]+$/.test(this.username);
     case 'github':
-      // GitHub usernames have specific requirements
-      return /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/.test(this.username);
+      // GitHub usernames have specific requirements - allow underscores
+      return /^[a-zA-Z0-9](?:[a-zA-Z0-9]|_|-(?=[a-zA-Z0-9])){0,38}$/.test(this.username);
     // Add cases for other platforms
     default:
       return true;

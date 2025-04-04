@@ -47,10 +47,16 @@ const checkProfileUpdateRateLimit = async (userId, platform) => {
       // Calculate remaining time in seconds
       const remainingTime = Math.ceil((cooldownTime - timeSinceLastUpdate) / 1000);
       
+      // Format time in human-readable format
+      const hours = Math.floor(remainingTime / 3600);
+      const minutes = Math.floor((remainingTime % 3600) / 60);
+      const formattedTime = `${hours} hour${hours !== 1 ? 's' : ''} and ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+      
       return { 
         allowed: false, 
-        message: `Please wait ${remainingTime} seconds before updating your ${platform} profile again.`,
-        remainingTime
+        message: `Please wait ${formattedTime} before updating your ${platform} profile again.`,
+        remainingTime,
+        formattedTime
       };
     }
     

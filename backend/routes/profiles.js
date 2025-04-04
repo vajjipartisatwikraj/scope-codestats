@@ -34,10 +34,16 @@ router.post('/:platform', auth, async (req, res) => {
     // Check rate limiting
     const rateLimitCheck = await checkProfileUpdateRateLimit(req.user.id, platform);
     if (!rateLimitCheck.allowed) {
+      // Format the remaining time in hours and minutes instead of raw seconds
+      const hours = Math.floor(rateLimitCheck.remainingTime / 3600);
+      const minutes = Math.floor((rateLimitCheck.remainingTime % 3600) / 60);
+      const formattedTime = `${hours} hour${hours !== 1 ? 's' : ''} and ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+      
       return res.status(429).json({ 
         success: false, 
-        message: rateLimitCheck.message,
-        remainingTime: rateLimitCheck.remainingTime
+        message: `Please wait ${formattedTime} before updating your ${platform} profile again.`,
+        remainingTime: rateLimitCheck.remainingTime,
+        formattedTime: formattedTime
       });
     }
     
@@ -57,7 +63,25 @@ router.post('/:platform', auth, async (req, res) => {
       // If profile exists, just update the username but don't increment attempts 
       // or update lastUpdateAttempt until we've successfully fetched data
       profile.username = username;
-      await profile.save();
+      try {
+        await profile.save();
+      } catch (validationError) {
+        // Handle username validation errors separately with a clear message
+        if (validationError.message.includes('Invalid profile format')) {
+          if (platform === 'github') {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid GitHub username format: "${username}". GitHub usernames can only contain alphanumeric characters, hyphens and underscores.`
+            });
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid ${platform} username format: "${username}"`
+            });
+          }
+        }
+        throw validationError;
+      }
     } else {
       // Create new profile with minimal fields, don't set lastUpdateAttempt yet
       profile = new Profile({
@@ -65,7 +89,26 @@ router.post('/:platform', auth, async (req, res) => {
         platform,
         username
       });
-      await profile.save();
+      
+      try {
+        await profile.save();
+      } catch (validationError) {
+        // Handle username validation errors separately with a clear message
+        if (validationError.message.includes('Invalid profile format')) {
+          if (platform === 'github') {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid GitHub username format: "${username}". GitHub usernames can only contain alphanumeric characters, hyphens and underscores.`
+            });
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid ${platform} username format: "${username}"`
+            });
+          }
+        }
+        throw validationError;
+      }
     }
 
     // Fetch initial data for the profile (async)
@@ -86,6 +129,14 @@ router.post('/:platform', auth, async (req, res) => {
           }
         }
       } catch (fetchError) {
+        // Specific handling for GitHub profile not found errors
+        if (platform === 'github' && (fetchError.message.includes('not found') || fetchError.message.includes('Failed to fetch'))) {
+          return res.status(404).json({
+            success: false,
+            message: `GitHub user "${username}" not found. Please verify the username is correct and the profile is public.`
+          });
+        }
+        
         // Special handling for GeeksforGeeks - create a placeholder profile only if explicitly mentioned in error
         if (platform === 'geeksforgeeks' && fetchError.message.includes('placeholder requested')) {
           console.log(`Creating placeholder profile for GeeksforGeeks user: ${username}`);

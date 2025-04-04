@@ -704,6 +704,8 @@ const AdminDashboard = () => {
           'Rank': user.rank || index + 1,
           'Name': user.name,
           'Roll Number': user.rollNumber || '-',
+          'Department': user.department || '-',
+          'Section': user.section || '-',
           'Email': user.email,
           'Total Score': user.totalScore || 0,
           'Total Problems': user.totalProblemsSolved || 0,
@@ -765,6 +767,8 @@ const AdminDashboard = () => {
           'Rank': 5,
           'Name': 25,
           'Roll Number': 15,
+          'Department': 20,
+          'Section': 10,
           'Email': 25,
           'Total Score': 10,
           'Total Problems': 12

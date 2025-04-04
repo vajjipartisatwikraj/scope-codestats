@@ -234,7 +234,7 @@ const EditProfile = ({
             fullWidth
             margin="normal"
             name="name"
-            disabled={!isEditMode}
+            disabled={true}
             value={editProfileData?.name || ''}
             onChange={handleProfileChange}
             error={!!fieldErrors.name}
@@ -289,7 +289,7 @@ const EditProfile = ({
             fullWidth
             margin="normal"
             name="department"
-            disabled={!isEditMode}
+            disabled={true}
             select
             value={editProfileData?.department || ''}
             onChange={handleProfileChange}
@@ -323,7 +323,7 @@ const EditProfile = ({
             fullWidth
             margin="normal"
             name="rollNumber"
-            disabled={!isEditMode}
+            disabled={true}
             value={editProfileData?.rollNumber || ''}
             onChange={handleProfileChange}
             error={!!fieldErrors.rollNumber}

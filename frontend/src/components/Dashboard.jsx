@@ -443,19 +443,25 @@ const Dashboard = () => {
           }
         }
         
-        // Check if this platform is in cooldown period (updated in the last 12 hours)
-        if (lastUpdateAttempt) {
-          const timeSinceLastAttempt = now - lastUpdateAttempt;
-          const cooldownPeriod = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
-          
-          if (timeSinceLastAttempt < cooldownPeriod) {
-            // Calculate remaining cooldown time
-            const remainingTimeMs = cooldownPeriod - timeSinceLastAttempt;
-            const remainingTimeSec = Math.ceil(remainingTimeMs / 1000);
+        // Special handling for GitHub - always allow editing
+        if (key === 'github') {
+          // Don't set cooldown for GitHub
+          console.log('GitHub username detected:', username);
+        } else {
+          // Check if this platform is in cooldown period (updated in the last 12 hours)
+          if (lastUpdateAttempt) {
+            const timeSinceLastAttempt = now - lastUpdateAttempt;
+            const cooldownPeriod = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
             
-            // Set cooldown for this platform
-            cooldownsObj[key] = now + remainingTimeMs;
-            remainingTimesObj[key] = remainingTimeSec;
+            if (timeSinceLastAttempt < cooldownPeriod) {
+              // Calculate remaining cooldown time
+              const remainingTimeMs = cooldownPeriod - timeSinceLastAttempt;
+              const remainingTimeSec = Math.ceil(remainingTimeMs / 1000);
+              
+              // Set cooldown for this platform
+              cooldownsObj[key] = now + remainingTimeMs;
+              remainingTimesObj[key] = remainingTimeSec;
+            }
           }
         }
         
@@ -504,6 +510,11 @@ const Dashboard = () => {
         return;
       }
 
+      // Show additional logging for GitHub username updates
+      if (platform === 'github') {
+        console.log(`Submitting GitHub username: "${username}"`);
+      }
+
       const response = await axios.post(
         `${apiUrl}/profiles/${platform}`,
         { username },
@@ -537,10 +548,12 @@ const Dashboard = () => {
           [platform]: response.data.data.details
         }));
         
-        // Only set cooldown after successful updates
-        const cooldownEnd = Date.now() + (12 * 60 * 60 * 1000); // 12 hours in milliseconds
-        setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
-        setRemainingTimes(prev => ({ ...prev, [platform]: 12 * 60 * 60 })); // 12 hours in seconds
+        // Only set cooldown after successful updates for non-GitHub platforms
+        if (platform !== 'github') {
+          const cooldownEnd = Date.now() + (12 * 60 * 60 * 1000); // 12 hours in milliseconds
+          setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
+          setRemainingTimes(prev => ({ ...prev, [platform]: 12 * 60 * 60 })); // 12 hours in seconds
+        }
       } else {
         // If the update wasn't successful, don't set a cooldown
         toast.error(response.data.message || 'Failed to update profile');
@@ -553,19 +566,39 @@ const Dashboard = () => {
         }));
       }
     } catch (error) {
+      // Additional logging for GitHub errors
+      if (platform === 'github') {
+        console.error("GitHub profile update error:", error);
+        console.error("Error response:", error.response?.data);
+      }
+      
       // Check if this is a rate limit error (429)
       if (error.response?.status === 429) {
-        const remainingTime = error.response.data.remainingTime || 12 * 60 * 60;
+        // Use the formatted time from the API response if available
+        const formattedTime = error.response.data.formattedTime || 'some time';
         
-        // Show toast with time remaining
-        toast.error(error.response.data.message || `Rate limit exceeded. Please try again in ${remainingTime} seconds.`);
+        // Show toast with formatted time
+        toast.error(error.response.data.message || `Please wait ${formattedTime} before updating your ${platform} profile again.`);
         
-        // Only set a cooldown for rate limit errors
-        const cooldownEnd = Date.now() + (remainingTime * 1000);
-        setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
-        setRemainingTimes(prev => ({ ...prev, [platform]: remainingTime }));
+        // Only set a cooldown for rate limit errors if not GitHub
+        if (platform !== 'github') {
+          const remainingTime = error.response.data.remainingTime || 12 * 60 * 60;
+          const cooldownEnd = Date.now() + (remainingTime * 1000);
+          setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
+          setRemainingTimes(prev => ({ ...prev, [platform]: remainingTime }));
+        }
+      } else if (error.response?.status === 404) {
+        // Clear error for profile not found - show a clear message
+        const platformName = platforms.find(p => p.key === platform)?.name || platform;
+        toast.error(error.response.data.message || `User not found on ${platformName}. Please check the username and try again.`);
+        
+        // Don't change the input value to allow the user to fix it
+      } else if (platform === 'github' && error.response?.status === 400) {
+        // Special handling for GitHub validation errors
+        const errorMessage = error.response?.data?.message || 'Invalid GitHub username format.';
+        toast.error(errorMessage);
       } else {
-        // For all other errors (including "profile not found"), don't set a cooldown
+        // For all other errors, don't set a cooldown
         let errorMessage = error.response?.data?.message || `Failed to update ${platform} profile. Please try again.`;
         
         // Format profile not found errors more clearly
@@ -579,6 +612,8 @@ const Dashboard = () => {
             errorMessage = `${errorMessage}. Please verify your HackerRank username is correct.`;
           } else if (platform === 'geeksforgeeks') {
             errorMessage = `${errorMessage}. Please verify your GeeksforGeeks username is correct.`;
+          } else if (platform === 'github') {
+            errorMessage = `${errorMessage}. Please verify that your GitHub username is correct and your profile is public.`;
           } else {
             errorMessage = `${errorMessage}. Please verify the username and try again.`;
           }
@@ -761,7 +796,9 @@ const Dashboard = () => {
                       }
                     }}>
                       <input
-                        value={typeof profiles[platform.key] === 'object' ? '' : (profiles[platform.key] || '')}
+                        value={platform.key === 'github' 
+                          ? (profiles[platform.key] || '') 
+                          : (typeof profiles[platform.key] === 'object' ? '' : (profiles[platform.key] || ''))}
                         onChange={(e) => {
                           // Only update the input field, don't persist to backend until submission
                           setProfiles(prev => ({
@@ -770,7 +807,7 @@ const Dashboard = () => {
                           }));
                         }}
                         placeholder={`Enter ${platform.name} username`}
-                        disabled={updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key])}
+                        disabled={platform.key !== 'github' && (updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key]))}
                         style={{
                           width: '100%',
                           height: '46px',
@@ -782,6 +819,12 @@ const Dashboard = () => {
                           outline: 'none',
                           fontSize: '15px',
                           fontWeight: '500',
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSubmit(platform.key);
+                          }
                         }}
                       />
                       
@@ -829,15 +872,16 @@ const Dashboard = () => {
                           right: 0,
                           height: '100%',
                           width: '48px',
-                          bgcolor: cooldowns[platform.key] ? `${platform.color}40` : platform.color,
+                          bgcolor: (cooldowns[platform.key] && platform.key !== 'github') ? `${platform.color}40` : platform.color,
                           color: '#fff',
-                          opacity: cooldowns[platform.key] ? 0.5 : 0.9,
+                          opacity: (cooldowns[platform.key] && platform.key !== 'github') ? 0.5 : 0.9,
                           transition: '0.2s',
-                          cursor: cooldowns[platform.key] ? 'not-allowed' : 'pointer',
+                          cursor: (cooldowns[platform.key] && platform.key !== 'github') ? 'not-allowed' : 'pointer',
                           '&:hover': {
-                            opacity: cooldowns[platform.key] ? 0.5 : 1
+                            opacity: (cooldowns[platform.key] && platform.key !== 'github') ? 0.5 : 1
                           }
                         }}
+                        onClick={(cooldowns[platform.key] && platform.key !== 'github') ? null : () => handleSubmit(platform.key)}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -917,21 +961,21 @@ const Dashboard = () => {
                     <Button
                       variant="contained"
                       onClick={() => handleSubmit(platform.key)}
-                      disabled={updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key])}
+                      disabled={platform.key !== 'github' && (updatingPlatforms[platform.key] || Boolean(cooldowns[platform.key]))}
                       sx={{
                         py: 1.6,
-                        bgcolor: cooldowns[platform.key] ? `${platform.color}70` : platform.color,
+                        bgcolor: platform.key !== 'github' && cooldowns[platform.key] ? `${platform.color}70` : platform.color,
                         borderRadius: 2,
                         boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
                         fontSize: '0.9rem',
                         fontWeight: 600,
                         width: '100%',
                         '&:hover': {
-                          bgcolor: cooldowns[platform.key] ? `${platform.color}70` : platform.color,
-                          opacity: cooldowns[platform.key] ? 1 : 0.9,
-                          boxShadow: cooldowns[platform.key] ? 'none' : `0 6px 12px ${platform.color}40`,
-                          transform: cooldowns[platform.key] ? 'none' : 'translateY(-2px)',
-                          cursor: cooldowns[platform.key] ? 'not-allowed' : 'pointer',
+                          bgcolor: platform.key !== 'github' && cooldowns[platform.key] ? `${platform.color}70` : platform.color,
+                          opacity: platform.key !== 'github' && cooldowns[platform.key] ? 1 : 0.9,
+                          boxShadow: platform.key !== 'github' && cooldowns[platform.key] ? 'none' : `0 6px 12px ${platform.color}40`,
+                          transform: platform.key !== 'github' && cooldowns[platform.key] ? 'none' : 'translateY(-2px)',
+                          cursor: platform.key !== 'github' && cooldowns[platform.key] ? 'not-allowed' : 'pointer',
                         },
                         transition: 'all 0.3s ease',
                         position: 'relative',
@@ -940,7 +984,7 @@ const Dashboard = () => {
                     >
                       {updatingPlatforms[platform.key] ? (
                         <CircularProgress size={20} color="inherit" />
-                      ) : cooldowns[platform.key] ? (
+                      ) : platform.key !== 'github' && cooldowns[platform.key] ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <CircularProgress
                             variant="determinate"
@@ -966,7 +1010,7 @@ const Dashboard = () => {
                           </Typography>
                         </Box>
                       ) : (
-                        'Update Profile'
+                        platform.key === 'github' ? 'Update GitHub' : 'Update Profile'
                       )}
                     </Button>
                     

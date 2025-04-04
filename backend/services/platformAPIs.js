@@ -889,6 +889,11 @@ class PlatformAPI {
         console.log('Using authenticated GitHub API request');
       }
       
+      // Validate GitHub username format before making API call
+      if (!this.isValidGitHubUsername(username)) {
+        throw new Error(`Invalid GitHub username format: ${username}`);
+      }
+      
       // Use authenticated API call for user data
       const authHeader = GITHUB_ACCESS_TOKEN && GITHUB_ACCESS_TOKEN !== 'your_github_token_here' 
         ? { 'Authorization': `token ${GITHUB_ACCESS_TOKEN}` } 
@@ -906,7 +911,7 @@ class PlatformAPI {
       // Check if user exists
       if (userResponse.status === 404) {
           console.log(`GitHub API confirms user ${username} does not exist (404 status)`);
-          throw new Error(`User ${username} not found on GitHub`);
+          throw new Error(`User "${username}" not found on GitHub. Please verify the username is correct and the profile is public.`);
         }
         
       // Track rate limits from response headers
@@ -1028,16 +1033,36 @@ class PlatformAPI {
       // Check if error is due to rate limiting
       if (error.response && error.response.status === 403) {
         console.warn(`GitHub API rate limit exceeded. Try again later.`);
+        throw new Error(`GitHub API rate limit exceeded. Please try again later.`);
+      }
+      
+      // Special handling for validation errors we introduced
+      if (error.message.includes('Invalid GitHub username format')) {
+        throw new Error(`Invalid GitHub username format: "${username}". GitHub usernames can only contain alphanumeric characters, hyphens and underscores.`);
       }
       
       // Special formatting for not found errors
       if (error.message.includes('not found')) {
-        throw new Error(`User ${username} not found on GitHub`);
+        throw new Error(`User "${username}" not found on GitHub. Please verify the username is correct and the profile is public.`);
       }
       
       // Re-throw other errors
       throw new Error(`Failed to fetch GitHub profile: ${error.message}`);
     }
+  }
+  
+  /**
+   * Validate GitHub username format
+   * @param {string} username - GitHub username to validate
+   * @returns {boolean} - Whether the username is valid
+   */
+  isValidGitHubUsername(username) {
+    // GitHub usernames must:
+    // - Only contain alphanumeric characters, hyphens or underscores
+    // - Not start with a hyphen or underscore
+    // - Not have consecutive hyphens
+    // - Be at most 39 characters long
+    return /^[a-zA-Z0-9](?:[a-zA-Z0-9]|_|-(?=[a-zA-Z0-9])){0,38}$/.test(username);
   }
 
   /**
