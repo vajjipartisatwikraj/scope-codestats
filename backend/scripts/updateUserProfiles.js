@@ -12,6 +12,7 @@
  * When triggered from the Admin Dashboard, the script accepts a progressState
  * object that is updated during execution to show real-time progress.
  */
+const path = require('path');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const cron = require('node-cron');
@@ -19,7 +20,7 @@ const User = require('../models/User');
 const axios = require('axios');
 const connectDB = require('../config/db');
 const fs = require('fs');
-const path = require('path');
+
 
 // Set the base URL for API calls
 const API_BASE_URL = process.env.API_BASE_URL;
