@@ -31,12 +31,12 @@ router.get('/callback', (req, res, next) => {
         console.log('Validation error occurred:', errorMessage);
       }
       
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=${encodeURIComponent(errorMessage)}`);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=${encodeURIComponent(errorMessage)}`);
     }
 
     if (!user) {
       console.log('No user returned from Google auth');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth-failed`);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth-failed`);
     }
 
     // Generate JWT token
@@ -51,7 +51,7 @@ router.get('/callback', (req, res, next) => {
     console.log(`User type: ${user.userType || 'user (default)'}`);
 
     // Redirect to frontend auth success page with user data, including userType
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/success?token=${token}&userId=${user._id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&newUser=${user.newUser}&profileCompleted=${user.profileCompleted}&userType=${encodeURIComponent(user.userType || 'user')}`);
+    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}&userId=${user._id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&newUser=${user.newUser}&profileCompleted=${user.profileCompleted}&userType=${encodeURIComponent(user.userType || 'user')}`);
   })(req, res, next);
 });
 

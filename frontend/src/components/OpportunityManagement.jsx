@@ -71,7 +71,8 @@ const OpportunityManagement = () => {
     tags: [],
     prize: '',
     eligibility: '',
-    applicationLink: ''
+    applicationLink: '',
+    status: 'upcoming'
   });
 
   const categories = [
@@ -88,6 +89,19 @@ const OpportunityManagement = () => {
     { value: 'advanced', label: 'Advanced' }
   ];
 
+  const statuses = [
+    { value: 'upcoming', label: 'Upcoming' },
+    { value: 'ongoing', label: 'Ongoing' },
+    { value: 'completed', label: 'Completed' }
+  ];
+
+  // Common tag suggestions
+  const commonTagSuggestions = [
+    'Beginner-Friendly', 'Advanced', 'Prizes', 'Remote', 'International',
+    'Hackathon', 'Coding', 'AI', 'Machine Learning', 'Web Development',
+    'Mobile', 'Game Dev', 'Data Science', 'Blockchain', 'Cybersecurity'
+  ];
+
   useEffect(() => {
     fetchOpportunities();
   }, []);
@@ -98,7 +112,19 @@ const OpportunityManagement = () => {
       const response = await axios.get(`${apiUrl}/admin/opportunities`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setOpportunities(response.data);
+      
+      // Log and ensure tags are properly formatted in each opportunity
+      const formattedOpportunities = response.data.map(opp => ({
+        ...opp,
+        tags: Array.isArray(opp.tags) ? opp.tags : []
+      }));
+      
+      console.log('Fetched opportunities:', formattedOpportunities);
+      formattedOpportunities.forEach(opp => {
+        console.log(`Opportunity ${opp._id} tags:`, opp.tags);
+      });
+      
+      setOpportunities(formattedOpportunities);
     } catch (error) {
       console.error('Error fetching opportunities:', error);
       toast.error('Failed to fetch opportunities');
@@ -109,6 +135,16 @@ const OpportunityManagement = () => {
 
   const handleOpen = (opportunity = null) => {
     if (opportunity) {
+      console.log('Editing opportunity:', opportunity);
+      console.log('Original tags:', opportunity.tags);
+      
+      // Ensure tags are properly formatted as an array
+      const formattedTags = opportunity.tags ? 
+        (Array.isArray(opportunity.tags) ? opportunity.tags : [opportunity.tags]) : 
+        [];
+      
+      console.log('Formatted tags for form:', formattedTags);
+      
       setEditingOpportunity(opportunity);
       setFormData({
         title: opportunity.title,
@@ -120,10 +156,11 @@ const OpportunityManagement = () => {
         registrationOpen: opportunity.registrationOpen ?? true,
         location: opportunity.location || '',
         link: opportunity.link || '',
-        tags: opportunity.tags || [],
+        tags: formattedTags,
         prize: opportunity.prize || '',
         eligibility: opportunity.eligibility || '',
-        applicationLink: opportunity.applicationLink || ''
+        applicationLink: opportunity.applicationLink || '',
+        status: opportunity.status || 'upcoming'
       });
     } else {
       setEditingOpportunity(null);
@@ -140,7 +177,8 @@ const OpportunityManagement = () => {
         tags: [],
         prize: '',
         eligibility: '',
-        applicationLink: ''
+        applicationLink: '',
+        status: 'upcoming'
       });
     }
     setOpen(true);
@@ -153,18 +191,38 @@ const OpportunityManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check required fields
+    const requiredFields = ['title', 'description', 'link', 'deadline', 'organizer', 'status'];
+    const missingFields = requiredFields.filter(field => !formData[field]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+      console.error('Missing fields:', missingFields);
+      return;
+    }
+    
     try {
+      // Ensure tags are properly formatted (as an array of strings)
+      const submissionData = {
+        ...formData,
+        tags: Array.isArray(formData.tags) ? formData.tags : []
+      };
+      
+      console.log('Submitting form data:', submissionData);
+      console.log('Tags before submission:', submissionData.tags);
+      
       if (editingOpportunity) {
         await axios.put(
           `${apiUrl}/admin/opportunities/${editingOpportunity._id}`,
-          formData,
+          submissionData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success('Opportunity updated successfully');
       } else {
         await axios.post(
           `${apiUrl}/admin/opportunities`,
-          formData,
+          submissionData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success('Opportunity created successfully');
@@ -173,6 +231,8 @@ const OpportunityManagement = () => {
       fetchOpportunities();
     } catch (error) {
       console.error('Operation error:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error request data:', error.config?.data);
       toast.error(error.response?.data?.message || 'Operation failed');
     }
   };
@@ -197,6 +257,21 @@ const OpportunityManagement = () => {
     opportunity.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     opportunity.organizer.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Handle adding a tag
+  const handleAddTag = (newTag) => {
+    if (!newTag || !newTag.trim()) return;
+    
+    // Check if tag already exists to avoid duplicates
+    const normalizedNewTag = newTag.trim();
+    const currentTags = [...(formData.tags || [])];
+    
+    if (!currentTags.includes(normalizedNewTag)) {
+      const updatedTags = [...currentTags, normalizedNewTag];
+      console.log('Adding tag:', normalizedNewTag, 'New tags:', updatedTags);
+      setFormData({ ...formData, tags: updatedTags });
+    }
+  };
 
   if (loading) {
     return (
@@ -304,6 +379,7 @@ const OpportunityManagement = () => {
                   <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                     {opportunity.title}
                   </Typography>
+                  {/* Status chips */}
                   <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
                     <Chip
                       icon={<CategoryIcon />}
@@ -334,6 +410,26 @@ const OpportunityManagement = () => {
                       }}
                     />
                   </Stack>
+                  
+                  {/* Tags */}
+                  {opportunity.tags && opportunity.tags.length > 0 && (
+                    <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                      {opportunity.tags.map((tag, idx) => (
+                        <Chip
+                          key={idx}
+                          label={tag}
+                          size="small"
+                          sx={{
+                            bgcolor: 'rgba(0,136,204,0.1)',
+                            color: '#0088cc',
+                            '& .MuiChip-label': {
+                              fontSize: '0.7rem'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  )}
                   <Typography
                     variant="body2"
                     color="text.secondary"
@@ -447,226 +543,294 @@ const OpportunityManagement = () => {
               {editingOpportunity ? 'Edit Opportunity' : 'Add Opportunity'}
             </Typography>
           </DialogTitle>
-          <DialogContent dividers sx={{ p: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
+          <form onSubmit={handleSubmit}>
+            <DialogContent dividers sx={{ p: 3 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    multiline
+                    rows={4}
+                    required
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Organizer"
+                    value={formData.organizer}
+                    onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
+                    required
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Location"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="City, Country or Online"
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      value={formData.category}
+                      label="Category"
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {categories.map((category) => (
+                        <MenuItem key={category.value} value={category.value}>
+                          {category.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Difficulty</InputLabel>
+                    <Select
+                      value={formData.difficulty}
+                      label="Difficulty"
+                      onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {difficulties.map((difficulty) => (
+                        <MenuItem key={difficulty.value} value={difficulty.value}>
+                          {difficulty.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={formData.status}
+                      label="Status"
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {statuses.map((status) => (
+                        <MenuItem key={status.value} value={status.value}>
+                          {status.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Deadline"
+                    type="date"
+                    value={formData.deadline}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                    required
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.registrationOpen}
+                        onChange={(e) => setFormData({ ...formData, registrationOpen: e.target.checked })}
+                        color="primary"
+                      />
                     }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  multiline
-                  rows={4}
-                  required
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
+                    label="Registration Open"
+                    sx={{ mt: 2 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Prize"
+                    value={formData.prize}
+                    onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
+                    placeholder="e.g., $1000, Certificates, etc."
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Link"
+                    value={formData.link}
+                    onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                    placeholder="https://example.com"
+                    required
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Application Link"
+                    value={formData.applicationLink}
+                    onChange={(e) => setFormData({ ...formData, applicationLink: e.target.value })}
+                    placeholder="https://example.com/apply"
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Eligibility"
+                    value={formData.eligibility}
+                    onChange={(e) => setFormData({ ...formData, eligibility: e.target.value })}
+                    multiline
+                    rows={2}
+                    placeholder="Who can participate?"
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    value={formData.tags || []}
+                    onChange={(e, newValue) => {
+                      console.log('Tags changed:', newValue);
+                      // Ensure we always have an array of strings
+                      const processedTags = newValue.map(tag => 
+                        typeof tag === 'string' ? tag.trim() : tag
+                      ).filter(tag => tag); // Remove any empty tags
+                      setFormData({ ...formData, tags: processedTags });
+                    }}
+                    options={commonTagSuggestions}
+                    onBlur={(e) => {
+                      // Check if there's text in the input and add it as a tag
+                      const inputValue = e.target.value?.trim();
+                      if (inputValue) {
+                        handleAddTag(inputValue);
+                        // Clear the input (note: this might not work perfectly with MUI Autocomplete)
+                        setTimeout(() => {
+                        e.target.value = '';
+                        }, 0);
+                      }
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option}
+                          {...getTagProps({ index })}
+                          key={index}
+                          sx={{
+                            bgcolor: theme.palette.mode === 'dark' ? 'rgba(0,136,204,0.1)' : 'rgba(0,136,204,0.05)',
+                            color: '#0088cc',
+                            border: '1px solid rgba(0,136,204,0.2)',
+                          }}
+                        />
+                      ))
                     }
-                  }}
-                />
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tags"
+                        placeholder="Add tags and press enter"
+                        helperText="Enter tags and press Enter or select from suggestions"
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2
+                          }
+                        }}
+                      />
+                    )}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Organizer"
-                  value={formData.organizer}
-                  onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
-                  required
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="City, Country or Online"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    value={formData.category}
-                    label="Category"
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    sx={{ borderRadius: 2 }}
-                  >
-                    {categories.map((category) => (
-                      <MenuItem key={category.value} value={category.value}>
-                        {category.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Difficulty</InputLabel>
-                  <Select
-                    value={formData.difficulty}
-                    label="Difficulty"
-                    onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                    sx={{ borderRadius: 2 }}
-                  >
-                    {difficulties.map((difficulty) => (
-                      <MenuItem key={difficulty.value} value={difficulty.value}>
-                        {difficulty.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Deadline"
-                  type="date"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                  required
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.registrationOpen}
-                      onChange={(e) => setFormData({ ...formData, registrationOpen: e.target.checked })}
-                      color="primary"
-                    />
-                  }
-                  label="Registration Open"
-                  sx={{ mt: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Prize"
-                  value={formData.prize}
-                  onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
-                  placeholder="e.g., $1000, Certificates, etc."
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Application Link"
-                  value={formData.applicationLink}
-                  onChange={(e) => setFormData({ ...formData, applicationLink: e.target.value })}
-                  placeholder="https://example.com/apply"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Eligibility"
-                  value={formData.eligibility}
-                  onChange={(e) => setFormData({ ...formData, eligibility: e.target.value })}
-                  multiline
-                  rows={2}
-                  placeholder="Who can participate?"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  value={formData.tags}
-                  onChange={(e, newValue) => setFormData({ ...formData, tags: newValue })}
-                  options={[]}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tags"
-                      placeholder="Add tags and press enter"
-                      sx={{ 
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2
-                        }
-                      }}
-                    />
-                  )}
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, borderTop: 1, borderColor: 'divider' }}>
-            <Button 
-              onClick={handleClose}
-              variant="outlined"
-              sx={{ 
-                borderRadius: 2,
-                px: 3,
-                mr: 1
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              variant="contained" 
-              sx={{ 
-                borderRadius: 2,
-                px: 3
-              }}
-            >
-              {editingOpportunity ? 'Update Opportunity' : 'Create Opportunity'}
-            </Button>
-          </DialogActions>
+            </DialogContent>
+            <DialogActions sx={{ p: 3, borderTop: 1, borderColor: 'divider' }}>
+              <Button 
+                onClick={handleClose}
+                variant="outlined"
+                sx={{ 
+                  borderRadius: 2,
+                  px: 3,
+                  mr: 1
+                }}
+                type="button"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                variant="contained" 
+                sx={{ 
+                  borderRadius: 2,
+                  px: 3
+                }}
+              >
+                {editingOpportunity ? 'Update Opportunity' : 'Create Opportunity'}
+              </Button>
+            </DialogActions>
+          </form>
         </Dialog>
       </Container>
     </Box>

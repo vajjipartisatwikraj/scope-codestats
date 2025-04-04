@@ -161,6 +161,44 @@ const UserView = () => {
     ? `${baseColor}30`
     : `${baseColor}15`;
 
+  // New helper functions for consistent component styling
+  const getCardStyle = () => ({
+    bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
+    color: darkMode ? 'white' : '#000000',
+    borderRadius: '16px',
+    boxShadow: darkMode 
+      ? '0 4px 20px rgba(0, 0, 0, 0.25)' 
+      : '0 4px 20px rgba(0, 0, 0, 0.1)',
+    border: darkMode 
+      ? '1px solid rgba(255, 255, 255, 0.05)' 
+      : '1px solid rgba(0, 0, 0, 0.03)',
+    backdropFilter: 'blur(10px)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    '&:hover': {
+      boxShadow: darkMode 
+        ? '0 6px 25px rgba(0, 0, 0, 0.3)' 
+        : '0 6px 25px rgba(0, 0, 0, 0.12)',
+    }
+  });
+
+  const getInnerCardStyle = () => ({
+    bgcolor: darkMode ? '#242424' : '#f5f5f5',
+    borderRadius: '12px',
+    border: darkMode 
+      ? '1px solid rgba(255, 255, 255, 0.05)' 
+      : '1px solid rgba(0, 0, 0, 0.05)',
+    boxShadow: darkMode 
+      ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
+      : '0 4px 12px rgba(0, 0, 0, 0.08)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      boxShadow: darkMode 
+        ? '0 6px 16px rgba(0, 0, 0, 0.25)' 
+        : '0 6px 16px rgba(0, 0, 0, 0.12)',
+    }
+  });
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -262,11 +300,12 @@ const UserView = () => {
             sx: {
               backgroundColor: darkMode ? '#333' : 'white',
               color: darkMode ? 'white' : '#333',
-              border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+              border: darkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
               borderRadius: '8px',
               padding: '12px',
               fontSize: '14px',
-              boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)'
+              boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.5)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+              zIndex: 1000
             }
           }
         }}
@@ -279,17 +318,8 @@ const UserView = () => {
           flexDirection: 'column', 
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: darkMode ? '#242424' : '#f5f5f5',
-          borderRadius: 2,
-          p: 2,
-          overflow: 'hidden',
-          border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-          boxShadow: darkMode ? '0 4px 8px rgba(0, 0, 0, 0.2)' : '0 4px 8px rgba(0, 0, 0, 0.1)',
-          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: darkMode ? '0 6px 12px rgba(0, 0, 0, 0.3)' : '0 6px 12px rgba(0, 0, 0, 0.15)',
-          }
+          ...getInnerCardStyle(),
+          p: 2
         }}>
           <Box sx={{ position: 'relative', width: 60, height: 60, mb: 1 }}>
             <CircularProgress
@@ -309,7 +339,7 @@ const UserView = () => {
               size={60}
               thickness={5}
               sx={{
-                color: '#FF8000', // Orange color for the progress
+                color: '#0088cc', // Use primary color instead of orange
                 position: 'absolute',
                 left: 0,
                 '& .MuiCircularProgress-circle': {
@@ -328,20 +358,22 @@ const UserView = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                bgcolor: '#1a1a1a', // Consistent dark background for the center
+                bgcolor: darkMode ? '#1a1a1a' : '#fff',
                 width: 48,
                 height: 48,
                 borderRadius: '50%',
-                margin: 'auto'
+                margin: 'auto',
+                border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
               }}
             >
               <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#0088cc', fontSize: '0.9rem' }}>
                 {score}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem', lineHeight: 1 }}>
+              <Typography variant="caption" sx={{ color: getTextColor(0.7), fontSize: '0.6rem', lineHeight: 1 }}>
                 Average
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem', lineHeight: 1 }}>
+              <Typography variant="caption" sx={{ color: getTextColor(0.7), fontSize: '0.6rem', lineHeight: 1 }}>
                 Rating
               </Typography>
             </Box>
@@ -350,7 +382,7 @@ const UserView = () => {
             <Typography 
               variant="body2" 
               sx={{ 
-                color: darkMode ? 'white' : 'rgba(0, 0, 0, 0.87)', 
+                color: getTextColor(0.9), 
                 fontWeight: 500,
                 textAlign: 'center',
                 width: '100%',
@@ -378,7 +410,7 @@ const UserView = () => {
         gap: 2
       }}>
         <CircularProgress sx={{ color: '#0088cc' }} />
-        <Typography variant="body1" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+        <Typography variant="body1" sx={{ color: getTextColor(0.7) }}>
           Loading user profile...
         </Typography>
       </Box>
@@ -393,15 +425,26 @@ const UserView = () => {
         alignItems: 'center', 
         minHeight: '80vh',
         flexDirection: 'column',
-        gap: 2
+        gap: 2,
+        p: 3,
+        mx: 'auto',
+        maxWidth: '600px',
+        ...getCardStyle(),
+        bgcolor: darkMode ? 'rgba(26, 26, 26, 0.8)' : 'rgba(255, 255, 255, 0.8)',
       }}>
-        <Typography variant="h5" color="error" sx={{ mb: 2 }}>{error || 'User not found'}</Typography>
+        <Typography variant="h5" color="error" sx={{ mb: 2, textAlign: 'center' }}>{error || 'User not found'}</Typography>
+        <Typography variant="body1" sx={{ color: getTextColor(0.7), mb: 3, textAlign: 'center' }}>
+          We couldn't find the user profile you're looking for. The user may not exist or there might be a problem with the connection.
+        </Typography>
         <Button 
           variant="contained" 
           onClick={() => navigate('/')}
           sx={{ 
             bgcolor: '#0088cc',
-            '&:hover': { bgcolor: '#006699' }
+            '&:hover': { bgcolor: '#006699' },
+            px: 4,
+            py: 1,
+            borderRadius: '8px'
           }}
         >
           Go Back Home
@@ -417,13 +460,9 @@ const UserView = () => {
         <Grid item xs={12}>
           <Paper sx={{ 
             p: { xs: 3, sm: 4 }, 
-            bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-            color: darkMode ? 'white' : '#000000',
-            borderRadius: 2,
+            ...getCardStyle(),
             position: 'relative',
             overflow: 'hidden',
-            boxShadow: darkMode ? 'none' : '0 4px 12px rgba(0,0,0,0.1)',
-            border: darkMode ? '1px solid rgba(255, 255, 255, 0.12)' : 'none',
           }}>
             {/* Background Pattern */}
             <Box sx={{
@@ -432,9 +471,7 @@ const UserView = () => {
               left: 0,
               right: 0,
               height: '120px',
-              background: darkMode 
-                ? 'linear-gradient(135deg, #0088cc 0%, #005580 100%)'
-                : 'linear-gradient(135deg, #0088cc 0%, #33a0d4 100%)',
+              background: 'linear-gradient(135deg, #0088cc 0%, #005580 100%)',
               opacity: darkMode ? 0.8 : 0.7,
             }} />
 
@@ -511,19 +548,14 @@ const UserView = () => {
         <Grid item xs={12} md={4} sx={{ order: { xs: 2, md: 1 } }}>
           <Paper sx={{ 
             p: { xs: 2, sm: 3 }, 
-            bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-            color: darkMode ? 'white' : '#000000',
-            borderRadius: 2,
+            ...getCardStyle(),
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-            border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-            backdropFilter: 'blur(10px)',
           }}>
             {/* About Section */}
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: darkMode ? '#fff' : '#000' }}>About</Typography>
-            <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)', mb: 3, whiteSpace: 'pre-line', lineHeight: 1.7 }}>
+            <Typography variant="body2" sx={{ color: getTextColor(0.7), mb: 3, whiteSpace: 'pre-line', lineHeight: 1.7 }}>
               {userData.about || 'No description provided.'}
             </Typography>
 
@@ -555,7 +587,7 @@ const UserView = () => {
                       }}>
                         L
                       </Box>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
                         LeetCode: <Typography 
                           component="a" 
                           href={`https://leetcode.com/${userData.codingProfiles.leetcode.username}`}
@@ -591,7 +623,7 @@ const UserView = () => {
                       }}>
                         C
                       </Box>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
                         CodeChef: <Typography 
                           component="a" 
                           href={`https://www.codechef.com/users/${userData.codingProfiles.codechef.username}`}
@@ -627,7 +659,7 @@ const UserView = () => {
                       }}>
                         H
                       </Box>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
                         HackerRank: <Typography 
                           component="a" 
                           href={`https://www.hackerrank.com/${userData.codingProfiles.hackerrank.username}`}
@@ -663,7 +695,7 @@ const UserView = () => {
                       }}>
                         CF
                       </Box>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
                         CodeForces: <Typography 
                           component="a" 
                           href={`https://codeforces.com/profile/${userData.codingProfiles.codeforces.username}`}
@@ -699,7 +731,7 @@ const UserView = () => {
                       }}>
                         G
                       </Box>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
                         GitHub: <Typography 
                           component="a" 
                           href={`https://github.com/${userData.codingProfiles.github.username}`}
@@ -734,7 +766,7 @@ const UserView = () => {
                       }}>
                         G
                       </Box>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
                         Geeks For Geeks: <Typography 
                           component="a" 
                           href={`https://www.geeksforgeeks.org/user/${userData.codingProfiles.geeksforgeeks.username}`}
@@ -761,12 +793,13 @@ const UserView = () => {
             <Divider sx={{ my: 2, borderColor: getDividerColor() }} />
 
             {/* Details Section */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
               <Typography variant="h6" gutterBottom sx={{ mt: 2, fontWeight: 600, color: darkMode ? '#fff' : '#000' }}>Details</Typography>
               <Box sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
                 gap: 3,
+                width: '100%',
                 '& .MuiTypography-root': {
                   fontSize: '1rem',
                   color: darkMode ? 'white' : 'rgba(0, 0, 0, 0.87)'
@@ -775,7 +808,8 @@ const UserView = () => {
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  width: '100%'
                 }}>
                   <Typography sx={{ color: getTextColor(0.5) }}>
                     Email
@@ -785,7 +819,8 @@ const UserView = () => {
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  width: '100%'
                 }}>
                   <Typography sx={{ color: getTextColor(0.5) }}>
                     Department
@@ -795,7 +830,8 @@ const UserView = () => {
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  width: '100%'
                 }}>
                   <Typography sx={{ color: getTextColor(0.5) }}>
                     Section
@@ -805,7 +841,8 @@ const UserView = () => {
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  width: '100%'
                 }}>
                   <Typography sx={{ color: getTextColor(0.5) }}>
                     Year
@@ -815,7 +852,8 @@ const UserView = () => {
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  width: '100%'
                 }}>
                   <Typography sx={{ color: getTextColor(0.5) }}>
                     Contact
@@ -827,7 +865,7 @@ const UserView = () => {
               <Divider sx={{ my: 2, borderColor: getDividerColor() }} />
 
               {/* Skills Section */}
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Skills</Typography>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2, fontWeight: 600, color: darkMode ? '#fff' : '#000' }}>Skills</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
                 {userData.skills?.map((skill, index) => (
                   <Chip
@@ -835,9 +873,12 @@ const UserView = () => {
                     label={skill}
                     size={isMobile ? "small" : "medium"}
                     sx={{
-                      bgcolor: getHoverBgColor('#0088cc'),
+                      bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
                       color: '#0088cc',
-                      '&:hover': { bgcolor: getHoverBgColor('#0088cc') }
+                      border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
+                      '&:hover': { 
+                        bgcolor: darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)' 
+                      }
                     }}
                   />
                 ))}
@@ -854,9 +895,12 @@ const UserView = () => {
                     label={interest}
                     size={isMobile ? "small" : "medium"}
                     sx={{
-                      bgcolor: getHoverBgColor('#0088cc'),
+                      bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
                       color: '#0088cc',
-                      '&:hover': { bgcolor: getHoverBgColor('#0088cc') }
+                      border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
+                      '&:hover': { 
+                        bgcolor: darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)' 
+                      }
                     }}
                   />
                 ))}
@@ -871,15 +915,10 @@ const UserView = () => {
           <Paper sx={{ 
             p: { xs: 2, sm: 3 }, 
             mb: 3,
-            bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-            color: darkMode ? 'white' : '#000000',
-            borderRadius: 2,
+            ...getCardStyle(),
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-            border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-            backdropFilter: 'blur(10px)',
           }}>
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: darkMode ? '#fff' : '#000' }}>
               Coding Profiles
@@ -920,7 +959,10 @@ const UserView = () => {
                 overflow: 'hidden',
                 position: 'relative',
                 backdropFilter: 'blur(5px)',
-                borderRadius: 1
+                borderRadius: '16px',
+                bgcolor: darkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
+                border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
+                boxShadow: darkMode ? '0 4px 8px rgba(0, 0, 0, 0.15)' : '0 4px 8px rgba(0, 0, 0, 0.05)',
               }}>
                 <ResponsiveContainer width="100%" height="100%">
                 <PieChart 
@@ -966,7 +1008,7 @@ const UserView = () => {
                       backgroundColor: darkMode ? '#1E1E1E' : 'white',
                       color: darkMode ? 'white' : '#333',
                       border: darkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
-                      borderRadius: '8px',
+                        borderRadius: '12px',
                       padding: '12px',
                       fontSize: '14px',
                       boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.5)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
@@ -975,7 +1017,7 @@ const UserView = () => {
                     labelStyle={{
                       fontWeight: 'bold',
                       marginBottom: '6px',
-                      color: darkMode ? '#0088cc' : '#0066aa'
+                        color: '#0088cc'
                     }}
                     wrapperStyle={{
                       outline: 'none'
@@ -1013,11 +1055,11 @@ const UserView = () => {
                     wrapperStyle={{
                       fontSize: '12px',
                       paddingTop: '20px',
-                      color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)'
+                        color: getTextColor(0.9)
                     }}
                     formatter={(value, entry) => (
                       <span style={{ 
-                        color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+                          color: getTextColor(0.9),
                         fontWeight: 500,
                         padding: '4px 8px',
                         cursor: 'pointer'
@@ -1041,12 +1083,12 @@ const UserView = () => {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: darkMode ? '#1a1a1a' : '#ffffff',
+                  bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
                   border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
                   boxShadow: darkMode ? '0 4px 8px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.1)',
                   borderRadius: '50%',
                   zIndex: -5,
-                  pointerEvents: 'none' // This ensures hover events pass through to the chart
+                  pointerEvents: 'none'
                 }}>
                   <Typography 
                     variant="h4" 
@@ -1086,16 +1128,11 @@ const UserView = () => {
             {/* GitHub Stats Section */}
             <Paper sx={{ 
               p: { xs: 2, sm: 3 }, 
-              mb: 3,
-              bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-              color: darkMode ? 'white' : '#000000',
-              borderRadius: 2,
+              my: 3,
+              ...getCardStyle(),
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-              border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-              backdropFilter: 'blur(10px)',
             }}>
               <Typography variant="h5" gutterBottom sx={{ mb: 2, fontWeight: 600, color: darkMode ? '#fff' : '#000' }}>
                 GitHub Stats
@@ -1114,30 +1151,23 @@ const UserView = () => {
                           <Grid item xs={12} sm={6} md={3}>
                             <Paper sx={{ 
                               p: 2, 
-                              bgcolor: darkMode ? '#242424' : '#f5f5f5', 
-                              borderRadius: 2,
+                              ...getInnerCardStyle(),
                               height: '100%',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'center',
-                              transition: 'transform 0.2s ease-in-out',
-                              '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: darkMode 
-                                  ? '0 6px 20px rgba(0, 0, 0, 0.3)'
-                                  : '0 6px 20px rgba(0, 0, 0, 0.1)',
-                              },
-                              boxShadow: darkMode 
-                                ? '0 4px 12px rgba(0, 0, 0, 0.2)'
-                                : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                              border: darkMode 
-                                ? '1px solid rgba(255, 255, 255, 0.05)'
-                                : '1px solid rgba(0, 0, 0, 0.05)',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
                                 Public Repo's
                               </Typography>
-                              <Typography variant="h4" sx={{ color: '#0088cc', fontWeight: 600 }}>
+                              <Typography 
+                                variant="h5" 
+                                sx={{ 
+                                  color: '#0088cc', 
+                                  fontWeight: 600,
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                                }}
+                              >
                                 {userData.codingProfiles?.github?.publicRepos || 0}
                               </Typography>
                             </Paper>
@@ -1145,30 +1175,23 @@ const UserView = () => {
                           <Grid item xs={12} sm={6} md={3}>
                             <Paper sx={{ 
                               p: 2, 
-                              bgcolor: darkMode ? '#242424' : '#f5f5f5', 
-                              borderRadius: 2,
+                              ...getInnerCardStyle(),
                               height: '100%',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'center',
-                              transition: 'transform 0.2s ease-in-out',
-                              '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: darkMode 
-                                  ? '0 6px 20px rgba(0, 0, 0, 0.3)'
-                                  : '0 6px 20px rgba(0, 0, 0, 0.1)',
-                              },
-                              boxShadow: darkMode 
-                                ? '0 4px 12px rgba(0, 0, 0, 0.2)'
-                                : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                              border: darkMode 
-                                ? '1px solid rgba(255, 255, 255, 0.05)'
-                                : '1px solid rgba(0, 0, 0, 0.05)',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
                                 Score
                               </Typography>
-                              <Typography variant="h4" sx={{ color: '#0088cc', fontWeight: 600 }}>
+                              <Typography 
+                                variant="h5" 
+                                sx={{ 
+                                  color: '#0088cc', 
+                                  fontWeight: 600,
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                                }}
+                              >
                                 {userData.codingProfiles?.github?.score || 0}
                               </Typography>
                             </Paper>
@@ -1176,30 +1199,23 @@ const UserView = () => {
                           <Grid item xs={12} sm={6} md={3}>
                             <Paper sx={{ 
                               p: 2, 
-                              bgcolor: darkMode ? '#242424' : '#f5f5f5', 
-                              borderRadius: 2,
+                              ...getInnerCardStyle(),
                               height: '100%',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'center',
-                              transition: 'transform 0.2s ease-in-out',
-                              '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: darkMode 
-                                  ? '0 6px 20px rgba(0, 0, 0, 0.3)'
-                                  : '0 6px 20px rgba(0, 0, 0, 0.1)',
-                              },
-                              boxShadow: darkMode 
-                                ? '0 4px 12px rgba(0, 0, 0, 0.2)'
-                                : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                              border: darkMode 
-                                ? '1px solid rgba(255, 255, 255, 0.05)'
-                                : '1px solid rgba(0, 0, 0, 0.05)',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
                                 Rating
                               </Typography>
-                              <Typography variant="h4" sx={{ color: '#0088cc', fontWeight: 600 }}>
+                              <Typography 
+                                variant="h5" 
+                                sx={{ 
+                                  color: '#0088cc', 
+                                  fontWeight: 600,
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                                }}
+                              >
                                 {userData.codingProfiles?.github?.rating || 0}
                               </Typography>
                             </Paper>
@@ -1207,30 +1223,24 @@ const UserView = () => {
                           <Grid item xs={12} sm={6} md={3}>
                             <Paper sx={{ 
                               p: 2, 
-                              bgcolor: darkMode ? '#242424' : '#f5f5f5', 
-                              borderRadius: 2,
+                              ...getInnerCardStyle(),
                               height: '100%',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'center',
-                              transition: 'transform 0.2s ease-in-out',
-                              '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: darkMode 
-                                  ? '0 6px 20px rgba(0, 0, 0, 0.3)'
-                                  : '0 6px 20px rgba(0, 0, 0, 0.1)',
-                              },
-                              boxShadow: darkMode 
-                                ? '0 4px 12px rgba(0, 0, 0, 0.2)'
-                                : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                              border: darkMode 
-                                ? '1px solid rgba(255, 255, 255, 0.05)'
-                                : '1px solid rgba(0, 0, 0, 0.05)',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
                                 Rank
                               </Typography>
-                              <Typography variant="h4" sx={{ color: '#0088cc', fontWeight: 600, textTransform: 'capitalize' }}>
+                              <Typography 
+                                variant="h5" 
+                                sx={{ 
+                                  color: '#0088cc', 
+                                  fontWeight: 600, 
+                                  textTransform: 'capitalize',
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                                }}
+                              >
                                 {userData.codingProfiles?.github?.rank || 'Unrated'}
                               </Typography>
                             </Paper>
@@ -1240,11 +1250,8 @@ const UserView = () => {
                         {/* GitHub Contribution Calendar */}
                         <Paper sx={{ 
                           p: 2, 
-                          bgcolor: darkMode ? '#242424' : '#f5f5f5', 
-                          borderRadius: 2,
+                          ...getInnerCardStyle(),
                           mt: 1,
-                          boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                          border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
                         }}>
                           <Box sx={{
                             display: 'flex',
@@ -1262,7 +1269,14 @@ const UserView = () => {
                               <Typography variant="body2" color={getTextColor(0.7)}>
                                 Total Contributions
                               </Typography>
-                              <Typography variant="h6" sx={{ color: '#0088cc', fontWeight: 600 }}>
+                              <Typography 
+                                variant="h6" 
+                                sx={{ 
+                                  color: '#0088cc', 
+                                  fontWeight: 600,
+                                  fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                                }}
+                              >
                                 {userData.codingProfiles?.github?.totalContributions || 0}
                               </Typography>
                             </Box>
@@ -1297,11 +1311,8 @@ const UserView = () => {
                           <Grid item xs={12}>
                             <Paper sx={{ 
                               p: 2, 
-                              bgcolor: darkMode ? '#242424' : '#f5f5f5', 
-                              borderRadius: 2,
+                              ...getInnerCardStyle(),
                               height: '100%',
-                              boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                              border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
                             }}>
                               <Typography variant="h6" sx={{ 
                                 mb: 2,
@@ -1346,15 +1357,10 @@ const UserView = () => {
             {/* Achievements Section */}
             <Paper sx={{ 
               p: { xs: 2, sm: 3 },
-              bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-              color: darkMode ? 'white' : '#000000',
-              borderRadius: 2,
+              ...getCardStyle(),
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-              border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-              backdropFilter: 'blur(10px)',
             }}>
               <Typography variant="h5" sx={{ 
                 color: darkMode ? '#fff' : '#000',
@@ -1370,17 +1376,17 @@ const UserView = () => {
                 flexDirection: { xs: 'row', sm: 'row' },
                 gap: 2,
                 mb: 3,
-                borderBottom: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                borderBottom: `1px solid ${getDividerColor()}`,
                 pb: 1,
                 overflowX: 'auto',
                 overflowY: 'hidden',
                 whiteSpace: 'nowrap',
-                scrollbarWidth: 'none',  // Hide scrollbar for Firefox
-                msOverflowStyle: 'none', // Hide scrollbar for IE/Edge
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
                 '&::-webkit-scrollbar': {
-                  display: 'none'        // Hide scrollbar for Chrome/Safari
+                  display: 'none'
                 },
-                WebkitOverflowScrolling: 'touch' // Smooth scrolling for iOS
+                WebkitOverflowScrolling: 'touch'
               }}>
                 {achievementTypes.map((type) => (
                   <Typography 
@@ -1419,14 +1425,20 @@ const UserView = () => {
                     key={achievement._id}
                     sx={{
                       mb: 2,
-                      borderRadius: 1,
+                      borderRadius: '16px',
                       overflow: 'hidden',
                       display: 'flex',
                       flexDirection: 'row',
                       width: '100%',
                       transition: 'all 0.3s ease',
-                      bgcolor: darkMode ? '#1e1e1e' : '#f8f8f8',
-                      border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.09)',
+                      ...getInnerCardStyle(),
+                      transform: 'none',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: darkMode 
+                          ? '0 8px 25px rgba(0, 0, 0, 0.3)' 
+                          : '0 8px 25px rgba(0, 0, 0, 0.15)',
+                      }
                     }}
                   >
                     {/* Left side - Image area */}
@@ -1497,13 +1509,16 @@ const UserView = () => {
                               label={tech.trim()}
                               sx={{
                                 bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
-                                color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)',
-                                border: darkMode ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.1)',
+                                color: '#0088cc',
+                                border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
                                 borderRadius: '20px',
                                 fontSize: '0.85rem',
                                 fontWeight: 500,
                                 height: 'auto',
-                                py: 0.5
+                                py: 0.5,
+                                '&:hover': { 
+                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)' 
+                                }
                               }}
                             />
                           ))}
@@ -1540,7 +1555,7 @@ const UserView = () => {
                             px: 4,
                             py: 1,
                             width: 'fit-content',
-                            borderRadius: 1,
+                            borderRadius: '8px',
                             textTransform: 'none',
                             '&:hover': {
                               bgcolor: '#006699',
@@ -1557,7 +1572,10 @@ const UserView = () => {
                   <Box sx={{ 
                     textAlign: 'center',
                     py: 4,
-                    color: getTextColor(0.5)
+                    color: getTextColor(0.5),
+                    bgcolor: darkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
+                    borderRadius: '16px',
+                    border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
                   }}>
                     <Typography>
                       No {achievementTypes.find(t => t.value === activeTab)?.label}s found

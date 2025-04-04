@@ -26,7 +26,7 @@ const Landing = () => {
       description: 'Monitor your performance across multiple competitive programming platforms in one place.'
     },
     {
-      icon: <EmojiEvents sx={{ fontSize: 40, color: theme.palette.secondary.main }} />,
+      icon: <EmojiEvents sx={{ fontSize: 40, color: '#FFD700' }} />,
       title: 'Compete & Compare',
       description: 'Join the leaderboard and compete with fellow students to improve your skills.'
     },

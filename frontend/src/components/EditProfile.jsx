@@ -16,7 +16,9 @@ import {
   StepLabel,
   StepContent,
   CircularProgress,
-  useTheme
+  useTheme,
+  Autocomplete,
+  Chip
 } from '@mui/material';
 import { Close as CloseIcon, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -186,6 +188,41 @@ const EditProfile = ({
     }
   }, [profileData, auth?.user]);
   
+  // Add a handleAddTag helper function similar to the one in OpportunityManagement
+  // Handle adding a skill tag
+  const handleAddSkill = (newSkill) => {
+    if (!newSkill || !newSkill.trim()) return;
+    
+    // Check if skill already exists to avoid duplicates
+    const normalizedNewSkill = newSkill.trim();
+    const currentSkills = Array.isArray(editProfileData.skills) ? 
+      [...editProfileData.skills] : 
+      [];
+    
+    if (!currentSkills.includes(normalizedNewSkill)) {
+      const updatedSkills = [...currentSkills, normalizedNewSkill];
+      console.log('Adding skill:', normalizedNewSkill, 'New skills:', updatedSkills);
+      setEditProfileData(prev => ({ ...prev, skills: updatedSkills }));
+    }
+  };
+
+  // Handle adding an interest tag
+  const handleAddInterest = (newInterest) => {
+    if (!newInterest || !newInterest.trim()) return;
+    
+    // Check if interest already exists to avoid duplicates
+    const normalizedNewInterest = newInterest.trim();
+    const currentInterests = Array.isArray(editProfileData.interests) ? 
+      [...editProfileData.interests] : 
+      [];
+    
+    if (!currentInterests.includes(normalizedNewInterest)) {
+      const updatedInterests = [...currentInterests, normalizedNewInterest];
+      console.log('Adding interest:', normalizedNewInterest, 'New interests:', updatedInterests);
+      setEditProfileData(prev => ({ ...prev, interests: updatedInterests }));
+    }
+  };
+
   // Helper function to render profile fields based on field name
   const renderProfileField = (field, index, isEditMode = true) => {
     switch (field) {
@@ -237,7 +274,7 @@ const EditProfile = ({
             error={!!fieldErrors.section}
             helperText={fieldErrors.section || 'Select your class section'}
           >
-            {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'None'].map((option) => (
+            {['None', 'A', 'B', 'C', 'D', 'E', 'F', 'G'].map((option) => (
               <MenuItem key={option} value={option}>
                 {option === 'None' ? 'None' : `Section ${option}`}
               </MenuItem>
@@ -263,22 +300,14 @@ const EditProfile = ({
             {[
               { value: 'AERO', label: 'Aeronautical Engineering' },
               { value: 'CSC', label: 'Computer Science & Cybersecurity' },
-              { value: 'CSD', label: 'Computer Science & Design' },
+              { value: 'CSD', label: 'Computer Science & Data Science' },
               { value: 'CSE', label: 'Computer Science & Engineering' },
-              { value: 'CSBS', label: 'Computer Science & Business Systems' },
-              { value: 'CST', label: 'Computer Science & Technology' },
-              { value: 'CCS', label: 'Cloud Computing & Solutions' },
-              { value: 'AIML', label: 'Artificial Intelligence & Machine Learning' },
-              { value: 'DS', label: 'Data Science' },
-              { value: 'CYS', label: 'Cyber Security' },
+              { value: 'CSM', label: 'Computer Science & ML' },
+              { value: 'CSIT', label: 'Computer Science & IT' },
               { value: 'IT', label: 'Information Technology' },
               { value: 'ECE', label: 'Electronics & Communication Engineering' },
-              { value: 'EEE', label: 'Electrical & Electronics Engineering' },
               { value: 'MECH', label: 'Mechanical Engineering' },
-              { value: 'CIVIL', label: 'Civil Engineering' },
-              { value: 'CHEM', label: 'Chemical Engineering' },
-              { value: 'BIO', label: 'Biotechnology' },
-              { value: 'OTHER', label: 'Other' }
+              { value: 'EEE', label: 'Electrical & Electronics Engineering' }
             ].map((option) => (
               <MenuItem key={option.value} value={option.value}>
                 {option.label}
@@ -366,46 +395,118 @@ const EditProfile = ({
         );
       case 'skills':
         return (
-          <TextField
+          <Autocomplete
             key={index}
-            label="Skills (comma-separated)"
-            fullWidth
-            margin="normal"
-            name="skills"
-            disabled={!isEditMode}
-            value={Array.isArray(editProfileData?.skills) ? editProfileData.skills.join(', ') : editProfileData?.skills || ''}
-            onChange={(e) => {
-              // Convert comma-separated string to array when saving
-              const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(skill => skill !== '');
-              setEditProfileData(prev => ({
-                ...prev,
-                skills: skillsArray
-              }));
+            multiple
+            freeSolo
+            options={skillOptions}
+            value={Array.isArray(editProfileData?.skills) ? editProfileData.skills : []}
+            onChange={(e, newValue) => {
+              console.log('Skills changed:', newValue);
+              // Ensure we always have an array of strings
+              const processedSkills = newValue.map(skill => 
+                typeof skill === 'string' ? skill.trim() : skill
+              ).filter(skill => skill); // Remove any empty skills
+              setEditProfileData(prev => ({ ...prev, skills: processedSkills }));
             }}
-            error={!!fieldErrors.skills}
-            helperText={fieldErrors.skills || "Enter skills separated by commas (e.g. JavaScript, React, Node.js)"}
+            onBlur={(e) => {
+              // Check if there's text in the input and add it as a tag
+              const inputValue = e.target.value?.trim();
+              if (inputValue) {
+                handleAddSkill(inputValue);
+                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
+                setTimeout(() => {
+                  e.target.value = '';
+                }, 0);
+              }
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option}
+                  {...getTagProps({ index })}
+                  key={index}
+                  size="small"
+                  sx={{
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(0,136,204,0.1)' : 'rgba(0,136,204,0.05)',
+                    color: '#0088cc',
+                    border: '1px solid rgba(0,136,204,0.2)',
+                  }}
+                />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                margin="normal"
+                label="Skills"
+                placeholder="Add skills and press enter"
+                helperText={fieldErrors.skills || "Enter your skills and press Enter or select from suggestions"}
+                error={!!fieldErrors.skills}
+                disabled={!isEditMode}
+              />
+            )}
+            disabled={!isEditMode}
+            sx={{ width: '100%', marginTop: 2, marginBottom: 1 }}
           />
         );
       case 'interests':
         return (
-          <TextField
+          <Autocomplete
             key={index}
-            label="Interests (comma-separated)"
-            fullWidth
-            margin="normal"
-            name="interests"
-            disabled={!isEditMode}
-            value={Array.isArray(editProfileData?.interests) ? editProfileData.interests.join(', ') : editProfileData?.interests || ''}
-            onChange={(e) => {
-              // Convert comma-separated string to array when saving
-              const interestsArray = e.target.value.split(',').map(interest => interest.trim()).filter(interest => interest !== '');
-              setEditProfileData(prev => ({
-                ...prev,
-                interests: interestsArray
-              }));
+            multiple
+            freeSolo
+            options={interestOptions}
+            value={Array.isArray(editProfileData?.interests) ? editProfileData.interests : []}
+            onChange={(e, newValue) => {
+              console.log('Interests changed:', newValue);
+              // Ensure we always have an array of strings
+              const processedInterests = newValue.map(interest => 
+                typeof interest === 'string' ? interest.trim() : interest
+              ).filter(interest => interest); // Remove any empty interests
+              setEditProfileData(prev => ({ ...prev, interests: processedInterests }));
             }}
-            error={!!fieldErrors.interests}
-            helperText={fieldErrors.interests || "Enter interests separated by commas (e.g. Web Development, Machine Learning)"}
+            onBlur={(e) => {
+              // Check if there's text in the input and add it as a tag
+              const inputValue = e.target.value?.trim();
+              if (inputValue) {
+                handleAddInterest(inputValue);
+                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
+                setTimeout(() => {
+                  e.target.value = '';
+                }, 0);
+              }
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option}
+                  {...getTagProps({ index })}
+                  key={index}
+                  size="small"
+                  sx={{
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(25,118,210,0.1)' : 'rgba(25,118,210,0.05)',
+                    color: theme.palette.primary.main,
+                    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(25,118,210,0.2)' : 'rgba(25,118,210,0.3)'}`,
+                  }}
+                />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                margin="normal"
+                label="Interests"
+                placeholder="Add interests and press enter"
+                helperText={fieldErrors.interests || "Enter your interests and press Enter or select from suggestions"}
+                error={!!fieldErrors.interests}
+                disabled={!isEditMode}
+              />
+            )}
+            disabled={!isEditMode}
+            sx={{ width: '100%', marginTop: 2, marginBottom: 1 }}
           />
         );
       default:

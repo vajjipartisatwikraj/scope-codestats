@@ -306,16 +306,17 @@ const Profile = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, p: { xs: 0, sm: 2 } }}>
-      {/* Hero Section */}
+      {/* Hero Section with improved styling */}
       <Box
         sx={{
           position: 'relative',
           mb: 6,
           borderRadius: '24px',
           overflow: 'visible',
-          bgcolor: 'rgba(255,255,255,0.03)',
+          bgcolor: theme.palette.background.paper,
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,0.05)',
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: theme.shadows[4],
         }}
       >
         {/* Cover Image/Gradient */}
@@ -323,12 +324,12 @@ const Profile = () => {
           sx={{
             height: '200px',
             background: 'linear-gradient(45deg, #0088cc 30%, #00bfff 90%)',
-            opacity: 0.8,
+            opacity: 0.9,
             borderRadius: '24px 24px 0 0',
           }}
         />
 
-        {/* Profile Info Section */}
+        {/* Profile Info Section with better contrast */}
         <Box 
           sx={{ 
             position: 'relative',
@@ -352,7 +353,7 @@ const Profile = () => {
                 mb: 0.5,
                 color: theme.palette.common.white,
                 letterSpacing: '-0.5px',
-                textShadow: theme.palette.mode === 'dark' ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
+                textShadow: '0 2px 8px rgba(0,0,0,0.5)',
               }}
             >
               {profileData.name}
@@ -361,9 +362,12 @@ const Profile = () => {
               variant="body1" 
               sx={{ 
                 mb: 2,
-                color: alpha(theme.palette.common.white, 0.9),
+                color: theme.palette.common.white,
                 fontWeight: 500,
-                textShadow: theme.palette.mode === 'dark' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
+                textShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '16px',
               }}
             >
               {profileData.department} Department
@@ -384,139 +388,251 @@ const Profile = () => {
             </Button>
           </Box>
 
-          {/* Quick Info Grid */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="body2" sx={{ width: 100, color: theme.palette.text.secondary }}>
+          {/* Quick Info Grid with improved styling */}
+          <Grid container spacing={0} sx={{ 
+            mb: 4, 
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+            p: 3, 
+            borderRadius: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            border: `1px solid ${theme.palette.divider}`
+          }}>
+            <Grid item xs={12} sm={6} md={3} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ minWidth: 44, mr: 2, display: 'flex', justifyContent: 'center' }}>
+                  <Badge sx={{ color: theme.palette.primary.main, fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontWeight: 500, mb: 0.5 }}>
                   Roll Number
                 </Typography>
-                <Badge sx={{ color: theme.palette.primary.main }} />
-                <Typography variant="body2" sx={{ fontWeight: 500, ml: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
                   {profileData.rollNumber}
                 </Typography>
+                </Box>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="body2" sx={{ width: 100, color: theme.palette.text.secondary }}>
+            <Grid item xs={12} sm={6} md={3} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ minWidth: 44, mr: 2, display: 'flex', justifyContent: 'center' }}>
+                  <School sx={{ color: theme.palette.primary.main, fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontWeight: 500, mb: 0.5 }}>
                   Department
                 </Typography>
-                <School sx={{ color: theme.palette.primary.main }} />
-                <Typography variant="body2" sx={{ fontWeight: 500, ml: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
                   {profileData.department}
                 </Typography>
+                </Box>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="body2" sx={{ width: 100, color: theme.palette.text.secondary }}>
+            <Grid item xs={12} sm={6} md={3} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ minWidth: 44, mr: 2, display: 'flex', justifyContent: 'center' }}>
+                  <Email sx={{ color: theme.palette.primary.main, fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontWeight: 500, mb: 0.5 }}>
                   Email
                 </Typography>
-                <Email sx={{ color: theme.palette.primary.main }} />
-                <Typography variant="body2" sx={{ fontWeight: 500, ml: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
                   {auth?.user?.email}
                 </Typography>
+                </Box>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="body2" sx={{ width: 100, color: theme.palette.text.secondary }}>
+            <Grid item xs={12} sm={6} md={3} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ minWidth: 44, mr: 2, display: 'flex', justifyContent: 'center' }}>
+                  <Phone sx={{ color: theme.palette.primary.main, fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontWeight: 500, mb: 0.5 }}>
                   Phone
                 </Typography>
-                <Phone sx={{ color: theme.palette.primary.main }} />
-                <Typography variant="body2" sx={{ fontWeight: 500, ml: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
                   {profileData.phone || 'Not provided'}
                 </Typography>
+                </Box>
               </Box>
             </Grid>
           </Grid>
 
-          {/* About Section */}
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              my: 2, 
-              color: theme.palette.text.secondary,
-              lineHeight: 1.7,
-              whiteSpace: 'pre-wrap'
-            }}
-          >
-            {profileData.about || 'No bio provided yet.'}
-          </Typography>
+          {/* About Section with improved styling */}
+          <Box sx={{
+            p: 3,
+            borderRadius: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: `1px solid ${theme.palette.divider}`,
+            bgcolor: theme.palette.background.paper,
+            mb: 3
+          }}>
+            <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>About</Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: theme.palette.text.primary,
+                lineHeight: 1.7,
+                whiteSpace: 'pre-wrap'
+              }}
+            >
+              {profileData.about || 'No bio provided yet.'}
+            </Typography>
+          </Box>
 
-          {/* Skills & Interests */}
-          {profileData.skills && profileData.skills.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Skills</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {profileData.skills.map((skill, index) => (
-                  <Chip 
-                    key={index} 
-                    label={skill} 
-                    sx={{
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                      color: theme.palette.primary.main,
-                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                      '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-                    }}
-                  />
-                ))}
-              </Box>
+          {/* Skills & Interests with improved styling - displayed side by side */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            {profileData.skills && profileData.skills.length > 0 && (
+              <Grid item xs={12} md={6}>
+                <Box sx={{ 
+                  height: '100%',
+                  p: 3, 
+                  borderRadius: '16px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  border: `1px solid ${theme.palette.divider}`,
+                  bgcolor: theme.palette.background.paper
+                }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>Skills</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {profileData.skills.map((skill, index) => (
+                      <Chip 
+                        key={index} 
+                        label={skill} 
+                        sx={{
+                          bgcolor: alpha(theme.palette.primary.main, 0.1),
+                          color: theme.palette.primary.main,
+                          border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+            {profileData.interests && profileData.interests.length > 0 && (
+              <Grid item xs={12} md={6}>
+                <Box sx={{ 
+                  height: '100%',
+                  p: 3, 
+                  borderRadius: '16px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  border: `1px solid ${theme.palette.divider}`,
+                  bgcolor: theme.palette.background.paper
+                }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>Interests</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {profileData.interests.map((interest, index) => (
+                      <Chip 
+                        key={index} 
+                        label={interest} 
+                        sx={{
+                          bgcolor: alpha(theme.palette.primary.main, 0.1),
+                          color: theme.palette.primary.main,
+                          border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+
+          {/* Empty state if no skills or interests */}
+          {(!profileData.skills || profileData.skills.length === 0) && 
+           (!profileData.interests || profileData.interests.length === 0) && (
+            <Box sx={{ 
+              mb: 3,
+              p: 3, 
+              borderRadius: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: `1px solid ${theme.palette.divider}`,
+              bgcolor: theme.palette.background.paper,
+              textAlign: 'center'
+            }}>
+              <Typography variant="body1" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
+                No skills or interests added yet. Edit your profile to add some!
+              </Typography>
             </Box>
           )}
-          {profileData.interests && profileData.interests.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Interests</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {profileData.interests.map((interest, index) => (
-                  <Chip 
-                    key={index} 
-                    label={interest} 
-                    sx={{
-                      bgcolor: theme.palette.action.selected,
-                      color: theme.palette.text.secondary,
-                      border: `1px solid ${theme.palette.divider}`,
-                      '&:hover': { bgcolor: theme.palette.action.hover }
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
 
-          {/* Social Links */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {profileData.githubUrl && (
-              <IconButton 
-                href={profileData.githubUrl} 
-                target="_blank"
-                sx={{ 
-                  color: theme.palette.text.secondary,
-                  '&:hover': { color: theme.palette.primary.main }
-                }}
-              >
-                <GitHub />
-              </IconButton>
-            )}
-            {profileData.linkedinUrl && (
-              <IconButton 
-                href={profileData.linkedinUrl} 
-                target="_blank"
-                sx={{ 
-                  color: theme.palette.text.secondary,
-                  '&:hover': { color: theme.palette.primary.main }
-                }}
-              >
-                <LinkedIn />
-              </IconButton>
-            )}
+          {/* Social Links with improved styling */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            p: 3,
+            borderRadius: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: `1px solid ${theme.palette.divider}`,
+            bgcolor: theme.palette.background.paper,
+            mb: 3
+          }}>
+            <Typography variant="h6" sx={{ color: theme.palette.text.primary, mr: 2 }}>
+              Social Links
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, ml: 2 }}>
+              {profileData.githubUrl && (
+                <IconButton 
+                  href={profileData.githubUrl} 
+                  target="_blank"
+                  size="large"
+                  sx={{ 
+                    color: '#24292e', // GitHub's color
+                    bgcolor: 'rgba(36, 41, 46, 0.1)',
+                    '&:hover': { 
+                      color: '#24292e',
+                      bgcolor: 'rgba(36, 41, 46, 0.2)'
+                    },
+                    p: 2,
+                    width: 56,
+                    height: 56
+                  }}
+                >
+                  <GitHub sx={{ fontSize: 28 }} />
+                </IconButton>
+              )}
+              {profileData.linkedinUrl && (
+                <IconButton 
+                  href={profileData.linkedinUrl} 
+                  target="_blank"
+                  size="large"
+                  sx={{ 
+                    color: '#0077b5', // LinkedIn's color
+                    bgcolor: 'rgba(0,119,181,0.1)',
+                    '&:hover': { 
+                      color: '#0077b5',
+                      bgcolor: 'rgba(0,119,181,0.2)'
+                    },
+                    p: 2,
+                    width: 56,
+                    height: 56
+                  }}
+                >
+                  <LinkedIn sx={{ fontSize: 28 }} />
+                </IconButton>
+              )}
+              {!profileData.githubUrl && !profileData.linkedinUrl && (
+                <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
+                  No social links added yet
+                </Typography>
+              )}
+            </Box>
           </Box>
         </Box>
       </Box>
 
-      {/* Achievements Section */}
-      <Box>
+      {/* Achievements Section with improved styling */}
+      <Box sx={{ 
+        p: 3, 
+        borderRadius: '16px',
+        boxShadow: theme.shadows[2],
+        border: `1px solid ${theme.palette.divider}`,
+        bgcolor: theme.palette.background.paper,
+        mb: 4
+      }}>
         <Box sx={{ 
           display: 'flex',
           justifyContent: 'space-between',

@@ -22,8 +22,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Set the base URL for API calls
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5000/api';
-const API_KEY = process.env.CRON_API_KEY || 'default-cron-key';
+const API_BASE_URL = process.env.API_BASE_URL;
+const API_KEY = process.env.CRON_API_KEY;
 
 // MongoDB Connection (with fallback)
 const connectToMongoDB = async () => {
@@ -31,7 +31,7 @@ const connectToMongoDB = async () => {
     return await connectDB();
   } catch (error) {
     console.log('Falling back to direct MongoDB connection');
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/cp-tracker';
+    const mongoURI = process.env.MONGODB_URI;
     const conn = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true

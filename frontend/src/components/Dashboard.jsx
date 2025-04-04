@@ -443,10 +443,10 @@ const Dashboard = () => {
           }
         }
         
-        // Check if this platform is in cooldown period (updated in the last minute)
+        // Check if this platform is in cooldown period (updated in the last 12 hours)
         if (lastUpdateAttempt) {
           const timeSinceLastAttempt = now - lastUpdateAttempt;
-          const cooldownPeriod = 60 * 1000; // 1 minute in milliseconds
+          const cooldownPeriod = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
           
           if (timeSinceLastAttempt < cooldownPeriod) {
             // Calculate remaining cooldown time
@@ -538,9 +538,9 @@ const Dashboard = () => {
         }));
         
         // Only set cooldown after successful updates
-        const cooldownEnd = Date.now() + (60 * 1000); // 1 minute in milliseconds
+        const cooldownEnd = Date.now() + (12 * 60 * 60 * 1000); // 12 hours in milliseconds
         setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
-        setRemainingTimes(prev => ({ ...prev, [platform]: 60 }));
+        setRemainingTimes(prev => ({ ...prev, [platform]: 12 * 60 * 60 })); // 12 hours in seconds
       } else {
         // If the update wasn't successful, don't set a cooldown
         toast.error(response.data.message || 'Failed to update profile');
@@ -555,7 +555,7 @@ const Dashboard = () => {
     } catch (error) {
       // Check if this is a rate limit error (429)
       if (error.response?.status === 429) {
-        const remainingTime = error.response.data.remainingTime || 60;
+        const remainingTime = error.response.data.remainingTime || 12 * 60 * 60;
         
         // Show toast with time remaining
         toast.error(error.response.data.message || `Rate limit exceeded. Please try again in ${remainingTime} seconds.`);
@@ -944,7 +944,7 @@ const Dashboard = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <CircularProgress
                             variant="determinate"
-                            value={(remainingTimes[platform.key] / 60) * 100}
+                            value={(remainingTimes[platform.key] / (12 * 60 * 60)) * 100}
                             size={20}
                             sx={{ 
                               color: 'rgba(255,255,255,0.9)',
@@ -957,7 +957,12 @@ const Dashboard = () => {
                             fontWeight: 600,
                             letterSpacing: '0.01em',
                           }}>
-                            Update in {remainingTimes[platform.key]}s
+                            {remainingTimes[platform.key] > 3600 
+                              ? `${Math.floor(remainingTimes[platform.key] / 3600)}h ${Math.floor((remainingTimes[platform.key] % 3600) / 60)}m`
+                              : remainingTimes[platform.key] > 60
+                                ? `${Math.floor(remainingTimes[platform.key] / 60)}m`
+                                : `${remainingTimes[platform.key]}s`
+                            }
                           </Typography>
                         </Box>
                       ) : (

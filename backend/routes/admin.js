@@ -122,23 +122,40 @@ router.get('/opportunities', [auth, adminAuth], async (req, res) => {
 
 router.post('/opportunities', [auth, adminAuth], async (req, res) => {
   try {
-    const { title, description, link, deadline } = req.body;
+    const { title, description, link, deadline, organizer, status, category, difficulty, registrationOpen, location, tags, prize, eligibility, applicationLink } = req.body;
     
-    if (!title || !description || !link || !deadline) {
+    console.log('Received tags in create request:', tags);
+    
+    if (!title || !description || !link || !deadline || !organizer || !status) {
       return res.status(400).json({ 
         message: 'Missing required fields',
-        required: ['title', 'description', 'link', 'deadline']
+        required: ['title', 'description', 'link', 'deadline', 'organizer', 'status']
       });
     }
+
+    // Format tags properly
+    const formattedTags = Array.isArray(tags) ? tags : [];
+    console.log('Formatted tags for creation:', formattedTags);
 
     const opportunity = new Opportunity({
       title,
       description,
       link,
       deadline,
+      organizer,
+      status,
+      category,
+      difficulty,
+      registrationOpen,
+      location,
+      tags: formattedTags,
+      prize,
+      eligibility,
+      applicationLink,
       createdBy: req.user.id
     });
     
+    console.log('Creating opportunity with data:', opportunity);
     await opportunity.save();
     res.status(201).json(opportunity);
   } catch (err) {
@@ -149,24 +166,42 @@ router.post('/opportunities', [auth, adminAuth], async (req, res) => {
 
 router.put('/opportunities/:id', [auth, adminAuth], async (req, res) => {
   try {
-    const { title, description, link, deadline } = req.body;
+    const { title, description, link, deadline, organizer, status, category, difficulty, registrationOpen, location, tags, prize, eligibility, applicationLink } = req.body;
     
-    if (!title || !description || !link || !deadline) {
+    console.log('Received tags in update request:', tags);
+    
+    if (!title || !description || !link || !deadline || !organizer || !status) {
       return res.status(400).json({ 
         message: 'Missing required fields',
-        required: ['title', 'description', 'link', 'deadline']
+        required: ['title', 'description', 'link', 'deadline', 'organizer', 'status']
       });
     }
 
+    // Create an update object with all provided fields
+    const updateFields = {
+      title, 
+      description, 
+      link, 
+      deadline,
+      organizer,
+      status,
+      applicationLink: applicationLink || link
+    };
+
+    // Add optional fields if provided
+    if (category) updateFields.category = category;
+    if (difficulty) updateFields.difficulty = difficulty;
+    if (registrationOpen !== undefined) updateFields.registrationOpen = registrationOpen;
+    if (location) updateFields.location = location;
+    if (tags) updateFields.tags = Array.isArray(tags) ? tags : []; // Ensure tags is an array
+    if (prize) updateFields.prize = prize;
+    if (eligibility) updateFields.eligibility = eligibility;
+
+    console.log('Update fields for opportunity:', updateFields);
+
     const opportunity = await Opportunity.findByIdAndUpdate(
       req.params.id,
-      { 
-        title, 
-        description, 
-        link, 
-        deadline,
-        applicationLink: link
-      },
+      updateFields,
       { new: true }
     );
     
@@ -174,6 +209,7 @@ router.put('/opportunities/:id', [auth, adminAuth], async (req, res) => {
       return res.status(404).json({ message: 'Opportunity not found' });
     }
     
+    console.log('Updated opportunity:', opportunity);
     res.json(opportunity);
   } catch (err) {
     console.error('Error updating opportunity:', err);
