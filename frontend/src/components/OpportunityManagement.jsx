@@ -113,20 +113,14 @@ const OpportunityManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Log and ensure tags are properly formatted in each opportunity
+      // Ensure tags are properly formatted in each opportunity
       const formattedOpportunities = response.data.map(opp => ({
         ...opp,
         tags: Array.isArray(opp.tags) ? opp.tags : []
       }));
       
-      console.log('Fetched opportunities:', formattedOpportunities);
-      formattedOpportunities.forEach(opp => {
-        console.log(`Opportunity ${opp._id} tags:`, opp.tags);
-      });
-      
       setOpportunities(formattedOpportunities);
     } catch (error) {
-      console.error('Error fetching opportunities:', error);
       toast.error('Failed to fetch opportunities');
     } finally {
       setLoading(false);
@@ -135,15 +129,10 @@ const OpportunityManagement = () => {
 
   const handleOpen = (opportunity = null) => {
     if (opportunity) {
-      console.log('Editing opportunity:', opportunity);
-      console.log('Original tags:', opportunity.tags);
-      
       // Ensure tags are properly formatted as an array
       const formattedTags = opportunity.tags ? 
         (Array.isArray(opportunity.tags) ? opportunity.tags : [opportunity.tags]) : 
         [];
-      
-      console.log('Formatted tags for form:', formattedTags);
       
       setEditingOpportunity(opportunity);
       setFormData({
@@ -198,7 +187,6 @@ const OpportunityManagement = () => {
     
     if (missingFields.length > 0) {
       toast.error(`Missing required fields: ${missingFields.join(', ')}`);
-      console.error('Missing fields:', missingFields);
       return;
     }
     
@@ -208,9 +196,6 @@ const OpportunityManagement = () => {
         ...formData,
         tags: Array.isArray(formData.tags) ? formData.tags : []
       };
-      
-      console.log('Submitting form data:', submissionData);
-      console.log('Tags before submission:', submissionData.tags);
       
       if (editingOpportunity) {
         await axios.put(
@@ -230,9 +215,6 @@ const OpportunityManagement = () => {
       handleClose();
       fetchOpportunities();
     } catch (error) {
-      console.error('Operation error:', error);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error request data:', error.config?.data);
       toast.error(error.response?.data?.message || 'Operation failed');
     }
   };
@@ -246,7 +228,6 @@ const OpportunityManagement = () => {
         toast.success('Opportunity deleted successfully');
         fetchOpportunities();
       } catch (error) {
-        console.error('Delete error:', error);
         toast.error('Failed to delete opportunity');
       }
     }
@@ -268,7 +249,6 @@ const OpportunityManagement = () => {
     
     if (!currentTags.includes(normalizedNewTag)) {
       const updatedTags = [...currentTags, normalizedNewTag];
-      console.log('Adding tag:', normalizedNewTag, 'New tags:', updatedTags);
       setFormData({ ...formData, tags: updatedTags });
     }
   };
@@ -751,20 +731,16 @@ const OpportunityManagement = () => {
                     freeSolo
                     value={formData.tags || []}
                     onChange={(e, newValue) => {
-                      console.log('Tags changed:', newValue);
-                      // Ensure we always have an array of strings
                       const processedTags = newValue.map(tag => 
                         typeof tag === 'string' ? tag.trim() : tag
-                      ).filter(tag => tag); // Remove any empty tags
+                      ).filter(tag => tag);
                       setFormData({ ...formData, tags: processedTags });
                     }}
                     options={commonTagSuggestions}
                     onBlur={(e) => {
-                      // Check if there's text in the input and add it as a tag
                       const inputValue = e.target.value?.trim();
                       if (inputValue) {
                         handleAddTag(inputValue);
-                        // Clear the input (note: this might not work perfectly with MUI Autocomplete)
                         setTimeout(() => {
                         e.target.value = '';
                         }, 0);

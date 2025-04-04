@@ -1428,7 +1428,7 @@ const UserView = () => {
                       borderRadius: '16px',
                       overflow: 'hidden',
                       display: 'flex',
-                      flexDirection: 'row',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       width: '100%',
                       transition: 'all 0.3s ease',
                       ...getInnerCardStyle(),
@@ -1441,10 +1441,10 @@ const UserView = () => {
                       }
                     }}
                   >
-                    {/* Left side - Image area */}
+                    {/* Image area - Full width on mobile, 35% on desktop */}
                     <Box
                       sx={{
-                        width: '35%',
+                        width: { xs: '100%', sm: '35%' },
                         position: 'relative',
                         background: 'linear-gradient(135deg, #4a6cf7 0%, #2651fc 100%)',
                         display: 'flex',
@@ -1452,7 +1452,7 @@ const UserView = () => {
                         alignItems: 'center',
                         p: 0,
                         overflow: 'hidden',
-                        minHeight: '250px',
+                        minHeight: { xs: '180px', sm: '250px' },
                       }}
                     >
                       <Box 
@@ -1472,11 +1472,11 @@ const UserView = () => {
                       />
                     </Box>
 
-                    {/* Right side - Content area */}
+                    {/* Content area - Full width on mobile, 65% on desktop */}
                     <Box
                       sx={{
-                        width: '80%',
-                        p: 3,
+                        width: { xs: '100%', sm: '65%' },
+                        p: { xs: 2, sm: 3 },
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
@@ -1490,6 +1490,7 @@ const UserView = () => {
                             fontWeight: 700,
                             color: darkMode ? '#fff' : '#000',
                             mb: 1,
+                            fontSize: { xs: '1.2rem', sm: '1.5rem' },
                           }}
                         >
                           {achievement.title}
@@ -1507,12 +1508,13 @@ const UserView = () => {
                             <Chip
                               key={i}
                               label={tech.trim()}
+                              size={isMobile ? "small" : "medium"}
                               sx={{
                                 bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
                                 color: '#0088cc',
                                 border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
                                 borderRadius: '20px',
-                                fontSize: '0.85rem',
+                                fontSize: { xs: '0.75rem', sm: '0.85rem' },
                                 fontWeight: 500,
                                 height: 'auto',
                                 py: 0.5,
@@ -1528,12 +1530,14 @@ const UserView = () => {
                           variant="body2"
                           sx={{
                             color: getTextColor(0.7),
-                            mb: 3,
+                            mb: { xs: 2, sm: 3 },
                             overflow: 'hidden',
                             display: '-webkit-box',
-                            WebkitLineClamp: 2,
+                            WebkitLineClamp: { xs: 3, sm: 2 },
                             WebkitBoxOrient: 'vertical',
                             textOverflow: 'ellipsis',
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            lineHeight: { xs: 1.4, sm: 1.6 },
                           }}
                         >
                           {achievement.description || "Work on developing and..."}
@@ -1552,11 +1556,12 @@ const UserView = () => {
                             color: '#fff',
                             fontWeight: 600,
                             boxShadow: 'none',
-                            px: 4,
+                            px: { xs: 3, sm: 4 },
                             py: 1,
                             width: 'fit-content',
                             borderRadius: '8px',
                             textTransform: 'none',
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
                             '&:hover': {
                               bgcolor: '#006699',
                             },

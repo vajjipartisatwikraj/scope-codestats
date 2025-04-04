@@ -1,3 +1,11 @@
-.css-13qhxs7-MuiGrid-root>.MuiGrid-item {
-  padding: 0px !important;
+.css-ivyz4h-MuiGrid-root>.MuiGrid-item{
+    
+    padding-bottom: 30px !important;
+}
+
+@media screen and (max-width: 768px) {
+    .css-ivyz4h-MuiGrid-root>.MuiGrid-item{
+        padding: 0px !important;
+        padding-bottom: 30px !important;
+    }
 }

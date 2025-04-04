@@ -188,7 +188,6 @@ const EditProfile = ({
     }
   }, [profileData, auth?.user]);
   
-  // Add a handleAddTag helper function similar to the one in OpportunityManagement
   // Handle adding a skill tag
   const handleAddSkill = (newSkill) => {
     if (!newSkill || !newSkill.trim()) return;
@@ -201,7 +200,6 @@ const EditProfile = ({
     
     if (!currentSkills.includes(normalizedNewSkill)) {
       const updatedSkills = [...currentSkills, normalizedNewSkill];
-      console.log('Adding skill:', normalizedNewSkill, 'New skills:', updatedSkills);
       setEditProfileData(prev => ({ ...prev, skills: updatedSkills }));
     }
   };
@@ -218,7 +216,6 @@ const EditProfile = ({
     
     if (!currentInterests.includes(normalizedNewInterest)) {
       const updatedInterests = [...currentInterests, normalizedNewInterest];
-      console.log('Adding interest:', normalizedNewInterest, 'New interests:', updatedInterests);
       setEditProfileData(prev => ({ ...prev, interests: updatedInterests }));
     }
   };
@@ -402,7 +399,6 @@ const EditProfile = ({
             options={skillOptions}
             value={Array.isArray(editProfileData?.skills) ? editProfileData.skills : []}
             onChange={(e, newValue) => {
-              console.log('Skills changed:', newValue);
               // Ensure we always have an array of strings
               const processedSkills = newValue.map(skill => 
                 typeof skill === 'string' ? skill.trim() : skill
@@ -460,7 +456,6 @@ const EditProfile = ({
             options={interestOptions}
             value={Array.isArray(editProfileData?.interests) ? editProfileData.interests : []}
             onChange={(e, newValue) => {
-              console.log('Interests changed:', newValue);
               // Ensure we always have an array of strings
               const processedInterests = newValue.map(interest => 
                 typeof interest === 'string' ? interest.trim() : interest

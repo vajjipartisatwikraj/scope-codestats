@@ -97,7 +97,6 @@ const CourseManagement = () => {
       setCourses(response.data);
     } catch (error) {
       toast.error('Failed to fetch courses');
-      console.error('Error fetching courses:', error);
     } finally {
       setLoading(false);
     }
@@ -166,7 +165,6 @@ const CourseManagement = () => {
       handleClose();
       fetchCourses();
     } catch (error) {
-      console.error('Operation error:', error);
       toast.error(error.response?.data?.message || 'Operation failed');
     }
   };
@@ -180,7 +178,6 @@ const CourseManagement = () => {
         toast.success('Course deleted successfully');
         fetchCourses();
       } catch (error) {
-        console.error('Delete error:', error);
         toast.error('Failed to delete course');
       }
     }

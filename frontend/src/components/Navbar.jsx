@@ -356,7 +356,7 @@ const Navbar = () => {
                 <Typography sx={{ color: themeColors.text, fontWeight: 600 }}>
                   {user?.name}
                 </Typography>
-                <Typography variant="body2" sx={{ color: themeColors.text.secondary || 'rgba(0, 0, 0, 0.6)', mt: 0.5, fontWeight: 400 }}>
+                <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)', mt: 0.5, fontWeight: 400 }}>
                   {user?.email}
                 </Typography>
               </Box>
