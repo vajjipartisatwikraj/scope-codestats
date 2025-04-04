@@ -1,8 +1,9 @@
 const express = require('express');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const router = express.Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-const path = require('path');
 const User = require('../../models/User');
 
 // Configure Passport Google OAuth strategy
