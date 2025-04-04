@@ -14,8 +14,10 @@ process.emitWarning = function(warning, ...args) {
   return originalEmit.call(this, warning, ...args);
 };
 
-require('dotenv').config();
-const express = require('express');
+
+
+conconst path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });st express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
@@ -42,7 +44,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://codestats.zapto.org'], // Allow both frontend origins
+  origin: ['https://codestats.zapto.org'], 
   credentials: true
 }));
 app.use(express.json());
