@@ -42,7 +42,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'], // Allow both frontend origins
+  origin: ['https://codestats.zapto.org'], // Allow both frontend origins
   credentials: true
 }));
 app.use(express.json());
