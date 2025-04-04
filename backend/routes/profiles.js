@@ -1,4 +1,6 @@
 const express = require('express');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Profile = require('../models/Profile');
