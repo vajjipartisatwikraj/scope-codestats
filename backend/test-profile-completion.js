@@ -4,7 +4,8 @@
  * Run with: node test-profile-completion.js
  */
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
@@ -22,7 +23,7 @@ const createTestToken = async (userId) => {
 // Connect to MongoDB
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
