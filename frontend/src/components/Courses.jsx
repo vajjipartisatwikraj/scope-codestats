@@ -333,7 +333,7 @@ const Courses = () => {
                 <Card 
                   sx={{ 
                     height: '100%',
-                    bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                    bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : '#ffffff',
                     backdropFilter: 'blur(10px)',
                     border: darkMode ? '1px solid rgba(0, 0, 0, 0.7)' : '1px solid rgba(0, 0, 0, 0.3)',
                     borderRadius: '16px',

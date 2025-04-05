@@ -75,7 +75,7 @@ const Opportunities = () => {
     
   const getCardBgColor = () => darkMode
     ? 'rgba(255, 255, 255, 0.03)'
-    : 'rgba(0, 0, 0, 0.01)';
+    : '#ffffff';
     
   const getCardBorderColor = () => darkMode
     ? 'rgba(255, 255, 255, 0.05)'

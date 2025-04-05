@@ -11,23 +11,23 @@ const path = require('path');
 
 // Set up logging
 const setupLogging = () => {
-  const logDir = path.join(__dirname, 'logs');
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-  }
+  // Removed: No longer create logs directory or log files
+  // const logDir = path.join(__dirname, 'logs');
+  // if (!fs.existsSync(logDir)) {
+  //   fs.mkdirSync(logDir, { recursive: true });
+  // }
   
-  const date = new Date().toISOString().split('T')[0];
-  const logFile = path.join(logDir, `cron-${date}.log`);
+  // const date = new Date().toISOString().split('T')[0];
+  // const logFile = path.join(logDir, `cron-${date}.log`);
   
   // Create a write stream for logging
-  const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+  // const logStream = fs.createWriteStream(logFile, { flags: 'a' });
   
   return {
     log: (message) => {
       const timestamp = new Date().toISOString();
-      const logMessage = `[${timestamp}] CRON: ${message}\n`;
       console.log(`CRON: ${message}`);
-      logStream.write(logMessage);
+      // Removed: logStream.write(logMessage);
     }
   };
 };

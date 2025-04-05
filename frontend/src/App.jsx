@@ -22,6 +22,7 @@ import CourseManagement from './components/CourseManagement';
 import OpportunityManagement from './components/OpportunityManagement';
 import UserView from './components/UserView';
 import ConditionalDashboard from './components/ConditionalDashboard';
+import CodePad from './components/CodePad';
 
 // MainContent component that uses the theme from context
 const MainContent = () => {
@@ -98,6 +99,11 @@ const MainContent = () => {
               <Route path="/leaderboard" element={
                 <PrivateRoute>
                   <Leaderboard />
+                </PrivateRoute>
+              } />
+              <Route path="/codepad" element={
+                <PrivateRoute>
+                  <CodePad />
                 </PrivateRoute>
               } />
               <Route path="/courses" element={

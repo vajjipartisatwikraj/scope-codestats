@@ -15,6 +15,7 @@ import {
   Tooltip,
   Divider,
   useTheme as useMuiTheme,
+  Chip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -43,12 +44,10 @@ const Logo = () => (
   </Typography>
 );
 
-// Common AppBar styles
+// Common AppBar styles - LinkedIn styling
 const appBarStyles = {
-  background: 'rgba(26, 26, 26, 0.8)',
-  backdropFilter: 'blur(10px)',
-  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+  backdropFilter: 'none',
+  boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05)'
 };
 
 const Navbar = () => {
@@ -67,12 +66,21 @@ const Navbar = () => {
   const menuItems = useMemo(() => {
     if (!token || isAuthPage) return [];
     
-    const items = [
+    let items = [
       { text: 'Dashboard', path: '/dashboard' },
-      { text: 'Leaderboard', path: '/leaderboard' },
+      { text: 'Leaderboard', path: '/leaderboard' }
+    ];
+    
+    // Only add CodePad for non-admin users
+    if (user?.userType !== 'admin') {
+      items.push({ text: 'CodePad', path: '/codepad' });
+    }
+    
+    // Add common items for all users
+    items.push(
       { text: 'Courses', path: '/courses' },
       { text: 'Opportunities', path: '/opportunities' }
-    ];
+    );
 
     if (user?.userType === 'admin') {
       // Admin-specific menu items - restored admin management options
@@ -120,16 +128,17 @@ const Navbar = () => {
   const themeColors = {
     appBar: darkMode 
       ? 'rgba(26, 26, 26, 0.8)'
-      : 'rgba(255, 255, 255, 0.8)',
-    text: darkMode ? '#ffffff' : '#000000',
+      : '#ffffff',
+    text: darkMode ? '#ffffff' : '#191919',
     border: darkMode 
       ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.1)',
+      : 'rgba(0, 0, 0, 0.08)',
     menuHover: darkMode
       ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.05)',
-    iconColor: darkMode ? '#ffffff' : '#000000',
+      : 'rgba(0, 0, 0, 0.04)',
+    iconColor: darkMode ? '#ffffff' : '#00000099',
     menuBg: darkMode ? '#1e1e1e' : '#ffffff',
+    activeItem: darkMode ? '#0088cc' : '#0a66c2',
   };
 
   // Render simplified navbar for auth pages or when not authenticated
@@ -158,8 +167,14 @@ const Navbar = () => {
                 component={RouterLink}
                 to="/login"
                 sx={{
-                  color: location.pathname === '/login' ? '#0088cc' : themeColors.text,
-                  '&:hover': { color: '#0088cc' }
+                  color: location.pathname === '/login' ? themeColors.activeItem : themeColors.text,
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  padding: '6px 16px',
+                  '&:hover': { 
+                    color: themeColors.activeItem,
+                    backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(10, 102, 194, 0.04)' 
+                  }
                 }}
               >
                 Login
@@ -169,12 +184,15 @@ const Navbar = () => {
                 to="/register"
                 variant="outlined"
                 sx={{
-                  borderColor: location.pathname.includes('/register') ? '#0088cc' : themeColors.border,
-                  color: location.pathname.includes('/register') ? '#0088cc' : themeColors.text,
+                  borderColor: location.pathname.includes('/register') ? themeColors.activeItem : themeColors.border,
+                  color: location.pathname.includes('/register') ? themeColors.activeItem : themeColors.activeItem,
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  border: '1px solid',
                   '&:hover': {
-                    borderColor: '#0088cc',
-                    color: '#0088cc',
-                    background: 'rgba(0, 136, 204, 0.1)'
+                    borderColor: themeColors.activeItem,
+                    backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(10, 102, 194, 0.04)',
+                    border: '1px solid'
                   }
                 }}
               >
@@ -234,7 +252,11 @@ const Navbar = () => {
               PaperProps={{
                 sx: { 
                   backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
-                  color: themeColors.text
+                  color: themeColors.text,
+                  borderRadius: '8px',
+                  boxShadow: darkMode 
+                    ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+                    : '0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05)'
                 }
               }}
               container={() => document.getElementById('dialog-container') || document.body}
@@ -251,7 +273,9 @@ const Navbar = () => {
                     }
                   }}
                 >
-                  <Typography textAlign="center">{item.text}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {item.text}
+                  </Box>
                 </MenuItem>
               ))}
             </Menu>
@@ -268,14 +292,7 @@ const Navbar = () => {
               <Box
                 key={item.text}
                 sx={{
-                  transform: 'scale(1)',
-                  transition: 'transform 0.2s ease',
-                  '&:hover': {
-                    transform: 'scale(1.05)',
-                  },
-                  '&:active': {
-                    transform: 'scale(0.95)',
-                  },
+                  // Removed transform and transition properties
                 }}
               >
                 <Box
@@ -283,21 +300,22 @@ const Navbar = () => {
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    color: location.pathname === item.path ? '#0088cc' : 'white',
+                    color: location.pathname === item.path ? themeColors.activeItem : themeColors.text,
                     cursor: 'pointer',
                     position: 'relative',
                     padding: '8px 16px',
                     borderRadius: 2,
-                    transition: 'all 0.3s ease',
+                    transition: 'color 0.3s ease',
                     '&:hover': {
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      color: '#0088cc',
+                      // Removed background color change
+                      color: themeColors.activeItem,
                     }
+                    // Removed the &:after property that created the underline
                   }}
                 >
-                  <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     {item.text}
-                  </Typography>
+                  </Box>
                 </Box>
               </Box>
             ))}
@@ -349,8 +367,11 @@ const Navbar = () => {
                 sx: { 
                   backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
                   color: themeColors.text,
-                  borderRadius: 2,
+                  borderRadius: '8px',
                   minWidth: 180,
+                  boxShadow: darkMode 
+                    ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+                    : '0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05)'
                 }
               }}
               container={() => document.getElementById('dialog-container') || document.body}

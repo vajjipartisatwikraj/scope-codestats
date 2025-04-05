@@ -74,7 +74,7 @@ const commonThemeSettings = {
     },
   },
   shape: {
-    borderRadius: 8
+    borderRadius: 4
   }
 };
 
@@ -166,6 +166,7 @@ export const ThemeProvider = ({ children }) => {
           root: {
             fontFamily: 'Nekst, sans-serif',
             textTransform: 'none',
+            borderRadius: '4px',
           },
         },
       },
@@ -204,28 +205,28 @@ export const ThemeProvider = ({ children }) => {
     palette: {
       mode: 'light',
       primary: {
-        main: '#0088cc',
-        light: '#33a0d4',
-        dark: '#006699',
+        main: '#0a66c2', // LinkedIn blue
+        light: '#378fe9',
+        dark: '#004182',
         contrastText: '#ffffff',
       },
       secondary: {
-        main: '#f5f5f5',
+        main: '#f3f2ef', // LinkedIn background color
         light: '#ffffff',
-        dark: '#e0e0e0',
+        dark: '#e6e6e6',
         contrastText: '#000000',
       },
       background: {
-        default: '#ffffff',
-        paper: '#f5f5f5',
-        card: '#ffffff', // Light background for cards
+        default: '#f3f2ef', // LinkedIn light gray background
+        paper: '#ffffff',   // White background for components
+        card: '#ffffff',    // White for cards
       },
       text: {
-        primary: '#000000',
-        secondary: 'rgba(0, 0, 0, 0.7)',
-        disabled: 'rgba(0, 0, 0, 0.5)',
+        primary: '#191919',  // LinkedIn primary text
+        secondary: 'rgba(0, 0, 0, 0.6)', // LinkedIn secondary text
+        disabled: 'rgba(0, 0, 0, 0.38)',
       },
-      divider: 'rgba(0, 0, 0, 0.1)',
+      divider: 'rgba(0, 0, 0, 0.08)',
     },
     components: {
       // Ensure consistent card styling
@@ -234,9 +235,9 @@ export const ThemeProvider = ({ children }) => {
           root: {
             backgroundColor: '#ffffff',
             backgroundImage: 'none',
-            borderRadius: 12,
-            border: '1px solid rgba(0, 0, 0, 0.1)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            borderRadius: 8,
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05)',
           }
         }
       },
@@ -246,8 +247,9 @@ export const ThemeProvider = ({ children }) => {
           root: {
             backgroundColor: '#ffffff',
             backgroundImage: 'none',
-            border: '1px solid rgba(0, 0, 0, 0.1)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            borderRadius: 4,
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05)',
           }
         }
       },
@@ -262,13 +264,15 @@ export const ThemeProvider = ({ children }) => {
           }
         }
       },
-      // Ensure AppBar has different styling from cards
+      // Ensure AppBar has different styling from cards - LinkedIn white navbar
       MuiAppBar: {
         styleOverrides: {
           root: {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: '#ffffff',
             backgroundImage: 'none',
-            borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05)',
+            color: '#000000',
           }
         }
       },
@@ -278,7 +282,22 @@ export const ThemeProvider = ({ children }) => {
           root: {
             fontFamily: 'Nekst, sans-serif',
             textTransform: 'none',
+            borderRadius: '4px',
           },
+          containedPrimary: {
+            backgroundColor: '#0a66c2',
+            '&:hover': {
+              backgroundColor: '#004182',
+            }
+          },
+          outlinedPrimary: {
+            borderColor: '#0a66c2',
+            color: '#0a66c2',
+            '&:hover': {
+              backgroundColor: 'rgba(10, 102, 194, 0.04)',
+              borderColor: '#004182',
+            }
+          }
         },
       },
       // Apply Nekst font to input labels
@@ -304,7 +323,7 @@ export const ThemeProvider = ({ children }) => {
             textShadow: 'none',
             backgroundImage: 'none',
             filter: 'none',
-            color: '#000000',
+            color: '#191919',
           },
         },
       },
@@ -323,8 +342,8 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
     // Update body background color
-    document.body.style.backgroundColor = darkMode ? '#000000' : '#ffffff';
-    document.body.style.color = darkMode ? '#ffffff' : '#000000';
+    document.body.style.backgroundColor = darkMode ? '#000000' : '#f3f2ef';
+    document.body.style.color = darkMode ? '#ffffff' : '#191919';
   }, [darkMode]);
 
   return (

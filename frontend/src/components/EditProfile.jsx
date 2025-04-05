@@ -70,7 +70,7 @@ const setupSteps = [
   },
   {
     label: 'Social Media',
-    description: 'Add your social media links',
+    description: 'Add your social media links. For GitHub, please enter your username only (not the full URL).',
     fields: ['linkedinUrl', 'githubUrl'],
     requiredFields: ['githubUrl'] // Making GitHub URL required
   },
@@ -127,21 +127,30 @@ const EditProfile = ({
       return admissionYear + 4; // Graduation is 4 years after admission
     };
 
-    // Extract GitHub URL from profile data properly
-    const extractGithubUrl = (profileData) => {
+    // Extract GitHub username from profile data properly
+    const extractGithubUsername = (profileData) => {
       if (profileData.githubUrl && typeof profileData.githubUrl === 'string') {
+        // If it's a full GitHub URL, extract just the username
+        if (profileData.githubUrl.includes('github.com/')) {
+          const parts = profileData.githubUrl.split('github.com/');
+          return parts[1]?.replace(/\/$/, '') || '';
+        }
+        // If it's already just a username
         return profileData.githubUrl;
       }
       
-      // If profiles.github is an object, try to get the URL or username
+      // If profiles.github is an object, try to get the username
       if (profileData.profiles?.github) {
         if (typeof profileData.profiles.github === 'string') {
+          // If it's a URL, extract username
+          if (profileData.profiles.github.includes('github.com/')) {
+            const parts = profileData.profiles.github.split('github.com/');
+            return parts[1]?.replace(/\/$/, '') || '';
+          }
           return profileData.profiles.github;
         } else if (typeof profileData.profiles.github === 'object') {
-          // Try to get URL or username from the object
-          return profileData.profiles.github.url || 
-                 profileData.profiles.github.username || 
-                 '';
+          // Try to get username from the object
+          return profileData.profiles.github.username || '';
         }
       }
       
@@ -150,7 +159,7 @@ const EditProfile = ({
 
     if (profileData && Object.keys(profileData).length > 0) {
       const graduationYear = calculateGraduationYear(profileData.rollNumber);
-      const githubUrl = extractGithubUrl(profileData);
+      const githubUsername = extractGithubUsername(profileData);
       
       setEditProfileData({
         name: profileData.name || auth?.user?.name || '',
@@ -163,7 +172,7 @@ const EditProfile = ({
         interests: profileData.interests || [],
         about: profileData.about || '',
         linkedinUrl: profileData.linkedinUrl || '',
-        githubUrl: githubUrl,
+        githubUrl: githubUsername,
         imageUrl: profileData.profilePicture || profileData.imageUrl || '',
       });
     } else if (auth?.user) {
@@ -378,7 +387,7 @@ const EditProfile = ({
         return (
           <TextField
             key={index}
-            label="GitHub URL"
+            label="GitHub Username"
             fullWidth
             margin="normal"
             name="githubUrl"
@@ -386,7 +395,7 @@ const EditProfile = ({
             value={editProfileData?.githubUrl || ''}
             onChange={handleProfileChange}
             error={!!fieldErrors.githubUrl}
-            helperText={fieldErrors.githubUrl || 'Enter your GitHub profile URL (required)'}
+            helperText={fieldErrors.githubUrl || 'Enter your GitHub username (required)'}
             required
           />
         );
@@ -1054,6 +1063,9 @@ const EditProfile = ({
               <Grid item xs={12}>
                 <Typography variant="h6" sx={{ mb: 2, mt: 2, color: theme.palette.primary.main }}>
                   Social Links
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2, color: theme.palette.text.secondary }}>
+                  For GitHub, please enter your username only (not the full URL).
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>

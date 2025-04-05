@@ -44,34 +44,34 @@ const connectToMongoDB = async () => {
 
 // Setup logging
 const setupLogging = () => {
-  const logDir = path.join(__dirname, '../logs');
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-  }
+  // Removed: No longer create logs directory or log files
+  // const logDir = path.join(__dirname, '../logs');
+  // if (!fs.existsSync(logDir)) {
+  //   fs.mkdirSync(logDir, { recursive: true });
+  // }
   
-  const date = new Date().toISOString().split('T')[0];
-  const logFile = path.join(logDir, `profile-update-${date}.log`);
+  // const date = new Date().toISOString().split('T')[0];
+  // const logFile = path.join(logDir, `profile-update-${date}.log`);
   
   // Create a write stream for logging
-  const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+  // const logStream = fs.createWriteStream(logFile, { flags: 'a' });
   
-  // Custom logger
+  // Custom logger - only logs to console, no file logging
   const logger = {
     log: (message) => {
       const timestamp = new Date().toISOString();
-      const logMessage = `[${timestamp}] ${message}\n`;
       console.log(message);
-      logStream.write(logMessage);
+      // Removed: logStream.write(logMessage);
     },
     error: (message, error) => {
       const timestamp = new Date().toISOString();
       const errorMessage = error ? `${message}: ${error.message}\n${error.stack}\n` : `${message}\n`;
-      const logMessage = `[${timestamp}] ERROR: ${errorMessage}`;
       console.error(`ERROR: ${message}`, error);
-      logStream.write(logMessage);
+      // Removed: logStream.write(logMessage);
     },
     close: () => {
-      logStream.end();
+      // No-op - no stream to close
+      // Removed: logStream.end();
     }
   };
   

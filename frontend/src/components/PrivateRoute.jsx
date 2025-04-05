@@ -57,6 +57,11 @@ const PrivateRoute = ({ children, adminOnly = false }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Prevent admin users from accessing CodePad
+  if (location.pathname === '/codepad' && auth.user?.userType === 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Check if this is a new user that needs to complete profile setup
   if (auth.user?.newUser === true || auth.user?.profileCompleted === false) {
     // Only redirect if not already on profile setup page

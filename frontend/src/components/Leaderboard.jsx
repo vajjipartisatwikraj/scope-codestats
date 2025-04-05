@@ -739,14 +739,14 @@ const Leaderboard = () => {
     return (
       <TableHead>
         <TableRow sx={{ 
-          bgcolor: darkMode ? 'rgba(0, 136, 204, 0.35)' : 'rgba(0, 136, 204, 0.15)',
+          bgcolor: darkMode ? 'rgba(0, 136, 204, 0.35)' : '#ffffff',
           borderRadius: 2,
           '& .MuiTableCell-root': { 
             fontWeight: 700,
             whiteSpace: 'nowrap',
             color: darkMode ? '#ffffff' : '#000000',
             py: 2,
-            borderBottom: darkMode ? '1px solid rgba(0, 136, 204, 0.3)' : '1px solid rgba(0, 136, 204, 0.2)'
+            borderBottom: darkMode ? '1px solid rgba(0, 136, 204, 0.3)' : '1px solid rgba(0, 0, 0, 0.1)'
           }
         }}>
           <TableCell>Rank</TableCell>
@@ -855,7 +855,7 @@ const Leaderboard = () => {
           '&:last-child td, &:last-child th': { border: 0 },
           bgcolor: darkMode 
             ? (index % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'transparent')
-            : (index % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent'),
+            : '#ffffff',
           cursor: 'pointer',
           transition: 'all 0.2s',
           '&:hover': {
@@ -1439,7 +1439,7 @@ const Leaderboard = () => {
       <Paper
         elevation={0}
         sx={{
-          bgcolor: 'transparent',
+          bgcolor: darkMode ? 'transparent' : '#ffffff',
           borderRadius: 2,
           overflow: 'auto',
           maxWidth: '100%'
