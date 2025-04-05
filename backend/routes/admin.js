@@ -244,8 +244,8 @@ router.get('/stats', [auth, adminAuth], async (req, res) => {
     const totalUsers = await User.countDocuments() || 0;
     const activeUsers = await User.countDocuments({ lastActive: { $gte: oneWeekAgo } }) || 0;
     
-    // Get top 5 users by total problems solved
-    const topUsers = await User.find()
+    // Get top 5 users by total problems solved - EXCLUDE admin users
+    const topUsers = await User.find({ userType: { $ne: 'admin' } })
       .sort({ totalScore: -1 })
       .limit(5)
       .select('name totalScore department')
@@ -629,6 +629,11 @@ router.get('/department-analytics', [auth, adminAuth], async (req, res) => {
 // Manual profile synchronization for admin
 router.post('/sync-profiles', [auth, adminAuth], async (req, res) => {
   try {
+    console.log(`Admin ${req.user.id} initiating manual profile sync`);
+
+    // Create an abort controller for cancellation
+    const abortController = new AbortController();
+    
     // Create a shared state object for tracking progress
     const progressState = {
       totalUsers: 0,
@@ -639,10 +644,15 @@ router.post('/sync-profiles', [auth, adminAuth], async (req, res) => {
       inProgress: true,
       error: null,
       startTime: Date.now(),
+      lastUpdated: Date.now(),
       // Add flag to indicate this job is initiated from admin panel
       isAdminInitiated: true,
       // Store in global state so it can be accessed by the status endpoint
-      id: Date.now().toString()
+      id: Date.now().toString(),
+      cancelled: false,
+      completedTime: null,
+      // Store the abort controller for cancellation
+      abortController: abortController
     };
     
     // Store in global app state for status check endpoint
@@ -654,21 +664,64 @@ router.post('/sync-profiles', [auth, adminAuth], async (req, res) => {
     // Start the profile update process in the background
     console.log(`Admin ${req.user.id} initiated manual profile sync with job ID: ${progressState.id}`);
     
-    // Start profile update in background
-    updateAllUserProfiles(progressState)
-      .then(() => {
-        progressState.inProgress = false;
-        progressState.completedTime = Date.now();
-        console.log(`Profile sync ${progressState.id} completed successfully`);
-      })
-      .catch(err => {
-        progressState.inProgress = false;
-        progressState.error = err.message;
-        progressState.completedTime = Date.now();
-        console.error(`Profile sync ${progressState.id} failed:`, err.message);
-      });
+    // Set up a timeout to clear the progress state after 24 hours to prevent memory leaks
+    const cleanupTimeout = setTimeout(() => {
+      if (req.app.locals.syncProgress && req.app.locals.syncProgress[progressState.id]) {
+        console.log(`Cleaning up expired sync job ${progressState.id} after 24 hours`);
+        delete req.app.locals.syncProgress[progressState.id];
+      }
+    }, 24 * 60 * 60 * 1000); // 24 hours
+    
+    // Make the timeout unref() so it doesn't keep the process alive if it's the only thing left
+    if (cleanupTimeout.unref) {
+      cleanupTimeout.unref();
+    }
+    
+    // Start profile update in background with proper error handling
+    try {
+      console.log(`Starting profile update process for job ${progressState.id}`);
+      
+      // Pass the abort controller to the update function
+      const updatePromise = updateAllUserProfiles(progressState, abortController.signal);
+      
+      updatePromise
+        .then((result) => {
+          progressState.inProgress = false;
+          progressState.completedTime = Date.now();
+          progressState.result = result;
+          console.log(`Profile sync ${progressState.id} completed successfully`);
+          
+          // Once completed, clean up the abort controller reference to avoid memory leaks
+          if (progressState.abortController) {
+            delete progressState.abortController;
+          }
+        })
+        .catch(err => {
+          progressState.inProgress = false;
+          progressState.error = err.message || "Unknown error occurred";
+          progressState.completedTime = Date.now();
+          console.error(`Profile sync ${progressState.id} failed:`, err.message);
+          
+          // Clean up the abort controller reference on error
+          if (progressState.abortController) {
+            delete progressState.abortController;
+          }
+        });
+    } catch (syncError) {
+      // Handle any immediate errors in starting the sync
+      progressState.inProgress = false;
+      progressState.error = syncError.message || "Failed to start sync";
+      progressState.completedTime = Date.now();
+      console.error(`Failed to start profile sync ${progressState.id}:`, syncError);
+      
+      // Clean up the abort controller reference on immediate error
+      if (progressState.abortController) {
+        delete progressState.abortController;
+      }
+    }
     
     // Immediately return to client with job ID
+    console.log(`Returning sync job ID ${progressState.id} to client`);
     res.json({ 
       success: true, 
       message: 'Profile synchronization started',
@@ -684,12 +737,51 @@ router.post('/sync-profiles', [auth, adminAuth], async (req, res) => {
 router.get('/sync-status/:syncId', [auth, adminAuth], async (req, res) => {
   try {
     const { syncId } = req.params;
+    console.log(`Received sync-status request for job ${syncId}`);
+    
+    // Check MongoDB connection and reconnect if needed
+    if (mongoose.connection.readyState !== 1) { // 1 = connected
+      console.log('MongoDB connection check in sync-status: Disconnected. Reconnecting...');
+      try {
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log('Successfully reconnected to MongoDB in sync-status');
+      } catch (mongoError) {
+        console.error('Failed to reconnect to MongoDB in sync-status:', mongoError);
+      }
+    }
     
     // Get progress state
     const progressState = req.app.locals.syncProgress && req.app.locals.syncProgress[syncId];
     
     if (!progressState) {
+      console.log(`Sync job ${syncId} not found in app.locals.syncProgress`);
       return res.status(404).json({ message: 'Sync job not found' });
+    }
+    
+    // Check for stalled processes (no updates for over 2 minutes but still marked as in progress)
+    const now = Date.now();
+    if (progressState.inProgress && progressState.lastUpdated && 
+        (now - progressState.lastUpdated > 120000)) { // 2 minutes
+      console.log(`Sync job ${syncId} appears to be stalled (no updates for ${Math.round((now - progressState.lastUpdated)/1000)} seconds)`);
+      
+      // Check if the process is actually stalled or if it's completed but failed to update
+      if (progressState.processedUsers > 0 && progressState.totalUsers > 0 && 
+          progressState.processedUsers >= progressState.totalUsers) {
+        // If all users have been processed, mark as complete
+        console.log(`All ${progressState.processedUsers}/${progressState.totalUsers} users processed - marking sync job ${syncId} as complete`);
+        progressState.inProgress = false;
+        progressState.completedTime = progressState.lastUpdated || now;
+      } else {
+        // Log warning but continue - we don't automatically mark as failed
+        console.log(`WARNING: Sync job ${syncId} may be stalled at ${progressState.processedUsers}/${progressState.totalUsers} users`);
+      }
+    }
+    
+    // If sync is already complete, add a cache control header to prevent excessive polling
+    if (!progressState.inProgress) {
+      // Add cache control header (1 hour) for completed sync jobs
+      res.set('Cache-Control', 'private, max-age=3600');
+      console.log(`Sync job ${syncId} is complete - adding cache header to prevent excessive polling`);
     }
     
     // Calculate progress percentage
@@ -701,6 +793,8 @@ router.get('/sync-status/:syncId', [auth, adminAuth], async (req, res) => {
     // Calculate elapsed time
     const elapsedSeconds = Math.floor((Date.now() - progressState.startTime) / 1000);
     
+    console.log(`Returning sync status for job ${syncId}: Progress ${progress}%, Users ${progressState.processedUsers}/${progressState.totalUsers}`);
+    
     // Return status
     res.json({
       id: syncId,
@@ -711,8 +805,10 @@ router.get('/sync-status/:syncId', [auth, adminAuth], async (req, res) => {
       updatedProfiles: progressState.updatedProfiles,
       failedProfiles: progressState.failedProfiles,
       totalProfiles: progressState.totalProfiles,
+      failedProfilesList: progressState.failedProfilesList || [],
       elapsedTime: elapsedSeconds,
       error: progressState.error,
+      lastUpdated: progressState.lastUpdated ? new Date(progressState.lastUpdated).toISOString() : null,
       startTime: new Date(progressState.startTime).toISOString(),
       completedTime: progressState.completedTime ? new Date(progressState.completedTime).toISOString() : null
     });
@@ -743,10 +839,45 @@ router.post('/cancel-sync/:syncId', [auth, adminAuth], async (req, res) => {
       });
     }
     
-    // Mark the job as cancelled
+    // Mark the job as cancelled - this needs to happen before aborting to prevent race conditions
     progressState.inProgress = false;
     progressState.cancelled = true;
     progressState.completedTime = Date.now();
+    progressState.error = "Cancelled by admin";
+    
+    // Abort the process if there's an abort controller
+    if (progressState.abortController && typeof progressState.abortController.abort === 'function') {
+      try {
+        progressState.abortController.abort();
+        console.log(`Abort controller triggered for sync job ${syncId}`);
+      } catch (abortError) {
+        console.error(`Error triggering abort controller for sync job ${syncId}:`, abortError);
+        // Continue even if abort controller fails - we've already set the cancelled flag
+      }
+    }
+
+    // Force GC if possible to help free memory
+    if (global.gc) {
+      try {
+        global.gc();
+        console.log('Garbage collection triggered after cancellation');
+      } catch (gcError) {
+        console.error('Error triggering garbage collection:', gcError);
+      }
+    }
+    
+    // Check MongoDB connection and reconnect if needed
+    if (mongoose.connection.readyState !== 1) { // 1 = connected
+      console.log('MongoDB connection check after cancellation: Disconnected. Reconnecting...');
+      try {
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log('Successfully reconnected to MongoDB after cancellation');
+      } catch (mongoError) {
+        console.error('Failed to reconnect to MongoDB after cancellation:', mongoError);
+      }
+    } else {
+      console.log('MongoDB connection check after cancellation: Still connected');
+    }
     
     // Log the cancellation
     console.log(`Admin ${req.user.id} cancelled profile sync job ${syncId}`);

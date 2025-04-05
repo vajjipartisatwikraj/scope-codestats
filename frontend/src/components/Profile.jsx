@@ -832,6 +832,8 @@ const Profile = () => {
         maxWidth="sm" 
         fullWidth
         fullScreen={isMobile}
+        container={() => document.getElementById('dialog-container') || document.body}
+        disableEnforceFocus
       >
         <DialogTitle sx={{ 
           px: { xs: 2, sm: 3 },
@@ -985,6 +987,8 @@ const Profile = () => {
         onClose={() => setErrorDialog({ open: false, title: '', message: '' })}
         aria-labelledby="error-dialog-title"
         aria-describedby="error-dialog-description"
+        container={() => document.getElementById('dialog-container') || document.body}
+        disableEnforceFocus
       >
         <DialogTitle id="error-dialog-title">{errorDialog.title}</DialogTitle>
         <DialogContent>

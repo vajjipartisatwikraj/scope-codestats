@@ -237,6 +237,8 @@ const Navbar = () => {
                   color: themeColors.text
                 }
               }}
+              container={() => document.getElementById('dialog-container') || document.body}
+              disableEnforceFocus
             >
               {menuItems?.map((item) => (
                 <MenuItem 
@@ -351,6 +353,8 @@ const Navbar = () => {
                   minWidth: 180,
                 }
               }}
+              container={() => document.getElementById('dialog-container') || document.body}
+              disableEnforceFocus
             >
               <Box sx={{ px: 2, py: 2 }}>
                 <Typography sx={{ color: themeColors.text, fontWeight: 600 }}>

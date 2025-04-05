@@ -16,8 +16,9 @@ process.emitWarning = function(warning, ...args) {
 
 
 
-conconst path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });st express = require('express');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
@@ -36,15 +37,19 @@ const healthRoutes = require('./routes/healthRoutes');
 const passport = require('passport');
 const session = require('express-session');
 const googleAuthRoutes = require('./routes/auth/googleAuth');
+const registerCronJobs = require('./ensure-cron-jobs');
 
 const app = express();
+
+// Initialize syncProgress tracking for profile synchronization
+app.locals.syncProgress = {};
 
 // Connect Database
 connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://codestats.zapto.org'], 
+  origin: ['http://localhost:5173'], 
   credentials: true
 }));
 app.use(express.json());
@@ -66,6 +71,9 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`, req.body);
   next();
 });
+
+// Register all cron jobs
+registerCronJobs();
 
 // Auto-sync profiles scheduler - Runs at 5:25 PM IST (11:55 AM UTC) every day
 cron.schedule('55 11 * * *', async () => {
@@ -415,6 +423,22 @@ app.get('/api/test/google-auth', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
+
+// Add MongoDB connection error handling and reconnection
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+  console.log('Will attempt to reconnect to MongoDB...');
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected. Attempting to reconnect...');
+  // Try to reconnect after a short delay
+  setTimeout(() => {
+    mongoose.connect(process.env.MONGODB_URI)
+      .then(() => console.log('Reconnected to MongoDB'))
+      .catch(err => console.error('MongoDB reconnection error:', err));
+  }, 5000);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

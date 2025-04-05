@@ -1,11 +1,11 @@
 /**
  * Cron Job: Update User Platform Profiles
  * 
- * This script updates all users' coding platform profiles at 2:00 AM IST
+ * This script updates all users' coding platform profiles at 1:40 PM IST
  * and logs comprehensive statistics about the update process.
  * 
  * This module can be used in three ways:
- * 1. Scheduled cron job (automatically runs at 2 AM IST)
+ * 1. Scheduled cron job (automatically runs at 1:40 PM IST)
  * 2. Manual execution via command line: node run-sync.js
  * 3. Admin-triggered via Admin Dashboard (using the sync-profiles endpoint)
  * 
@@ -92,7 +92,7 @@ const rateLimitingTracker = {
     github: 1000,       // 1 request per second (GitHub has strict limits)
     leetcode: 2000,      // Increased: 1 request per 2 seconds (from 500ms)
     codeforces: 5000,   // Increased: 1 request per 5 seconds (from 1000ms)
-    codechef: 6000,     // Increased: 1 request per 6 seconds (from 2000ms)
+    codechef: 12000,     // Increased: 1 request per 12 seconds (from 6000ms)
     geeksforgeeks: 2000, // Increased: 1 request per 2 seconds (from 750ms)
     hackerrank: 1500     // Increased: 1 request per 1.5 seconds (from 500ms)
   },
@@ -179,6 +179,22 @@ const updateUserPlatforms = async (user, logger, stats) => {
           logger.error(`Failed to update ${profile.platform} for ${user.name} (${profile.username}): [${errorCode}] ${errorDetails}`);
           
           stats.failuresByPlatform[profile.platform] = (stats.failuresByPlatform[profile.platform] || 0) + 1;
+          
+          // Store the failed profile details in a list for display in the admin dashboard
+          if (!stats.failedProfilesList) {
+            stats.failedProfilesList = [];
+          }
+          
+          stats.failedProfilesList.push({
+            userId: user._id.toString(),
+            userName: user.name,
+            userEmail: user.email,
+            platform: profile.platform,
+            platformUsername: profile.username,
+            error: errorDetails,
+            errorCode: errorCode,
+            timestamp: new Date().toISOString()
+          });
         });
         
         // Log platform-specific error counts
@@ -283,20 +299,89 @@ const applyRateLimit = async (platform, wasRateLimited = false) => {
 /**
  * Main function to update all users' platform profiles
  * @param {Object} progressState - Optional object to track progress (for admin dashboard)
+ * @param {AbortSignal} signal - Optional abort signal for cancellation
  * @returns {Promise} - Resolves when update process is complete
  */
-const updateAllUserProfiles = async (progressState = null) => {
+const updateAllUserProfiles = async (progressState = null, signal = null) => {
   let logger = null;
+  let dbConnection = null;
+  let cleanupFunctions = [];
+  
+  // Helper to run cleanup functions
+  const runCleanup = async () => {
+    for (const cleanup of cleanupFunctions) {
+      try {
+        if (typeof cleanup === 'function') {
+          await cleanup();
+        }
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
+      }
+    }
+  };
   
   try {
     // Setup logging
     logger = setupLogging();
+    cleanupFunctions.push(() => {
+      if (logger) {
+        try {
+          logger.close();
+        } catch (e) {
+          console.error('Error closing logger:', e);
+        }
+      }
+    });
+    
     logger.log('Starting profile update process');
     console.log('\x1b[36m[START]\x1b[0m Starting profile update process at', new Date().toISOString());
     
+    // Handle abort signal if provided
+    if (signal) {
+      signal.addEventListener('abort', async () => {
+        logger.log('Received abort signal - cancelling sync operation');
+        
+        // Update progress state
+        if (progressState) {
+          progressState.inProgress = false;
+          progressState.cancelled = true;
+          progressState.completedTime = Date.now();
+          progressState.error = "Operation aborted by signal";
+        }
+        
+        // Run cleanup functions
+        await runCleanup();
+      }, { once: true });
+    }
+    
     // Connect to MongoDB
-    await connectToMongoDB();
+    dbConnection = await connectToMongoDB();
+    cleanupFunctions.push(async () => {
+      try {
+        // DO NOT close the main MongoDB connection - this will break other routes
+        // Instead, just log that we're keeping the connection open
+        console.log('Cleanup: Keeping MongoDB connection open for other operations');
+        
+        // If we're running in a test environment or standalone script, then close
+        if (process.env.NODE_ENV === 'test' || require.main === module) {
+          if (mongoose.connection.readyState !== 0) { // 0 = disconnected
+            await mongoose.connection.close();
+            console.log('MongoDB connection closed (test/standalone mode)');
+          }
+        }
+      } catch (e) {
+        console.error('Error during MongoDB cleanup:', e);
+      }
+    });
+    
     logger.log('Connected to MongoDB');
+    
+    // Check if already cancelled before starting
+    if (progressState && (progressState.cancelled || !progressState.inProgress || (signal && signal.aborted))) {
+      logger.log('Sync operation was cancelled before starting user processing');
+      await runCleanup();
+      return { cancelled: true, message: "Operation cancelled before starting" };
+    }
     
     // Find all users
     const users = await User.find({});
@@ -311,6 +396,7 @@ const updateAllUserProfiles = async (progressState = null) => {
       totalProfiles: 0,
       updatedProfiles: 0,
       failedProfiles: 0,
+      failedProfilesList: [], // Initialize empty array to store failed profile details
       totalTime: 0,
       startTime: Date.now(),
       profilesByPlatform: {},
@@ -326,99 +412,171 @@ const updateAllUserProfiles = async (progressState = null) => {
     if (progressState) {
       progressState.totalUsers = users.length;
       progressState.startTime = Date.now();
+      progressState.failedProfilesList = []; // Initialize the failedProfilesList in progressState
     }
     
     // Process users in batches to avoid memory issues
-    // Reducing batch size to prevent overwhelming the APIs
-    const BATCH_SIZE = 10; // Reduced from 20 to 10
+    const BATCH_SIZE = 2; // Reduced from 5 to 2 to further lower server load and prevent rate limiting
     let processedCount = 0;
     
     for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      // Check for cancellation before each batch
+      if (signal && signal.aborted) {
+        logger.log('Sync operation aborted before batch processing');
+        break;
+      }
+      
+      if (progressState && (progressState.cancelled || !progressState.inProgress)) {
+        logger.log('Sync operation cancelled before batch processing');
+        break;
+      }
+      
       const batch = users.slice(i, i + BATCH_SIZE);
       const batchStartTime = Date.now();
       
       try {
-        // Process batch with concurrency control
-        await Promise.all(batch.map(async (user) => {
-          // Apply global rate limiting with jitter to spread out requests
-          const jitterMs = Math.floor(Math.random() * 500);
-          await new Promise(resolve => setTimeout(resolve, jitterMs));
-          
-          // Check if the job was cancelled
-          if (progressState && progressState.cancelled) {
-            logger.log(`Sync job cancelled during processing of user ${user.name}`);
+        // Process batch with controlled concurrency and cancellation checks
+        const batchPromises = batch.map(async (user) => {
+          // Check for cancellation before each user
+          if (signal && signal.aborted) {
             return; // Skip this user
           }
           
+          if (progressState && (progressState.cancelled || !progressState.inProgress)) {
+            return; // Skip this user
+          }
+          
+          // Apply rate limiting with jitter
+          const jitterMs = Math.floor(Math.random() * 300);
+          await new Promise(resolve => setTimeout(resolve, jitterMs));
+          
           try {
+            // Process the user
             await updateUserPlatforms(user, logger, stats);
           } catch (userError) {
-            // Log individual user errors to prevent batch failure
-            console.error(`\x1b[31m[USER ERROR]\x1b[0m Failed to process user ${user.name} (${user.email}): ${userError.message}`);
-            logger.error(`Individual user error for ${user.name}`, userError);
+            console.error(`\x1b[31m[USER ERROR]\x1b[0m Failed to process user ${user.name || user.email || user._id}: ${userError.message}`);
+            logger.error(`Individual user error for ${user.name || user.email || user._id}`, userError);
             stats.failedUsers++;
             
-            // Update progress state for admin dashboard
             if (progressState) {
-              progressState.failedUsers = stats.failedUsers;
+              progressState.failedUsers = (progressState.failedUsers || 0) + 1;
             }
-          }
-          
-          processedCount++;
-          
-          // Update progress state for admin dashboard
-          if (progressState) {
-            progressState.processedUsers = processedCount;
-            progressState.updatedProfiles = stats.updatedProfiles;
-            progressState.failedProfiles = stats.failedProfiles;
-            progressState.totalProfiles = stats.totalProfiles;
-          }
-          
-          if (processedCount % 20 === 0 || processedCount === users.length) {
-            const percent = Math.round(processedCount / users.length * 100);
-            logger.log(`Progress: ${processedCount}/${users.length} users (${percent}%)`);
-            console.log(`\x1b[32m[PROGRESS]\x1b[0m ${processedCount}/${users.length} users (${percent}%) completed`);
+          } finally {
+            // Increment processed count regardless of success/failure
+            processedCount++;
             
-            // Print current success/failure rates
-            if (stats.totalProfiles > 0) {
-              const successRate = ((stats.updatedProfiles / stats.totalProfiles) * 100).toFixed(2);
-              console.log(`\x1b[36m[STATUS]\x1b[0m Success rate: ${successRate}% (${stats.updatedProfiles}/${stats.totalProfiles} profiles)`);
+            // Update progress
+            if (progressState) {
+              // Update with proper locking to avoid race conditions
+              try {
+                // Calculate current progress percentage
+                const percent = Math.round(processedCount / users.length * 100);
+                
+                // Update all fields atomically
+                progressState.processedUsers = processedCount;
+                progressState.updatedProfiles = stats.updatedProfiles;
+                progressState.failedProfiles = stats.failedProfiles;
+                progressState.totalProfiles = stats.totalProfiles;
+                progressState.failedProfilesList = stats.failedProfilesList || [];
+                
+                // Add a lastUpdated timestamp to help detect stalled processes
+                progressState.lastUpdated = Date.now();
+                
+                // Log more detailed progress information
+                console.log(`Progress state updated: ${processedCount}/${users.length} users (${percent}%), ` +
+                           `updated: ${stats.updatedProfiles}, failed: ${stats.failedProfiles}, ` +
+                           `at ${new Date().toISOString()}`);
+              } catch (progressUpdateError) {
+                console.error('Error updating progress state:', progressUpdateError);
+                // Continue processing even if progress update fails
+              }
+            }
+            
+            // Log progress periodically
+            if (processedCount % 10 === 0 || processedCount === users.length) {
+              const percent = Math.round(processedCount / users.length * 100);
+              logger.log(`Progress: ${processedCount}/${users.length} users (${percent}%)`);
+              console.log(`\x1b[32m[PROGRESS]\x1b[0m ${processedCount}/${users.length} users (${percent}%) completed`);
             }
           }
-        }));
+        });
+        
+        // Wait for all promises with timeout protection
+        await Promise.race([
+          Promise.all(batchPromises),
+          new Promise((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('Batch timeout exceeded (3 minutes)'));
+            }, 180000); // 3 minutes timeout
+          })
+        ]);
       } catch (batchError) {
-        // Log batch error but continue with the next batch
         console.error(`\x1b[31m[BATCH ERROR]\x1b[0m Batch ${Math.ceil(i/BATCH_SIZE) + 1} failed: ${batchError.message}`);
         logger.error(`Error processing batch ${Math.ceil(i/BATCH_SIZE) + 1}`, batchError);
+        
+        // Check if we need to abort due to timeout
+        if (batchError.message.includes('timeout')) {
+          if (progressState) {
+            progressState.error = `Batch timeout: ${batchError.message}`;
+          }
+          // Continue with next batch, don't abort the whole process
+        }
       }
       
-      // Log batch completion time
+      // Check for cancellation after batch
+      if (signal && signal.aborted) {
+        logger.log('Sync operation aborted after batch processing');
+        break;
+      }
+      
+      if (progressState && (progressState.cancelled || !progressState.inProgress)) {
+        logger.log('Sync operation cancelled after batch processing');
+        break;
+      }
+      
+      // Log batch completion
       const batchTime = Date.now() - batchStartTime;
       logger.log(`Batch ${Math.ceil(i/BATCH_SIZE) + 1}/${Math.ceil(users.length/BATCH_SIZE)} completed in ${batchTime/1000} seconds`);
       console.log(`\x1b[36m[BATCH]\x1b[0m Batch ${Math.ceil(i/BATCH_SIZE) + 1}/${Math.ceil(users.length/BATCH_SIZE)} completed in ${(batchTime/1000).toFixed(2)} seconds`);
       
-      // Add a small pause between batches to prevent overwhelming the server
+      // Add a small pause between batches
       if (i + BATCH_SIZE < users.length) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Increased to 3 seconds
       }
     }
     
-    // Check if job was cancelled after processing the batch
-    if (progressState && progressState.cancelled) {
-      logger.log('Sync job cancelled by admin');
-      console.log('\x1b[33m[CANCELLED]\x1b[0m Profile update process was cancelled by admin');
-      
-      // Close logger
-      logger.log('[CANCELLED] Profile update process cancelled at ' + new Date().toISOString());
-      logger.close();
-      
-      // Disconnect from MongoDB
-      try {
-        await mongoose.connection.close();
-        console.log('MongoDB connection closed after cancellation');
-      } catch (error) {
-        console.error('Error closing MongoDB connection:', error);
+    // Check if cancelled after all batches
+    if (signal && signal.aborted) {
+      if (progressState) {
+        progressState.inProgress = false;
+        progressState.completedTime = Date.now();
+        progressState.cancelled = true;
       }
+      
+      logger.log('Sync operation was aborted');
+      await runCleanup();
+      
+      return {
+        cancelled: true,
+        processedUsers: processedCount,
+        totalUsers: users.length,
+        ...stats
+      };
+    }
+    
+    if (progressState && progressState.cancelled) {
+      logger.log('Sync operation was cancelled by admin');
+      
+      // Ensure progress state is updated
+      progressState.inProgress = false;
+      progressState.completedTime = progressState.completedTime || Date.now();
+      progressState.processedUsers = processedCount;
+      progressState.updatedProfiles = stats.updatedProfiles;
+      progressState.failedProfiles = stats.failedProfiles;
+      progressState.totalProfiles = stats.totalProfiles;
+      progressState.failedProfilesList = stats.failedProfilesList || [];
+      
+      await runCleanup();
       
       return {
         cancelled: true,
@@ -430,9 +588,9 @@ const updateAllUserProfiles = async (progressState = null) => {
     
     // Calculate final statistics
     const totalTimeSeconds = (Date.now() - stats.startTime) / 1000;
-    const avgProfileTime = stats.totalTime / stats.updatedProfiles || 0;
+    const avgProfileTime = stats.updatedProfiles > 0 ? (stats.totalTime / stats.updatedProfiles) : 0;
     
-    // Log final statistics with color formatting for terminal visibility
+    // Log final statistics
     console.log('\n\x1b[35m========= FINAL STATISTICS =========\x1b[0m');
     console.log(`\x1b[36m[STATS]\x1b[0m Total users processed: ${stats.totalUsers}`);
     console.log(`\x1b[32m[SUCCESS]\x1b[0m Users updated: ${stats.updatedUsers}`);
@@ -443,95 +601,62 @@ const updateAllUserProfiles = async (progressState = null) => {
     console.log(`\x1b[36m[STATS]\x1b[0m Average time per profile: ${Math.round(avgProfileTime)}ms`);
     console.log(`\x1b[36m[STATS]\x1b[0m Total execution time: ${totalTimeSeconds.toFixed(2)} seconds`);
     
-    // Calculate success/failure rates by platform
-    console.log('\n\x1b[35m========= PLATFORM STATISTICS =========\x1b[0m');
-    
-    // Enhanced platform-specific statistics
-    Object.keys(stats.profilesByPlatform).forEach(platform => {
-      const successful = stats.profilesByPlatform[platform] || 0;
-      const failed = stats.failuresByPlatform[platform] || 0;
-      const total = successful + failed;
-      const successRate = total > 0 ? ((successful / total) * 100).toFixed(2) : '0.00';
-      
-      console.log(`\x1b[36m[${platform.toUpperCase()}]\x1b[0m ${successful}/${total} successful (${successRate}% success rate)`);
-      
-      if (failed > 0) {
-        console.log(`\x1b[33m[WARNING]\x1b[0m ${platform} had ${failed} failed profile updates`);
-      }
-    });
-    
-    // Log plain text version for database storage
-    console.log(`\n--- FINAL STATISTICS ---`);
-    console.log(`Total users processed: ${stats.totalUsers}`);
-    console.log(`Users updated: ${stats.updatedUsers}`);
-    console.log(`Users failed: ${stats.failedUsers}`);
-    console.log(`Total profiles attempted: ${stats.totalProfiles}`);
-    console.log(`Profiles updated: ${stats.updatedProfiles}`);
-    console.log(`Profiles failed: ${stats.failedProfiles}`);
-    console.log(`Average time per profile: ${Math.round(avgProfileTime)}ms`);
-    console.log(`Total execution time: ${totalTimeSeconds.toFixed(2)} seconds`);
-    
-    console.log(`\n--- PLATFORM STATISTICS ---`);
-    Object.keys(stats.profilesByPlatform).forEach(platform => {
-      const successful = stats.profilesByPlatform[platform] || 0;
-      const failed = stats.failuresByPlatform[platform] || 0;
-      const total = successful + failed;
-      const successRate = total > 0 ? ((successful / total) * 100).toFixed(2) : '0.00';
-      
-      console.log(`${platform}: ${successful}/${total} successful (${successRate}% success rate)`);
-    });
-    console.log(`Profile update process completed`);
-    
-    // Close logger
-    logger.log('[COMPLETE] Profile update process completed at ' + new Date().toISOString());
-    logger.close();
-    
-    // Disconnect from MongoDB
-    try {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed');
-    } catch (error) {
-      console.error('Error closing MongoDB connection:', error);
+    // Update progress state for completion
+    if (progressState) {
+      progressState.inProgress = false;
+      progressState.completedTime = Date.now();
+      progressState.processedUsers = processedCount;
+      progressState.updatedProfiles = stats.updatedProfiles;
+      progressState.failedProfiles = stats.failedProfiles;
+      progressState.totalProfiles = stats.totalProfiles;
+      progressState.failedProfilesList = stats.failedProfilesList || [];
+      progressState.success = true;
     }
     
-    console.log('Profile synchronization completed.');
-    return stats;
+    // Run cleanup
+    await runCleanup();
+    
+    return {
+      success: true,
+      totalUsers: users.length,
+      processedUsers: processedCount,
+      updatedProfiles: stats.updatedProfiles,
+      failedProfiles: stats.failedProfiles,
+      totalTime: totalTimeSeconds
+    };
   } catch (error) {
     console.error('\x1b[41m\x1b[37m FATAL ERROR \x1b[0m', error);
     
     if (logger) {
       logger.error('Fatal error in profile update process', error);
-      logger.close();
     }
     
-    // Update progress state if provided
+    // Update progress state with error
     if (progressState) {
-      progressState.error = error.message;
+      progressState.error = error.message || "Unknown fatal error";
       progressState.inProgress = false;
+      progressState.completedTime = Date.now();
+      progressState.success = false;
     }
     
-    // Disconnect from MongoDB
-    try {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed');
-    } catch (closeError) {
-      console.error('Error closing MongoDB connection:', closeError);
-    }
+    // Run cleanup
+    await runCleanup();
     
+    // Re-throw for promise rejection handling
     throw error;
   }
 };
 
-// Schedule cron job to run at 2 AM IST (8:30 PM UTC)
+// Schedule cron job to run at 1:40 PM IST (8:10 AM UTC)
 const scheduleCronJob = () => {
-  // Schedule cron job for 2:00 AM IST (UTC+5:30)
-  // This is 20:30 UTC of the previous day
-  cron.schedule('30 20 * * *', () => {
-    console.log('Running scheduled profile update at 2:00 AM IST');
+  // Schedule cron job for 1:40 PM IST (UTC+5:30)
+  // This is 8:10 AM UTC
+  cron.schedule('10 8 * * *', () => {
+    console.log('Running scheduled profile update at 1:40 PM IST');
     updateAllUserProfiles();
   });
   
-  console.log('Cron job scheduled for 2:00 AM IST (20:30 UTC)');
+  console.log('Cron job scheduled for 1:40 PM IST (8:10 AM UTC)');
 };
 
 // If running as standalone script

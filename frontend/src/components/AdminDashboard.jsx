@@ -152,12 +152,125 @@ const ProfileSyncTab = ({ token }) => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [openConfirmation, setOpenConfirmation] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [failedProfiles, setFailedProfiles] = useState([]);
+
+  // Function to check sync status
+  const checkSyncStatus = async (id) => {
+    try {
+      // If there's no sync ID, exit early
+      if (!id) {
+        return;
+      }
+
+      // If we already know the sync is complete, don't make more API calls
+      if (syncStatus && !syncStatus.inProgress) {
+        return;
+      }
+
+      const response = await axios.get(`${apiUrl}/admin/sync-status/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        // Add timeout to prevent hanging requests
+        timeout: 10000
+      });
+      
+      // Always update the status first so UI reflects latest state
+      setSyncStatus(response.data);
+      
+      // Check if there are failed profiles in the response
+      if (response.data.failedProfilesList && response.data.failedProfilesList.length > 0) {
+        setFailedProfiles(response.data.failedProfilesList);
+      } else {
+        // Reset the failed profiles list if there are none
+        setFailedProfiles([]);
+      }
+      
+      // If sync is complete (not in progress), stop polling and show notification (only once)
+      if (!response.data.inProgress) {
+        // Clear the interval if it exists
+        if (statusPolling) {
+          clearInterval(statusPolling);
+          setStatusPolling(null);
+        }
+        
+        // Update global active sync state
+        activeSyncState.setInProgress(false);
+        
+        // Show appropriate notification ONLY ONCE
+        // We check if this is the first time we're detecting completion
+        if (syncStatus && syncStatus.inProgress) {
+          if (response.data.error) {
+            toast.error(`Sync completed with errors: ${response.data.error}`);
+          } else if (response.data.cancelled) {
+            toast.info('Profile synchronization was cancelled');
+          } else {
+            toast.success('Profile synchronization completed successfully');
+          }
+        }
+        
+        // Early return if sync is complete
+        return;
+      }
+    } catch (err) {
+      // Only stop polling on critical errors (404 means job not found)
+      // For other errors, we'll continue polling to recover from temporary issues
+      if (err.response && err.response.status === 404) {
+        if (statusPolling) {
+          clearInterval(statusPolling);
+          setStatusPolling(null);
+        }
+        
+        // Show error message to user
+        toast.error(`Sync job not found. It may have been deleted or expired.`);
+        
+        // Reset sync state
+        setSyncStatus(null);
+        setSyncId(null);
+        activeSyncState.setInProgress(false);
+      }
+    }
+  };
 
   // Function to start profile sync
   const startSync = async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Clear any existing polling
+      if (statusPolling) {
+        clearInterval(statusPolling);
+        setStatusPolling(null);
+      }
+      
+      // Pre-initialize UI with starting state BEFORE making API call
+      const tempId = `temp-${Date.now()}`;
+      setSyncId(tempId);
+      setSyncStatus({
+        id: tempId,
+        inProgress: true,
+        progress: 0,
+        totalUsers: 0,
+        processedUsers: 0,
+        updatedProfiles: 0,
+        failedProfiles: 0,
+        totalProfiles: 0,
+        elapsedTime: 0,
+        startTime: new Date().toISOString(),
+        error: null,
+        cancelled: false,
+        completedTime: null
+      });
+      
+      // Show single toast notification for starting sync
+      toast.info('Starting profile synchronization...', {
+        autoClose: 2000 // close after 2 seconds
+      });
+      
+      // Set global active sync state
+      activeSyncState.setInProgress(true);
       
       const response = await axios.post(`${apiUrl}/admin/sync-profiles`, {}, {
         headers: {
@@ -167,23 +280,39 @@ const ProfileSyncTab = ({ token }) => {
       });
       
       if (response.data.success && response.data.syncId) {
-        setSyncId(response.data.syncId);
-        toast.success('Profile synchronization started');
+        const newSyncId = response.data.syncId;
         
-        // Set global active sync state
-        activeSyncState.setInProgress(true);
+        // Update the sync ID with the real one from the server
+        setSyncId(newSyncId);
         
-        // Start polling for status updates
+        // Update status with the real ID 
+        setSyncStatus(prevStatus => ({
+          ...prevStatus,
+          id: newSyncId
+        }));
+        
+        // Make an immediate first check
+        setTimeout(() => {
+          checkSyncStatus(newSyncId);
+        }, 1000);
+        
+        // Start polling for status updates (after a short delay to avoid race conditions)
         const intervalId = setInterval(() => {
-          checkSyncStatus(response.data.syncId);
+          checkSyncStatus(newSyncId);
         }, 3000);
         
         setStatusPolling(intervalId);
+      } else {
+        throw new Error('Invalid response from server: missing syncId');
       }
     } catch (err) {
-      console.error('Error starting profile sync:', err);
       setError(err.response?.data?.message || 'Failed to start profile synchronization');
       toast.error('Failed to start profile synchronization');
+      
+      // Reset states on error
+      setSyncId(null);
+      setSyncStatus(null);
+      activeSyncState.setInProgress(false);
     } finally {
       setLoading(false);
     }
@@ -225,50 +354,52 @@ const ProfileSyncTab = ({ token }) => {
         }
       }
     } catch (err) {
-      console.error('Error cancelling sync:', err);
       toast.error('Failed to cancel synchronization');
     } finally {
       setCancelLoading(false);
     }
   };
   
-  // Function to check sync status
-  const checkSyncStatus = async (id) => {
-    try {
-      const response = await axios.get(`${apiUrl}/admin/sync-status/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      setSyncStatus(response.data);
-      
-      // If sync is complete, stop polling
-      if (!response.data.inProgress) {
-        // Update global active sync state
-        activeSyncState.setInProgress(false);
-        
-        if (statusPolling) {
-          clearInterval(statusPolling);
-          setStatusPolling(null);
-        }
-        
-        if (response.data.error) {
-          toast.error(`Sync completed with errors: ${response.data.error}`);
-        } else if (response.data.cancelled) {
-          toast.info('Profile synchronization was cancelled');
-        } else {
-          toast.success('Profile synchronization completed successfully');
-        }
-      }
-    } catch (err) {
-      console.error('Error checking sync status:', err);
-      // Don't set error state here to avoid UI disruption
-      // Just log the error and continue polling
+  // Helper function to generate platform-specific URLs
+  const getPlatformUrl = (platform, username) => {
+    switch (platform.toLowerCase()) {
+      case 'leetcode':
+        return `https://leetcode.com/${username}`;
+      case 'codeforces':
+        return `https://codeforces.com/profile/${username}`;
+      case 'codechef':
+        return `https://www.codechef.com/users/${username}`;
+      case 'geeksforgeeks':
+        return `https://auth.geeksforgeeks.org/user/${username}`;
+      case 'hackerrank':
+        return `https://www.hackerrank.com/${username}`;
+      case 'github':
+        return `https://github.com/${username}`;
+      default:
+        return '#';
     }
   };
-
+  
+  // Get platform color
+  const getPlatformColor = (platform) => {
+    switch (platform.toLowerCase()) {
+      case 'leetcode':
+        return '#FFA116';
+      case 'codeforces':
+        return '#1E88E5';
+      case 'codechef':
+        return '#5B4638';
+      case 'geeksforgeeks':
+        return '#2F8D46';
+      case 'hackerrank':
+        return '#00EA64';
+      case 'github':
+        return '#333333';
+      default:
+        return '#757575';
+    }
+  };
+  
   // Handle confirmation dialog
   const handleConfirmationClose = (shouldProceed) => {
     setOpenConfirmation(false);
@@ -307,7 +438,9 @@ const ProfileSyncTab = ({ token }) => {
   
   // Cleanup polling on unmount
   useEffect(() => {
+    // Return cleanup function
     return () => {
+      // Always clear the interval when unmounting to prevent memory leaks
       if (statusPolling) {
         clearInterval(statusPolling);
       }
@@ -316,12 +449,12 @@ const ProfileSyncTab = ({ token }) => {
   
   // Update global active sync state when component unmounts
   useEffect(() => {
+    // Return cleanup function
     return () => {
-      if (syncStatus && !syncStatus.inProgress) {
-        activeSyncState.setInProgress(false);
-      }
+      // Always reset the in-progress state when unmounting
+      activeSyncState.setInProgress(false);
     };
-  }, [syncStatus]);
+  }, []);
   
   return (
     <Box>
@@ -333,7 +466,7 @@ const ProfileSyncTab = ({ token }) => {
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
               Manually trigger the synchronization of all user profiles with external platforms.
-              This process normally runs automatically at 2:00 AM daily.
+              This process normally runs automatically at 12:00 AM daily.
             </Typography>
             
             {error && (
@@ -377,7 +510,7 @@ const ProfileSyncTab = ({ token }) => {
                 
                 <Box sx={{ mb: 2 }}>
                   <LinearProgress 
-                    variant="determinate" 
+                    variant={syncStatus.progress > 0 ? "determinate" : "indeterminate"} 
                     value={syncStatus.progress} 
                     color={syncStatus.error ? "error" : syncStatus.cancelled ? "warning" : "primary"}
                     sx={{ height: 10, borderRadius: 5 }}
@@ -391,7 +524,7 @@ const ProfileSyncTab = ({ token }) => {
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2, textAlign: 'center' }}>
                       <Typography variant="h5">
-                        {syncStatus.processedUsers}/{syncStatus.totalUsers}
+                        {syncStatus.processedUsers}/{syncStatus.totalUsers || '?'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Users Processed
@@ -433,6 +566,140 @@ const ProfileSyncTab = ({ token }) => {
                   </Grid>
                 </Grid>
                 
+                {/* Failed Profiles Section */}
+                <Box sx={{ mt: 4 }}>
+                  <Typography variant="h6" color={failedProfiles.length > 0 ? "error" : "text.secondary"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Badge badgeContent={failedProfiles.length} color="error" sx={{ mr: 2 }}>
+                      <Assessment />
+                    </Badge>
+                    Failed Profiles
+                  </Typography>
+                  
+                  {failedProfiles.length === 0 ? (
+                    <Alert severity="success" sx={{ mt: 2 }}>
+                      No failed profiles detected in this synchronization.
+                    </Alert>
+                  ) : (
+                    <>
+                      <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 400, overflowY: 'auto' }}>
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold' }}>Platform</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold' }}>Username</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold' }}>Error</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {failedProfiles.map((profile, index) => (
+                              <TableRow key={index} hover>
+                                <TableCell>{profile.userName || 'Unknown'}</TableCell>
+                                <TableCell>
+                                  <Chip 
+                                    label={capitalize(profile.platform)}
+                                    size="small"
+                                    sx={{ 
+                                      bgcolor: getPlatformColor(profile.platform),
+                                      color: 'white',
+                                      fontWeight: 'bold'
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell>{profile.platformUsername}</TableCell>
+                                <TableCell>
+                                  <Tooltip 
+                                    title={profile.error || 'Unknown error'} 
+                                    placement="top"
+                                    arrow
+                                    componentsProps={{
+                                      tooltip: {
+                                        sx: {
+                                          maxWidth: 350,
+                                          fontSize: '0.75rem',
+                                          bgcolor: 'error.dark',
+                                          '& .MuiTooltip-arrow': {
+                                            color: 'error.dark',
+                                          },
+                                        },
+                                      },
+                                    }}
+                                  >
+                                    <Typography 
+                                      variant="body2" 
+                                      sx={{ 
+                                        maxWidth: 250, 
+                                        overflow: 'hidden', 
+                                        textOverflow: 'ellipsis', 
+                                        whiteSpace: 'nowrap',
+                                        cursor: 'help',
+                                        color: 'error.main'
+                                      }}
+                                    >
+                                      {profile.error || 'Unknown error'}
+                                    </Typography>
+                                  </Tooltip>
+                                </TableCell>
+                                <TableCell>
+                                  <Tooltip title={`Visit ${profile.platformUsername}'s ${capitalize(profile.platform)} profile`}>
+                                    <IconButton 
+                                      size="small" 
+                                      color="primary"
+                                      component="a"
+                                      href={getPlatformUrl(profile.platform, profile.platformUsername)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <Assessment fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      
+                      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<FileDownloadIcon />}
+                          onClick={() => {
+                            // Export failed profiles to CSV
+                            const headers = ['User', 'Email', 'Platform', 'Username', 'Error', 'Timestamp'];
+                            const csvContent = [
+                              headers.join(','),
+                              ...failedProfiles.map(profile => [
+                                profile.userName || 'Unknown',
+                                profile.userEmail || '',
+                                profile.platform,
+                                profile.platformUsername,
+                                profile.error ? `"${profile.error.replace(/"/g, '""')}"` : '',
+                                profile.timestamp || new Date().toISOString()
+                              ].join(','))
+                            ].join('\n');
+                            
+                            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', `failed-profiles-${new Date().toISOString().split('T')[0]}.csv`);
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            
+                            toast.success(`Exported ${failedProfiles.length} failed profiles to CSV`);
+                          }}
+                        >
+                          Export Failed Profiles
+                        </Button>
+                      </Box>
+                    </>
+                  )}
+                </Box>
+                
                 {syncStatus.error && (
                   <Alert severity="error" sx={{ mt: 2 }}>
                     Error: {syncStatus.error}
@@ -460,6 +727,8 @@ const ProfileSyncTab = ({ token }) => {
       <Dialog
         open={openConfirmation}
         onClose={() => handleConfirmationClose(false)}
+        container={() => document.getElementById('dialog-container') || document.body}
+        disableEnforceFocus
       >
         <DialogTitle>
           {pendingAction === 'cancel' ? 'Cancel Synchronization?' : 'Leave Page?'}
@@ -592,12 +861,10 @@ const AdminDashboard = () => {
           // Don't fetch individual platform details - this endpoint is causing 404 errors
           // We'll use what's available in the leaderboard response
         } catch (leaderboardError) {
-          console.error('Error fetching leaderboard data:', leaderboardError);
           // Continue with the stats data we have
         }
       }
     } catch (error) {
-      console.error('Error fetching admin stats:', error);
       const errorMessage = error.response?.status === 404 
         ? 'API endpoint not found. Please check server configuration.'
         : error.response?.status === 401
@@ -663,11 +930,6 @@ const AdminDashboard = () => {
         toast.error('No data available for export');
         setLoading(false);
         return;
-      }
-      
-      // Log the first user object to see its structure
-      if (response.data && response.data.length > 0) {
-        console.log('Sample user data structure from export endpoint:', JSON.stringify(response.data[0], null, 2));
       }
       
       toast.info(`Processing export data for ${response.data.length} users...`, { autoClose: 2000 });
@@ -822,13 +1084,11 @@ const AdminDashboard = () => {
       
       toast.success(`Successfully exported data for ${exportData.length} users`);
     } catch (error) {
-      console.error('Export error:', error);
       let errorMessage = 'Failed to export data. Please try again.';
       
       if (error.response) {
         // Server responded with a status code outside of 2xx range
         errorMessage = `Server error ${error.response.status}: ${error.response.data?.message || 'Failed to fetch data'}`;
-        console.error('Server response details:', error.response.data);
       } else if (error.request) {
         // Request was made but no response received
         errorMessage = 'No response from server. Please check your connection.';
@@ -901,6 +1161,25 @@ const AdminDashboard = () => {
       return new Date(dataPoint.date).toLocaleDateString('en-US', { month: 'short' });
     }
   };
+
+  // Effect to check for active sync job on component mount
+  useEffect(() => {
+    const checkForActiveSyncJob = async () => {
+      // Look for syncId in localStorage or other storage (you might need to implement this)
+      // If no stored ID is found, we can't restore the sync state
+      if (!token) return;
+
+      try {
+        // You can implement a backend endpoint to check for active jobs
+        // For now, we'll reset the global state to be safe
+        activeSyncState.setInProgress(false);
+      } catch (err) {
+        // Handle error if needed
+      }
+    };
+
+    checkForActiveSyncJob();
+  }, [token]);
 
   if (loading) {
     return (
@@ -1014,7 +1293,7 @@ const AdminDashboard = () => {
                   <Typography variant="h4" fontWeight="bold">
                     {stats?.userStats.totalUsers || 0}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     {stats?.userStats.activeUsers || 0} active this week
                   </Typography>
                 </Box>
@@ -1045,7 +1324,7 @@ const AdminDashboard = () => {
                       {stats?.problemsStats?.totalProblems?.toLocaleString() || stats?.problemsStats?.platformStats?.reduce((sum, platform) => sum + (platform.totalProblems || 0), 0).toLocaleString() || 0}
                     </Typography>
                   </Tooltip>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Problems solved across all platforms
                   </Typography>
                 </Box>
@@ -1074,7 +1353,7 @@ const AdminDashboard = () => {
                   <Typography variant="h4" fontWeight="bold">
                     {stats?.platformEngagement?.length || 0}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     {Math.round(stats?.problemsStats?.platformStats?.reduce((sum, platform) => sum + (platform.avgProblems || 0), 0) / (stats?.platformEngagement?.length || 1))} avg problems per platform
                   </Typography>
                 </Box>
@@ -1103,7 +1382,7 @@ const AdminDashboard = () => {
                   <Typography variant="h4" fontWeight="bold">
                     {stats?.departmentStats?.length || 0}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Tracking performance across departments
                   </Typography>
                 </Box>
@@ -1132,8 +1411,8 @@ const AdminDashboard = () => {
                   <Typography variant={isMobile ? "h6" : "h6"} fontWeight="bold" noWrap>
                     {stats?.userStats.topUsers?.[0]?.name || 'N/A'}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                    Score: {stats?.userStats.topUsers?.[0]?.totalScore || 0}
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Score: {stats?.userStats.topUsers?.[0]?.totalScore || 0} 
                   </Typography>
                 </Box>
               </CardContent>

@@ -1,10 +1,10 @@
-# Nightly Profile Synchronization at 2:00 AM IST
+# Nightly Profile Synchronization at 12:00 AM IST (Midnight)
 
 This document explains how the nightly profile synchronization works, how to configure it, and how to monitor its performance.
 
 ## Overview
 
-The system automatically syncs all user profiles across 6 competitive programming platforms every day at 2:00 AM Indian Standard Time (IST), which is 20:30 UTC of the previous day.
+The system automatically syncs all user profiles across 6 competitive programming platforms every day at 12:00 AM Indian Standard Time (IST), which is 18:30 UTC of the previous day.
 
 The synchronization:
 - Updates all user profiles across LeetCode, Codeforces, CodeChef, GeeksforGeeks, HackerRank, and GitHub
@@ -35,13 +35,13 @@ MONGODB_URI=mongodb://username:password@hostname:port/database
 
 ### Cron Schedule
 
-The default schedule is set to run at 2:00 AM IST (20:30 UTC). You can modify this schedule in `updateUserProfiles.js`:
+The default schedule is set to run at 12:00 AM IST (18:30 UTC of previous day). You can modify this schedule in `updateUserProfiles.js`:
 
 ```javascript
-// Schedule cron job for 2:00 AM IST (UTC+5:30)
-// This is 20:30 UTC of the previous day
-cron.schedule('30 20 * * *', () => {
-  console.log('Running scheduled profile update at 2:00 AM IST');
+// Schedule cron job for 12:00 AM IST (UTC+5:30)
+// This is 18:30 UTC of the previous day
+cron.schedule('30 18 * * *', () => {
+  console.log('Running scheduled profile update at 12:00 AM IST (midnight)');
   updateAllUserProfiles();
 });
 ```
@@ -49,7 +49,7 @@ cron.schedule('30 20 * * *', () => {
 The cron schedule format is: `minute hour day month day-of-week`
 
 Examples:
-- `30 20 * * *` = Every day at 20:30 UTC (2:00 AM IST)
+- `30 18 * * *` = Every day at 18:30 UTC (12:00 AM IST - midnight)
 - `0 0 * * *` = Every day at midnight UTC
 - `0 */4 * * *` = Every 4 hours
 
@@ -78,7 +78,7 @@ If you need to run the profile sync manually outside the scheduled time:
    node scripts/runProfileUpdate.js
    ```
 
-This will execute the same process that runs at 2:00 AM IST, and generate logs in the `logs` directory.
+This will execute the same process that runs at 12:00 AM IST, and generate logs in the `logs` directory.
 
 ## Monitoring
 

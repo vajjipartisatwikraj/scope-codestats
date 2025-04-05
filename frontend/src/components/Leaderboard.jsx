@@ -1501,6 +1501,16 @@ const Leaderboard = () => {
           }}
         />
       </Paper>
+
+      {/* Admin Exclusion Note */}
+      <Box sx={{ px: 3, pt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography variant="h6" gutterBottom>
+          {leaderboardType === 'score' ? 'Score Leaderboard' : 'Problems Solved Leaderboard'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Admin accounts are excluded from rankings
+        </Typography>
+      </Box>
     </Container>
   );
 };

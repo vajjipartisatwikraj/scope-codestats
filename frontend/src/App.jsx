@@ -188,6 +188,9 @@ const MainContent = () => {
           pauseOnHover
           theme={darkMode ? "dark" : "light"}
         />
+        
+        {/* Add dedicated container for dialogs to avoid aria-hidden issues */}
+        <div id="dialog-container" />
       </Box>
     </MuiThemeProvider>
   );

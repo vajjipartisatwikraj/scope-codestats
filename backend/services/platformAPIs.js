@@ -26,6 +26,11 @@ class PlatformAPI {
     
     // Initialize rate limiting tracker for CodeChef
     this.lastCodeChefRequest = 0;
+    
+    // Initialize rate limiting for Codeforces
+    this.lastCodeforcesRequest = 0;
+    this.codeforcesRequestCount = 0;
+    this.codeforcesResetTime = Date.now() + 60000; // Reset counter after 1 minute
   }
 
   /**
@@ -196,7 +201,7 @@ class PlatformAPI {
       // LeetCode GraphQL endpoint
       const graphqlEndpoint = 'https://leetcode.com/graphql';
       
-      // GraphQL query to fetch user profile data
+      // GraphQL query to fetch user profile data - more conservative query that should be less likely to fail
       const graphqlQuery = {
         query: `
           query getUserProfile($username: String!) {
@@ -217,9 +222,26 @@ class PlatformAPI {
               contestBadge {
                 name
               }
-              userCalendar {
-                streak
-                totalActiveDays
+            }
+          }
+        `,
+        variables: {
+          username: username
+        }
+      };
+      
+      // Separate query just for contest data
+      const contestQuery = {
+        query: `
+          query getUserContestInfo($username: String!) {
+            userContestRanking(username: $username) {
+              attendedContestsCount
+              rating
+              globalRanking
+              totalParticipants
+              topPercentage
+              badge {
+                name
               }
             }
           }
@@ -231,22 +253,230 @@ class PlatformAPI {
       
       console.log(`Making GraphQL request to LeetCode API for user: ${username}`);
       
-      // Make the GraphQL request
+      // Prepare headers with cookies and more browser-like appearance
+      const headers = {
+        'Content-Type': 'application/json',
+        'Referer': `https://leetcode.com/${username}/`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Origin': 'https://leetcode.com',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+      };
+      
+      // Make the GraphQL request with better error handling
       const response = await this.axiosInstance.post(graphqlEndpoint, graphqlQuery, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Referer': 'https://leetcode.com'
+        headers,
+        validateStatus: status => status === 200 // Only accept 200 responses
+      }).catch(err => {
+        console.error(`LeetCode GraphQL main query failed with: ${err.message}`);
+        console.error(`Status code: ${err.response?.status}, Status text: ${err.response?.statusText}`);
+        
+        if (err.response?.data) {
+          try {
+            console.error('Error response data:', JSON.stringify(err.response.data, null, 2));
+          } catch (e) {
+            console.error('Error data present but could not stringify');
+          }
         }
+        
+        return { status: err.response?.status || 500, data: null };
       });
       
       // Check if the response contains valid data
       if (!response.data || !response.data.data || !response.data.data.matchedUser) {
-        throw new Error(`User ${username} not found on LeetCode or API response invalid`);
+        console.warn(`Main profile query failed or returned invalid data for ${username}, will continue with partial data`);
+        // Continue with partial data rather than failing completely
       }
       
-      const userData = response.data.data.matchedUser;
+      // Extract user data from main query
+      const userData = response.data?.data?.matchedUser || {};
+      console.log(`LeetCode GraphQL API main data received for ${username}`);
       
-      console.log(`LeetCode GraphQL API data received for ${username}:`, userData);
+      // Initialize contest data with defaults
+      let contestsParticipated = 0;
+      let rating = 0;
+      let contestRanking = 0;
+      let contestBadge = '';
+      
+      // Try to extract contest data from the main query first
+      if (userData.contestRating) {
+        console.log(`Found contest data in main profile response for ${username}`);
+        contestsParticipated = userData.contestRating.attendedContestsCount || 0;
+        rating = userData.contestRating.rating || 0;
+        contestRanking = userData.contestRating.globalRanking || 0;
+        
+        console.log(`Contest data found for ${username}:`);
+        console.log(`- Contests Participated: ${contestsParticipated}`);
+        console.log(`- Rating: ${rating}`);
+        console.log(`- Contest Ranking: ${contestRanking}`);
+        
+        // Get badge information
+        if (userData.contestBadge?.name) {
+          contestBadge = userData.contestBadge.name;
+        }
+      } else {
+        console.warn(`No contest data found in main profile response for ${username}, trying contest query`);
+        
+        // Try to get contest data separately
+        try {
+          console.log(`Attempting to fetch contest data for ${username} using dedicated query`);
+          const contestResponse = await this.axiosInstance.post(graphqlEndpoint, contestQuery, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Referer': `https://leetcode.com/${username}/`,
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Origin': 'https://leetcode.com',
+              'Accept': '*/*',
+            }
+          }).catch(err => {
+            console.warn(`Contest query failed: ${err.message}`);
+            if (err.response?.status) {
+              console.warn(`Status code: ${err.response.status}, Status text: ${err.response.statusText}`);
+            }
+            return { data: null };
+          });
+          
+          // Log the response data for debugging
+          if (contestResponse.data) {
+            try {
+              console.log(`Contest API response:`, JSON.stringify(contestResponse.data, null, 2));
+            } catch (e) {
+              console.log('Contest response available but could not stringify');
+            }
+          }
+          
+          // Extract contest data if available
+          if (contestResponse.data?.data?.userContestRanking) {
+            const contestData = contestResponse.data.data.userContestRanking;
+            contestsParticipated = contestData.attendedContestsCount || 0;
+            rating = contestData.rating || 0;
+            contestRanking = contestData.globalRanking || 0;
+            
+            console.log(`Contest data found:`);
+            console.log(`- Contests Participated: ${contestsParticipated}`);
+            console.log(`- Rating: ${rating}`);
+            console.log(`- Contest Ranking: ${contestRanking}`);
+            
+            // Get badge information
+            if (contestData.badge?.name) {
+              contestBadge = contestData.badge.name;
+            }
+          } else {
+            console.warn(`No contest data found in dedicated contest query response`);
+          }
+        } catch (contestError) {
+          console.warn(`Failed to fetch contest data: ${contestError.message}`);
+        }
+        
+        // New approach for contest data: use public REST API
+        if (contestsParticipated === 0 && rating === 0) {
+          try {
+            console.log(`Trying alternative method for ${username} contest data using public API`);
+            
+            // Use the public API endpoint that doesn't require authentication
+            const publicApiUrl = `https://leetcode.com/graphql/?query=query%20userContestRankingInfo(%24username%3A%20String!)%20%7B%0A%20%20userContestRanking(username%3A%20%24username)%20%7B%0A%20%20%20%20attendedContestsCount%0A%20%20%20%20rating%0A%20%20%20%20globalRanking%0A%20%20%20%20totalParticipants%0A%20%20%20%20topPercentage%0A%20%20%20%20badge%20%7B%0A%20%20%20%20%20%20name%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D&variables=%7B%22username%22%3A%22${encodeURIComponent(username)}%22%7D`;
+            
+            const contestResponse = await this.axiosInstance.get(publicApiUrl, {
+              headers: {
+                'Referer': `https://leetcode.com/${username}/`,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+              },
+              timeout: 15000 // 15 second timeout
+            }).catch(err => {
+              console.warn(`Alternative contest data fetch failed: ${err.message}`);
+              if (err.response?.status) {
+                console.warn(`Status code: ${err.response.status}, Status text: ${err.response.statusText}`);
+              }
+              return { data: null };
+            });
+            
+            // Log the response data for debugging
+            if (contestResponse.data) {
+              try {
+                console.log(`Alternative contest API response:`, JSON.stringify(contestResponse.data, null, 2));
+              } catch (e) {
+                console.log('Contest response available but could not stringify');
+              }
+            }
+            
+            // Extract contest data if available
+            if (contestResponse.data?.data?.userContestRanking) {
+              const contestData = contestResponse.data.data.userContestRanking;
+              contestsParticipated = contestData.attendedContestsCount || 0;
+              rating = contestData.rating || 0;
+              contestRanking = contestData.globalRanking || 0;
+              
+              console.log(`Alternative contest data found:`);
+              console.log(`- Contests Participated: ${contestsParticipated}`);
+              console.log(`- Rating: ${rating}`);
+              console.log(`- Contest Ranking: ${contestRanking}`);
+              
+              // Get badge information
+              if (contestData.badge?.name) {
+                contestBadge = contestData.badge.name;
+              }
+            } else {
+              console.warn(`No contest data found in alternative API response`);
+            }
+          } catch (alternativeError) {
+            console.warn(`Alternative contest data fetch failed with error: ${alternativeError.message}`);
+          }
+          
+          // If still no contest data, try scraping directly from user profile page
+          if (contestsParticipated === 0 && rating === 0) {
+            try {
+              console.log(`Trying to scrape contest data from ${username}'s profile page as last resort`);
+              
+              const profilePageResponse = await this.axiosInstance.get(
+                `https://leetcode.com/${username}/`, 
+                {
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml'
+                  },
+                  timeout: 15000 // 15 second timeout
+                }
+              ).catch(err => {
+                console.warn(`Profile page request failed: ${err.message}`);
+                return null;
+              });
+              
+              if (profilePageResponse && profilePageResponse.status === 200) {
+                console.log(`Successfully fetched ${username}'s profile page, looking for contest data`);
+                const html = profilePageResponse.data;
+                
+                // Try to extract contest data from the HTML using regex patterns
+                // This is a fallback approach and might break if LeetCode changes their HTML structure
+                const contestsPattern = /attendedContestsCount\\":\s*(\d+)/;
+                const ratingPattern = /rating\\":\s*(\d+)/;
+                const contestsMatch = html.match(contestsPattern);
+                const ratingMatch = html.match(ratingPattern);
+                
+                if (contestsMatch && contestsMatch[1]) {
+                  contestsParticipated = parseInt(contestsMatch[1], 10) || 0;
+                  console.log(`Found contests participated from HTML: ${contestsParticipated}`);
+                }
+                
+                if (ratingMatch && ratingMatch[1]) {
+                  rating = parseInt(ratingMatch[1], 10) || 0;
+                  console.log(`Found rating from HTML: ${rating}`);
+                }
+                
+                // Try to find contest badge
+                const badgePattern = /contestBadge\\":{[^}]*\\"name\\":\\"([^"\\]+)/;
+                const badgeMatch = html.match(badgePattern);
+                if (badgeMatch && badgeMatch[1]) {
+                  contestBadge = badgeMatch[1];
+                  console.log(`Found contest badge from HTML: ${contestBadge}`);
+                }
+              }
+            } catch (scrapingError) {
+              console.warn(`Profile page scraping failed: ${scrapingError.message}`);
+            }
+          }
+        }
+      }
       
       // Extract problem solving statistics
       const submitStats = userData.submitStats?.acSubmissionNum || [];
@@ -293,13 +523,37 @@ class PlatformAPI {
         allSolved, 
         profile.ranking || 0, 
         difficultyMap,
-        userData.contestBadge ? 1 : 0 // If user has a contest badge, count at least 1 contest
+        contestsParticipated
       );
       
-      // Get user stats from calendar if available
-      const calendar = userData.userCalendar || {};
-      const streak = calendar.streak || 0;
-      const activeDays = calendar.totalActiveDays || 0;
+      // If we don't have any problem data, but we know the user exists,
+      // return a minimal profile rather than an error
+      if (allSolved === 0 && !userData.profile) {
+        // Check if we actually verified that this user exists
+        if (!userData.username && Object.keys(userData).length === 0) {
+          // No user data at all - we should throw an error
+          console.error(`No user data found for "${username}" - likely a non-existent user`);
+          throw new Error(`User ${username} not found on LeetCode. Please check the spelling and try again.`);
+        }
+        
+        console.log(`Minimal data available for ${username}, creating basic profile`);
+        return {
+          username,
+          problemsSolved: 0,
+          ranking: 0,
+          score: 0,
+          reputation: 0,
+          easyProblemsSolved: 0,
+          mediumProblemsSolved: 0,
+          hardProblemsSolved: 0,
+          contestsParticipated: contestsParticipated,
+          rating: rating,
+          contestRanking: contestRanking,
+          contestBadge: contestBadge,
+          lastUpdated: new Date(),
+          isPartialData: true // Flag to indicate this is partial data
+        };
+      }
       
       return {
         username,
@@ -311,32 +565,234 @@ class PlatformAPI {
         easyProblemsSolved: easySolved,
         mediumProblemsSolved: mediumSolved,
         hardProblemsSolved: hardSolved,
-        contestsParticipated: userData.contestBadge ? 1 : 0,
-        rating: 0, // Not available in this query
-        contestRanking: 0, // Not available in this query
-        contestBadge: userData.contestBadge?.name || '',
-        streak: streak,
-        activeDays: activeDays,
+        contestsParticipated: contestsParticipated,
+        rating: rating,
+        contestRanking: contestRanking,
+        contestBadge: contestBadge,
         lastUpdated: new Date()
       };
     } catch (error) {
-      console.error(`Error fetching LeetCode profile for ${username}:`, error);
+      console.error(`Error fetching LeetCode profile for ${username}:`, error.message);
       
+      // Log more details if available
       if (error.response) {
         console.error('LeetCode API Response Status:', error.response.status);
         console.error('LeetCode API Response Headers:', error.response.headers);
-        console.error('LeetCode API Response Data:', error.response.data);
+        
+        // Safely log response data without causing additional errors
+        try {
+          console.error('LeetCode API Response Data:', 
+            typeof error.response.data === 'object' 
+              ? JSON.stringify(error.response.data) 
+              : error.response.data
+          );
+        } catch (logError) {
+          console.error('Could not stringify response data');
+        }
+      }
+      
+      // Create a minimal profile object that can be returned in case other approaches fail
+      const minimalProfile = {
+        username,
+        problemsSolved: 0,
+        ranking: 0,
+        score: 0,
+        easyProblemsSolved: 0,
+        mediumProblemsSolved: 0,
+        hardProblemsSolved: 0,
+        contestsParticipated: 0,
+        rating: 0,
+        contestRanking: 0,
+        lastUpdated: new Date(),
+        isPartialData: true
+      };
+      
+      // Handle authentication errors (401, 403) or bad requests (400)
+      if (error.response?.status === 401 || error.response?.status === 403 || error.response?.status === 400) {
+        console.log(`LeetCode API authentication error (${error.response.status}) for ${username}, trying direct profile page request`);
+        
+        try {
+          // Try getting basic data from the user's public profile page
+          const profilePageResponse = await this.axiosInstance.get(
+            `https://leetcode.com/${username}/`, 
+            {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml'
+              },
+              timeout: 15000 // 15 second timeout
+            }
+          ).catch(err => {
+            console.warn(`Profile page request failed: ${err.message}`);
+            if (err.response?.status) {
+              console.warn(`Status: ${err.response.status} ${err.response.statusText}`);
+              
+              // If we get a 404 Not Found status, the user definitely doesn't exist
+              if (err.response.status === 404) {
+                console.error(`LeetCode profile page returned 404 Not Found for ${username}`);
+                throw new Error(`User ${username} not found on LeetCode. Please check the username and try again.`);
+              }
+            }
+            return null;
+          });
+          
+          // If the profile page doesn't exist, the user doesn't exist
+          if (!profilePageResponse) {
+            console.error(`Could not verify existence of LeetCode user ${username}`);
+            throw new Error(`User ${username} not found on LeetCode. Please check the username and try again.`);
+          }
+          
+          // Check the response content for indicators of a non-existent user
+          const pageContent = profilePageResponse.data || '';
+          
+          // Look for common text patterns that indicate the user doesn't exist
+          const nonExistentIndicators = [
+            'Page not found',
+            'The page you are looking for doesn\'t exist',
+            'user not found',
+            'User not found',
+            'does not exist'
+          ];
+          
+          if (typeof pageContent === 'string' && nonExistentIndicators.some(indicator => pageContent.includes(indicator))) {
+            console.error(`LeetCode profile page indicates user ${username} doesn't exist`);
+            throw new Error(`User ${username} not found on LeetCode. Please check the username and try again.`);
+          }
+          
+          // Verify a profile section exists to confirm user is real
+          const hasProfileSection = typeof pageContent === 'string' && 
+            (pageContent.includes('user-profile') || 
+             pageContent.includes('profile-content') || 
+             pageContent.includes('profile-header'));
+          
+          // If we can at least confirm the user exists, try to extract some data from HTML
+          if (profilePageResponse && profilePageResponse.status === 200 && hasProfileSection) {
+            console.log(`Successfully confirmed ${username} exists on LeetCode via profile page`);
+            
+            // Try to extract some basic stats using regex patterns
+            const html = profilePageResponse.data;
+            
+            // Match problem solving stats
+            const totalSolvedPattern = /"problemsSolved":\s*(\d+)/;
+            const easySolvedPattern = /"easySolved":\s*(\d+)/;
+            const mediumSolvedPattern = /"mediumSolved":\s*(\d+)/;
+            const hardSolvedPattern = /"hardSolved":\s*(\d+)/;
+            
+            const totalMatch = html.match(totalSolvedPattern);
+            const easyMatch = html.match(easySolvedPattern);
+            const mediumMatch = html.match(mediumSolvedPattern);
+            const hardMatch = html.match(hardSolvedPattern);
+            
+            // Contest data patterns
+            const contestsPattern = /attendedContestsCount\\":\s*(\d+)/;
+            const ratingPattern = /rating\\":\s*(\d+)/;
+            const contestsMatch = html.match(contestsPattern);
+            const ratingMatch = html.match(ratingPattern);
+            
+            // Update minimal profile with any data we found
+            if (totalMatch && totalMatch[1]) {
+              minimalProfile.problemsSolved = parseInt(totalMatch[1], 10);
+              console.log(`Found total problems solved: ${minimalProfile.problemsSolved}`);
+            }
+            
+            if (easyMatch && easyMatch[1]) {
+              minimalProfile.easyProblemsSolved = parseInt(easyMatch[1], 10);
+            }
+            
+            if (mediumMatch && mediumMatch[1]) {
+              minimalProfile.mediumProblemsSolved = parseInt(mediumMatch[1], 10);
+            }
+            
+            if (hardMatch && hardMatch[1]) {
+              minimalProfile.hardProblemsSolved = parseInt(hardMatch[1], 10);
+            }
+            
+            if (contestsMatch && contestsMatch[1]) {
+              minimalProfile.contestsParticipated = parseInt(contestsMatch[1], 10);
+              console.log(`Found contests participated: ${minimalProfile.contestsParticipated}`);
+            }
+            
+            if (ratingMatch && ratingMatch[1]) {
+              minimalProfile.rating = parseInt(ratingMatch[1], 10);
+              console.log(`Found rating: ${minimalProfile.rating}`);
+            }
+            
+            // Calculate score with the data we have
+            if (minimalProfile.problemsSolved > 0) {
+              const difficultyMap = {
+                all: minimalProfile.problemsSolved,
+                easy: minimalProfile.easyProblemsSolved,
+                medium: minimalProfile.mediumProblemsSolved,
+                hard: minimalProfile.hardProblemsSolved
+              };
+              
+              minimalProfile.score = this.calculateLeetCodeScore(
+                minimalProfile.problemsSolved, 
+                minimalProfile.ranking, 
+                difficultyMap,
+                minimalProfile.contestsParticipated
+              );
+              
+              console.log(`Calculated score for ${username} from HTML data: ${minimalProfile.score}`);
+            }
+            
+            minimalProfile.existsConfirmed = true;
+            minimalProfile.scrapedFromHTML = true;
+            
+            return minimalProfile;
+          }
+        } catch (fallbackError) {
+          // If the error explicitly mentions "not found", propagate it
+          if (fallbackError.message.includes('not found')) {
+            throw fallbackError;
+          }
+          
+          console.error(`Final fallback HTML scraping failed: ${fallbackError.message}`);
+          
+          // At this point, we couldn't verify the user exists, so we should not return a profile
+          throw new Error(`Could not verify if user ${username} exists on LeetCode. Please check the username and try again.`);
+        }
+        
+        // If profile page check also fails, try a very simple HEAD request
+        try {
+          const headCheck = await this.axiosInstance.head(`https://leetcode.com/${username}/`);
+          if (headCheck.status === 200) {
+            console.log(`Confirmed ${username} exists (HEAD request) but couldn't get profile data`);
+            minimalProfile.existsConfirmed = true;
+            return minimalProfile;
+          } else if (headCheck.status === 404) {
+            // A 404 on HEAD request confirms the user doesn't exist
+            throw new Error(`User ${username} not found on LeetCode. Please check the username and try again.`);
+          }
+        } catch (headCheckError) {
+          console.warn(`HEAD check failed: ${headCheckError.message}`);
+          
+          // If it's a 404, the user definitely doesn't exist
+          if (headCheckError.response?.status === 404) {
+            throw new Error(`User ${username} not found on LeetCode. Please check the username and try again.`);
+          }
+        }
+        
+        // If we've reached this point, we couldn't definitively verify if the user exists or not
+        // We should err on the side of caution and NOT create a profile
+        console.error(`Could not verify existence of LeetCode user ${username} after multiple attempts`);
+        throw new Error(`Could not verify if user ${username} exists on LeetCode. Please check the username and try again.`);
+      }
+      
+      // Rate limiting (429)
+      if (error.response?.status === 429) {
+        console.error(`LeetCode API rate limit (429) exceeded for ${username}`);
+        throw new Error(`LeetCode API rate limit exceeded. Please try again in a few minutes.`);
       }
       
       // Provide more specific error message
-      if (error.message.includes('not found')) {
-        throw new Error(`User ${username} not found on LeetCode`);
+      if (error.message.includes('not found') || error.response?.status === 404) {
+        throw new Error(`User ${username} not found on LeetCode. Please check the username and try again.`);
       } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
         throw new Error(`LeetCode API request timed out. Please try again later.`);
-      } else if (error.response?.status === 429) {
-        throw new Error(`LeetCode API rate limit exceeded. Please try again later.`);
       }
       
+      // Generic error message as a last resort
       throw new Error(`Failed to fetch LeetCode profile: ${error.message}`);
     }
   }
@@ -350,10 +806,48 @@ class PlatformAPI {
     try {
       console.log(`Fetching Codeforces profile for user: ${username}`);
       
+      // Implement rate limiting for Codeforces
+      // Reset counter if the reset time has passed
+      const now = Date.now();
+      if (now > this.codeforcesResetTime) {
+        this.codeforcesRequestCount = 0;
+        this.codeforcesResetTime = now + 60000; // Reset after 1 minute
+      }
+      
+      // If we've made more than 5 requests in the last minute, add delay
+      if (this.codeforcesRequestCount >= 5) {
+        const remainingTime = this.codeforcesResetTime - now;
+        if (remainingTime > 0) {
+          console.log(`Rate limiting: Waiting ${remainingTime}ms before Codeforces request`);
+          await new Promise(resolve => setTimeout(resolve, Math.min(remainingTime, 5000)));
+        }
+      }
+      
+      // Add a small delay between requests to be extra safe
+      if (this.lastCodeforcesRequest && (now - this.lastCodeforcesRequest < 1000)) {
+        const delay = 1000 - (now - this.lastCodeforcesRequest);
+        console.log(`Adding ${delay}ms delay between Codeforces requests`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      this.lastCodeforcesRequest = Date.now();
+      this.codeforcesRequestCount++;
+      
       // 1. Get basic user information from user.info API
       const userResponse = await this.axiosInstance.get(`https://codeforces.com/api/user.info?handles=${username}`, {
-        validateStatus: status => (status >= 200 && status < 300) || status === 400
+        validateStatus: status => (status >= 200 && status < 300) || status === 400 || status === 429
       });
+      
+      // Handle rate limiting response
+      if (userResponse.status === 429) {
+        console.log('Codeforces API rate limit hit (429 response)');
+        // Wait and retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Reset our counters and retry after waiting
+        this.codeforcesRequestCount = 0;
+        this.lastCodeforcesRequest = 0;
+        throw new Error(`Codeforces API rate limit exceeded. Please try again in a few minutes.`);
+      }
       
       // Check if user exists
       if (userResponse.status === 400 || userResponse.data.status !== 'OK' || !userResponse.data.result || userResponse.data.result.length === 0) {
@@ -366,7 +860,17 @@ class PlatformAPI {
       console.log(`Retrieved basic Codeforces data for ${username}: rating=${userData.rating}, rank=${userData.rank}`);
       
       // 2. Get rating history to count contest participation
-      const ratingResponse = await this.axiosInstance.get(`https://codeforces.com/api/user.rating?handle=${username}`);
+      const ratingResponse = await this.axiosInstance.get(`https://codeforces.com/api/user.rating?handle=${username}`, {
+        validateStatus: status => (status >= 200 && status < 300) || status === 429
+      });
+      
+      // Handle rate limiting for rating request
+      if (ratingResponse.status === 429) {
+        console.log('Codeforces API rate limit hit for rating history (429 response)');
+        // Use default values and continue rather than failing completely
+        console.log('Using default values for contest participation');
+        return this.processCodeforcesData(userData, username, 0, 0, 0, 0, 0);
+      }
       
       // Extract contests participated
       let contestsParticipated = 0;
@@ -377,96 +881,38 @@ class PlatformAPI {
       
       // 3. Get submissions to count problems solved
       // Using count=10000 to handle users with many submissions
+      try {
         const submissionsResponse = await this.axiosInstance.get(
-          `https://codeforces.com/api/user.status?handle=${username}&from=1&count=10000`
+          `https://codeforces.com/api/user.status?handle=${username}&from=1&count=10000`,
+          {
+            validateStatus: status => (status >= 200 && status < 300) || status === 429
+          }
         );
         
+        // Handle rate limiting for submissions request
+        if (submissionsResponse.status === 429) {
+          console.log('Codeforces API rate limit hit for submissions (429 response)');
+          // Use basic data without submissions
+          return this.processCodeforcesData(userData, username, contestsParticipated, 0, 0, 0, 0);
+        }
+        
         // Process submissions to get unique solved problems
-      let problemsSolved = 0;
-      let easyProblemsSolved = 0;
-      let mediumProblemsSolved = 0;
-      let hardProblemsSolved = 0;
-      let totalAcceptedSubmissions = 0;
-      
-      if (submissionsResponse.data.status === 'OK') {
-        const submissions = submissionsResponse.data.result;
-        
-        // Create a set of unique problem IDs that were solved
-        const solvedProblems = new Set();
-        
-        // Track problems by difficulty level (A, B, C, etc.)
-        const problemsByIndex = {};
-        
-        submissions.forEach(sub => {
-          // Only count if verdict is OK (accepted)
-          if (sub.verdict === 'OK') {
-            totalAcceptedSubmissions++;
-            
-            // Create unique problem identifier
-            const problemId = `${sub.problem.contestId}_${sub.problem.index}`;
-            
-            // Only add to set if not already solved (for unique problems count)
-            if (!solvedProblems.has(problemId)) {
-            solvedProblems.add(problemId);
-            
-            // Group by problem index (difficulty)
-            const index = sub.problem.index.charAt(0); // A, B, C, etc.
-            problemsByIndex[index] = (problemsByIndex[index] || 0) + 1;
-          }
-          }
-        });
-        
-        // Categorize problems by difficulty based on index
-        const easyIndices = ['A', 'B'];
-        const mediumIndices = ['C', 'D'];
-        const hardIndices = ['E', 'F', 'G', 'H', 'I', 'J', 'K'];
-        
-        easyProblemsSolved = Object.entries(problemsByIndex)
-          .filter(([key]) => easyIndices.includes(key))
-          .reduce((sum, [_, value]) => sum + value, 0);
-          
-        mediumProblemsSolved = Object.entries(problemsByIndex)
-          .filter(([key]) => mediumIndices.includes(key))
-          .reduce((sum, [_, value]) => sum + value, 0);
-          
-        hardProblemsSolved = Object.entries(problemsByIndex)
-          .filter(([key]) => hardIndices.includes(key))
-          .reduce((sum, [_, value]) => sum + value, 0);
-        
-        problemsSolved = solvedProblems.size;
-        
-        console.log(`${username} has solved ${problemsSolved} unique problems on Codeforces`);
-        console.log(`Problem difficulty breakdown - Easy: ${easyProblemsSolved}, Medium: ${mediumProblemsSolved}, Hard: ${hardProblemsSolved}`);
+        if (submissionsResponse.data.status === 'OK') {
+          return this.processCodeforcesSubmissions(
+            submissionsResponse.data, 
+            userData, 
+            username, 
+            contestsParticipated
+          );
+        } else {
+          // No valid submissions data, use basic profile info
+          return this.processCodeforcesData(userData, username, contestsParticipated, 0, 0, 0, 0);
+        }
+      } catch (submissionsError) {
+        console.error(`Error fetching Codeforces submissions for ${username}:`, submissionsError.message);
+        // Just use what we have so far
+        return this.processCodeforcesData(userData, username, contestsParticipated, 0, 0, 0, 0);
       }
-      
-      // Validate that we found meaningful data - a user might exist but have no activity
-      if (problemsSolved === 0 && contestsParticipated === 0 && (userData.rating === undefined || userData.rating === 0)) {
-        console.log(`Codeforces user ${username} exists but has no activity data`);
-        throw new Error(`Codeforces user '${username}' exists but has no public activity data. The user might be inactive.`);
-      }
-      
-      // 4. Calculate score using our scoring algorithm
-      const score = this.calculateCodeforcesScore(
-        userData.rating || 0, 
-        problemsSolved, 
-        contestsParticipated
-      );
-      
-      return {
-        username,
-        rating: userData.rating || 0,
-        maxRating: userData.maxRating || 0,
-        rank: userData.rank || 'unrated',
-        problemsSolved,
-        totalAcceptedSubmissions,
-        easyProblemsSolved,
-        mediumProblemsSolved,
-        hardProblemsSolved,
-        contestsParticipated,
-        score,
-        contribution: userData.contribution || 0,
-        lastUpdated: new Date()
-      };
     } catch (error) {
       console.error(`Error fetching Codeforces profile for ${username}:`, error.message);
       
@@ -476,13 +922,121 @@ class PlatformAPI {
       }
       
       // Handle rate limiting
+      if (error.response?.status === 429 || error.message.includes('rate limit')) {
+        throw new Error(`Codeforces API rate limit exceeded. Please try again in a few minutes.`);
+      }
+      
+      // Specific handling for 503
       if (error.response?.status === 503) {
-        throw new Error(`Codeforces API rate limit exceeded. Please try again later.`);
+        throw new Error(`Codeforces API service is temporarily unavailable. Please try again later.`);
       }
       
       // Re-throw other errors
       throw new Error(`Failed to fetch Codeforces profile: ${error.message}`);
     }
+  }
+  
+  /**
+   * Process Codeforces submissions data
+   * @private
+   */
+  processCodeforcesSubmissions(submissionsData, userData, username, contestsParticipated) {
+    const submissions = submissionsData.result;
+    
+    // Create a set of unique problem IDs that were solved
+    const solvedProblems = new Set();
+    
+    // Track problems by difficulty level (A, B, C, etc.)
+    const problemsByIndex = {};
+    let totalAcceptedSubmissions = 0;
+    
+    submissions.forEach(sub => {
+      // Only count if verdict is OK (accepted)
+      if (sub.verdict === 'OK') {
+        totalAcceptedSubmissions++;
+        
+        // Create unique problem identifier
+        const problemId = `${sub.problem.contestId}_${sub.problem.index}`;
+        
+        // Only add to set if not already solved (for unique problems count)
+        if (!solvedProblems.has(problemId)) {
+          solvedProblems.add(problemId);
+          
+          // Group by problem index (difficulty)
+          const index = sub.problem.index.charAt(0); // A, B, C, etc.
+          problemsByIndex[index] = (problemsByIndex[index] || 0) + 1;
+        }
+      }
+    });
+    
+    // Categorize problems by difficulty based on index
+    const easyIndices = ['A', 'B'];
+    const mediumIndices = ['C', 'D'];
+    const hardIndices = ['E', 'F', 'G', 'H', 'I', 'J', 'K'];
+    
+    const easyProblemsSolved = Object.entries(problemsByIndex)
+      .filter(([key]) => easyIndices.includes(key))
+      .reduce((sum, [_, value]) => sum + value, 0);
+      
+    const mediumProblemsSolved = Object.entries(problemsByIndex)
+      .filter(([key]) => mediumIndices.includes(key))
+      .reduce((sum, [_, value]) => sum + value, 0);
+      
+    const hardProblemsSolved = Object.entries(problemsByIndex)
+      .filter(([key]) => hardIndices.includes(key))
+      .reduce((sum, [_, value]) => sum + value, 0);
+    
+    const problemsSolved = solvedProblems.size;
+    
+    console.log(`${username} has solved ${problemsSolved} unique problems on Codeforces`);
+    console.log(`Problem difficulty breakdown - Easy: ${easyProblemsSolved}, Medium: ${mediumProblemsSolved}, Hard: ${hardProblemsSolved}`);
+    
+    return this.processCodeforcesData(
+      userData, 
+      username, 
+      contestsParticipated, 
+      problemsSolved, 
+      easyProblemsSolved, 
+      mediumProblemsSolved, 
+      hardProblemsSolved, 
+      totalAcceptedSubmissions
+    );
+  }
+  
+  /**
+   * Process and return Codeforces profile data
+   * @private
+   */
+  processCodeforcesData(userData, username, contestsParticipated, problemsSolved, easyProblemsSolved, mediumProblemsSolved, hardProblemsSolved, totalAcceptedSubmissions = 0) {
+    // For users with no activity, we'll still return a valid profile with zeros
+    // (This is not an error condition anymore)
+    if (problemsSolved === 0 && contestsParticipated === 0 && (userData.rating === undefined || userData.rating === 0)) {
+      console.log(`Codeforces user ${username} exists but has no activity data - returning zeros`);
+      // This is not an error - just return a profile with zeros
+    }
+    
+    // Calculate score using our scoring algorithm
+    const score = this.calculateCodeforcesScore(
+      userData.rating || 0, 
+      problemsSolved, 
+      contestsParticipated
+    );
+    
+    return {
+      username,
+      rating: userData.rating || 0,
+      maxRating: userData.maxRating || 0,
+      rank: userData.rank || 'unrated',
+      problemsSolved: problemsSolved || 0,
+      totalAcceptedSubmissions: totalAcceptedSubmissions || 0,
+      easyProblemsSolved: easyProblemsSolved || 0,
+      mediumProblemsSolved: mediumProblemsSolved || 0,
+      hardProblemsSolved: hardProblemsSolved || 0,
+      contestsParticipated: contestsParticipated || 0,
+      score: score || 0,
+      contribution: userData.contribution || 0,
+      lastUpdated: new Date()
+    };
   }
 
   /**
@@ -517,26 +1071,38 @@ class PlatformAPI {
         },
         // Handle redirects and 404s
         maxRedirects: 5,
-        validateStatus: status => status === 200
+        validateStatus: status => status >= 200 && status < 300
       });
-      
-      // Check if we were redirected away from the profile page
-      const finalUrl = response.request.res.responseUrl;
-      if (!finalUrl.includes(`/users/${username}`)) {
-        console.log(`User ${username} not found on CodeChef - redirected to ${finalUrl}`);
-        throw new Error(`User ${username} not found on CodeChef`);
-      }
       
       // Load HTML content into cheerio for parsing
       const $ = cheerio.load(response.data);
       
-      // Check if we're actually on a user profile page
-      const usernameHeader = $('h1.h2-style, .user-details-container h1').text().trim();
-      if (!usernameHeader || !$('.rating-number').length) {
-        throw new Error(`User ${username} not found on CodeChef`);
+      // More flexible way to check if we're on a valid profile page
+      // Look for typical profile elements that should be present on ANY user page
+      const profileContent = $('.user-details-container').length || 
+                            $('.rating-header').length || 
+                            $('.rating-number').length ||
+                            $('section.user-details').length;
+                            
+      if (!profileContent) {
+        console.log(`No profile content found for user ${username} on CodeChef`);
+        
+        // Check if we're seeing a login page or error page
+        const isLoginPage = $('body').text().includes('Login') && $('body').text().includes('Forgot Password');
+        const isErrorPage = $('body').text().includes('Oops') && $('body').text().includes('Error');
+        
+        if (isLoginPage) {
+          throw new Error(`Unable to access CodeChef profile for ${username}. The site may be requiring login.`);
+        } else if (isErrorPage) {
+          throw new Error(`CodeChef returned an error for the profile ${username}. The user may not exist.`);
+        } else {
+          throw new Error(`User ${username} not found on CodeChef or the profile format has changed`);
+        }
       }
       
-      // Extract data with multiple fallback selectors for robustness
+      // Check if we see actual username on the page
+      const usernameOnPage = $('h1.h2-style, .user-details-container h1, .m-username, section.user-details h2').text().trim();
+      console.log(`Username found on page: ${usernameOnPage}`);
       
       // 1. Extract rating - try multiple selectors
       let rating = 0;
@@ -565,42 +1131,54 @@ class PlatformAPI {
       // 3. Extract problems solved with multiple approaches
       let problemsSolved = 0;
       
-      // Approach 1: Direct h5 heading + next element
-      $('h5, .h5-style').each((_, el) => {
-        const text = $(el).text().trim();
-        if (text.includes('Fully Solved') || text.includes('Problems Solved')) {
-          const next = $(el).next();
-          if (next.length) {
-            const problemsMatch = next.text().trim().match(/(\d+)/);
-            if (problemsMatch && problemsMatch[1]) {
-              problemsSolved = parseInt(problemsMatch[1]);
-            }
-          }
-        }
-      });
+      // Approach 1: Check multiple selectors for problems solved information
+      const problemSelectors = [
+        '.problems-solved h5, .problems-solved .h5-style', 
+        '.rating-data-section h5, .rating-data-section .h5-style',
+        '.problems-solved-container h5, .problems-solved-container .h5-style',
+        '.rating-data-section strong',
+        '.user-details-container strong',
+        '.problems-solved-count'
+      ];
       
-      // Approach 2: Look for problems-solved sections
-      if (problemsSolved === 0) {
-        $('.problems-solved, .rating-data-section').find('h5, .h5-style').each((_, el) => {
-          const text = $(el).text().trim();
-          if (text.includes('Fully Solved') || text.includes('Problems Solved')) {
-            const parentDiv = $(el).parent();
-            const problemsText = parentDiv.text().replace(text, '').trim();
-            const problemsMatch = problemsText.match(/(\d+)/);
+      for (const selector of problemSelectors) {
+        $(selector).each((_, el) => {
+          const elementText = $(el).text().trim();
+          const parentText = $(el).parent().text().trim();
+          
+          if (elementText.includes('Fully Solved') || elementText.includes('Problems Solved')) {
+            // Try to find the number in the element or its parent
+            const fullText = parentText || elementText;
+            const problemsMatch = fullText.match(/(\d+)\s*(problem|fully)/i);
+            
             if (problemsMatch && problemsMatch[1]) {
               problemsSolved = parseInt(problemsMatch[1]);
+              console.log(`Found problems solved (${problemsSolved}) in selector: ${selector}`);
+              return false; // Break the each loop
             }
           }
         });
+        
+        if (problemsSolved > 0) break; // Stop if we found a value
       }
       
-      // Approach 3: Full text search - last resort
+      // Approach 2: Full text search as fallback
       if (problemsSolved === 0) {
         const fullText = $('body').text();
-        const matches = fullText.match(/Fully Solved\s*:?\s*(\d+)/i) || 
-                        fullText.match(/Problems Solved\s*:?\s*(\d+)/i);
-        if (matches && matches[1]) {
-          problemsSolved = parseInt(matches[1]);
+        const problemPatterns = [
+          /Fully Solved\s*:?\s*(\d+)/i,
+          /Problems Solved\s*:?\s*(\d+)/i,
+          /(\d+)\s+problems?\s+solved/i,
+          /solved\s+(\d+)\s+problems?/i
+        ];
+        
+        for (const pattern of problemPatterns) {
+          const matches = fullText.match(pattern);
+          if (matches && matches[1]) {
+            problemsSolved = parseInt(matches[1]);
+            console.log(`Found problems solved (${problemsSolved}) using text pattern`);
+            break;
+          }
         }
       }
       console.log(`CodeChef ${username} problems solved: ${problemsSolved}`);
@@ -608,19 +1186,21 @@ class PlatformAPI {
       // 4. Extract contests participated by counting rating history entries
       let contestsParticipated = 0;
 
-      // Log the HTML of rating table for debugging
-      console.log(`Looking for contest participation data for ${username}`);
-
-      // First approach: Count rows in rating table
-      $('.rating-table tbody tr, table.dataTable tbody tr').each((_, el) => {
-        // Only count if it looks like a contest row (has rating data)
-        const rowText = $(el).text().trim();
-        if (rowText.includes('Rated') || /\d+\s*→\s*\d+/.test(rowText)) {
-          contestsParticipated++;
+      // Approach 1: Direct h5 heading + next element for contests participated
+      $('h5, .h5-style').each((_, el) => {
+        const text = $(el).text().trim();
+        if (text.includes('Contest Participated') || text.includes('Contests Participated')) {
+          const next = $(el).next();
+          if (next.length) {
+            const contestsMatch = next.text().trim().match(/(\d+)/);
+            if (contestsMatch && contestsMatch[1]) {
+              contestsParticipated = parseInt(contestsMatch[1]);
+            }
+          }
         }
       });
 
-      // Second approach: Look for contests participated count in profile details
+      // Approach 2: Check specific selectors for contest participation count (from Important.txt)
       if (contestsParticipated === 0) {
         $('.contest-participated-count, .rating-data-section strong, .user-details-container strong').each((_, el) => {
           const text = $(el).text().trim();
@@ -638,78 +1218,10 @@ class PlatformAPI {
         });
       }
 
-      // Third approach: Look in section headings and nearby elements
+      // Approach 3: Count rows in rating table as fallback
       if (contestsParticipated === 0) {
-        $('h3, h4, h5, .h3-style, .h4-style, .h5-style').each((_, el) => {
-          const headingText = $(el).text().trim().toLowerCase();
-          
-          if (headingText.includes('contest') || headingText.includes('rating history')) {
-            // Check if the heading itself contains a number
-            const headingMatch = headingText.match(/(\d+)\s+contest/i);
-            if (headingMatch && headingMatch[1]) {
-              contestsParticipated = parseInt(headingMatch[1]);
-              console.log(`Found contest count in heading: ${contestsParticipated}`);
-            } else {
-              // Look in nearby elements
-              const parentDiv = $(el).parent();
-              const siblingText = parentDiv.text().replace(headingText, '').trim();
-              const siblingMatch = siblingText.match(/(\d+)\s+contest/i) || 
-                                   siblingText.match(/participated\s+in\s+(\d+)/i);
-              
-              if (siblingMatch && siblingMatch[1]) {
-                contestsParticipated = parseInt(siblingMatch[1]);
-                console.log(`Found contest count near heading: ${contestsParticipated}`);
-              }
-            }
-          }
-        });
-      }
-
-      // Fourth approach: Parse the full page text as a last resort
-      if (contestsParticipated === 0) {
-        const fullText = $('body').text();
-        
-        // Try multiple patterns for robustness
-        const patterns = [
-          /participated\s+in\s+(\d+)\s+contests/i,
-          /(\d+)\s+contests?\s+participated/i,
-          /contests?\s+participated\s*:?\s*(\d+)/i,
-          /rating\s+history\s*\(\s*(\d+)\s*\)/i
-        ];
-        
-        for (const pattern of patterns) {
-          const matches = fullText.match(pattern);
-          if (matches && matches[1]) {
-            contestsParticipated = parseInt(matches[1]);
-            console.log(`Found contest count in full text: ${contestsParticipated}`);
-            break;
-          }
-        }
-      }
-
-      // If no contest data found, try to find any data tables that might contain contests
-      if (contestsParticipated === 0) {
-        const tableCount = $('table').length;
-        console.log(`Found ${tableCount} tables on the page`);
-        
-        // Check tables that might be contest tables
-        $('table').each((i, table) => {
-          const tableHeading = $(table).prev('h3, h4, h5, .h3-style, .h4-style, .h5-style').text().toLowerCase();
-          const tableCaption = $(table).find('caption').text().toLowerCase();
-          
-          // If the table is likely a contest table, count its rows
-          if (tableHeading.includes('contest') || tableHeading.includes('rating') || 
-              tableCaption.includes('contest') || tableCaption.includes('rating')) {
-            let rowCount = 0;
-            $(table).find('tbody tr').each((_, row) => {
-              rowCount++;
-            });
-            
-            if (rowCount > 0) {
-              console.log(`Table ${i+1} appears to be a contest table with ${rowCount} rows`);
-              contestsParticipated = rowCount;
-            }
-          }
+        $('.rating-table tbody tr').each(() => {
+          contestsParticipated++;
         });
       }
 
@@ -717,9 +1229,34 @@ class PlatformAPI {
       
       // 5. Extract stars if available
       let stars = 0;
-      $('.rating-star').each((_, el) => {
+      $('.rating-star, span.star').each((_, el) => {
         stars++;
       });
+
+      // Alternative method to find stars from text if no star elements found
+      if (stars === 0) {
+        const starText = $('.rating-header').text() || $('.user-details-container').text();
+        const starMatch = starText.match(/(\d+)\s*(?:★|star)/i);
+        if (starMatch && starMatch[1]) {
+          stars = parseInt(starMatch[1]);
+        }
+      }
+      
+      // If we haven't found any profile data, something is wrong
+      if (rating === 0 && globalRank === 0 && problemsSolved === 0 && contestsParticipated === 0) {
+        console.log(`No meaningful profile data found for ${username}`);
+        // Just return minimal data rather than throwing an error, as the profile does exist
+        return {
+          username,
+          rating: 0,
+          global_rank: 0,
+          problemsSolved: 0,
+          contestsParticipated: 0,
+          stars: 0,
+          score: 0,
+          lastUpdated: new Date()
+        };
+      }
       
       // 6. Calculate score
       const score = this.calculateCodeChefScore(

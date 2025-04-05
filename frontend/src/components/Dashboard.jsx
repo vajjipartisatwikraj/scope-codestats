@@ -446,7 +446,6 @@ const Dashboard = () => {
         // Special handling for GitHub - always allow editing
         if (key === 'github') {
           // Don't set cooldown for GitHub
-          console.log('GitHub username detected:', username);
         } else {
           // Check if this platform is in cooldown period (updated in the last 12 hours)
           if (lastUpdateAttempt) {
@@ -510,11 +509,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Show additional logging for GitHub username updates
-      if (platform === 'github') {
-        console.log(`Submitting GitHub username: "${username}"`);
-      }
-
       const response = await axios.post(
         `${apiUrl}/profiles/${platform}`,
         { username },
@@ -568,8 +562,6 @@ const Dashboard = () => {
     } catch (error) {
       // Additional logging for GitHub errors
       if (platform === 'github') {
-        console.error("GitHub profile update error:", error);
-        console.error("Error response:", error.response?.data);
       }
       
       // Check if this is a rate limit error (429)

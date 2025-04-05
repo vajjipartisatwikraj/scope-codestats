@@ -852,6 +852,8 @@ const EditProfile = ({
         onClose={() => setErrorDialog({ open: false, title: '', message: '' })}
         aria-labelledby="error-dialog-title"
         aria-describedby="error-dialog-description"
+        container={() => document.getElementById('dialog-container') || document.body}
+        disableEnforceFocus
       >
         <DialogTitle id="error-dialog-title">{errorDialog.title}</DialogTitle>
         <DialogContent>
@@ -889,6 +891,8 @@ const EditProfile = ({
             borderRadius: '12px',
           }
         }}
+        container={() => document.getElementById('dialog-container') || document.body}
+        disableEnforceFocus
       >
         <DialogTitle sx={{ 
           borderBottom: `1px solid ${theme.palette.divider}`,

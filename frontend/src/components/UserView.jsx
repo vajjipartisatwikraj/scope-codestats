@@ -944,10 +944,10 @@ const UserView = () => {
                   }
                 }}
               >
-                <Tab label="Overall Score" value="overall" />
-                <Tab label="Problems Solved" value="problems" />
-                <Tab label="Contests" value="contests" />
-                <Tab label="Rating" value="rating" />
+                <Tab key="overall-tab" label="Overall Score" value="overall" />
+                <Tab key="problems-tab" label="Problems Solved" value="problems" />
+                <Tab key="contests-tab" label="Contests" value="contests" />
+                <Tab key="rating-tab" label="Rating" value="rating" />
               </Tabs>
 
               <Box sx={{ 
@@ -995,7 +995,7 @@ const UserView = () => {
                   >
                     {preparePieChartData(userData.codingProfiles, activeChartTab).map((entry, index) => (
                         <Cell 
-                          key={`cell-${index}`} 
+                          key={`cell-${entry.name}-${index}`} 
                           fill={entry.color}
                           style={{ cursor: 'pointer', filter: 'brightness(1)' }}
                           stroke={darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}
@@ -1420,9 +1420,9 @@ const UserView = () => {
               </Box>
 
               <Box sx={{ width: '100%' }}>
-                {filteredAchievements.map((achievement) => (
+                {filteredAchievements.map((achievement, index) => (
                   <Box
-                    key={achievement._id}
+                    key={achievement._id || `achievement-${index}`}
                     sx={{
                       mb: 2,
                       borderRadius: '16px',
