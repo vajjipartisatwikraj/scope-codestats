@@ -160,7 +160,6 @@ const CodePad = () => {
         setOutputStatus('error'); // Compilation error
       }
     } catch (error) {
-      console.error('Error executing code:', error);
       setOutput(`Error: ${error.message || 'Failed to execute code'}`);
       setOutputStatus('error');
     } finally {
@@ -387,7 +386,7 @@ const CodePad = () => {
                   display: { xs: 'none', sm: 'block' }  // Hide this explanatory text on mobile
                 }}
               >
-                Enter values your program will read from input
+                dinesh bhaaai
               </Typography>
             </Tooltip>
           </Box>

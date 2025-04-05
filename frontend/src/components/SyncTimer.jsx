@@ -39,7 +39,6 @@ const SyncTimer = ({ onSyncRequired }) => {
       setTimeRemaining(response.data.timeRemaining);
       setError(null);
     } catch (err) {
-      console.error('Error fetching sync info:', err);
       setError('Could not fetch sync information');
     } finally {
       setLoading(false);
@@ -101,7 +100,6 @@ const SyncTimer = ({ onSyncRequired }) => {
           
           // If it's midnight (auto-sync time) and we haven't triggered the sync yet
           if (shouldAutoSync() && !autoSyncTriggered && onSyncRequired) {
-            console.log('Auto-sync triggered at:', new Date().toISOString());
             setAutoSyncTriggered(true);
             onSyncRequired(); // Call the sync function
             

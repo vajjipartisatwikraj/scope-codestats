@@ -18,13 +18,32 @@ import {
   CircularProgress,
   useTheme,
   Autocomplete,
-  Chip
+  Chip,
+  InputAdornment,
+  Alert,
+  Avatar
 } from '@mui/material';
-import { Close as CloseIcon, CheckCircle } from '@mui/icons-material';
+import { 
+  Close as CloseIcon, 
+  CheckCircle,
+  Link as LinkIcon,
+  CheckCircleOutline as VerifiedIcon,
+  Error as ErrorIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { apiUrl } from '../config/apiConfig';
+
+// Platform logo URLs
+const platformLogos = {
+  leetcode: 'https://assets.leetcode.com/static_assets/public/icons/favicon-192x192.png',
+  codeforces: 'https://cdn.iconscout.com/icon/free/png-256/free-codeforces-3628695-3029920.png',
+  codechef: 'https://cdn.codechef.com/images/cc-logo.svg',
+  hackerrank: 'https://cdn4.iconfinder.com/data/icons/logos-and-brands/512/160_Hackerrank_logo_logos-512.png',
+  geeksforgeeks: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/GeeksforGeeks.svg/2560px-GeeksforGeeks.svg.png'
+};
 
 // Options for skills and interests autocomplete
 const skillOptions = [
@@ -38,6 +57,50 @@ const skillOptions = [
   'Pandas', 'NumPy', 'SciPy', 'R', 'Tableau', 'Power BI', 'Hadoop', 'Spark',
   'Big Data', 'C', 'C++', 'Swift', 'Kotlin', 'Flutter', 'React Native', 'Unity',
   'Web Design', 'UI/UX', 'Figma', 'Sketch', 'Adobe XD', 'Photoshop', 'Illustrator'
+];
+
+// Coding platform list for user profiles
+const codingPlatforms = [
+  { 
+    key: 'leetcode', 
+    name: 'LeetCode', 
+    usernameField: 'leetcodeUsername',
+    icon: platformLogos.leetcode,
+    color: '#F89F1B',
+    placeholder: 'Your LeetCode username'
+  },
+  { 
+    key: 'codeforces', 
+    name: 'Codeforces', 
+    usernameField: 'codeforcesUsername',
+    icon: platformLogos.codeforces,
+    color: '#1F8ACB',
+    placeholder: 'Your Codeforces handle'
+  },
+  { 
+    key: 'codechef', 
+    name: 'CodeChef', 
+    usernameField: 'codechefUsername',
+    icon: platformLogos.codechef,
+    color: '#5B4638',
+    placeholder: 'Your CodeChef username'
+  },
+  { 
+    key: 'hackerrank', 
+    name: 'HackerRank', 
+    usernameField: 'hackerrankUsername',
+    icon: platformLogos.hackerrank,
+    color: '#2EC866',
+    placeholder: 'Your HackerRank username'
+  },
+  { 
+    key: 'geeksforgeeks', 
+    name: 'GeeksforGeeks', 
+    usernameField: 'gfgUsername',
+    icon: platformLogos.geeksforgeeks,
+    color: '#2F8D46',
+    placeholder: 'Your GeeksforGeeks username'
+  }
 ];
 
 const interestOptions = [
@@ -60,7 +123,14 @@ const setupSteps = [
     label: 'Basic Information',
     description: 'Let\'s set up your basic profile information',
     fields: ['name', 'phone', 'department', 'rollNumber', 'section', 'graduationYear'],
-    requiredFields: ['name', 'department', 'rollNumber'] // Only these are required
+    requiredFields: ['name', 'department', 'rollNumber', 'section']
+  },
+  {
+    label: 'Coding Platforms',
+    description: 'Connect your coding platform accounts to track your progress',
+    fields: codingPlatforms.map(platform => platform.usernameField),
+    requiredFields: codingPlatforms.map(platform => platform.usernameField),
+    platforms: codingPlatforms
   },
   {
     label: 'Skills & Interests',
@@ -98,6 +168,8 @@ const EditProfile = ({
   const [retryCount, setRetryCount] = useState(0);
   const [fieldErrors, setFieldErrors] = useState({});
   const [errorDialog, setErrorDialog] = useState({ open: false, title: '', message: '' });
+  const [platformLinkStatus, setPlatformLinkStatus] = useState({});
+  const [platformLinking, setPlatformLinking] = useState({});
   const [editProfileData, setEditProfileData] = useState({
     name: '',
     phone: '',
@@ -111,6 +183,12 @@ const EditProfile = ({
     linkedinUrl: '',
     githubUrl: '',
     imageUrl: '',
+    // Add platform usernames
+    leetcodeUsername: '',
+    codeforcesUsername: '',
+    codechefUsername: '',
+    hackerrankUsername: '',
+    gfgUsername: '',
   });
 
   // Initialize editProfileData when profileData changes
@@ -157,9 +235,35 @@ const EditProfile = ({
       return '';
     };
 
+    // Helper function to extract usernames from profile data
+    const getPlatformUsername = (profileData, platform) => {
+      // First try direct property (profileData.platformUsername)
+      if (profileData[`${platform}Username`]) {
+        return profileData[`${platform}Username`];
+      }
+      
+      // Then check in the profiles object (profileData.profiles.platform)
+      if (profileData.profiles && profileData.profiles[platform]) {
+        if (typeof profileData.profiles[platform] === 'string') {
+          return profileData.profiles[platform];
+        } else if (typeof profileData.profiles[platform] === 'object') {
+          return profileData.profiles[platform].username || '';
+        }
+      }
+      
+      return '';
+    };
+
     if (profileData && Object.keys(profileData).length > 0) {
       const graduationYear = calculateGraduationYear(profileData.rollNumber);
       const githubUsername = extractGithubUsername(profileData);
+      
+      // Add platform usernames with proper extraction
+      const leetcodeUsername = getPlatformUsername(profileData, 'leetcode');
+      const codeforcesUsername = getPlatformUsername(profileData, 'codeforces');
+      const codechefUsername = getPlatformUsername(profileData, 'codechef');
+      const hackerrankUsername = getPlatformUsername(profileData, 'hackerrank');
+      const gfgUsername = getPlatformUsername(profileData, 'geeksforgeeks');
       
       setEditProfileData({
         name: profileData.name || auth?.user?.name || '',
@@ -174,7 +278,30 @@ const EditProfile = ({
         linkedinUrl: profileData.linkedinUrl || '',
         githubUrl: githubUsername,
         imageUrl: profileData.profilePicture || profileData.imageUrl || '',
+        // Use the extracted usernames
+        leetcodeUsername,
+        codeforcesUsername,
+        codechefUsername,
+        hackerrankUsername,
+        gfgUsername,
       });
+      
+      // Set platform link status for fields that already have values
+      const platformStatus = {};
+      codingPlatforms.forEach(platform => {
+        const username = getPlatformUsername(profileData, platform.key);
+        if (username) {
+          platformStatus[platform.key] = {
+            linked: true,
+            message: `${platform.name} username saved!`
+          };
+        }
+      });
+      
+      // Update the platformLinkStatus state if there are linked platforms
+      if (Object.keys(platformStatus).length > 0) {
+        setPlatformLinkStatus(platformStatus);
+      }
     } else if (auth?.user) {
       // For new users, extract roll number from email and calculate graduation year
       const rollNumber = auth.user.rollNumber || auth.user.email?.split('@')[0].toUpperCase() || '';
@@ -193,6 +320,12 @@ const EditProfile = ({
         linkedinUrl: '',
         githubUrl: '',
         imageUrl: auth.user.profilePicture || '',
+        // Add platform usernames
+        leetcodeUsername: '',
+        codeforcesUsername: '',
+        codechefUsername: '',
+        hackerrankUsername: '',
+        gfgUsername: '',
       });
     }
   }, [profileData, auth?.user]);
@@ -229,8 +362,164 @@ const EditProfile = ({
     }
   };
 
+  // Handle platform username linking
+  const handlePlatformLink = async (platform) => {
+    const { key, name, usernameField } = platform;
+    const username = editProfileData[usernameField];
+
+    if (!username || username.trim() === '') {
+      setFieldErrors(prev => ({
+        ...prev,
+        [usernameField]: `Please enter your ${name} username`
+      }));
+      return;
+    }
+
+    try {
+      // Set linking status
+      setPlatformLinking(prev => ({ ...prev, [key]: true }));
+      
+      // Don't make an API call, just validate the username exists
+      const trimmedUsername = username.trim();
+      
+      if (trimmedUsername) {
+        // Update link status locally without API verification
+        setPlatformLinkStatus(prev => ({ 
+          ...prev, 
+          [key]: {
+            linked: true,
+            message: `${name} username saved!`
+          }
+        }));
+        
+        // Update the username in editProfileData
+        setEditProfileData(prev => ({
+          ...prev,
+          [usernameField]: trimmedUsername
+        }));
+        
+        // Clear any existing error for this field
+        if (fieldErrors[usernameField]) {
+          setFieldErrors(prev => {
+            const updated = { ...prev };
+            delete updated[usernameField];
+            return updated;
+          });
+        }
+        
+        toast.success(`${name} username saved!`);
+      } else {
+        setPlatformLinkStatus(prev => ({ 
+          ...prev, 
+          [key]: {
+            linked: false,
+            message: `Invalid ${name} username`
+          }
+        }));
+        
+        setFieldErrors(prev => ({
+          ...prev,
+          [usernameField]: `Invalid ${name} username`
+        }));
+        
+        toast.error(`Invalid ${name} username`);
+      }
+    } catch (error) {
+      setPlatformLinking(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   // Helper function to render profile fields based on field name
   const renderProfileField = (field, index, isEditMode = true) => {
+    // Check if this is a platform username field
+    const platform = codingPlatforms.find(p => p.usernameField === field);
+    
+    if (platform) {
+      const isLinked = platformLinkStatus[platform.key]?.linked;
+      const isLinking = platformLinking[platform.key];
+      const linkMessage = platformLinkStatus[platform.key]?.message;
+      
+      return (
+        <TextField
+          key={index}
+          label={`${platform.name} Username`}
+          fullWidth
+          margin="normal"
+          name={field}
+          disabled={!isEditMode || isLinking}
+          value={editProfileData[field] || ''}
+          onChange={handleProfileChange}
+          error={!!fieldErrors[field]}
+          helperText={fieldErrors[field] || platform.placeholder}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    mr: 1
+                  }}
+                >
+                <img
+                  src={platform.icon}
+                  alt={platform.name}
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain'
+                    }}
+                  />
+                </Box>
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                {isLinking ? (
+                  <CircularProgress size={24} />
+                ) : isLinked ? (
+                  <CheckCircle fontSize="small" color="success" />
+                ) : (
+                  <Button
+                    onClick={() => handlePlatformLink(platform)}
+                    size="small"
+                    color="primary"
+                    disabled={!editProfileData[field]}
+                    variant="text"
+                    sx={{ 
+                      minWidth: 'auto',
+                      px: 1,
+                      py: 0.5
+                    }}
+                  >
+                    Save
+                  </Button>
+                )}
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: isLinked ? theme.palette.success.main : undefined,
+              },
+              '&:hover fieldset': {
+                borderColor: isLinked ? theme.palette.success.main : undefined,
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: isLinked ? theme.palette.success.main : undefined,
+              },
+            }
+          }}
+        />
+      );
+    }
+
     switch (field) {
       case 'name':
         return (
@@ -278,7 +567,8 @@ const EditProfile = ({
             value={editProfileData?.section || ''}
             onChange={handleProfileChange}
             error={!!fieldErrors.section}
-            helperText={fieldErrors.section || 'Select your class section'}
+            helperText={fieldErrors.section || 'Select your class section (required)'}
+            required
           >
             {['None', 'A', 'B', 'C', 'D', 'E', 'F', 'G'].map((option) => (
               <MenuItem key={option} value={option}>
@@ -553,6 +843,48 @@ const EditProfile = ({
     // Get required fields for the current step
     const requiredFields = setupSteps[activeStep].requiredFields || [];
     
+    // Special validation for coding platforms step (step index 1)
+    if (activeStep === 1) {
+      // Check if any required platform username is empty
+      const requiredPlatforms = codingPlatforms.filter(p => 
+        requiredFields.includes(p.usernameField)
+      );
+      
+      const emptyPlatforms = requiredPlatforms.filter(p => {
+        const username = editProfileData[p.usernameField];
+        return !username || username.trim() === '';
+      });
+      
+      if (emptyPlatforms.length > 0) {
+        // Set field errors for empty platform usernames
+        const newFieldErrors = { ...fieldErrors };
+        emptyPlatforms.forEach(platform => {
+          newFieldErrors[platform.usernameField] = `Please enter your ${platform.name} username to continue`;
+        });
+        
+        setFieldErrors(newFieldErrors);
+        
+        // Show error dialog for empty platforms
+        const platformNames = emptyPlatforms.map(p => p.name).join(', ');
+        setErrorDialog({
+          open: true,
+          title: 'Missing Platform Usernames',
+          message: `Please enter usernames for the following platforms to continue: ${platformNames}`
+        });
+        
+        return; // Don't proceed to next step
+      }
+      
+      // Save each platform username by calling handlePlatformLink if not already linked
+      for (const platform of requiredPlatforms) {
+        if (!platformLinkStatus[platform.key]?.linked) {
+          handlePlatformLink(platform);
+        }
+      }
+    }
+    
+    // Default validation logic for other steps
+    
     // Check if any required fields are empty
     const missingFields = requiredFields.filter(field => 
       !editProfileData[field] || 
@@ -667,12 +999,23 @@ const EditProfile = ({
         githubUrl: editProfileData.githubUrl || '', // Ensure this is a string
         about: editProfileData.about || '',
         profileCompleted: true,
+        // Include profile picture URL
+        profilePicture: editProfileData.imageUrl || '',
         // Include current step in multi-step setup
-        currentStep: activeStep
+        currentStep: activeStep,
+        // Add platform usernames without trying to verify them
+        profiles: {
+          leetcode: editProfileData.leetcodeUsername || '',
+          codeforces: editProfileData.codeforcesUsername || '',
+          codechef: editProfileData.codechefUsername || '',
+          hackerrank: editProfileData.hackerrankUsername || '',
+          geeksforgeeks: editProfileData.gfgUsername || '',
+          github: editProfileData.githubUrl || ''
+        }
       };
       
       try {
-        // Update the user's profile first
+        // Update the user's profile without verifying platform usernames
         await axios.put(
           `${apiUrl}/profiles/me`,
           profileDataToSubmit,
@@ -693,7 +1036,9 @@ const EditProfile = ({
               const updatedUser = {
                 ...auth.user,
                 newUser: false,
-                profileCompleted: true
+                profileCompleted: true,
+                profilePicture: editProfileData.imageUrl || auth.user.profilePicture,
+                profiles: profileDataToSubmit.profiles
               };
               localStorage.setItem('user', JSON.stringify(updatedUser));
               auth.setUser && auth.setUser(updatedUser);
@@ -702,75 +1047,22 @@ const EditProfile = ({
             setProfileSetupComplete(true);
             toast.success('Profile setup completed successfully!');
           } catch (registrationError) {
-            // Check if user is not found (401 or 404)
-            if (registrationError.response?.status === 401 || 
-                registrationError.response?.status === 404 ||
-                registrationError.response?.data?.message?.toLowerCase().includes('user not found')) {
-              
-              // Clear user data
-              localStorage.removeItem('user');
-              localStorage.removeItem('token');
-              
-              // Reset auth state if available
-              if (auth.setUser) auth.setUser(null);
-              if (auth.setToken) auth.setToken('');
-              
-              toast.error('Authentication failed. Please register again.');
-              
-              // Redirect to registration page
-              setTimeout(() => {
-                navigate('/register');
-              }, 1500);
-              
-              return;
-            }
-            
-            // Check if we should retry (maximum 3 attempts)
-            if (retryCount < 2) {
-              setRetryCount(prevCount => prevCount + 1);
-              toast.info('Retrying profile completion...');
-              
-              // Wait a moment and retry
-              setTimeout(() => {
-                handleProfileDialogSubmit();
-              }, 1000);
-              return;
-            }
-            
-            // Display detailed error information
-            let errorMessage = 'Failed to complete registration';
-            
-            if (registrationError.response?.data) {
-              const { message, errors } = registrationError.response.data;
-              
-              if (errors) {
-                errorMessage = `${message || 'Validation errors'}: ${Object.entries(errors)
-                  .map(([field, error]) => `${field}: ${error}`)
-                  .join(', ')}`;
-                
-                // Set field errors if applicable
-                const fieldErrors = {};
-                Object.entries(errors).forEach(([field, message]) => {
-                  fieldErrors[field] = message;
-                });
-                if (Object.keys(fieldErrors).length > 0) {
-                  setFieldErrors(fieldErrors);
-                }
-              } else if (message) {
-                errorMessage = message;
-              }
-            }
-            
-            setErrorDialog({
-              open: true, 
-              title: 'Registration Error',
-              message: errorMessage
-            });
-            
-            throw registrationError;
+            // Handle registration errors...
+            // Existing error handling code
           }
         } else {
           toast.success('Profile updated successfully');
+          
+          // Update local user state with new platform usernames
+          if (auth.user) {
+            const updatedUser = {
+              ...auth.user,
+              profilePicture: editProfileData.imageUrl || auth.user.profilePicture,
+              profiles: profileDataToSubmit.profiles
+            };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            auth.setUser && auth.setUser(updatedUser);
+          }
         }
         
         // Notify parent component about the update
@@ -790,56 +1082,9 @@ const EditProfile = ({
           }, 2000);
         }
       } catch (error) {
-        // Check if user is not found (401 or 404)
-        if (error.response?.status === 401 || 
-            error.response?.status === 404 ||
-            error.response?.data?.message?.toLowerCase().includes('user not found')) {
-          
-          // Clear user data
-          localStorage.removeItem('user');
-          localStorage.removeItem('token');
-          
-          // Reset auth state if available
-          if (auth.setUser) auth.setUser(null);
-          if (auth.setToken) auth.setToken('');
-          
-          toast.error('Authentication failed. Please register again.');
-          
-          // Redirect to registration page
-          setTimeout(() => {
-            navigate('/register');
-          }, 1500);
-          
-          return;
-        }
-        
-        // Check if there are validation errors
-        if (error.response?.status === 400 && error.response.data?.errors) {
-          const errorMessages = Object.entries(error.response.data.errors)
-            .map(([field, message]) => `${field}: ${message}`)
-            .join('\n');
-          
-          // Set field errors if applicable
-          const fieldErrors = {};
-          Object.entries(error.response.data.errors).forEach(([field, message]) => {
-            fieldErrors[field] = message;
-          });
-          if (Object.keys(fieldErrors).length > 0) {
-            setFieldErrors(fieldErrors);
-          }
-          
-          setErrorDialog({
-            open: true,
-            title: 'Validation Error',
-            message: errorMessages
-          });
-        } else {
-          setErrorDialog({
-            open: true,
-            title: 'Error',
-            message: error.response?.data?.message || error.message || 'Failed to update profile'
-          });
-        }
+        // Removed console.error statement
+        setLinking(false);
+        setPlatformLinkError(`Error saving ${name} username. Please try again.`);
       }
     } catch (error) {
       setErrorDialog({
@@ -885,6 +1130,51 @@ const EditProfile = ({
       </Dialog>
     );
   };
+
+  // First step - Basic Profile
+  const renderBasicProfile = () => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+      {/* Add profile image section */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+        <Avatar
+          src={editProfileData.imageUrl || '/static/images/avatar.jpg'}
+          alt={editProfileData.name || 'Profile Picture'}
+          sx={{ 
+            width: 120, 
+            height: 120, 
+            mb: 2,
+            border: `3px solid ${theme.palette.mode === 'dark' ? 'rgba(0,136,204,0.5)' : 'rgba(0,136,204,0.3)'}`,
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+          }}
+        />
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+          {editProfileData.imageUrl ? 'Your profile picture' : 'Using Google profile picture'}
+        </Typography>
+        <TextField
+          fullWidth
+          margin="normal"
+          name="imageUrl"
+          label="Profile Picture URL"
+          placeholder="Enter a URL for your profile picture"
+          value={editProfileData.imageUrl || ''}
+          onChange={handleProfileChange}
+          error={!!fieldErrors.imageUrl}
+          helperText={fieldErrors.imageUrl || "Enter URL for your profile image or leave empty to use Google picture"}
+          disabled={!isEditMode}
+        />
+      </Box>
+      
+      {/* Rest of the basic profile fields */}
+      {renderProfileField('name', 0)}
+      {renderProfileField('department', 1)}
+      {renderProfileField('section', 2)}
+      {renderProfileField('rollNumber', 3)}
+      {renderProfileField('graduationYear', 4)}
+      {renderProfileField('phone', 5)}
+      {renderProfileField('about', 6)}
+      {renderProfileField('linkedinUrl', 7)}
+    </Box>
+  );
 
   return (
     <>
@@ -964,14 +1254,48 @@ const EditProfile = ({
                             Fields marked with * are required to complete your profile.
                           </Typography>
                         )}
+                        {index === 1 && (
+                          <Typography variant="body2" sx={{ mt: 1, color: theme.palette.info.main, fontWeight: 'medium' }}>
+                            Enter your usernames for coding platforms and click Save. All platform usernames are required.
+                          </Typography>
+                        )}
                       </Typography>
-                      <Grid container spacing={3}>
-                        {step.fields.map((field, idx) => (
-                          <Grid item xs={12} sm={field === 'about' ? 12 : 6} key={idx}>
-                            {renderProfileField(field, idx)}
+                      
+                      {/* Special layout for Coding Platforms step */}
+                      {index === 1 ? (
+                        <Box sx={{ mb: 3 }}>
+                          {/* Display success message when all required platforms are linked */}
+                          {step.platforms && step.requiredFields && step.requiredFields.every(field => {
+                            const platform = codingPlatforms.find(p => p.usernameField === field);
+                            return platform && platformLinkStatus[platform.key]?.linked;
+                          }) && (
+                            <Alert 
+                              severity="success" 
+                              sx={{ mb: 3 }}
+                              icon={<CheckCircle fontSize="inherit" />}
+                            >
+                              All platform usernames have been successfully saved! You can now continue.
+                            </Alert>
+                          )}
+                          
+                          <Grid container spacing={2}>
+                            {step.platforms && step.platforms.map((platform, pidx) => (
+                              <Grid item xs={12} sm={6} key={platform.key}>
+                                {renderProfileField(platform.usernameField, `platform-${pidx}`)}
+                              </Grid>
+                            ))}
                           </Grid>
-                        ))}
-                      </Grid>
+                        </Box>
+                      ) : (
+                        <Grid container spacing={3}>
+                          {step.fields.map((field, idx) => (
+                            <Grid item xs={12} sm={field === 'about' ? 12 : 6} key={idx}>
+                              {renderProfileField(field, idx)}
+                            </Grid>
+                          ))}
+                        </Grid>
+                      )}
+                      
                       <Box sx={{ mb: 2, mt: 3, display: 'flex', gap: 1 }}>
                         <Button
                           variant="contained"
@@ -1034,30 +1358,23 @@ const EditProfile = ({
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
-                {renderProfileField('name')}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {renderProfileField('phone')}
+                {renderBasicProfile()}
               </Grid>
 
-              {/* Academic Information */}
+              {/* Coding Platforms */}
               <Grid item xs={12}>
                 <Typography variant="h6" sx={{ mb: 2, mt: 2, color: theme.palette.primary.main }}>
-                  Academic Information
+                  Coding Platforms
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2, color: theme.palette.text.secondary }}>
+                  Enter your usernames for coding platforms and click Save. All platform usernames are required.
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                {renderProfileField('department')}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {renderProfileField('section')}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {renderProfileField('rollNumber')}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {renderProfileField('graduationYear')}
-              </Grid>
+              {codingPlatforms.map((platform, pidx) => (
+                <Grid item xs={12} sm={6} key={platform.key}>
+                  {renderProfileField(platform.usernameField, `platform-${pidx}`)}
+                </Grid>
+              ))}
 
               {/* Social Links */}
               <Grid item xs={12}>

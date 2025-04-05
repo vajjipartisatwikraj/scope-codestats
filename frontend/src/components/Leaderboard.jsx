@@ -66,6 +66,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../config/apiConfig';
+import { getProfileImageUrl } from '../utils/profileUtils';
 
 const departments = [
   'ALL', 'CSE', 'CSC', 'CSD', 'ECE', 'IT', 'CSM', 'CSIT', 'AERO', 'MECH', 'OTHER'
@@ -542,6 +543,13 @@ const Leaderboard = () => {
   };
 
   const TopThreeCard = ({ user, rank, delay, leaderboardType }) => {
+    const [profileImage, setProfileImage] = useState('');
+    
+    useEffect(() => {
+      // Set profile image from user data or default
+      setProfileImage(getProfileImageUrl(user.profilePicture));
+    }, [user]);
+
     const colors = ['#FF8C00', '#4CAF50', '#2196F3']; // Orange, Green, Blue
     const icons = [WorkspacePremium, EmojiEvents, LocalFireDepartment];
     const Icon = icons[rank - 1];
@@ -594,6 +602,7 @@ const Leaderboard = () => {
         <Card
           sx={{
             p: { xs: 2, sm: 3 },
+            pt: { xs: 3, sm: 4 },
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -613,40 +622,45 @@ const Leaderboard = () => {
               transform: { sm: 'translateY(-8px)' },
               boxShadow: `0 12px 40px ${colors[rank - 1]}33`,
             },
-            mt: 5,
-            height: { xs: 420, sm: 450 }
+            mt: 6,
+            height: { xs: 430, sm: 460 }
           }}
         >
           <Box
             sx={{
               position: 'absolute',
-              top: -20,
-              width: 50,
-              height: 50,
+              top: -25,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 60,
+              height: 60,
               borderRadius: '50%',
               bgcolor: colors[rank - 1],
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: `0 4px 20px ${colors[rank - 1]}66`,
+              zIndex: 2,
+              border: `3px solid ${darkMode ? '#1a1a1a' : '#ffffff'}`,
             }}
           >
-            <Icon sx={{ fontSize: 30, color: darkMode ? '#1a1a1a' : '#ffffff' }} />
+            <Icon sx={{ fontSize: 34, color: darkMode ? '#1a1a1a' : '#ffffff' }} />
           </Box>
+          <Box sx={{ height: 35, width: '100%' }} />
           <Avatar
+            alt={user.name}
+            src={profileImage}
             sx={{
-              width: { xs: 80, sm: 100 },
-              height: { xs: 80, sm: 100 },
-              bgcolor: darkMode ? '#2a2a2a' : '#f0f0f0',
-              fontSize: { xs: '1.5rem', sm: '2rem' },
-              mt: 3,
+              width: { xs: 60, sm: 70, md: 90 },
+              height: { xs: 60, sm: 70, md: 90 },
+              border: `4px solid ${['#FFD700', '#C0C0C0', '#CD7F32'][rank-1]}`,
+              boxShadow: `0 2px 10px ${['#FFD700', '#C0C0C0', '#CD7F32'][rank-1]}50`,
               mb: 2,
-              border: `4px solid ${colors[rank - 1]}44`,
-              color: darkMode ? 'white' : 'rgba(0,0,0,0.8)',
+              mt: 1,
+              position: 'relative',
+              zIndex: 1,
             }}
-          >
-            {getInitials(user.name)}
-          </Avatar>
+          />
           <Typography variant="h6" sx={{ 
             fontWeight: 600, 
             mb: 1, 
@@ -658,7 +672,8 @@ const Leaderboard = () => {
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             lineHeight: 1.3,
-            height: '2.6em'
+            height: '2.6em',
+            px: 1,
           }}>
             {user.name}
           </Typography>
@@ -688,33 +703,41 @@ const Leaderboard = () => {
             flexWrap: 'wrap',
             justifyContent: 'center',
             maxHeight: 70,
-            overflow: 'auto'
+            overflow: 'auto',
+            width: '100%',
+            px: 1
           }}>
-            {platformValues.map(({ platform, value }) => (
-              <Tooltip key={platform} title={`${platforms[platform]}: ${value}`}>
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  bgcolor: `${platformColors[platform]}22`,
-                  color: platformColors[platform],
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  fontSize: '0.75rem'
-                }}>
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      bgcolor: platformColors[platform],
-                    }}
-                  />
-                  {value}
-                </Box>
-              </Tooltip>
-            ))}
+            {platformValues.length > 0 ? (
+              platformValues.map(({ platform, value }) => (
+                <Tooltip key={platform} title={`${platforms[platform]}: ${value}`}>
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    bgcolor: `${platformColors[platform]}22`,
+                    color: platformColors[platform],
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontSize: '0.75rem'
+                  }}>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: platformColors[platform],
+                      }}
+                    />
+                    {value}
+                  </Box>
+                </Tooltip>
+              ))
+            ) : (
+              <Typography variant="caption" sx={{ opacity: 0.7, fontStyle: 'italic' }}>
+                No platform data available
+              </Typography>
+            )}
           </Box>
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: colors[rank - 1] }}>
@@ -821,6 +844,14 @@ const Leaderboard = () => {
   };
 
   const LeaderboardRow = ({ user, index }) => {
+    // Add a state to track profile image loading
+    const [profileImage, setProfileImage] = useState('');
+    
+    useEffect(() => {
+      // Set profile image from user data or default
+      setProfileImage(getProfileImageUrl(user.profilePicture));
+    }, [user, index]);
+    
     const config = leaderboardConfigs[leaderboardType];
     
     // Get the value for the current leaderboard type
@@ -860,27 +891,61 @@ const Leaderboard = () => {
           transition: 'all 0.2s',
           '&:hover': {
             bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-          }
+          },
+          ...(index < 3 && {
+            bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+          }),
         }}
       >
-        <TableCell>
-          <Typography variant="body2">{user.overallRank}</Typography>
-        </TableCell>
-        <TableCell>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar
-              sx={{
-                width: 32,
-                height: 32,
-                bgcolor: '#0088cc',
-                fontSize: '0.875rem'
-              }}
-            >
-              {getInitials(user.name)}
-            </Avatar>
-            <Typography variant="body2">{user.name}</Typography>
+        <TableCell 
+          align="center" 
+          sx={{ 
+            p: 1, 
+            width: '60px',
+            borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}` 
+          }}
+        >
+          <Box 
+            sx={{ 
+              width: 32, 
+              height: 32, 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              bgcolor: index < 3 ? ['#FFD700', '#C0C0C0', '#CD7F32'][index] : 'transparent',
+              color: index < 3 ? '#000' : darkMode ? 'white' : 'rgba(0,0,0,0.8)',
+              fontWeight: 'bold'
+            }}
+          >
+            {index + 1}
           </Box>
         </TableCell>
+        
+        <TableCell sx={{ 
+          borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}` 
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Avatar
+              alt={user.name || 'User'}
+              src={profileImage}
+              sx={{ 
+                width: 40, 
+                height: 40,
+                border: `2px solid ${darkMode ? 'rgba(0,136,204,0.5)' : 'rgba(0,136,204,0.3)'}`,
+              }}
+            />
+            <Box>
+              <Typography variant="body1" fontWeight="medium">
+                {user.name}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {user.department} - {getStudentYear(user.graduatingYear)}
+              </Typography>
+            </Box>
+          </Box>
+        </TableCell>
+        
         <TableCell>
           <Typography variant="body2">
             {user.rollNumber ? user.rollNumber.toUpperCase() : '-'}

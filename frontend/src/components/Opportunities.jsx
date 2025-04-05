@@ -74,7 +74,7 @@ const Opportunities = () => {
     : `${baseColor}15`;
     
   const getCardBgColor = () => darkMode
-    ? 'rgba(255, 255, 255, 0.03)'
+    ? 'rgba(20, 20, 20, 0.95)'
     : '#ffffff';
     
   const getCardBorderColor = () => darkMode
@@ -224,6 +224,7 @@ const Opportunities = () => {
           sx={{ 
             fontWeight: 700, 
             mb: 2,
+            fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' },
             background: 'linear-gradient(45deg, #0088cc 30%, #00bfff 90%)',
             backgroundClip: 'text',
             textFillColor: 'transparent',
@@ -238,6 +239,7 @@ const Opportunities = () => {
             maxWidth: '800px', 
             mx: 'auto', 
             mb: 4,
+            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
             color: getTextColor(0.7)
           }}
         >
@@ -264,37 +266,40 @@ const Opportunities = () => {
                   <Search sx={{ color: getTextColor(0.5) }} />
                 </InputAdornment>
               ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setSearchTerm('')}
+                    size="small"
+                    sx={{ 
+                      bgcolor: '#0088cc', 
+                      color: 'white', 
+                      '&:hover': { bgcolor: '#006699' },
+                      mr: -0.5,
+                      width: 30,
+                      height: 30
+                    }}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>×</Box>
+                  </IconButton>
+                </InputAdornment>
+              ),
             }}
             sx={{
               '& .MuiOutlinedInput-root': {
-                bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                bgcolor: darkMode ? 'rgba(255,255,255,0.08)' : 'white',
                 borderRadius: 1,
+                border: '1px solid',
+                borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                  borderColor: '#0088cc',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#0088cc',
                 },
               },
             }}
           />
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <IconButton 
-              sx={{ 
-                bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
-                borderRadius: 1,
-                '&:hover': { bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
-              }}
-            >
-              <FilterList sx={{ color: getTextColor(0.7) }} />
-            </IconButton>
-            <IconButton 
-              sx={{ 
-                bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
-                borderRadius: 1,
-                '&:hover': { bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
-              }}
-            >
-              <Sort sx={{ color: getTextColor(0.7) }} />
-            </IconButton>
-          </Box>
         </Box>
         
         {/* Category Tabs */}
@@ -394,22 +399,32 @@ const Opportunities = () => {
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                       <Avatar
-                        src={opportunity.organizerLogo}
                         alt={opportunity.organizer}
                         sx={{ 
-                          width: 48, 
-                          height: 48,
+                          width: { xs: 40, sm: 48 }, 
+                          height: { xs: 40, sm: 48 },
                           bgcolor: 'rgba(0,136,204,0.1)',
-                          border: '2px solid rgba(0,136,204,0.2)'
+                          border: '2px solid rgba(0,136,204,0.2)',
+                          color: '#0088cc',
+                          fontWeight: 'bold'
                         }}
                       >
-                        {opportunity.organizer[0]}
+                        {opportunity.organizer ? opportunity.organizer.charAt(0).toUpperCase() : '?'}
                       </Avatar>
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" sx={{ color: getTextColor(0.6), mb: 0.5 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: getTextColor(0.6), 
+                          mb: 0.5,
+                          fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                        }}>
                           {opportunity.organizer}
                         </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.3, color: getTextColor(0.9) }}>
+                        <Typography variant="h6" sx={{ 
+                          fontWeight: 600, 
+                          lineHeight: 1.3, 
+                          color: getTextColor(0.9),
+                          fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.25rem' }
+                        }}>
                           {opportunity.title}
                         </Typography>
                       </Box>
@@ -423,6 +438,8 @@ const Opportunities = () => {
                           label={tag}
                           size="small"
                           sx={{ 
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                            height: { xs: 24, sm: 28 },
                             bgcolor: darkMode ? 'rgba(0,136,204,0.1)' : 'rgba(0,136,204,0.05)',
                             color: '#0088cc',
                             border: '1px solid rgba(0,136,204,0.2)',
@@ -444,7 +461,8 @@ const Opportunities = () => {
                         WebkitLineClamp: 3,
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
-                        lineHeight: 1.6
+                        lineHeight: 1.6,
+                        fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.9rem' }
                       }}
                     >
                       {opportunity.description}
@@ -453,11 +471,11 @@ const Opportunities = () => {
                     {/* Key Details */}
                     <Box sx={{ 
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gridTemplateColumns: opportunity.category === 'hackathon' && opportunity.prize ? 'repeat(2, 1fr)' : '1fr',
                       gap: 2,
                       mb: 3,
                       p: 2,
-                      bgcolor: darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                      bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                       borderRadius: '12px'
                     }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -466,7 +484,7 @@ const Opportunities = () => {
                           {opportunity.deadline}
                         </Typography>
                       </Box>
-                      {opportunity.prize && (
+                      {opportunity.category === 'hackathon' && opportunity.prize && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Star sx={{ fontSize: 18, color: '#ffd700' }} />
                           <Typography variant="body2" sx={{ color: '#ffd700' }}>

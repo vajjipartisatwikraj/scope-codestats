@@ -23,6 +23,7 @@ import OpportunityManagement from './components/OpportunityManagement';
 import UserView from './components/UserView';
 import ConditionalDashboard from './components/ConditionalDashboard';
 import CodePad from './components/CodePad';
+import TestGoogleImage from './components/TestGoogleImage';
 
 // MainContent component that uses the theme from context
 const MainContent = () => {
@@ -143,6 +144,11 @@ const MainContent = () => {
               } />
               <Route path="/user-view/:username" element={
                 <UserView />
+              } />
+              <Route path="/test/google-image" element={
+                <PrivateRoute>
+                  <TestGoogleImage />
+                </PrivateRoute>
               } />
               
               {/* Catch-all route (404) */}

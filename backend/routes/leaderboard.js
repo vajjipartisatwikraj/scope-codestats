@@ -17,7 +17,7 @@ router.get('/', auth, async (req, res) => {
       includeUserData = 'false',
       includePlatformDetails = 'false',
       fields = '',
-      debug = 'false'
+      debug = 'true'
     } = req.query;
 
     if (debug === 'true') {
@@ -45,6 +45,7 @@ router.get('/', auth, async (req, res) => {
       section: 1,
       graduatingYear: 1,
       gender: 1,
+      profilePicture: { $ifNull: ['$profilePicture', ''] },
       totalScore: { $ifNull: ['$totalScore', 0] }
     };
 
@@ -231,11 +232,52 @@ router.get('/', auth, async (req, res) => {
       const deptRank = deptUsers.findIndex(u => u._id.toString() === user._id.toString()) + 1;
       return {
         ...user,
-        departmentRank: deptRank
+        departmentRank: deptRank,
+        // Make sure profilePicture is always defined (empty string if null/undefined)
+        profilePicture: user.profilePicture || ''
       };
     });
 
-    res.json(usersWithDepartmentRanks);
+    // Log profile picture status for debugging
+    if (debug === 'true') {
+      // Count users with profile pictures
+      const withPicture = usersWithDepartmentRanks.filter(u => u.profilePicture && u.profilePicture.trim() !== '').length;
+      console.log(`Users with profile pictures: ${withPicture}/${usersWithDepartmentRanks.length}`);
+      
+      // Log the first few users' profile pictures
+      usersWithDepartmentRanks.slice(0, 5).forEach((user, index) => {
+        console.log(`User ${index+1} (${user.name}): Profile picture = ${user.profilePicture || 'None'}`);
+      });
+      
+      // Add a log for all profile picture values to help diagnose issues
+      console.log('All profile picture values:');
+      const profilePicTypes = {};
+      usersWithDepartmentRanks.forEach(user => {
+        const type = typeof user.profilePicture;
+        const value = user.profilePicture;
+        
+        if (!profilePicTypes[type]) {
+          profilePicTypes[type] = [];
+        }
+        
+        // Only collect a few examples of each type to avoid massive logs
+        if (profilePicTypes[type].length < 3) {
+          profilePicTypes[type].push(value);
+        }
+      });
+      
+      // Log the types and examples
+      console.log(profilePicTypes);
+    }
+
+    // Ensure all users have a populated profilePicture field before returning
+    const usersWithFixedProfilePics = usersWithDepartmentRanks.map(user => ({
+      ...user,
+      // Always ensure profilePicture is a string (not null or undefined)
+      profilePicture: user.profilePicture || ''
+    }));
+
+    res.json(usersWithFixedProfilePics);
   } catch (err) {
     console.error('Leaderboard error:', err);
     res.status(500).json({ message: 'Server error' });

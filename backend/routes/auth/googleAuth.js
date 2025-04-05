@@ -51,9 +51,38 @@ router.get('/callback', (req, res, next) => {
     console.log(`User ${user._id} authenticated with Google, redirecting to auth success page`);
     console.log(`User type: ${user.userType || 'user (default)'}`);
 
-    // Redirect to frontend auth success page with user data, including userType
-    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}&userId=${user._id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&newUser=${user.newUser}&profileCompleted=${user.profileCompleted}&userType=${encodeURIComponent(user.userType || 'user')}`);
+    // Redirect to frontend auth success page with user data, including profile picture
+    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}&userId=${user._id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&newUser=${user.newUser}&profileCompleted=${user.profileCompleted}&userType=${encodeURIComponent(user.userType || 'user')}&profilePicture=${encodeURIComponent(user.profilePicture || '')}`);
   })(req, res, next);
+});
+
+// Debug route to get Google profile information
+router.get('/debug-profile', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Not authenticated' });
+  }
+
+  try {
+    const user = await User.findById(req.user._id).select('name email profilePicture googleId');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    return res.json({
+      message: 'Google profile debug information',
+      user: {
+        name: user.name,
+        email: user.email,
+        hasProfilePicture: !!user.profilePicture,
+        profilePictureUrl: user.profilePicture || '',
+        googleId: user.googleId || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching Google profile debug info:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router; 

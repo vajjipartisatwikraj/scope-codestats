@@ -27,6 +27,7 @@ import GitHubCalendar from 'github-calendar';
 import { OpenInNew } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiUrl } from '../config/apiConfig';
+import { getProfileImageUrl } from '../utils/profileUtils';
 
 const achievementTypes = [
   { value: 'project', label: 'Project' },
@@ -225,9 +226,8 @@ const UserView = () => {
         }
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching user data:', err);
-        setError('Failed to load user data');
         setLoading(false);
+        setError('Failed to load user data. Please try again later.');
       }
     };
 
@@ -492,9 +492,21 @@ const UserView = () => {
                     mx: { xs: 'auto', sm: 0 },
                     mt: { xs: 4, sm: 8 },
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-                    textTransform: 'uppercase'
+                    textTransform: 'uppercase',
+                    overflow: 'hidden'
                   }}>
-                    {userData.name?.charAt(0).toUpperCase()}
+                    {userData.profilePicture ? (
+                      <img
+                        src={userData.profilePicture || '/assets/default-profile.png'}
+                        alt={userData.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      userData.name?.charAt(0).toUpperCase()
+                    )}
                   </Box>
                 </Box>
               </Grid>
@@ -1457,13 +1469,14 @@ const UserView = () => {
                     >
                       <Box 
                         component="img"
-                        src={formatImageUrl(achievement.imageUrl)}
-                        alt={achievement.title}
-                        sx={{ 
+                        src={userData.profilePicture}
+                        alt={userData.name}
+                        style={{
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover',
                           display: 'block',
+                          borderRadius: '50%',
                         }}
                         onError={(e) => {
                           e.target.onerror = null; 

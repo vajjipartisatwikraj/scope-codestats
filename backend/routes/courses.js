@@ -138,7 +138,18 @@ router.post('/:id/enroll', auth, async (req, res) => {
     
     await course.save();
     
-    res.json(course);
+    // Make sure we include all fields, especially courseLink in the response
+    const populatedCourse = await Course.findById(req.params.id).select('+courseLink +title +description');
+    
+    // Log the course data to verify courseLink is present
+    console.log('Enrollment successful, course data:', {
+      id: populatedCourse._id,
+      title: populatedCourse.title, 
+      hasCourseLink: !!populatedCourse.courseLink,
+      courseLink: populatedCourse.courseLink
+    });
+    
+    res.json(populatedCourse);
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {

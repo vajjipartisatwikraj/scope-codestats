@@ -5,7 +5,7 @@ import {
   Box, Container, Grid, Typography, Button, Card, CardContent,
   IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Chip, Stack, MenuItem, useMediaQuery, DialogContentText,
-  CircularProgress, Divider
+  CircularProgress, Divider, Avatar
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import EditProfile from './EditProfile';
 import { alpha } from '@mui/material/styles';
+import { getProfileImageUrl } from '../utils/profileUtils';
 
 // Achievement types
 const achievementTypes = [
@@ -123,6 +124,7 @@ const Profile = () => {
       const profileResponse = await axios.get(`${apiUrl}/profiles/me`, {
         headers: { Authorization: `Bearer ${auth.token}` }
       });
+      
       setProfileData(profileResponse.data);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -340,52 +342,70 @@ const Profile = () => {
         >
           <Box sx={{ 
             display: 'flex', 
-            flexDirection: 'column',
+            flexDirection: { xs: 'column', md: 'row' },
             alignItems: { xs: 'center', md: 'flex-start' },
             gap: 1,
             mb: 3,
             zIndex: 1,
           }}>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 600, 
-                mb: 0.5,
-                color: theme.palette.common.white,
-                letterSpacing: '-0.5px',
-                textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-              }}
-            >
-              {profileData.name}
-            </Typography>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                mb: 2,
-                color: theme.palette.common.white,
-                fontWeight: 500,
-                textShadow: '0 2px 6px rgba(0,0,0,0.5)',
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                padding: '4px 12px',
-                borderRadius: '16px',
-              }}
-            >
-              {profileData.department} Department
-            </Typography>
-            <Button 
-              startIcon={<EditIcon />} 
-              onClick={handleEditProfileClick}
-              variant="contained"
+            {/* Add profile avatar */}
+            <Avatar
+              src={getProfileImageUrl(profileData.profilePicture)}
+              alt={profileData.name || 'User'}
               sx={{
-                bgcolor: theme.palette.primary.main,
-                '&:hover': { bgcolor: theme.palette.primary.dark },
-                boxShadow: theme.shadows[4],
-                borderRadius: '8px',
-                px: 2
+                width: 120,
+                height: 120,
+                border: '4px solid white',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                mr: { xs: 0, md: 3 },
+                mb: { xs: 2, md: 0 }
               }}
             >
-              Edit Profile
-            </Button>
+              {profileData.name?.charAt(0).toUpperCase()}
+            </Avatar>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' } }}>
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 0.5,
+                  color: theme.palette.common.white,
+                  letterSpacing: '-0.5px',
+                  textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                }}
+              >
+                {profileData.name}
+              </Typography>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  mb: 2,
+                  color: theme.palette.common.white,
+                  fontWeight: 500,
+                  textShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                }}
+              >
+                {profileData.department} Department
+              </Typography>
+              <Button 
+                startIcon={<EditIcon />} 
+                onClick={handleEditProfileClick}
+                variant="contained"
+                sx={{
+                  bgcolor: theme.palette.primary.main,
+                  '&:hover': { bgcolor: theme.palette.primary.dark },
+                  boxShadow: theme.shadows[4],
+                  borderRadius: '8px',
+                  px: 2
+                }}
+              >
+                Edit Profile
+              </Button>
+            </Box>
           </Box>
 
           {/* Quick Info Grid with improved styling */}
@@ -626,18 +646,22 @@ const Profile = () => {
 
       {/* Achievements Section with improved styling */}
       <Box sx={{ 
-        p: 3, 
+        p: { xs: 2, sm: 3 },
         borderRadius: '16px',
         boxShadow: theme.shadows[2],
         border: `1px solid ${theme.palette.divider}`,
         bgcolor: theme.palette.background.paper,
-        mb: 4
+        mb: 4,
+        width: '100%',
+        overflow: 'hidden'
       }}>
         <Box sx={{ 
           display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
           justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 4
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: { xs: 2, sm: 0 },
+          mb: { xs: 3, sm: 4 }
         }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             Achievements
@@ -651,7 +675,8 @@ const Profile = () => {
             }}
             sx={{ 
               bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark }
+              '&:hover': { bgcolor: theme.palette.primary.dark },
+              width: { xs: '100%', sm: 'auto' }
             }}
           >
             Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
@@ -662,12 +687,12 @@ const Profile = () => {
         <Box sx={{ 
           bgcolor: theme.palette.action.hover,
           borderRadius: '16px',
-          p: 2,
+          p: { xs: 1, sm: 2 },
           mb: 3
         }}>
           <Stack 
             direction="row" 
-            spacing={2}
+            spacing={1}
             sx={{
               overflowX: 'auto',
               pb: 1,
@@ -677,7 +702,8 @@ const Profile = () => {
               '&::-webkit-scrollbar-thumb': {
                 backgroundColor: theme.palette.divider,
                 borderRadius: '3px',
-              }
+              },
+              flexWrap: { xs: 'nowrap', sm: 'wrap' }
             }}
           >
             {achievementTypes.map((type) => (
@@ -690,7 +716,10 @@ const Profile = () => {
                   color: activeTab === type.value ? theme.palette.primary.contrastText : theme.palette.text.secondary,
                   '&:hover': {
                     bgcolor: activeTab === type.value ? theme.palette.primary.dark : theme.palette.action.hover,
-                  }
+                  },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  height: { xs: '28px', sm: '32px' },
+                  flexShrink: 0
                 }}
               />
             ))}
@@ -699,7 +728,7 @@ const Profile = () => {
 
         {/* Achievements Grid with Empty State */}
         {filteredAchievements.length > 0 ? (
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {filteredAchievements.map((achievement) => (
               <Grid item xs={12} sm={6} md={4} key={achievement._id}>
                 <Card sx={{ 
@@ -719,7 +748,7 @@ const Profile = () => {
                   <Box sx={{ 
                     position: 'relative',
                     width: '100%',
-                    height: '180px',
+                    height: { xs: '150px', sm: '180px' },
                     overflow: 'hidden',
                     bgcolor: theme.palette.action.disabledBackground
                   }}>
@@ -739,17 +768,24 @@ const Profile = () => {
                       }}
                     />
                   </Box>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
+                  <CardContent sx={{ 
+                    flexGrow: 1,
+                    p: { xs: 1.5, sm: 2 }
+                  }}>
+                    <Typography variant="h6" sx={{ 
+                      mb: 1,
+                      fontSize: { xs: '1rem', sm: '1.25rem' }
+                    }}>
                       {achievement.title}
                     </Typography>
                     <Typography variant="body2" sx={{ 
                       color: theme.palette.text.secondary,
-                      mb: 2 
+                      mb: 1.5, 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }}>
                       {achievement.description}
                     </Typography>
-                    <Stack direction="row" flexWrap="wrap" spacing={1} sx={{ mb: 2 }}>
+                    <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mb: 1.5 }}>
                       {(Array.isArray(achievement.tags) ? achievement.tags : 
                         achievement.tags?.split(',') || []).map((tag, index) => (
                         <Chip
@@ -759,6 +795,8 @@ const Profile = () => {
                           sx={{
                             bgcolor: alpha(theme.palette.primary.main, 0.1),
                             color: theme.palette.primary.main,
+                            height: { xs: '20px', sm: '24px' },
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
                           }}
                         />
                       ))}
@@ -768,10 +806,13 @@ const Profile = () => {
                       justifyContent: 'space-between',
                       alignItems: 'center'
                     }}>
-                      <Typography variant="caption" sx={{ color: theme.palette.text.disabled }}>
+                      <Typography variant="caption" sx={{ 
+                        color: theme.palette.text.disabled,
+                        fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                      }}>
                         {achievement.startDate}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
                         {achievement.link && (
                           <IconButton
                             size="small"
@@ -799,12 +840,17 @@ const Profile = () => {
           <Box 
             sx={{ 
               textAlign: 'center', 
-              py: 8,
+              py: { xs: 5, sm: 8 },
+              px: { xs: 2, sm: 3 },
               bgcolor: theme.palette.action.hover,
               borderRadius: '16px',
             }}
           >
-            <Typography variant="h6" sx={{ color: theme.palette.text.disabled, mb: 2 }}>
+            <Typography variant="h6" sx={{ 
+              color: theme.palette.text.disabled, 
+              mb: 2,
+              fontSize: { xs: '0.95rem', sm: '1.25rem' }
+            }}>
               No {activeTab === 'achievement' ? 'achievements' : activeTab + 's'} added yet
             </Typography>
             <Button
@@ -816,7 +862,9 @@ const Profile = () => {
               }}
               sx={{ 
                 bgcolor: theme.palette.primary.main,
-                '&:hover': { bgcolor: theme.palette.primary.dark }
+                '&:hover': { bgcolor: theme.palette.primary.dark },
+                width: { xs: '100%', sm: 'auto' },
+                fontSize: { xs: '0.8rem', sm: '0.875rem' }
               }}
             >
               Add Your First {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}

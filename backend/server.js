@@ -419,6 +419,22 @@ app.get('/api/test/google-auth', (req, res) => {
   });
 });
 
+// Test route for Google profile image
+app.get('/api/test/google-profile-image', (req, res) => {
+  // Check if there's a user in the session
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  // Return the user's profile picture URL
+  return res.json({
+    name: req.user.name,
+    profilePicture: req.user.profilePicture || '',
+    hasProfilePicture: !!req.user.profilePicture,
+    googleId: req.user.googleId || null
+  });
+});
+
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))

@@ -257,7 +257,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  profilePicture: String
+  profilePicture: {
+    type: String,
+    default: '',
+  },
 }, {
   timestamps: true
 });

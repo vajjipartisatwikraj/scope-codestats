@@ -194,7 +194,9 @@ const OpportunityManagement = () => {
       // Ensure tags are properly formatted (as an array of strings)
       const submissionData = {
         ...formData,
-        tags: Array.isArray(formData.tags) ? formData.tags : []
+        tags: Array.isArray(formData.tags) ? formData.tags : [],
+        // Clear prize field if category is not hackathon
+        prize: formData.category === 'hackathon' ? formData.prize : ''
       };
       
       if (editingOpportunity) {
@@ -590,7 +592,15 @@ const OpportunityManagement = () => {
                     <Select
                       value={formData.category}
                       label="Category"
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      onChange={(e) => {
+                        const newCategory = e.target.value;
+                        setFormData({ 
+                          ...formData, 
+                          category: newCategory,
+                          // Clear prize if changing to non-hackathon category
+                          prize: newCategory === 'hackathon' ? formData.prize : ''
+                        });
+                      }}
                       sx={{ borderRadius: 2 }}
                     >
                       {categories.map((category) => (
@@ -666,20 +676,22 @@ const OpportunityManagement = () => {
                     sx={{ mt: 2 }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Prize"
-                    value={formData.prize}
-                    onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
-                    placeholder="e.g., $1000, Certificates, etc."
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2
-                      }
-                    }}
-                  />
-                </Grid>
+                {formData.category === 'hackathon' && (
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Prize"
+                      value={formData.prize}
+                      onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
+                      placeholder="e.g., $1000, Certificates, etc."
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2
+                        }
+                      }}
+                    />
+                  </Grid>
+                )}
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth

@@ -207,4 +207,24 @@ router.post('/set-user-type', auth, async (req, res) => {
   }
 });
 
+// Get user profile picture
+router.get('/profile-image/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId).select('profilePicture name');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Return the profile picture URL or default if not found
+    return res.json({ 
+      profilePicture: user.profilePicture || '',
+      name: user.name || 'User'
+    });
+  } catch (error) {
+    console.error('Error fetching profile image:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router; 

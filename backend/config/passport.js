@@ -34,6 +34,13 @@ passport.use(
           emails: profile.emails,
           photos: profile.photos
         }, null, 2));
+        
+        // Add explicit logging for profile picture
+        if (profile.photos && profile.photos.length > 0) {
+          console.log('Profile picture URL found:', profile.photos[0].value);
+        } else {
+          console.log('No profile picture found in Google profile');
+        }
 
         // Check if user already exists by Google ID
         let user = await User.findOne({ googleId: profile.id });

@@ -59,7 +59,6 @@ const Courses = () => {
   const [error, setError] = useState(null);
   const { token } = useAuth();
   const navigate = useNavigate();
-  const [expandedCards, setExpandedCards] = useState({});
   
   // Helper functions for theme-aware styling
   const getTextColor = (opacity) => darkMode 
@@ -100,6 +99,7 @@ const Courses = () => {
           'Content-Type': 'application/json'
         }
       });
+      
       setCourses(response.data);
       
       setLoading(false);
@@ -162,33 +162,13 @@ const Courses = () => {
     }
   };
 
-  const handleEnrollCourse = async (courseId) => {
-    if (!token) {
-      toast.error('Please log in to enroll in courses');
-      return;
+  const visitCourseLink = (courseLink) => {
+    if (courseLink) {
+      window.open(courseLink, '_blank');
+    } else {
+      // Removed console.error statement
+      // Could add a toast notification here instead if needed
     }
-    
-    try {
-      await axios.post(`${apiUrl}/courses/${courseId}/enroll`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Successfully enrolled in the course!');
-      // Optionally redirect to course page
-      navigate(`/courses/${courseId}`);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        toast.error('Authentication error. Please log in again.');
-      } else {
-        toast.error('Failed to enroll in course. Please try again.');
-      }
-    }
-  };
-
-  const handleExpandCard = (courseId) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [courseId]: !prev[courseId]
-    }));
   };
 
   const filteredCourses = courses.filter(course => {
@@ -223,6 +203,7 @@ const Courses = () => {
           sx={{ 
             fontWeight: 700, 
             mb: 2,
+            fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' },
             background: 'linear-gradient(45deg, #0088cc 30%, #00bfff 90%)',
             backgroundClip: 'text',
             textFillColor: 'transparent',
@@ -237,6 +218,7 @@ const Courses = () => {
             maxWidth: '800px', 
             mx: 'auto', 
             mb: 4,
+            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
             color: getTextColor(0.7)
           }}
         >
@@ -263,37 +245,40 @@ const Courses = () => {
                   <Search sx={{ color: getTextColor(0.5) }} />
                 </InputAdornment>
               ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setSearchTerm('')}
+                    size="small"
+                    sx={{ 
+                      bgcolor: '#0088cc', 
+                      color: 'white', 
+                      '&:hover': { bgcolor: '#006699' },
+                      mr: -0.5,
+                      width: 30,
+                      height: 30
+                    }}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>×</Box>
+                  </IconButton>
+                </InputAdornment>
+              ),
             }}
             sx={{
               '& .MuiOutlinedInput-root': {
-                bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                bgcolor: darkMode ? 'rgba(255,255,255,0.08)' : 'white',
                 borderRadius: 1,
+                border: '1px solid',
+                borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                  borderColor: '#0088cc',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#0088cc',
                 },
               },
             }}
           />
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <IconButton 
-              sx={{ 
-                bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
-                borderRadius: 1,
-                '&:hover': { bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
-              }}
-            >
-              <FilterList sx={{ color: getTextColor(0.7) }} />
-            </IconButton>
-            <IconButton 
-              sx={{ 
-                bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
-                borderRadius: 1,
-                '&:hover': { bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
-              }}
-            >
-              <Sort sx={{ color: getTextColor(0.7) }} />
-            </IconButton>
-          </Box>
         </Box>
         
         {/* Category Tabs */}
@@ -333,9 +318,9 @@ const Courses = () => {
                 <Card 
                   sx={{ 
                     height: '100%',
-                    bgcolor: darkMode ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                    bgcolor: darkMode ? 'rgba(255,255,255,0.08)' : '#ffffff',
                     backdropFilter: 'blur(10px)',
-                    border: darkMode ? '1px solid rgba(0, 0, 0, 0.7)' : '1px solid rgba(0, 0, 0, 0.3)',
+                    border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
                     borderRadius: '16px',
                     overflow: 'visible',
                     position: 'relative',
@@ -343,7 +328,7 @@ const Courses = () => {
                     '&:hover': {
                       transform: 'translateY(-8px)',
                       boxShadow: darkMode ? '0 20px 40px rgba(0,0,0,0.4)' : '0 20px 40px rgba(0,0,0,0.1)',
-                      border: '1px solid #000',
+                      border: darkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
                       '& .course-image': {
                         transform: 'scale(1.05)',
                       },
@@ -395,39 +380,14 @@ const Courses = () => {
                         background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)',
                       }}
                     />
-                    
-                    {/* Save Button */}
-                    <IconButton 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSaveCourse(course._id);
-                      }}
-                      sx={{ 
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        bgcolor: 'rgba(0,0,0,0.5)',
-                        backdropFilter: 'blur(5px)',
-                        '&:hover': { 
-                          bgcolor: 'rgba(0,0,0,0.7)',
-                          transform: 'scale(1.1)'
-                        },
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {savedCourses.includes(course._id) ? 
-                        <Bookmark sx={{ color: '#0088cc' }} /> : 
-                        <BookmarkBorder sx={{ color: 'white' }} />
-                      }
-                    </IconButton>
                   </Box>
 
                   <CardContent sx={{ p: 3 }}>
                     {/* Course Title and Instructor */}
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="h5" gutterBottom sx={{ 
-                        fontWeight: 600,
-                        fontSize: '1.25rem',
+                        fontWeight: 700,
+                        fontSize: { xs: '1.2rem', sm: '1.3rem', md: '1.5rem' },
                         lineHeight: 1.3,
                         mb: 1,
                         color: getTextColor(1)
@@ -437,15 +397,19 @@ const Courses = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Avatar 
                           sx={{ 
-                            width: 28, 
-                            height: 28,
+                            width: { xs: 28, sm: 32 }, 
+                            height: { xs: 28, sm: 32 },
                             bgcolor: '#0088cc',
-                            fontSize: '0.875rem'
+                            fontSize: { xs: '0.9rem', sm: '1rem' }
                           }}
                         >
                           {course.instructor.charAt(0)}
                         </Avatar>
-                        <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
+                        <Typography sx={{ 
+                          fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
+                          fontWeight: 500,
+                          color: getTextColor(0.85)
+                        }}>
                           {course.instructor}
                         </Typography>
                       </Box>
@@ -460,6 +424,8 @@ const Courses = () => {
                             label={topic}
                             size="small"
                             sx={{
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                              height: { xs: 24, sm: 28 },
                               bgcolor: darkMode ? 'rgba(0,136,204,0.1)' : 'rgba(0,136,204,0.05)',
                               color: '#0088cc',
                               border: '1px solid rgba(0,136,204,0.2)',
@@ -474,6 +440,8 @@ const Courses = () => {
                             label={`+${course.topics.length - 3}`}
                             size="small"
                             sx={{
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                              height: { xs: 24, sm: 28 },
                               bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
                               color: getTextColor(0.7),
                             }}
@@ -482,67 +450,45 @@ const Courses = () => {
                       </Stack>
                     </Box>
 
+                    {/* Course Description - Below tags, above duration */}
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: getTextColor(0.7),
+                        mb: 3,
+                        px: 1,
+                        lineHeight: 1.6,
+                        fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.9rem' }
+                      }}
+                    >
+                      {course.description}
+                    </Typography>
+
                     {/* Course Info */}
                     <Box sx={{ 
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      display: 'flex',
                       gap: 2,
-                      mb: 2,
+                      mb: 3,
                       p: 2,
-                      bgcolor: darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                      borderRadius: '12px'
+                      bgcolor: darkMode ? 'rgba(0,136,204,0.05)' : 'rgba(0,136,204,0.03)',
+                      border: '1px solid rgba(0,136,204,0.3)',
+                      borderRadius: '12px',
+                      justifyContent: 'center'
                     }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <AccessTime sx={{ fontSize: 20, color: '#0088cc' }} />
-                        <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
+                        <Typography variant="body2" sx={{ color: getTextColor(0.8), fontWeight: 500 }}>
                           {course.duration}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <People sx={{ fontSize: 20, color: '#0088cc' }} />
-                        <Typography variant="body2" sx={{ color: getTextColor(0.7) }}>
-                          {course.enrolled || 0} enrolled
                         </Typography>
                       </Box>
                     </Box>
 
-                    {/* More Details Button */}
-                    <Button
-                      onClick={() => handleExpandCard(course._id)}
-                      endIcon={expandedCards[course._id] ? <ExpandLess /> : <ExpandMore />}
-                      sx={{
-                        width: '100%',
-                        justifyContent: 'space-between',
-                        color: getTextColor(0.7),
-                        mb: 2,
-                        '&:hover': {
-                          bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-                        }
-                      }}
-                    >
-                      More Details
-                    </Button>
-
-                    {/* Expandable Description */}
-                    <Collapse in={expandedCards[course._id]}>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          color: getTextColor(0.6),
-                          mb: 2,
-                          px: 1
-                        }}
-                      >
-                        {course.description}
-                      </Typography>
-                    </Collapse>
-
-                    {/* Enroll Button */}
+                    {/* View Course Button */}
                     <Button 
                       variant="contained" 
                       fullWidth
                       endIcon={<ArrowForward />}
-                      onClick={() => handleEnrollCourse(course._id)}
+                      onClick={() => visitCourseLink(course.courseLink)}
                       sx={{ 
                         bgcolor: '#0088cc',
                         py: 1.5,
@@ -558,7 +504,7 @@ const Courses = () => {
                         transition: 'all 0.2s ease'
                       }}
                     >
-                      Enroll Now
+                      View Course
                     </Button>
                   </CardContent>
                 </Card>

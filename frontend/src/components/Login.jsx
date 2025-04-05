@@ -35,12 +35,9 @@ const Login = () => {
       apiUrl = `${baseUrl}/api`;
     }
     
-    console.log('GoogleLogin: Redirecting to', `${apiUrl}/auth/google`);
-    
     // Before redirecting, clear ALL user data from localStorage to prevent using old data
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    console.log('GoogleLogin: Cleared localStorage before redirecting to Google OAuth');
     
     // Redirect directly to Google OAuth
     window.location.href = `${apiUrl}/auth/google`;

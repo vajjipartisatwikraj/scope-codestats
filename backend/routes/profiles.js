@@ -1021,7 +1021,7 @@ router.put('/update-user/:userId', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      'name email phone department section graduationYear rollNumber mobileNumber skills interests about linkedinUrl profiles'
+      'name email phone department section graduationYear rollNumber mobileNumber skills interests about linkedinUrl profiles profilePicture'
     );
 
     if (!user) {
@@ -1045,6 +1045,7 @@ router.get('/me', auth, async (req, res) => {
       interests: user.interests || [],
       about: user.about || '',
       linkedinUrl: user.linkedinUrl || '',
+      profilePicture: user.profilePicture || '',
       profiles: {
         leetcode: { username: '', details: null },
         codeforces: { username: '', details: null },
@@ -1198,7 +1199,8 @@ router.put('/me', auth, async (req, res) => {
         interests: user.interests || [],
         about: user.about || '',
         linkedinUrl: user.linkedinUrl || '',
-        githubUrl: user.profiles?.github || ''
+        githubUrl: user.profiles?.github || '',
+        profilePicture: user.profilePicture || ''
       };
 
       res.json({

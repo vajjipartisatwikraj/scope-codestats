@@ -114,6 +114,7 @@ export const AuthProvider = ({ children }) => {
       const newUser = params.get('newUser') === 'true';
       const profileCompleted = params.get('profileCompleted') === 'true';
       const userType = params.get('userType') || 'user'; // Make sure we capture userType
+      const profilePicture = params.get('profilePicture') || ''; // Capture profile picture URL
       
       if (!token || !userId) {
         navigate('/login', { replace: true });
@@ -127,7 +128,8 @@ export const AuthProvider = ({ children }) => {
         name, 
         newUser,
         profileCompleted,
-        userType
+        userType,
+        profilePicture // Store profile picture URL
       };
       
       // Store auth state in localStorage and state
@@ -155,6 +157,7 @@ export const AuthProvider = ({ children }) => {
           ...userData,
           userType: fullUserData.userType,
           department: fullUserData.department,
+          profilePicture: fullUserData.profilePicture || profilePicture, // Prioritize backend data, fallback to URL param
           // Include any other fields you need
         };
         
