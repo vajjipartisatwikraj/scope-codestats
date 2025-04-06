@@ -266,7 +266,6 @@ const EditProfile = ({
       const existingGraduationYear = profileData.graduationYear;
       
       // Log the values for debugging
-      console.log(`Existing graduation year: ${existingGraduationYear}, Calculated: ${calculatedGraduationYear}`);
       
       const githubUsername = extractGithubUsername(profileData);
       
@@ -322,7 +321,6 @@ const EditProfile = ({
       // Calculate graduation year from roll number for new users
       // If rollNumber is like 23r21a05y9, graduation year should be 2027 (23+4=27)
       const calculatedGraduationYear = calculateGraduationYear(rollNumber);
-      console.log(`New user: Roll number ${rollNumber}, calculated graduation year: ${calculatedGraduationYear}`);
       
       setEditProfileData({
         name: auth.user.name || '',
@@ -1022,12 +1020,7 @@ const EditProfile = ({
       const calculatedGradYear = calculateGraduationYear(rollNumber);
       
       // Debug the graduation year values
-      console.log(`DEBUG GRADUATION YEAR:`);
-      console.log(`- Roll Number: ${rollNumber}`);
-      console.log(`- User entered graduationYear: ${editProfileData.graduationYear}`);
-      console.log(`- Calculated graduationYear: ${calculatedGradYear}`);
-      console.log(`- Final value being sent: ${editProfileData.graduationYear || calculatedGradYear}`);
-      
+     
       const profileDataToSubmit = {
         name: editProfileData.name || '',
         phone: editProfileData.phone || '',
@@ -1054,9 +1047,7 @@ const EditProfile = ({
           geeksforgeeks: editProfileData.gfgUsername || '',
           github: editProfileData.githubUrl || ''
         },
-        // Explicitly set graduationYear to ensure it's sent correctly
-        graduationYear: editProfileData.graduationYear || calculatedGradYear,
-        // Also include graduatingYear to handle any backend field name inconsistencies
+        // Include graduatingYear to handle any backend field name inconsistencies
         graduatingYear: editProfileData.graduationYear || calculatedGradYear,
       };
       

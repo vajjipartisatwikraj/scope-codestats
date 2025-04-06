@@ -225,7 +225,6 @@ const UserView = () => {
           setUserData(userData);
         }
         setLoading(false);
-        console.log(userData);
       } catch (err) {
         setLoading(false);
         setError('Failed to load user data. Please try again later.');
