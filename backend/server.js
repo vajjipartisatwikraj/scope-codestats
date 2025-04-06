@@ -49,7 +49,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173'], 
+  origin: ['https://codestats.zapto.org'], 
   credentials: true
 }));
 app.use(express.json());
