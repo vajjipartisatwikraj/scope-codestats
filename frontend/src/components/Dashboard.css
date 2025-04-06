@@ -1,0 +1,12 @@
+.css-m3hckz-MuiGrid-root>.MuiGrid-item {
+    padding-left: 24px;
+}
+
+@media (max-width: 768px) {
+    .css-m3hckz-MuiGrid-root>.MuiGrid-item{
+        padding: 0px !important;
+        padding-bottom: 30px !important;
+    }
+}
+
+
