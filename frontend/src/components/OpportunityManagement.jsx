@@ -62,6 +62,7 @@ const OpportunityManagement = () => {
     title: '',
     description: '',
     organizer: '',
+    organizerImageUrl: '',
     category: 'other',
     difficulty: 'intermediate',
     deadline: '',
@@ -72,7 +73,8 @@ const OpportunityManagement = () => {
     prize: '',
     eligibility: '',
     applicationLink: '',
-    status: 'upcoming'
+    status: 'upcoming',
+    image: ''
   });
 
   const categories = [
@@ -139,6 +141,7 @@ const OpportunityManagement = () => {
         title: opportunity.title,
         description: opportunity.description,
         organizer: opportunity.organizer || '',
+        organizerImageUrl: opportunity.organizerImageUrl || '',
         category: opportunity.category || 'other',
         difficulty: opportunity.difficulty || 'intermediate',
         deadline: opportunity.deadline?.split('T')[0] || '',
@@ -149,7 +152,8 @@ const OpportunityManagement = () => {
         prize: opportunity.prize || '',
         eligibility: opportunity.eligibility || '',
         applicationLink: opportunity.applicationLink || '',
-        status: opportunity.status || 'upcoming'
+        status: opportunity.status || 'upcoming',
+        image: opportunity.image || ''
       });
     } else {
       setEditingOpportunity(null);
@@ -157,6 +161,7 @@ const OpportunityManagement = () => {
         title: '',
         description: '',
         organizer: '',
+        organizerImageUrl: '',
         category: 'other',
         difficulty: 'intermediate',
         deadline: '',
@@ -167,7 +172,8 @@ const OpportunityManagement = () => {
         prize: '',
         eligibility: '',
         applicationLink: '',
-        status: 'upcoming'
+        status: 'upcoming',
+        image: ''
       });
     }
     setOpen(true);
@@ -176,6 +182,15 @@ const OpportunityManagement = () => {
   const handleClose = () => {
     setOpen(false);
     setEditingOpportunity(null);
+  };
+
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -187,6 +202,27 @@ const OpportunityManagement = () => {
     
     if (missingFields.length > 0) {
       toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Validate URLs
+    if (formData.link && !isValidUrl(formData.link)) {
+      toast.error('Please enter a valid URL for the opportunity link');
+      return;
+    }
+
+    if (formData.applicationLink && !isValidUrl(formData.applicationLink)) {
+      toast.error('Please enter a valid URL for the application link');
+      return;
+    }
+
+    if (formData.organizerImageUrl && !isValidUrl(formData.organizerImageUrl)) {
+      toast.error('Please enter a valid URL for the organizer image');
+      return;
+    }
+
+    if (formData.image && !isValidUrl(formData.image)) {
+      toast.error('Please enter a valid URL for the opportunity image');
       return;
     }
     
@@ -357,6 +393,15 @@ const OpportunityManagement = () => {
                   }
                 }}
               >
+                {opportunity.image && (
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={opportunity.image}
+                    alt={opportunity.title}
+                    sx={{ objectFit: "cover" }}
+                  />
+                )}
                 <CardContent sx={{ flexGrow: 1, p: 3 }}>
                   <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                     {opportunity.title}
@@ -428,16 +473,22 @@ const OpportunityManagement = () => {
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                     <Avatar 
+                      src={opportunity.organizerImageUrl}
                       sx={{ 
                         width: 24, 
                         height: 24, 
                         bgcolor: 'primary.main',
-                        fontSize: '0.875rem'
+                        fontSize: '0.875rem',
+                        color: 'white'
                       }}
                     >
-                      <OrganizerIcon sx={{ fontSize: 16 }} />
+                      {opportunity.organizer ? opportunity.organizer.charAt(0).toUpperCase() : <OrganizerIcon sx={{ fontSize: 16 }} />}
                     </Avatar>
-                    <Typography variant="body2" color="text.secondary" noWrap>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      noWrap
+                    >
                       {opportunity.organizer}
                     </Typography>
                   </Box>
@@ -565,6 +616,36 @@ const OpportunityManagement = () => {
                     value={formData.organizer}
                     onChange={(e) => setFormData({ ...formData, organizer: e.target.value })}
                     required
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Organizer Image URL"
+                    value={formData.organizerImageUrl}
+                    onChange={(e) => setFormData({ ...formData, organizerImageUrl: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                    helperText="URL to the organizer's logo or profile image. If empty, first letter will be shown."
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Opportunity Image URL"
+                    value={formData.image}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                    placeholder="https://example.com/opportunity-image.jpg"
+                    helperText="URL to the opportunity banner image"
                     sx={{ 
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2

@@ -14,7 +14,19 @@ const opportunitySchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  organizerProfileUrl: {
+    type: String,
+    default: ''
+  },
+  organizerImageUrl: {
+    type: String,
+    default: ''
+  },
   organizerLogo: {
+    type: String,
+    default: ''
+  },
+  image: {
     type: String,
     default: ''
   },

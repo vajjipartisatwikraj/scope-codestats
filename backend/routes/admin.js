@@ -124,7 +124,11 @@ router.get('/opportunities', [auth, adminAuth], async (req, res) => {
 
 router.post('/opportunities', [auth, adminAuth], async (req, res) => {
   try {
-    const { title, description, link, deadline, organizer, status, category, difficulty, registrationOpen, location, tags, prize, eligibility, applicationLink } = req.body;
+    const { 
+      title, description, link, deadline, organizer, status, category, 
+      difficulty, registrationOpen, location, tags, prize, eligibility, 
+      applicationLink, image, organizerProfileUrl, organizerImageUrl 
+    } = req.body;
     
     console.log('Received tags in create request:', tags);
     
@@ -154,7 +158,10 @@ router.post('/opportunities', [auth, adminAuth], async (req, res) => {
       prize,
       eligibility,
       applicationLink,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      image: image || '',
+      organizerProfileUrl: organizerProfileUrl || '',
+      organizerImageUrl: organizerImageUrl || ''
     });
     
     console.log('Creating opportunity with data:', opportunity);
@@ -168,7 +175,11 @@ router.post('/opportunities', [auth, adminAuth], async (req, res) => {
 
 router.put('/opportunities/:id', [auth, adminAuth], async (req, res) => {
   try {
-    const { title, description, link, deadline, organizer, status, category, difficulty, registrationOpen, location, tags, prize, eligibility, applicationLink } = req.body;
+    const { 
+      title, description, link, deadline, organizer, status, category, 
+      difficulty, registrationOpen, location, tags, prize, eligibility, 
+      applicationLink, image, organizerProfileUrl, organizerImageUrl 
+    } = req.body;
     
     console.log('Received tags in update request:', tags);
     
@@ -198,6 +209,9 @@ router.put('/opportunities/:id', [auth, adminAuth], async (req, res) => {
     if (tags) updateFields.tags = Array.isArray(tags) ? tags : []; // Ensure tags is an array
     if (prize) updateFields.prize = prize;
     if (eligibility) updateFields.eligibility = eligibility;
+    if (image) updateFields.image = image;
+    if (organizerProfileUrl !== undefined) updateFields.organizerProfileUrl = organizerProfileUrl;
+    if (organizerImageUrl !== undefined) updateFields.organizerImageUrl = organizerImageUrl;
 
     console.log('Update fields for opportunity:', updateFields);
 

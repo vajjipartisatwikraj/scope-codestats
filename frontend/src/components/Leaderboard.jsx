@@ -156,7 +156,7 @@ const Leaderboard = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [error, setError] = useState(null);
-  const [sortBy, setSortBy] = useState('problemsSolved');
+  const [sortBy, setSortBy] = useState('totalScore');
   const [sortOrder, setSortOrder] = useState('desc');
   const [department, setDepartment] = useState('ALL');
   const [year, setYear] = useState('ALL');
@@ -375,14 +375,20 @@ const Leaderboard = () => {
 
     // Get the correct sort field based on leaderboard type
     let actualSortField = sortBy;
-    if (leaderboardType === 'score' && sortBy === leaderboardConfigs.score.valueKey) {
+    // Make sure we're sorting by the correct field for the current leaderboard type
+    if (leaderboardType === 'score') {
       actualSortField = 'totalScore';
-    } else if (leaderboardType === 'problems' && sortBy === leaderboardConfigs.problems.valueKey) {
+    } else if (leaderboardType === 'problems') {
       actualSortField = 'problemsSolved';
-    } else if (leaderboardType === 'contests' && sortBy === leaderboardConfigs.contests.valueKey) {
+    } else if (leaderboardType === 'contests') {
       actualSortField = 'totalContestsParticipated';
-    } else if (leaderboardType === 'rating' && sortBy === leaderboardConfigs.rating.valueKey) {
+    } else if (leaderboardType === 'rating') {
       actualSortField = 'totalRating';
+    }
+    
+    // Only use sortBy for column clicks like names, dept, etc.
+    if (['name', 'department', 'section', 'rollNumber', 'graduatingYear'].includes(sortBy)) {
+      actualSortField = sortBy;
     }
 
     filtered.sort((a, b) => {
@@ -465,6 +471,13 @@ const Leaderboard = () => {
 
   const handleTabChange = (event, newValue) => {
     setLeaderboardType(newValue);
+    
+    // Update sortBy based on the leaderboard type
+    if (newValue === 'score') {
+      setSortBy('totalScore');
+    } else if (newValue === 'problems') {
+      setSortBy('problemsSolved');
+    }
   };
 
   const StatsCard = ({ title, value, icon: Icon, color }) => (
@@ -1117,9 +1130,21 @@ const Leaderboard = () => {
     </Box>
   );
 
-  // Handle leaderboard type change
+  // Add a proper leaderboard type change handler
   const handleLeaderboardTypeChange = (type) => {
     setLeaderboardType(type);
+    
+    // Update sortBy based on the new leaderboard type
+    if (type === 'score') {
+      setSortBy('totalScore');
+    } else if (type === 'problems') {
+      setSortBy('problemsSolved');
+    } else if (type === 'contests') {
+      setSortBy('totalContestsParticipated');
+    } else if (type === 'rating') {
+      setSortBy('totalRating');
+    }
+    
     setPage(1); // Reset to first page when changing leaderboard type
   };
 
@@ -1257,6 +1282,23 @@ const Leaderboard = () => {
       </Card>
     );
   };
+
+  // Add effect to ensure sortBy is synchronized with leaderboardType
+  useEffect(() => {
+    // Update sortBy if it doesn't match the current leaderboard type
+    const config = leaderboardConfigs[leaderboardType];
+    if (config && config.valueKey && sortBy !== config.valueKey) {
+      if (leaderboardType === 'score') {
+        setSortBy('totalScore');
+      } else if (leaderboardType === 'problems') {
+        setSortBy('problemsSolved');
+      } else if (leaderboardType === 'contests') {
+        setSortBy('totalContestsParticipated');
+      } else if (leaderboardType === 'rating') {
+        setSortBy('totalRating');
+      }
+    }
+  }, [leaderboardType]);
 
   if (loading) {
     return (

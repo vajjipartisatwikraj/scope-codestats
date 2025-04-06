@@ -331,21 +331,21 @@ const Opportunities = () => {
       </Box>
 
       {/* Opportunities Cards */}
-      <Grid container spacing={3}>
+      <Grid container spacing={2.5}>
         {filteredOpportunities.length > 0 ? (
           filteredOpportunities.map((opportunity, index) => (
             <Grid item xs={12} sm={6} md={4} key={opportunity._id}>
               <Grow in={true} timeout={(index + 1) * 200}>
                 <Card 
                   sx={{ 
-                    height: '100%',
+                    height: 'auto',
                     display: 'flex',
                     flexDirection: 'column',
                     bgcolor: getCardBgColor(),
                     backdropFilter: 'blur(10px)',
                     border: `1px solid ${getCardBorderColor()}`,
                     borderRadius: '16px',
-                    overflow: 'visible',
+                    overflow: 'hidden',
                     position: 'relative',
                     transition: 'all 0.3s ease',
                     '&:hover': {
@@ -390,16 +390,45 @@ const Opportunities = () => {
                     </Typography>
                   </Box>
 
+                  {/* Opportunity Image (if available) */}
+                  {opportunity.image && (
+                    <Box 
+                      sx={{
+                        height: 200,
+                        width: '100%',
+                        overflow: 'hidden',
+                        borderTopLeftRadius: '16px',
+                        borderTopRightRadius: '16px',
+                        position: 'relative'
+                      }}
+                    >
+                      <img 
+                        src={opportunity.image}
+                        alt={opportunity.title}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </Box>
+                  )}
+
                   {/* Organization Logo & Title */}
                   <Box sx={{ 
                     p: 3, 
+                    pb: 2.5,
                     display: 'flex',
                     flexDirection: 'column',
-                    height: '100%',
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                       <Avatar
                         alt={opportunity.organizer}
+                        src={opportunity.organizerImageUrl}
                         sx={{ 
                           width: { xs: 40, sm: 48 }, 
                           height: { xs: 40, sm: 48 },
@@ -431,7 +460,7 @@ const Opportunities = () => {
                     </Box>
 
                     {/* Tags */}
-                    <Stack direction="row" flexWrap="wrap" gap={0.8} sx={{ mb: 3 }}>
+                    <Stack direction="row" flexWrap="wrap" gap={0.8} sx={{ mb: 2 }}>
                       {opportunity.tags.map((tag, idx) => (
                         <Chip 
                           key={idx} 
@@ -456,7 +485,7 @@ const Opportunities = () => {
                       variant="body2" 
                       sx={{ 
                         color: getTextColor(0.6),
-                        mb: 3,
+                        mb: 2,
                         display: '-webkit-box',
                         WebkitLineClamp: 3,
                         WebkitBoxOrient: 'vertical',
@@ -473,7 +502,7 @@ const Opportunities = () => {
                       display: 'grid',
                       gridTemplateColumns: opportunity.category === 'hackathon' && opportunity.prize ? 'repeat(2, 1fr)' : '1fr',
                       gap: 2,
-                      mb: 3,
+                      mb: 2.5,
                       p: 2,
                       bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                       borderRadius: '12px'
@@ -493,9 +522,6 @@ const Opportunities = () => {
                         </Box>
                       )}
                     </Box>
-
-                    {/* Add a spacer to push the button to the bottom */}
-                    <Box sx={{ flexGrow: 1 }} />
 
                     {/* Apply Button */}
                     <Button 
