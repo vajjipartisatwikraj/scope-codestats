@@ -1021,12 +1021,28 @@ router.put('/update-user/:userId', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      'name email phone department section graduationYear rollNumber mobileNumber skills interests about linkedinUrl profiles profilePicture'
+      'name email phone department section graduatingYear rollNumber mobileNumber skills interests about linkedinUrl profiles profilePicture'
     );
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Calculate graduation year from roll number if not already set
+    const calculateGraduationYear = (rollNumber) => {
+      if (!rollNumber || rollNumber.length < 2) return new Date().getFullYear();
+      
+      // Extract first 2 digits from roll number (e.g., "23" from "23r21a05y9@mlrit.ac.in")
+      const yearCode = rollNumber.substring(0, 2);
+      if (!/^\d{2}$/.test(yearCode)) return new Date().getFullYear();
+      
+      // Calculate graduation year: 2000 + YY + 4
+      return 2000 + parseInt(yearCode, 10) + 4;
+    };
+
+    // Get graduationYear, preferring the stored value but calculating if needed
+    const graduationYear = user.graduatingYear || calculateGraduationYear(user.rollNumber);
+    console.log(`Profile /me endpoint: User ${user._id}, rollNumber: ${user.rollNumber}, graduatingYear from DB: ${user.graduatingYear}, calculated/returned: ${graduationYear}`);
 
     // Get all platform profiles
     const platformProfiles = await Profile.find({ userId: req.user.id });
@@ -1040,7 +1056,7 @@ router.get('/me', auth, async (req, res) => {
       department: user.department || '',
       section: user.section || '',
       rollNumber: user.rollNumber || '',
-      graduationYear: user.graduationYear || new Date().getFullYear(),
+      graduationYear: graduationYear, // Use the calculated or stored value, never default to current year
       skills: user.skills || [],
       interests: user.interests || [],
       about: user.about || '',
@@ -1134,6 +1150,18 @@ router.put('/me', auth, async (req, res) => {
       githubUrl
     } = req.body;
 
+    // Calculate graduation year from roll number if not provided
+    const calculateGraduationYear = (rollNumber) => {
+      if (!rollNumber || rollNumber.length < 2) return new Date().getFullYear();
+      
+      // Extract first 2 digits from roll number (e.g., "23" from "23r21a05y9@mlrit.ac.in")
+      const yearCode = rollNumber.substring(0, 2);
+      if (!/^\d{2}$/.test(yearCode)) return new Date().getFullYear();
+      
+      // Calculate graduation year: 2000 + YY + 4
+      return 2000 + parseInt(yearCode, 10) + 4;
+    };
+
     // Build update fields object
     const updateFields = {
       mobileNumber: phone,
@@ -1141,19 +1169,34 @@ router.put('/me', auth, async (req, res) => {
       skills: Array.isArray(skills) ? skills : [],
       interests: Array.isArray(interests) ? interests : [],
       about: about || '',
-      linkedinUrl: linkedinUrl || ''
+      linkedinUrl: linkedinUrl || '',
     };
     
     // Only add required fields if they're provided (to avoid potential validation issues)
     if (name) updateFields.name = name;
     if (department) updateFields.department = department;
     if (rollNumber) updateFields.rollNumber = rollNumber;
-    if (graduationYear) updateFields.graduatingYear = graduationYear;
-    
+
+    // Handle graduation year with better logging
+    if (graduationYear) {
+      console.log(`Received explicit graduationYear: ${graduationYear}, setting graduatingYear field`);
+      updateFields.graduatingYear = graduationYear;
+    } else {
+      // Calculate from roll number if not provided
+      if (rollNumber && rollNumber.length >= 2) {
+        const calculatedYear = calculateGraduationYear(rollNumber);
+        console.log(`No graduationYear provided. Calculated ${calculatedYear} from roll number: ${rollNumber}`);
+        updateFields.graduatingYear = calculatedYear;
+      }
+    }
+
     // Handle GitHub URL if provided
     if (githubUrl) {
       updateFields['profiles.github'] = githubUrl;
     }
+
+    // Log update fields for debugging
+    console.log('Updating user with fields:', JSON.stringify(updateFields, null, 2));
 
     try {
       // First get the user to validate the update
@@ -1194,7 +1237,7 @@ router.put('/me', auth, async (req, res) => {
         department: user.department || '',
         section: user.section || '',
         rollNumber: user.rollNumber || '',
-        graduationYear: user.graduatingYear || new Date().getFullYear(),
+        graduationYear: user.graduatingYear || calculateGraduationYear(user.rollNumber),
         skills: user.skills || [],
         interests: user.interests || [],
         about: user.about || '',
@@ -1202,6 +1245,14 @@ router.put('/me', auth, async (req, res) => {
         githubUrl: user.profiles?.github || '',
         profilePicture: user.profilePicture || ''
       };
+
+      // Log the saved and returned values with more detail
+      console.log(`Profile update completed for user ${user._id}:`);
+      console.log(`- Received graduation year: ${graduationYear}`);
+      console.log(`- Roll number: ${user.rollNumber}`);
+      console.log(`- Calculated graduation year: ${calculateGraduationYear(user.rollNumber)}`);
+      console.log(`- Saved graduatingYear in DB: ${user.graduatingYear}`);
+      console.log(`- Returned to client: ${profile.graduationYear}`);
 
       res.json({
         success: true,

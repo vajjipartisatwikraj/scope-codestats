@@ -55,7 +55,12 @@ import {
   Leaderboard as LeaderboardIcon,
   FileDownload as FileDownloadIcon,
   Sync as SyncIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Person as PersonIcon,
+  CheckCircle as CheckCircleIcon,
+  Group as GroupIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -1425,8 +1430,8 @@ const AdminDashboard = () => {
           <Tabs 
             value={activeTab} 
             onChange={handleTabChange} 
-            variant={isMobile ? "scrollable" : "standard"}
-            scrollButtons={isMobile ? "auto" : undefined}
+            variant={isMobile ? "scrollable" : "fullWidth"}
+            scrollButtons="auto"
             sx={{ 
               '& .MuiTabs-indicator': { 
                 height: 3,
@@ -1447,8 +1452,8 @@ const AdminDashboard = () => {
         </Box>
 
         {/* Tab Content */}
-        <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
-            <Grid container spacing={3}>
+        {activeTab === 0 && (
+          <Grid container spacing={3}>
             {/* Timeframe Filter */}
             <Grid item xs={12}>
               <Paper sx={{ p: 2, borderRadius: 2, mb: 2 }}>
@@ -1771,10 +1776,9 @@ const AdminDashboard = () => {
               </Paper>
             </Grid>
           </Grid>
-        </Box>
+        )}
         
-        {/* Department Analytics Tab */}
-        <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
+        {activeTab === 1 && (
           <Grid container spacing={3}>
             {/* Department Distribution */}
             <Grid item xs={12} md={6}>
@@ -1917,11 +1921,11 @@ const AdminDashboard = () => {
                 </Paper>
               </Grid>
           </Grid>
-        </Box>
+        )}
         
-        <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
+        {activeTab === 2 && (
           <ProfileSyncTab token={token} />
-        </Box>
+        )}
       </Container>
     </Box>
   );

@@ -64,7 +64,7 @@ router.get('/user', auth, async (req, res) => {
 });
 
 const validDepartments = ['AERO', 'CSC', 'CSD', 'CSE', 'CSM', 'CSIT', 'IT', 'ECE', 'MECH', 'EEE'];
-const validSections = ['None', 'A', 'B', 'C', 'D', 'E', 'F', 'G'];
+const validSections = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
 // Google OAuth Only Info
 router.get('/info', (req, res) => {

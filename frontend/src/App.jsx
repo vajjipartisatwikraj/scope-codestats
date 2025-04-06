@@ -20,6 +20,7 @@ import Profile from './components/Profile';
 import PrivateRoute from './components/PrivateRoute';
 import CourseManagement from './components/CourseManagement';
 import OpportunityManagement from './components/OpportunityManagement';
+import NotificationManagement from './components/NotificationManagement';
 import UserView from './components/UserView';
 import ConditionalDashboard from './components/ConditionalDashboard';
 import CodePad from './components/CodePad';
@@ -140,6 +141,11 @@ const MainContent = () => {
               <Route path="/admin/opportunities" element={
                 <PrivateRoute adminOnly={true}>
                   <OpportunityManagement />
+                </PrivateRoute>
+              } />
+              <Route path="/admin/notifications" element={
+                <PrivateRoute adminOnly={true}>
+                  <NotificationManagement />
                 </PrivateRoute>
               } />
               <Route path="/user-view/:username" element={

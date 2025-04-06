@@ -29,7 +29,8 @@ import {
   Link as LinkIcon,
   CheckCircleOutline as VerifiedIcon,
   Error as ErrorIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  GitHub as GitHubIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -123,7 +124,7 @@ const setupSteps = [
     label: 'Basic Information',
     description: 'Let\'s set up your basic profile information',
     fields: ['name', 'phone', 'department', 'rollNumber', 'section', 'graduationYear'],
-    requiredFields: ['name', 'department', 'rollNumber', 'section']
+    requiredFields: ['name', 'department', 'rollNumber', 'section', 'phone']
   },
   {
     label: 'Coding Platforms',
@@ -170,20 +171,37 @@ const EditProfile = ({
   const [errorDialog, setErrorDialog] = useState({ open: false, title: '', message: '' });
   const [platformLinkStatus, setPlatformLinkStatus] = useState({});
   const [platformLinking, setPlatformLinking] = useState({});
+
+  // Calculate graduation year from roll number using the first 2 digits
+  // For example, if roll number is "23r21a05y9@mlrit.ac.in":
+  // 1. Extract "23" from the beginning
+  // 2. Add 4 years (standard degree duration): 23 + 4 = 27
+  // 3. Create full year by prepending "20": 2027
+  const calculateGraduationYear = (rollNumber) => {
+    if (!rollNumber || rollNumber.length < 2) return new Date().getFullYear();
+    
+    // Extract first 2 digits from roll number (e.g., "23" from "23r21a05y9@mlrit.ac.in")
+    const yearCode = rollNumber.substring(0, 2);
+    if (!/^\d{2}$/.test(yearCode)) return new Date().getFullYear();
+    
+    // Calculate graduation year: 2000 + YY + 4
+    // E.g., for roll number starting with "23", graduation year is 2027 (2000+23+4)
+    return 2000 + parseInt(yearCode, 10) + 4; 
+  };
+  
   const [editProfileData, setEditProfileData] = useState({
     name: '',
-    phone: '',
+    rollNumber: '',
     department: '',
     section: '',
-    rollNumber: '',
-    graduationYear: new Date().getFullYear(),
+    phone: '',
     skills: [],
     interests: [],
     about: '',
+    graduationYear: '',
     linkedinUrl: '',
     githubUrl: '',
     imageUrl: '',
-    // Add platform usernames
     leetcodeUsername: '',
     codeforcesUsername: '',
     codechefUsername: '',
@@ -193,18 +211,6 @@ const EditProfile = ({
 
   // Initialize editProfileData when profileData changes
   useEffect(() => {
-    const calculateGraduationYear = (rollNumber) => {
-      if (!rollNumber || rollNumber.length < 2) return new Date().getFullYear();
-      
-      // Extract first 2 digits from roll number
-      const yearCode = rollNumber.substring(0, 2);
-      if (!/^\d{2}$/.test(yearCode)) return new Date().getFullYear();
-      
-      // Calculate admission year (20XX) and add 4 years
-      const admissionYear = 2000 + parseInt(yearCode, 10);
-      return admissionYear + 4; // Graduation is 4 years after admission
-    };
-
     // Extract GitHub username from profile data properly
     const extractGithubUsername = (profileData) => {
       if (profileData.githubUrl && typeof profileData.githubUrl === 'string') {
@@ -255,7 +261,13 @@ const EditProfile = ({
     };
 
     if (profileData && Object.keys(profileData).length > 0) {
-      const graduationYear = calculateGraduationYear(profileData.rollNumber);
+      // Calculate graduation year from roll number, but prioritize existing data
+      const calculatedGraduationYear = calculateGraduationYear(profileData.rollNumber);
+      const existingGraduationYear = profileData.graduationYear;
+      
+      // Log the values for debugging
+      console.log(`Existing graduation year: ${existingGraduationYear}, Calculated: ${calculatedGraduationYear}`);
+      
       const githubUsername = extractGithubUsername(profileData);
       
       // Add platform usernames with proper extraction
@@ -271,7 +283,8 @@ const EditProfile = ({
         department: profileData.department || '',
         section: profileData.section || '',
         rollNumber: profileData.rollNumber || '',
-        graduationYear: profileData.graduationYear || graduationYear,
+        // Prioritize existing graduationYear from database, fall back to calculated value
+        graduationYear: existingGraduationYear || calculatedGraduationYear,
         skills: profileData.skills || [],
         interests: profileData.interests || [],
         about: profileData.about || '',
@@ -305,7 +318,11 @@ const EditProfile = ({
     } else if (auth?.user) {
       // For new users, extract roll number from email and calculate graduation year
       const rollNumber = auth.user.rollNumber || auth.user.email?.split('@')[0].toUpperCase() || '';
-      const graduationYear = calculateGraduationYear(rollNumber);
+      
+      // Calculate graduation year from roll number for new users
+      // If rollNumber is like 23r21a05y9, graduation year should be 2027 (23+4=27)
+      const calculatedGraduationYear = calculateGraduationYear(rollNumber);
+      console.log(`New user: Roll number ${rollNumber}, calculated graduation year: ${calculatedGraduationYear}`);
       
       setEditProfileData({
         name: auth.user.name || '',
@@ -313,7 +330,7 @@ const EditProfile = ({
         department: auth.user.department || '', 
         section: auth.user.section || '',
         rollNumber: rollNumber,
-        graduationYear: graduationYear,
+        graduationYear: calculatedGraduationYear,
         skills: [],
         interests: [],
         about: '',
@@ -570,9 +587,9 @@ const EditProfile = ({
             helperText={fieldErrors.section || 'Select your class section (required)'}
             required
           >
-            {['None', 'A', 'B', 'C', 'D', 'E', 'F', 'G'].map((option) => (
+            {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((option) => (
               <MenuItem key={option} value={option}>
-                {option === 'None' ? 'None' : `Section ${option}`}
+                {`Section ${option}`}
               </MenuItem>
             ))}
           </TextField>
@@ -635,9 +652,9 @@ const EditProfile = ({
             fullWidth
             margin="normal"
             name="graduationYear"
-            disabled={!isEditMode}
+            disabled={true}
             type="number"
-            value={editProfileData?.graduationYear || new Date().getFullYear()}
+            value={editProfileData?.graduationYear || ''}
             onChange={handleProfileChange}
             error={!!fieldErrors.graduationYear}
             helperText={fieldErrors.graduationYear || ''}
@@ -655,7 +672,12 @@ const EditProfile = ({
             value={editProfileData?.phone || ''}
             onChange={handleProfileChange}
             error={!!fieldErrors.phone}
-            helperText={fieldErrors.phone || ''}
+            helperText={fieldErrors.phone || 'Enter a valid 10-digit mobile number'}
+            required
+            inputProps={{
+              pattern: "[0-9]{10}",
+              maxLength: 10
+            }}
           />
         );
       case 'linkedinUrl':
@@ -948,6 +970,16 @@ const EditProfile = ({
     try {
       setLoading(true);
       
+      // Validate phone number (must be 10 digits)
+      if (!editProfileData.phone || !/^\d{10}$/.test(editProfileData.phone)) {
+        setFieldErrors(prev => ({
+          ...prev,
+          phone: 'Please enter a valid 10-digit mobile number'
+        }));
+        setLoading(false);
+        return;
+      }
+      
       // Get all required fields from all steps
       const allRequiredFields = setupSteps.reduce((fields, step) => {
         return [...fields, ...(step.requiredFields || [])];
@@ -986,13 +1018,23 @@ const EditProfile = ({
       setFieldErrors({});
       
       // Create a clean data object with only the fields we need
+      const rollNumber = editProfileData.rollNumber || '';
+      const calculatedGradYear = calculateGraduationYear(rollNumber);
+      
+      // Debug the graduation year values
+      console.log(`DEBUG GRADUATION YEAR:`);
+      console.log(`- Roll Number: ${rollNumber}`);
+      console.log(`- User entered graduationYear: ${editProfileData.graduationYear}`);
+      console.log(`- Calculated graduationYear: ${calculatedGradYear}`);
+      console.log(`- Final value being sent: ${editProfileData.graduationYear || calculatedGradYear}`);
+      
       const profileDataToSubmit = {
         name: editProfileData.name || '',
         phone: editProfileData.phone || '',
         department: editProfileData.department || '',
         section: editProfileData.section || '',
-        rollNumber: editProfileData.rollNumber || '',
-        graduationYear: editProfileData.graduationYear || new Date().getFullYear(),
+        rollNumber: rollNumber,
+        graduationYear: editProfileData.graduationYear || calculatedGradYear,
         skills: editProfileData.skills || [],
         interests: editProfileData.interests || [],
         linkedinUrl: editProfileData.linkedinUrl || '',
@@ -1011,7 +1053,11 @@ const EditProfile = ({
           hackerrank: editProfileData.hackerrankUsername || '',
           geeksforgeeks: editProfileData.gfgUsername || '',
           github: editProfileData.githubUrl || ''
-        }
+        },
+        // Explicitly set graduationYear to ensure it's sent correctly
+        graduationYear: editProfileData.graduationYear || calculatedGradYear,
+        // Also include graduatingYear to handle any backend field name inconsistencies
+        graduatingYear: editProfileData.graduationYear || calculatedGradYear,
       };
       
       try {

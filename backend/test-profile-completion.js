@@ -65,7 +65,16 @@ const testProfileCompletion = async () => {
       department: testUser.department || 'CSE',
       section: 'A',
       rollNumber: testUser.rollNumber || '19BXXYYYY',
-      graduationYear: 2025,
+      graduationYear: (() => {
+        const rollNumber = testUser.rollNumber || '19BXXYYYY';
+        if (rollNumber.length >= 2) {
+          const yearCode = rollNumber.substring(0, 2);
+          if (/^\d{2}$/.test(yearCode)) {
+            return 2000 + parseInt(yearCode, 10) + 4;
+          }
+        }
+        return new Date().getFullYear() + 4;
+      })(),
       skills: ['JavaScript', 'React', 'Node.js'],
       interests: ['Web Development', 'AI/ML'],
       about: 'This is a test profile for debugging purposes.',

@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema({
   },
   section: {
     type: String,
-    enum: ['None', 'A', 'B', 'C', 'D', 'E', 'F', 'G']
+    enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
   },
   graduatingYear: {
     type: Number,

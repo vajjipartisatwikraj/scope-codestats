@@ -29,6 +29,7 @@ const coursesRoutes = require('./routes/courses');
 const opportunitiesRoutes = require('./routes/opportunities');
 const mongoose = require('mongoose');
 const adminRoutes = require('./routes/admin');
+const notificationsRoutes = require('./routes/notifications');
 const cron = require('node-cron');
 const Profile = require('./models/Profile');
 const User = require('./models/User');
@@ -49,7 +50,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://codestats.zapto.org'], 
+  origin: [ 'http://localhost:5173'], 
   credentials: true
 }));
 app.use(express.json());
@@ -316,6 +317,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/achievements', require('./routes/achievements'));
 app.use('/api/courses', coursesRoutes);
 app.use('/api/opportunities', opportunitiesRoutes);
+app.use('/api/notifications', notificationsRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/auth/google', googleAuthRoutes);
 

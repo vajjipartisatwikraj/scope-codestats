@@ -12,7 +12,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target:'https://codestats.zapto.org',
+        target:'https://localhost:5173',
         changeOrigin: true,
         secure: false
       }

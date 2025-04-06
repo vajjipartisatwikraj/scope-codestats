@@ -594,47 +594,57 @@ const Profile = () => {
               Social Links
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, ml: 2 }}>
-              {profileData.githubUrl && (
-                <IconButton 
-                  href={profileData.githubUrl} 
-                  target="_blank"
-                  size="large"
-                  sx={{ 
-                    color: '#24292e', // GitHub's color
-                    bgcolor: 'rgba(36, 41, 46, 0.1)',
-                    '&:hover': { 
-                      color: '#24292e',
-                      bgcolor: 'rgba(36, 41, 46, 0.2)'
-                    },
-                    p: 2,
-                    width: 56,
-                    height: 56
-                  }}
-                >
-                  <GitHub sx={{ fontSize: 28 }} />
-                </IconButton>
-              )}
-              {profileData.linkedinUrl && (
-                <IconButton 
-                  href={profileData.linkedinUrl} 
-                  target="_blank"
-                  size="large"
-                  sx={{ 
-                    color: '#0077b5', // LinkedIn's color
-                    bgcolor: 'rgba(0,119,181,0.1)',
-                    '&:hover': { 
-                      color: '#0077b5',
-                      bgcolor: 'rgba(0,119,181,0.2)'
-                    },
-                    p: 2,
-                    width: 56,
-                    height: 56
-                  }}
-                >
-                  <LinkedIn sx={{ fontSize: 28 }} />
-                </IconButton>
-              )}
-              {!profileData.githubUrl && !profileData.linkedinUrl && (
+              <IconButton 
+                href={profileData.linkedinUrl ? (profileData.linkedinUrl.includes('linkedin.com') ? profileData.linkedinUrl : `https://www.linkedin.com/in/${profileData.linkedinUrl}`) : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="large"
+                disabled={!profileData.linkedinUrl}
+                sx={{ 
+                  width: 60,
+                  height: 60,
+                  borderRadius: '50%',
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0,119,181,0.2)' : 'rgba(0,119,181,0.1)',
+                  color: '#0077b5',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': { 
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0,119,181,0.3)' : 'rgba(0,119,181,0.2)',
+                    transform: 'scale(1.1)'
+                  },
+                  '&.Mui-disabled': {
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
+                  }
+                }}
+              >
+                <LinkedIn sx={{ fontSize: 30 }} />
+              </IconButton>
+              <IconButton 
+                href={profileData.profiles?.github?.username ? (profileData.profiles.github.username.includes('github.com') ? profileData.profiles.github.username : `https://github.com/${profileData.profiles.github.username}`) : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="large"
+                disabled={!profileData.profiles?.github?.username}
+                sx={{ 
+                  width: 60,
+                  height: 60,
+                  borderRadius: '50%',
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(36,41,46,0.1)',
+                  color: theme.palette.mode === 'dark' ? '#ffffff' : '#24292e',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': { 
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(36,41,46,0.2)',
+                    transform: 'scale(1.1)'
+                  },
+                  '&.Mui-disabled': {
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
+                  }
+                }}
+              >
+                <GitHub sx={{ fontSize: 30 }} />
+              </IconButton>
+              {!profileData.linkedinUrl && !profileData.profiles?.github?.username && (
                 <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
                   No social links added yet
                 </Typography>

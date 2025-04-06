@@ -24,7 +24,7 @@ import { PieChart, Pie, Cell, Legend, Tooltip as RechartsTooltip, ResponsiveCont
 import axios from 'axios';
 import 'github-calendar/dist/github-calendar.css';
 import GitHubCalendar from 'github-calendar';
-import { OpenInNew } from '@mui/icons-material';
+import { OpenInNew, LinkedIn, GitHub } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiUrl } from '../config/apiConfig';
 import { getProfileImageUrl } from '../utils/profileUtils';
@@ -225,6 +225,7 @@ const UserView = () => {
           setUserData(userData);
         }
         setLoading(false);
+        console.log(userData);
       } catch (err) {
         setLoading(false);
         setError('Failed to load user data. Please try again later.');
@@ -541,13 +542,53 @@ const UserView = () => {
                         {userData.totalScore || 0}
                       </Typography>
                     </Box>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', fontWeight: 400 }}>
-                        Rank
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: '#0088cc', fontWeight: 600 }}>
-                        {userData.overallRank || 'N/A'}
-                      </Typography>
+                    
+                    <Box sx={{ 
+                      marginLeft: 'auto', 
+                      display: 'flex', 
+                      gap: 1,
+                      alignItems: 'center'
+                    }}>
+                      {userData.linkedinUrl && (
+                        <IconButton
+                          href={userData.linkedinUrl.includes('linkedin.com') ? userData.linkedinUrl : `https://www.linkedin.com/in/${userData.linkedinUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            backgroundColor: 'rgba(0,119,181,0.1)',
+                            color: '#0077b5',
+                            transition: 'all 0.2s ease-in-out',
+                            '&:hover': {
+                              backgroundColor: 'rgba(0,119,181,0.2)',
+                              transform: 'scale(1.1)'
+                            }
+                          }}
+                        >
+                          <LinkedIn sx={{ fontSize: 22 }} />
+                        </IconButton>
+                      )}
+                      {userData.codingProfiles?.github?.username && (
+                        <IconButton
+                          href={`https://github.com/${userData.codingProfiles.github.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(36,41,46,0.1)',
+                            color: darkMode ? '#ffffff' : '#24292e',
+                            transition: 'all 0.2s ease-in-out',
+                            '&:hover': {
+                              backgroundColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(36,41,46,0.2)',
+                              transform: 'scale(1.1)'
+                            }
+                          }}
+                        >
+                          <GitHub sx={{ fontSize: 22 }} />
+                        </IconButton>
+                      )}
                     </Box>
                   </Box>
                 </Box>
@@ -1180,7 +1221,7 @@ const UserView = () => {
                                   fontSize: { xs: '1.5rem', sm: '1.75rem' }
                                 }}
                               >
-                                {userData.codingProfiles?.github?.publicRepos || 0}
+                                {userData.githubStats?.publicRepos || 0}
                               </Typography>
                             </Paper>
                           </Grid>
@@ -1194,7 +1235,7 @@ const UserView = () => {
                               justifyContent: 'center',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
-                                Score
+                                Total Commits
                               </Typography>
                               <Typography 
                                 variant="h5" 
@@ -1204,7 +1245,7 @@ const UserView = () => {
                                   fontSize: { xs: '1.5rem', sm: '1.75rem' }
                                 }}
                               >
-                                {userData.codingProfiles?.github?.score || 0}
+                                {userData.githubStats?.totalCommits || 0}
                               </Typography>
                             </Paper>
                           </Grid>
@@ -1218,7 +1259,7 @@ const UserView = () => {
                               justifyContent: 'center',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
-                                Rating
+                                Stars
                               </Typography>
                               <Typography 
                                 variant="h5" 
@@ -1228,7 +1269,7 @@ const UserView = () => {
                                   fontSize: { xs: '1.5rem', sm: '1.75rem' }
                                 }}
                               >
-                                {userData.codingProfiles?.github?.rating || 0}
+                                {userData.githubStats?.starsReceived || 0}
                               </Typography>
                             </Paper>
                           </Grid>
@@ -1242,7 +1283,7 @@ const UserView = () => {
                               justifyContent: 'center',
                             }}>
                               <Typography variant="body1" color={getTextColor(0.7)} sx={{ mb: 1 }}>
-                                Rank
+                                Followers
                               </Typography>
                               <Typography 
                                 variant="h5" 
@@ -1253,7 +1294,7 @@ const UserView = () => {
                                   fontSize: { xs: '1.5rem', sm: '1.75rem' }
                                 }}
                               >
-                                {userData.codingProfiles?.github?.rank || 'Unrated'}
+                                {userData.githubStats?.followers || 0}
                               </Typography>
                             </Paper>
                           </Grid>
@@ -1277,21 +1318,7 @@ const UserView = () => {
                             }}>
                               Contribution Activity
                             </Typography>
-                            <Box sx={{ textAlign: 'right' }}>
-                              <Typography variant="body2" color={getTextColor(0.7)}>
-                                Total Contributions
-                              </Typography>
-                              <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                  color: '#0088cc', 
-                                  fontWeight: 600,
-                                  fontSize: { xs: '1.25rem', sm: '1.5rem' }
-                                }}
-                              >
-                                {userData.codingProfiles?.github?.totalContributions || 0}
-                              </Typography>
-                            </Box>
+                            
                           </Box>
                           <Box sx={{ 
                             '.calendar': {
