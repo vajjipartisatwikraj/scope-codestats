@@ -12,7 +12,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target:'https://codestats.zapto.org',
+        target:'https://scope.mlrit.ac.in',
         changeOrigin: true,
         secure: false
       }
