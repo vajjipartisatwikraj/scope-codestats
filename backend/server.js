@@ -49,7 +49,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://codestats.zapto.org'], 
+  origin: ['https://scope.mlrit.ac.in'], 
   credentials: true
 }));
 app.use(express.json());
