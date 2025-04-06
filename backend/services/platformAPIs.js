@@ -37,27 +37,25 @@ class PlatformAPI {
    * Calculate normalized score for LeetCode profiles
    * @param {number} totalSolved - Total problems solved
    * @param {number} ranking - User's global ranking
+   * @param {number} rating - User's contest rating
    * @param {Object} difficulty - Problems solved by difficulty
+   * @param {number} contestsParticipated - Number of contests participated
    * @returns {number} - Calculated score
    */
-  calculateLeetCodeScore(totalSolved, ranking, difficulty = {}, contestsParticipated = 0) {
-    // New formula: (LCPS*10 + (LCR-1300)^2/10 + LCNC*50)
-    // Where LCPS = Problems solved, LCR = Rating, LCNC = Number of contests participated
+  calculateLeetCodeScore(totalSolved, ranking, rating, difficulty = {}, contestsParticipated = 0) {
+    // Formula: (LCPS*10 + (LCR-1300)²/10 + LCNC*50)
+    // Where LCPS = Problems solved (PS), LCR = Rating (R), LCNC = Number of contests participated (NC)
     
-    // Use total solved problems
+    // Problems solved component
     const problemsScore = totalSolved * 10;
     
-    // For LeetCode, we often don't have a direct "rating" value, 
-    // so we'll use ranking if available (inverted since lower rank is better)
+    // Rating component - only considered if participated in at least 3 contests and rating > 1300
     let ratingScore = 0;
-    if (ranking > 0) {
-      // We don't have LeetCode rating directly, so we'll approximate based on ranking
-      // Assuming 3000 - ranking/100 as an approximation for rating
-      const approximatedRating = Math.max(1300, 3000 - ranking/100);
-      ratingScore = Math.pow(approximatedRating - 1300, 2) / 10;
+    if (contestsParticipated >= 3 && rating > 1300) {
+      ratingScore = Math.pow(rating - 1300, 2) / 10;
     }
     
-    // Contests score
+    // Contests participated component
     const contestsScore = contestsParticipated * 50;
     
     // Calculate total score
@@ -74,16 +72,16 @@ class PlatformAPI {
    * @returns {number} - Calculated score
    */
   calculateCodeforcesScore(rating, problemsSolved, contestsParticipated = 0) {
-    // New formula: (CFPS*2 + (CFR-800)^2/10 + CFNC*50)
+    // Formula: (CFPS*2 + (CFR-800)²/10 + CFNC*50)
     // Where CFPS = Problems solved, CFR = Rating, CFNC = Number of contests participated
     
     // Problems solved component
     const problemsScore = problemsSolved * 2;
     
-    // Rating component - only if the user has a rating
+    // Rating component - only considered if participated in at least 3 contests and rating > 700
     let ratingScore = 0;
-    if (rating > 0) {
-      ratingScore = Math.pow(Math.max(0, rating - 800), 2) / 10;
+    if (contestsParticipated >= 3 && rating > 700) {
+      ratingScore = Math.pow(rating - 800, 2) / 10;
     }
     
     // Contests participated component
@@ -104,16 +102,16 @@ class PlatformAPI {
    * @returns {number} - Calculated score
    */
   calculateCodeChefScore(rating, problemsSolved, globalRank, contestsParticipated = 0) {
-    // New formula: (CCPS*2 + (CCR-1200)^2/10 + CCNC*50)
+    // Formula: (CCPS*2 + (CCR-1200)²/10 + CCNC*50)
     // Where CCPS = Problems solved, CCR = Rating, CCNC = Number of contests participated
     
     // Problems solved component
     const problemsScore = problemsSolved * 2;
     
-    // Rating component - only if the user has a rating
+    // Rating component - only considered if participated in at least 3 contests and rating > 1200
     let ratingScore = 0;
-    if (rating > 0) {
-      ratingScore = Math.pow(Math.max(0, rating - 1200), 2) / 10;
+    if (contestsParticipated >= 3 && rating > 1200) {
+      ratingScore = Math.pow(rating - 1200, 2) / 10;
     }
     
     // Contests participated component
@@ -522,6 +520,7 @@ class PlatformAPI {
       const score = this.calculateLeetCodeScore(
         allSolved, 
         profile.ranking || 0, 
+        rating, 
         difficultyMap,
         contestsParticipated
       );
@@ -729,6 +728,7 @@ class PlatformAPI {
               minimalProfile.score = this.calculateLeetCodeScore(
                 minimalProfile.problemsSolved, 
                 minimalProfile.ranking, 
+                minimalProfile.rating,
                 difficultyMap,
                 minimalProfile.contestsParticipated
               );

@@ -58,7 +58,9 @@ import {
   Star,
   SportsScore,
   EmojiPeople,
-  Equalizer
+  Equalizer,
+  FilterList,
+  Refresh
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -345,28 +347,29 @@ const Leaderboard = () => {
     }
   };
 
+  // Update the applyFilters function to handle department, section, and year filters
   const applyFilters = () => {
     let filtered = [...users];
 
     // If search term exists, filter by name first
     if (searchTerm.trim() !== '') {
       filtered = filtered.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.rollNumber?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      // Return only the matching users without applying other filters
-      setFilteredUsers(filtered);
-      return;
     }
 
-    // Apply other filters only if no search term
+    // Apply department, section, and year filters
     if (department !== 'ALL') {
       filtered = filtered.filter(user => user.department === department);
     }
+    
     if (section !== 'All') {
       filtered = filtered.filter(user => user.section === section);
     }
-    if (year !== 'All') {
+    
+    if (year !== 'ALL') {
       filtered = filtered.filter(user => user.graduatingYear === parseInt(year));
     }
 
@@ -379,43 +382,56 @@ const Leaderboard = () => {
     } else if (leaderboardType === 'contests' && sortBy === leaderboardConfigs.contests.valueKey) {
       actualSortField = 'totalContestsParticipated';
     } else if (leaderboardType === 'rating' && sortBy === leaderboardConfigs.rating.valueKey) {
-      actualSortField = 'totalRating'; // Use totalRating instead of highestRating
+      actualSortField = 'totalRating';
     }
 
     filtered.sort((a, b) => {
-      const valueA = a[actualSortField] || 0;
-      const valueB = b[actualSortField] || 0;
-
-      if (sortOrder === 'desc') {
-        return valueB - valueA;
+      let valueA, valueB;
+      
+      // Handle text fields with string comparison
+      if (['name', 'department', 'section', 'rollNumber'].includes(actualSortField)) {
+        valueA = (a[actualSortField] || '').toString().toLowerCase();
+        valueB = (b[actualSortField] || '').toString().toLowerCase();
+        
+        return sortOrder === 'asc' 
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      } else {
+        // Numeric comparison for all other fields
+        valueA = a[actualSortField] || 0;
+        valueB = b[actualSortField] || 0;
+  
+        return sortOrder === 'desc' ? (valueB - valueA) : (valueA - valueB);
       }
-      return valueA - valueB;
     });
 
     setFilteredUsers(filtered);
   };
 
-  // Add effect to call applyFilters when searchTerm changes
+  // Add effect to call applyFilters whenever filters change
   useEffect(() => {
-    applyFilters();
-  }, [searchTerm]);
+    if (users.length > 0) {
+      applyFilters();
+    }
+  }, [searchTerm, department, section, year, sortBy, sortOrder, users]);
 
   const handleFilterChange = (event) => {
-    switch (event.target.name) {
+    const { name, value } = event.target;
+    switch (name) {
       case 'department':
-        setDepartment(event.target.value);
+        setDepartment(value);
         break;
       case 'section':
-        setSection(event.target.value);
+        setSection(value);
         break;
       case 'year':
-        setYear(event.target.value);
+        setYear(value);
         break;
       case 'sortBy':
-        setSortBy(event.target.value);
+        setSortBy(value);
         break;
       case 'sortOrder':
-        setSortOrder(event.target.value);
+        setSortOrder(value);
         break;
       default:
         break;
@@ -423,16 +439,27 @@ const Leaderboard = () => {
   };
 
   const handleSort = (field) => {
-    if (sortBy === field) {
+    // Special case for the "Year" column - we need to map to the actual field name
+    const actualField = field === 'year' ? 'graduatingYear' : field;
+    
+    if (sortBy === actualField) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(field);
-      setSortOrder('desc');
+      setSortBy(actualField);
+      // Default to descending for score/problems/etc, but ascending for names and other text fields
+      if (['name', 'department', 'section', 'rollNumber'].includes(actualField)) {
+        setSortOrder('asc');
+      } else {
+        setSortOrder('desc');
+      }
     }
   };
 
   const SortIcon = ({ field }) => {
-    if (sortBy !== field) return null;
+    // Special case for the "Year" column - we need to map to the actual field name
+    const actualField = field === 'year' ? 'graduatingYear' : field;
+    
+    if (sortBy !== actualField) return null;
     return sortOrder === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />;
   };
 
@@ -1374,67 +1401,315 @@ const Leaderboard = () => {
             },
           }}
         />
-        
-        {/* Filter Dropdowns - Always visible */}
-        <Box sx={{ 
+      </Box>
+
+      {/* Filters and Sorting UI */}
+      <Box sx={{ 
+        mt: 2,
+        mb: 3,
+        px: 2,
+        py: 2.5,
+        borderRadius: 2,
+        bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
+        border: `1px solid ${darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+        boxShadow: darkMode ? '0 2px 10px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.05)',
+        maxWidth: '1200px',
+        mx: 'auto'
+      }}>
+        <Box sx={{
           display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          alignItems: 'center'
+          alignItems: 'center',
+          mb: 2
         }}>
-          {/* Department Button */}
-          <Button
+          <FilterList sx={{ color: '#0088cc', mr: 1 }} />
+          <Typography variant="subtitle1" fontWeight={600} sx={{ color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }}>
+            Filters & Sorting
+          </Typography>
+          
+          <Box sx={{ flexGrow: 1 }} />
+          
+          <Button 
+            size="small"
             variant="outlined"
-            onClick={handleDepartmentClick}
-            endIcon={<ArrowDropDown />}
+            onClick={() => {
+              setDepartment('ALL');
+              setSection('All');
+              setYear('ALL');
+              setSearchTerm('');
+              setSortBy(leaderboardConfigs[leaderboardType].valueKey);
+              setSortOrder('desc');
+            }}
+            startIcon={<Refresh />}
             sx={{
-              borderColor: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.23)',
-              color: darkMode ? 'white' : 'black',
-              borderRadius: 1,
-              minWidth: 150,
-              justifyContent: 'space-between',
+              borderColor: '#0088cc',
+              color: '#0088cc',
               '&:hover': {
-                borderColor: '#0088cc',
-                bgcolor: 'rgba(0,136,204,0.1)',
+                borderColor: '#006699',
+                bgcolor: 'rgba(0,136,204,0.1)'
               },
+              textTransform: 'none'
             }}
           >
-            {department === 'ALL' ? 'All Departments' : department}
+            Reset Filters
           </Button>
-          <Menu
-            anchorEl={anchorElDepartment}
-            open={Boolean(anchorElDepartment)}
-            onClose={handleDepartmentClose}
-            PaperProps={{
-              sx: {
-                bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-                color: darkMode ? 'white' : 'black',
-                maxHeight: 300,
-                width: 200,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-              }
-            }}
-          >
-            {departments.map((dept) => (
-              <MenuItem 
-                key={dept} 
-                onClick={() => handleDepartmentSelect(dept)}
-                selected={department === dept}
+        </Box>
+        
+        <Grid container spacing={2}>
+          {/* Department Filter */}
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl 
+              fullWidth
+              size="small"
+              variant="outlined"
+            >
+              <InputLabel 
+                id="department-filter-label"
+                sx={{ 
+                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+                }}
+              >
+                Department
+              </InputLabel>
+              <Select
+                labelId="department-filter-label"
+                id="department-filter"
+                name="department"
+                value={department}
+                label="Department"
+                onChange={handleFilterChange}
                 sx={{
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(0,136,204,0.2)',
+                  color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
                   },
-                  '&:hover': {
-                    bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0088cc'
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
+                    }
                   }
                 }}
               >
-                {dept === 'ALL' ? 'All Departments' : dept}
-              </MenuItem>
-            ))}
-          </Menu>
+                <MenuItem value="ALL">All Departments</MenuItem>
+                {departments.filter(d => d !== 'ALL').map((dept) => (
+                  <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          {/* Academic Year Filter */}
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl 
+              fullWidth
+              size="small"
+              variant="outlined"
+            >
+              <InputLabel 
+                id="year-filter-label"
+                sx={{ 
+                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+                }}
+              >
+                Graduation Year
+              </InputLabel>
+              <Select
+                labelId="year-filter-label"
+                id="year-filter"
+                name="year"
+                value={year}
+                label="Graduation Year"
+                onChange={handleFilterChange}
+                sx={{
+                  color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0088cc'
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="ALL">All Years</MenuItem>
+                {[2024, 2025, 2026, 2027].map((yr) => (
+                  <MenuItem key={yr} value={yr}>{yr}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          {/* Section Filter */}
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl 
+              fullWidth
+              size="small"
+              variant="outlined"
+            >
+              <InputLabel 
+                id="section-filter-label"
+                sx={{ 
+                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+                }}
+              >
+                Section
+              </InputLabel>
+              <Select
+                labelId="section-filter-label"
+                id="section-filter"
+                name="section"
+                value={section}
+                label="Section"
+                onChange={handleFilterChange}
+                sx={{
+                  color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0088cc'
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="All">All Sections</MenuItem>
+                {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((sect) => (
+                  <MenuItem key={sect} value={sect}>Section {sect}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          {/* Sort Order */}
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl 
+              fullWidth
+              size="small"
+              variant="outlined"
+            >
+              <InputLabel 
+                id="sort-order-label"
+                sx={{ 
+                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
+                }}
+              >
+                Sort Order
+              </InputLabel>
+              <Select
+                labelId="sort-order-label"
+                id="sort-order"
+                name="sortOrder"
+                value={sortOrder}
+                label="Sort Order"
+                onChange={handleFilterChange}
+                sx={{
+                  color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0088cc'
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="desc">Highest First</MenuItem>
+                <MenuItem value="asc">Lowest First</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+        
+        {/* Active Filters Display */}
+        {(department !== 'ALL' || section !== 'All' || year !== 'ALL' || searchTerm.trim() !== '') && (
+          <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', mr: 1 }}>
+              Active Filters:
+            </Typography>
+            
+            {department !== 'ALL' && (
+              <Chip 
+                size="small" 
+                label={`Department: ${department}`} 
+                onDelete={() => setDepartment('ALL')}
+                sx={{ bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : '#0088cc20', color: '#0088cc' }}
+              />
+            )}
+            
+            {section !== 'All' && (
+              <Chip 
+                size="small" 
+                label={`Section: ${section}`} 
+                onDelete={() => setSection('All')}
+                sx={{ bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : '#0088cc20', color: '#0088cc' }}
+              />
+            )}
+            
+            {year !== 'ALL' && (
+              <Chip 
+                size="small" 
+                label={`Year: ${year}`} 
+                onDelete={() => setYear('ALL')}
+                sx={{ bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : '#0088cc20', color: '#0088cc' }}
+              />
+            )}
+            
+            {searchTerm.trim() !== '' && (
+              <Chip 
+                size="small" 
+                label={`Search: "${searchTerm}"`} 
+                onDelete={() => setSearchTerm('')}
+                sx={{ bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : '#0088cc20', color: '#0088cc' }}
+              />
+            )}
+          </Box>
+        )}
+        
+        {/* Results count */}
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}>
+            Showing {filteredUsers.length} of {users.length} users
+          </Typography>
+          
+          {filteredUsers.length === 0 && users.length > 0 && (
+            <Typography variant="body2" sx={{ color: 'warning.main' }}>
+              No users match the current filters
+            </Typography>
+          )}
         </Box>
       </Box>
 

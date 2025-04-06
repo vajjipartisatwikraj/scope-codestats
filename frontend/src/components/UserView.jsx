@@ -1469,14 +1469,13 @@ const UserView = () => {
                     >
                       <Box 
                         component="img"
-                        src={userData.profilePicture}
-                        alt={userData.name}
+                        src={formatImageUrl(achievement.imageUrl)}
+                        alt={achievement.title}
                         style={{
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover',
                           display: 'block',
-                          borderRadius: '50%',
                         }}
                         onError={(e) => {
                           e.target.onerror = null; 

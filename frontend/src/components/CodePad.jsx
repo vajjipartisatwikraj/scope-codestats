@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Container, 
@@ -122,9 +122,24 @@ const CodePad = () => {
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [outputStatus, setOutputStatus] = useState('idle'); // idle, success, error, warning
+  const editorRef = useRef(null);
   
   // Get theme-aware language icons
   const languageIcons = LanguageIcons(darkMode);
+  
+  // Function to handle editor mounting
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    
+    // Add custom error handling
+    window.addEventListener('error', (e) => {
+      if (e.message.includes('Canceled')) {
+        // Prevent the error from propagating
+        e.preventDefault();
+        console.log('Handled Monaco editor cancellation');
+      }
+    });
+  };
   
   // Update default code when language changes
   useEffect(() => {
@@ -132,6 +147,18 @@ const CodePad = () => {
     setOutput('');
     setOutputStatus('idle');
   }, [language]);
+
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up Monaco editor instance when component unmounts
+      if (editorRef.current) {
+        // The actual editor instance might have methods for disposal
+        // though the React wrapper might handle this automatically
+        editorRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle code execution
   const executeCode = async () => {
@@ -354,11 +381,20 @@ const CodePad = () => {
               value={code}
               onChange={setCode}
               theme={darkMode ? 'vs-dark' : 'light'}
+              onMount={handleEditorDidMount}
               options={{
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 fontSize: 14,
-                automaticLayout: true
+                automaticLayout: true,
+                // Adding more stability options
+                overviewRulerBorder: false,
+                renderLineHighlight: 'all',
+                scrollbar: {
+                  alwaysConsumeMouseWheel: false
+                },
+                // Disable the keyboard icon/button
+                accessibilitySupport: 'off'
               }}
             />
           </Paper>
@@ -386,7 +422,7 @@ const CodePad = () => {
                   display: { xs: 'none', sm: 'block' }  // Hide this explanatory text on mobile
                 }}
               >
-                dinesh bhaaai
+                
               </Typography>
             </Tooltip>
           </Box>

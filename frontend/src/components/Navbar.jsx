@@ -334,7 +334,7 @@ const Navbar = () => {
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                 <Avatar 
                   alt={user?.name || 'User'} 
-                  src={user?.profilePicture || '/static/images/avatar.jpg'} 
+                  src={user?.profilePicture} 
                   sx={{ 
                     width: 40, 
                     height: 40,
