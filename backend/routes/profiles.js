@@ -1147,7 +1147,8 @@ router.put('/me', auth, async (req, res) => {
       interests,
       about,
       linkedinUrl,
-      githubUrl
+      githubUrl,
+      profiles
     } = req.body;
 
     // Calculate graduation year from roll number if not provided
@@ -1194,6 +1195,16 @@ router.put('/me', auth, async (req, res) => {
     if (githubUrl) {
       updateFields['profiles.github'] = githubUrl;
     }
+    
+    // Handle platform profiles if provided
+    if (profiles) {
+      if (profiles.leetcode) updateFields['profiles.leetcode'] = profiles.leetcode;
+      if (profiles.codeforces) updateFields['profiles.codeforces'] = profiles.codeforces;
+      if (profiles.codechef) updateFields['profiles.codechef'] = profiles.codechef;
+      if (profiles.hackerrank) updateFields['profiles.hackerrank'] = profiles.hackerrank;
+      if (profiles.geeksforgeeks) updateFields['profiles.geeksforgeeks'] = profiles.geeksforgeeks;
+      if (profiles.github) updateFields['profiles.github'] = profiles.github;
+    }
 
     // Log update fields for debugging
     console.log('Updating user with fields:', JSON.stringify(updateFields, null, 2));
@@ -1228,6 +1239,52 @@ router.put('/me', auth, async (req, res) => {
         { new: true, runValidators: true }
       ).select('-password');
       
+      // Create/update platform profiles in the profiles collection
+      if (profiles || githubUrl) {
+        const platformsToUpdate = [
+          { key: 'geeksforgeeks', username: profiles?.geeksforgeeks || user.profiles?.geeksforgeeks || '' },
+          { key: 'codechef', username: profiles?.codechef || user.profiles?.codechef || '' },
+          { key: 'codeforces', username: profiles?.codeforces || user.profiles?.codeforces || '' },
+          { key: 'leetcode', username: profiles?.leetcode || user.profiles?.leetcode || '' },
+          { key: 'hackerrank', username: profiles?.hackerrank || user.profiles?.hackerrank || '' },
+          { key: 'github', username: profiles?.github || githubUrl || user.profiles?.github || '' }
+        ];
+        
+        // Process each platform that has a username
+        for (const platform of platformsToUpdate) {
+          if (platform.username && platform.username.trim() !== '') {
+            try {
+              // Check if profile already exists
+              let profile = await Profile.findOne({ 
+                userId: user._id, 
+                platform: platform.key 
+              });
+              
+              if (profile) {
+                // Update existing profile
+                profile.username = platform.username.trim();
+                await profile.save();
+                console.log(`Updated ${platform.key} profile for user ${user._id}`);
+              } else {
+                // Create new profile with minimal fields
+                profile = new Profile({
+                  userId: user._id,
+                  platform: platform.key,
+                  username: platform.username.trim(),
+                  lastUpdateStatus: 'pending',
+                  lastUpdated: new Date()
+                });
+                await profile.save();
+                console.log(`Created new ${platform.key} profile for user ${user._id}`);
+              }
+            } catch (profileError) {
+              console.error(`Error creating/updating ${platform.key} profile:`, profileError);
+              // Continue with other platforms even if one fails
+            }
+          }
+        }
+      }
+      
       // Format the response
       const profile = {
         user: user._id,
@@ -1243,7 +1300,9 @@ router.put('/me', auth, async (req, res) => {
         about: user.about || '',
         linkedinUrl: user.linkedinUrl || '',
         githubUrl: user.profiles?.github || '',
-        profilePicture: user.profilePicture || ''
+        profilePicture: user.profilePicture || '',
+        // Add profiles to the response
+        profiles: user.profiles || {}
       };
 
       // Log the saved and returned values with more detail
