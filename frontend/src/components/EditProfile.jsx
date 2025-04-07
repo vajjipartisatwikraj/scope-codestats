@@ -650,7 +650,7 @@ const EditProfile = ({
             fullWidth
             margin="normal"
             name="graduationYear"
-            disabled={true}
+            disabled={!isEditMode}
             type="number"
             value={editProfileData?.graduationYear || ''}
             onChange={handleProfileChange}
