@@ -130,23 +130,15 @@ class PlatformAPI {
    * @param {number} instituteRank - User's institute ranking
    * @returns {number} - Calculated score
    */
-  calculateGeeksforGeeksScore(codingScore, problemsSolved, instituteRank = 0) {
+  calculateGeeksforGeeksScore(codingScore, problemsSolved) {
     // Base score from coding score (max 3000 points)
     // GeeksforGeeks coding score is typically between 0-1000
-    const baseScore = Math.min(3000, codingScore * 3);
-    
+    const baseScore = codingScore;
     // Problems solved score (max 5000 points)
     // Each problem is worth more points initially, but with diminishing returns
-    const problemScore = Math.min(5000, problemsSolved * 50 * Math.exp(-problemsSolved / 100));
-    
-    // Institute rank bonus (max 2000 points)
-    // Better ranks get exponentially more points
-    const rankBonus = instituteRank > 0 
-      ? Math.min(2000, 2000 * Math.exp(-instituteRank / 1000))
-      : 0;
-    
+    const problemScore = problemsSolved * 10;
     // Total score (max 10000 points)
-    return Math.round(baseScore + problemScore + rankBonus);
+    return Math.round(baseScore + problemScore);
   }
 
   /**
@@ -156,17 +148,13 @@ class PlatformAPI {
    * @param {number} followers - Number of followers
    * @returns {number} - Calculated score
    */
-  calculateGitHubScore(stars, commits, followers) {
+  calculateGitHubScore(stars,contributions,followers) {
     // Stars have high weight as they indicate project quality
     const starsScore = stars * 10;
-    
-    // Commits show consistent contribution
-    const commitsScore = commits * 5;
-    
-    // Followers indicate community impact
+    const contri=contributions*10;
     const followersScore = followers * 2;
     
-    return Math.round(starsScore + commitsScore + followersScore);
+    return Math.round(starsScore + contri+ followersScore);
   }
 
   /**
@@ -175,13 +163,13 @@ class PlatformAPI {
    * @param {number} starsCount - Total stars earned across all badges
    * @returns {number} - Calculated score
    */
-  calculateHackerRankScore(totalSolved, starsCount = 0) {
+  calculateHackerRankScore(totalSolved, starsCount) {
     // Base score from problems solved (max 5000 points)
-    const problemsScore = Math.min(totalSolved * 50, 5000);
+    const problemsScore = totalSolved * 10;
     
     // Bonus from stars earned across all badges (max 5000 points)
     // Each star is worth 100 points
-    const starsScore = Math.min(starsCount * 100, 5000);
+    const starsScore = starsCount * 100;
     
     // Total score (max 10000 points)
     return Math.round(problemsScore + starsScore);
@@ -1357,7 +1345,7 @@ class PlatformAPI {
       });
       
       // Calculate total score using our scoring algorithm
-      const score = this.calculateGeeksforGeeksScore(info.codingScore || 0, problemsSolved, info.instituteRank || 0);
+      const score = this.calculateGeeksforGeeksScore(info.codingScore, problemsSolved);
 
       // Determine rank based on score
       const rank = this.getGeeksforGeeksRank(score);
@@ -1421,7 +1409,7 @@ class PlatformAPI {
       console.log(`Fetching GitHub profile for user: ${username}`);
       
       // Check if we have a GitHub token configured
-      if (!GITHUB_ACCESS_TOKEN || GITHUB_ACCESS_TOKEN === 'your_github_token_here') {
+      if (!GITHUB_ACCESS_TOKEN) {
         console.warn('GitHub API token not configured. API calls will be limited to 60 requests/hour.');
       } else {
         console.log('Using authenticated GitHub API request');
@@ -1433,7 +1421,7 @@ class PlatformAPI {
       }
       
       // Use authenticated API call for user data
-      const authHeader = GITHUB_ACCESS_TOKEN && GITHUB_ACCESS_TOKEN !== 'your_github_token_here' 
+      const authHeader = GITHUB_ACCESS_TOKEN
         ? { 'Authorization': `token ${GITHUB_ACCESS_TOKEN}` } 
         : {};
         
@@ -1517,7 +1505,7 @@ class PlatformAPI {
             // Extract contributions
             if (graphqlData.contributionsCollection && 
                 graphqlData.contributionsCollection.contributionCalendar) {
-              contributions = graphqlData.contributionsCollection.contributionCalendar.totalContributions || 0;
+              contributions = graphqlData.contributionsCollection.contributionCalendar.totalContributions;
               console.log(`GraphQL API: Found ${contributions} contributions for ${username}`);
             }
             
@@ -1549,7 +1537,7 @@ class PlatformAPI {
       
       // Calculate score using our scoring algorithm
       const score = this.calculateGitHubScore(
-        totalStars || userData.public_repos || 0,
+        totalStars,
         contributions,
         followersCount
       );
