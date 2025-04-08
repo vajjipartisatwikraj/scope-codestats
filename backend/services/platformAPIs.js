@@ -106,7 +106,7 @@ class PlatformAPI {
     // Where CCPS = Problems solved, CCR = Rating, CCNC = Number of contests participated
     
     // Problems solved component
-    const problemsScore = problemsSolved * 2;
+    const problemsScore = problemsSolved*0.5;
     
     // Rating component - only considered if participated in at least 3 contests and rating > 1200
     let ratingScore = 0;
@@ -125,66 +125,38 @@ class PlatformAPI {
 
   /**
    * Calculate normalized score for GeeksforGeeks profiles
-   * @param {number} codingScore - User's coding score
-   * @param {number} problemsSolved - Number of problems solved
-   * @param {number} instituteRank - User's institute ranking
+   * @param {Object} data - GeeksforGeeks profile data
    * @returns {number} - Calculated score
    */
-  calculateGeeksforGeeksScore(codingScore, problemsSolved, instituteRank = 0) {
-    // Base score from coding score (max 3000 points)
-    // GeeksforGeeks coding score is typically between 0-1000
-    const baseScore = Math.min(3000, codingScore * 3);
-    
-    // Problems solved score (max 5000 points)
-    // Each problem is worth more points initially, but with diminishing returns
-    const problemScore = Math.min(5000, problemsSolved * 50 * Math.exp(-problemsSolved / 100));
-    
-    // Institute rank bonus (max 2000 points)
-    // Better ranks get exponentially more points
-    const rankBonus = instituteRank > 0 
-      ? Math.min(2000, 2000 * Math.exp(-instituteRank / 1000))
-      : 0;
-    
-    // Total score (max 10000 points)
-    return Math.round(baseScore + problemScore + rankBonus);
+  calculateGeeksforGeeksScore(data) {
+    // Use codingScore directly from the API response
+    return data.codingScore || 0;
   }
 
   /**
    * Calculate normalized score for GitHub profiles
-   * @param {number} stars - Total repository stars
-   * @param {number} commits - Total commits
-   * @param {number} followers - Number of followers
+   * @param {Object} data - GitHub profile data
    * @returns {number} - Calculated score
    */
-  calculateGitHubScore(stars, commits, followers) {
-    // Stars have high weight as they indicate project quality
-    const starsScore = stars * 10;
+  calculateGitHubScore(data) {
+    // Points for repositories (10 points each)
+    const repoScore = (data.publicRepos || data.public_repos || 0) * 10;
     
-    // Commits show consistent contribution
-    const commitsScore = commits * 5;
+    // Points for stars received (5 points each)
+    const starsScore = (data.starsReceived || 0) * 5;
     
-    // Followers indicate community impact
-    const followersScore = followers * 2;
-    
-    return Math.round(starsScore + commitsScore + followersScore);
+    return Math.round(repoScore + starsScore);
   }
 
   /**
    * Calculate normalized score for HackerRank profiles
-   * @param {number} totalSolved - Total problems solved across all categories
-   * @param {number} starsCount - Total stars earned across all badges
+   * @param {Object} data - HackerRank profile data
    * @returns {number} - Calculated score
    */
-  calculateHackerRankScore(totalSolved, starsCount = 0) {
-    // Base score from problems solved (max 5000 points)
-    const problemsScore = Math.min(totalSolved * 50, 5000);
-    
-    // Bonus from stars earned across all badges (max 5000 points)
-    // Each star is worth 100 points
-    const starsScore = Math.min(starsCount * 100, 5000);
-    
-    // Total score (max 10000 points)
-    return Math.round(problemsScore + starsScore);
+  calculateHackerRankScore(data) {
+    // 7 points for each problem solved
+    const problemsSolved = data.totalSolved || data.problemsSolved || 0;
+    return problemsSolved * 7;
   }
 
   /**
@@ -1307,40 +1279,32 @@ class PlatformAPI {
       console.log(`Making request to GFG API: ${apiUrl}`);
       
       const response = await this.axiosInstance.get(apiUrl, {
-        // Accept any status code to handle ourselves
         validateStatus: function (status) {
           return status >= 200 && status < 500;
         },
-        timeout: 20000 // Increase timeout for sometimes slow third-party API
+        timeout: 20000
       });
       
-      // Check if the response indicates the user doesn't exist
-      // This is the correct way to detect a non-existent user according to the API format
       if (response.data && response.data.error === "Profile Not Found") {
         throw new Error(`User '${username}' not found on GeeksforGeeks. Please check the spelling and try again.`);
       }
       
-      // Additional check for empty responses
       if (!response.data || response.status !== 200) {
         throw new Error(`GeeksforGeeks API returned an invalid response for user '${username}'. Please try again later.`);
       }
       
-      // Check if we have the required info object
       if (!response.data.info) {
         throw new Error(`GeeksforGeeks user '${username}' profile data could not be retrieved. The profile may be private or not yet complete.`);
       }
       
-      // Extract user info and solved stats from API response
       const { info, solvedStats = {} } = response.data;
       
-      // Calculate total problems by difficulty levels - handle possible undefined values
       const easyProblemsSolved = solvedStats?.easy?.count || 0;
       const mediumProblemsSolved = solvedStats?.medium?.count || 0;
       const hardProblemsSolved = solvedStats?.hard?.count || 0;
       const basicProblemsSolved = solvedStats?.basic?.count || 0;
       const schoolProblemsSolved = solvedStats?.school?.count || 0;
       
-      // Calculate total problems solved
       const totalByCategories = easyProblemsSolved + mediumProblemsSolved + hardProblemsSolved + basicProblemsSolved + schoolProblemsSolved;
       const problemsSolved = info.totalProblemsSolved || totalByCategories || 0;
       
@@ -1357,7 +1321,7 @@ class PlatformAPI {
       });
       
       // Calculate total score using our scoring algorithm
-      const score = this.calculateGeeksforGeeksScore(info.codingScore || 0, problemsSolved, info.instituteRank || 0);
+      const score = this.calculateGeeksforGeeksScore(info);
 
       // Determine rank based on score
       const rank = this.getGeeksforGeeksRank(score);
@@ -1374,8 +1338,8 @@ class PlatformAPI {
         hardProblemsSolved,
         basicProblemsSolved,
         schoolProblemsSolved,
-        contestsParticipated: 0, // Not available in the API
-        contestRating: 0, // Not available in the API
+        contestsParticipated: 0,
+        contestRating: 0,
         monthlyScore: info.monthlyScore || 0,
         score,
         rank,
@@ -1384,7 +1348,6 @@ class PlatformAPI {
     } catch (error) {
       console.error(`Error fetching GeeksforGeeks profile for ${username}:`, error);
       
-      // Just pass through user not found errors
       if (error.message.includes('not found')) {
         throw error;
       }
@@ -1547,12 +1510,11 @@ class PlatformAPI {
         console.warn('GitHub token not available - contribution data will be limited');
       }
       
-      // Calculate score using our scoring algorithm
-      const score = this.calculateGitHubScore(
-        totalStars || userData.public_repos || 0,
-        contributions,
-        followersCount
-      );
+      // Calculate score using our scoring algorithm with the correct data structure
+      const score = this.calculateGitHubScore({
+        publicRepos: userData.public_repos || 0,
+        starsReceived: totalStars || 0
+      });
       
       return {
         username,
@@ -1560,10 +1522,10 @@ class PlatformAPI {
         totalCommits: contributions,
         followers: followersCount,
         following: followingCount,
-        starsReceived: totalStars || userData.public_repos || 0, // Use GraphQL star count if available
-        problemsSolved: contributions, // Using contributions as problems solved
+        starsReceived: totalStars || 0,
+        problemsSolved: contributions,
         score,
-        lastUpdated: new Date()
+        lastUpdated: new Date() 
       };
     } catch (error) {
       console.error(`Error fetching GitHub profile for ${username}:`, error);
@@ -1658,15 +1620,18 @@ class PlatformAPI {
         }
       });
       
-      // Calculate score based on problems solved and stars earned
-      const score = this.calculateHackerRankScore(totalProblemsSolved, totalStars);
+      // Calculate score based on problems solved
+      const score = this.calculateHackerRankScore({
+        totalSolved: totalProblemsSolved
+      });
       
       return {
         username,
+        totalSolved: totalProblemsSolved,
         problemsSolved: totalProblemsSolved,
-        totalStars,
-        languageBadges,
-        skillBadges,
+        badges: languageBadges,
+        certificates: skillBadges,
+        contestsParticipated: 0,
         score,
         lastUpdated: new Date()
       };
