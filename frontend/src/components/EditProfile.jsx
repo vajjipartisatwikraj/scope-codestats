@@ -391,8 +391,7 @@ const EditProfile = ({
     }
 
     try {
-      // Set linking status
-      setPlatformLinking(prev => ({ ...prev, [key]: true }));
+      // Don't set linking status to avoid showing loading indicator
       
       // Don't make an API call, just validate the username exists
       const trimmedUsername = username.trim();
@@ -421,8 +420,6 @@ const EditProfile = ({
             return updated;
           });
         }
-        
-        toast.success(`${name} username saved!`);
       } else {
         setPlatformLinkStatus(prev => ({ 
           ...prev, 
@@ -436,395 +433,9 @@ const EditProfile = ({
           ...prev,
           [usernameField]: `Invalid ${name} username`
         }));
-        
-        toast.error(`Invalid ${name} username`);
       }
     } catch (error) {
-      setPlatformLinking(prev => ({ ...prev, [key]: false }));
-    }
-  };
-
-  // Helper function to render profile fields based on field name
-  const renderProfileField = (field, index, isEditMode = true) => {
-    // Check if this is a platform username field
-    const platform = codingPlatforms.find(p => p.usernameField === field);
-    
-    if (platform) {
-      const isLinked = platformLinkStatus[platform.key]?.linked;
-      const isLinking = platformLinking[platform.key];
-      const linkMessage = platformLinkStatus[platform.key]?.message;
-      
-      return (
-        <TextField
-          key={index}
-          label={`${platform.name} Username`}
-          fullWidth
-          margin="normal"
-          name={field}
-          disabled={!isEditMode || isLinking}
-          value={editProfileData[field] || ''}
-          onChange={handleProfileChange}
-          error={!!fieldErrors[field]}
-          helperText={fieldErrors[field] || platform.placeholder}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Box
-                  sx={{
-                    width: 28,
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    mr: 1
-                  }}
-                >
-                <img
-                  src={platform.icon}
-                  alt={platform.name}
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'contain'
-                    }}
-                  />
-                </Box>
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                {isLinking ? (
-                  <CircularProgress size={24} />
-                ) : isLinked ? (
-                  <CheckCircle fontSize="small" color="success" />
-                ) : (
-                  <Button
-                    onClick={() => handlePlatformLink(platform)}
-                    size="small"
-                    color="primary"
-                    disabled={!editProfileData[field]}
-                    variant="text"
-                    sx={{ 
-                      minWidth: 'auto',
-                      px: 1,
-                      py: 0.5
-                    }}
-                  >
-                    Save
-                  </Button>
-                )}
-              </InputAdornment>
-            ),
-          }}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: isLinked ? theme.palette.success.main : undefined,
-              },
-              '&:hover fieldset': {
-                borderColor: isLinked ? theme.palette.success.main : undefined,
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: isLinked ? theme.palette.success.main : undefined,
-              },
-            }
-          }}
-        />
-      );
-    }
-
-    switch (field) {
-      case 'name':
-        return (
-          <TextField
-            key={index}
-            label="Name"
-            fullWidth
-            margin="normal"
-            name="name"
-            disabled={!isEditMode}
-            value={editProfileData?.name || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.name}
-            helperText={fieldErrors.name || ''}
-            required
-          />
-        );
-      case 'about':
-        return (
-          <TextField
-            key={index}
-            label="About"
-            fullWidth
-            margin="normal"
-            name="about"
-            disabled={!isEditMode}
-            multiline
-            rows={4}
-            value={editProfileData?.about || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.about}
-            helperText={fieldErrors.about || ''}
-          />
-        );
-      case 'section':
-        return (
-          <TextField
-            key={index}
-            label="Section"
-            fullWidth
-            margin="normal"
-            name="section"
-            disabled={!isEditMode}
-            select
-            value={editProfileData?.section || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.section}
-            helperText={fieldErrors.section || 'Select your class section (required)'}
-            required
-          >
-            {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((option) => (
-              <MenuItem key={option} value={option}>
-                {`Section ${option}`}
-              </MenuItem>
-            ))}
-          </TextField>
-        );
-      case 'department':
-        return (
-          <TextField
-            key={index}
-            label="Department"
-            fullWidth
-            margin="normal"
-            name="department"
-            disabled={!isEditMode}
-            select
-            value={editProfileData?.department || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.department}
-            helperText={fieldErrors.department || ''}
-            required
-          >
-            {[
-              { value: 'AERO', label: 'Aeronautical Engineering' },
-              { value: 'CSC', label: 'Computer Science & Cybersecurity' },
-              { value: 'CSD', label: 'Computer Science & Data Science' },
-              { value: 'CSE', label: 'Computer Science & Engineering' },
-              { value: 'CSM', label: 'Computer Science & ML' },
-              { value: 'CSIT', label: 'Computer Science & IT' },
-              { value: 'IT', label: 'Information Technology' },
-              { value: 'ECE', label: 'Electronics & Communication Engineering' },
-              { value: 'MECH', label: 'Mechanical Engineering' },
-              { value: 'EEE', label: 'Electrical & Electronics Engineering' }
-            ].map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        );
-      case 'rollNumber':
-        return (
-          <TextField
-            key={index}
-            label="Roll Number"
-            fullWidth
-            margin="normal"
-            name="rollNumber"
-            disabled={!isEditMode}
-            value={editProfileData?.rollNumber || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.rollNumber}
-            helperText={fieldErrors.rollNumber || ''}
-            required
-          />
-        );
-      case 'graduationYear':
-        return (
-          <TextField
-            key={index}
-            label="Graduation Year"
-            fullWidth
-            margin="normal"
-            name="graduationYear"
-            disabled={!isEditMode}
-            type="number"
-            value={editProfileData?.graduationYear || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.graduationYear}
-            helperText={fieldErrors.graduationYear || ''}
-          />
-        );
-      case 'phone':
-        return (
-          <TextField
-            key={index}
-            label="Phone"
-            fullWidth
-            margin="normal"
-            name="phone"
-            disabled={!isEditMode}
-            value={editProfileData?.phone || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.phone}
-            helperText={fieldErrors.phone || 'Enter a valid 10-digit mobile number'}
-            required
-            inputProps={{
-              pattern: "[0-9]{10}",
-              maxLength: 10
-            }}
-          />
-        );
-      case 'linkedinUrl':
-        return (
-          <TextField
-            key={index}
-            label="LinkedIn URL"
-            fullWidth
-            margin="normal"
-            name="linkedinUrl"
-            disabled={!isEditMode}
-            value={editProfileData?.linkedinUrl || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.linkedinUrl}
-            helperText={fieldErrors.linkedinUrl || ''}
-          />
-        );
-      case 'githubUrl':
-        return (
-          <TextField
-            key={index}
-            label="GitHub Username"
-            fullWidth
-            margin="normal"
-            name="githubUrl"
-            disabled={!isEditMode}
-            value={editProfileData?.githubUrl || ''}
-            onChange={handleProfileChange}
-            error={!!fieldErrors.githubUrl}
-            helperText={fieldErrors.githubUrl || 'Enter your GitHub username (required)'}
-            required
-          />
-        );
-      case 'skills':
-        return (
-          <Autocomplete
-            key={index}
-            multiple
-            freeSolo
-            options={skillOptions}
-            value={Array.isArray(editProfileData?.skills) ? editProfileData.skills : []}
-            onChange={(e, newValue) => {
-              // Ensure we always have an array of strings
-              const processedSkills = newValue.map(skill => 
-                typeof skill === 'string' ? skill.trim() : skill
-              ).filter(skill => skill); // Remove any empty skills
-              setEditProfileData(prev => ({ ...prev, skills: processedSkills }));
-            }}
-            onBlur={(e) => {
-              // Check if there's text in the input and add it as a tag
-              const inputValue = e.target.value?.trim();
-              if (inputValue) {
-                handleAddSkill(inputValue);
-                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
-                setTimeout(() => {
-                  e.target.value = '';
-                }, 0);
-              }
-            }}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip
-                  label={option}
-                  {...getTagProps({ index })}
-                  key={index}
-                  size="small"
-                  sx={{
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(0,136,204,0.1)' : 'rgba(0,136,204,0.05)',
-                    color: '#0088cc',
-                    border: '1px solid rgba(0,136,204,0.2)',
-                  }}
-                />
-              ))
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                fullWidth
-                margin="normal"
-                label="Skills"
-                placeholder="Add skills and press enter"
-                helperText={fieldErrors.skills || "Enter your skills and press Enter or select from suggestions"}
-                error={!!fieldErrors.skills}
-                disabled={!isEditMode}
-              />
-            )}
-            disabled={!isEditMode}
-            sx={{ width: '100%', marginTop: 2, marginBottom: 1 }}
-          />
-        );
-      case 'interests':
-        return (
-          <Autocomplete
-            key={index}
-            multiple
-            freeSolo
-            options={interestOptions}
-            value={Array.isArray(editProfileData?.interests) ? editProfileData.interests : []}
-            onChange={(e, newValue) => {
-              // Ensure we always have an array of strings
-              const processedInterests = newValue.map(interest => 
-                typeof interest === 'string' ? interest.trim() : interest
-              ).filter(interest => interest); // Remove any empty interests
-              setEditProfileData(prev => ({ ...prev, interests: processedInterests }));
-            }}
-            onBlur={(e) => {
-              // Check if there's text in the input and add it as a tag
-              const inputValue = e.target.value?.trim();
-              if (inputValue) {
-                handleAddInterest(inputValue);
-                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
-                setTimeout(() => {
-                  e.target.value = '';
-                }, 0);
-              }
-            }}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip
-                  label={option}
-                  {...getTagProps({ index })}
-                  key={index}
-                  size="small"
-                  sx={{
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(25,118,210,0.1)' : 'rgba(25,118,210,0.05)',
-                    color: theme.palette.primary.main,
-                    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(25,118,210,0.2)' : 'rgba(25,118,210,0.3)'}`,
-                  }}
-                />
-              ))
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                fullWidth
-                margin="normal"
-                label="Interests"
-                placeholder="Add interests and press enter"
-                helperText={fieldErrors.interests || "Enter your interests and press Enter or select from suggestions"}
-                error={!!fieldErrors.interests}
-                disabled={!isEditMode}
-              />
-            )}
-            disabled={!isEditMode}
-            sx={{ width: '100%', marginTop: 2, marginBottom: 1 }}
-          />
-        );
-      default:
-        return null;
+      // Don't update platformLinking state
     }
   };
 
@@ -847,6 +458,8 @@ const EditProfile = ({
         ...prev,
         [name]: value
       }));
+      
+      // Remove the auto-save for platform usernames
     }
     
     // Clear error for this field if it has a value
@@ -895,12 +508,15 @@ const EditProfile = ({
         return; // Don't proceed to next step
       }
       
-      // Save each platform username by calling handlePlatformLink if not already linked
-      for (const platform of requiredPlatforms) {
-        if (!platformLinkStatus[platform.key]?.linked) {
-          handlePlatformLink(platform);
-        }
-      }
+      // Mark all platforms as linked without individual notifications
+      const updatedPlatformStatus = { ...platformLinkStatus };
+      requiredPlatforms.forEach(platform => {
+        updatedPlatformStatus[platform.key] = {
+          linked: true,
+          message: `${platform.name} username saved!`
+        };
+      });
+      setPlatformLinkStatus(updatedPlatformStatus);
     }
     
     // Default validation logic for other steps
@@ -1212,6 +828,349 @@ const EditProfile = ({
       {renderProfileField('linkedinUrl', 7)}
     </Box>
   );
+
+  // Simplify platform username field rendering
+  const renderProfileField = (field, index, isEditMode = true) => {
+    // Check if this is a platform username field
+    const platform = codingPlatforms.find(p => p.usernameField === field);
+    
+    if (platform) {
+      return (
+        <TextField
+          key={index}
+          label={`${platform.name} Username`}
+          fullWidth
+          margin="normal"
+          name={field}
+          disabled={!isEditMode}
+          value={editProfileData[field] || ''}
+          onChange={handleProfileChange}
+          error={!!fieldErrors[field]}
+          helperText={fieldErrors[field] || platform.placeholder}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    mr: 1
+                  }}
+                >
+                <img
+                  src={platform.icon}
+                  alt={platform.name}
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain'
+                    }}
+                  />
+                </Box>
+              </InputAdornment>
+            )
+          }}
+        />
+      );
+    }
+
+    switch (field) {
+      case 'name':
+        return (
+          <TextField
+            key={index}
+            label="Name"
+            fullWidth
+            margin="normal"
+            name="name"
+            disabled={!isEditMode}
+            value={editProfileData?.name || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.name}
+            helperText={fieldErrors.name || ''}
+            required
+          />
+        );
+      case 'about':
+        return (
+          <TextField
+            key={index}
+            label="About"
+            fullWidth
+            margin="normal"
+            name="about"
+            disabled={!isEditMode}
+            multiline
+            rows={4}
+            value={editProfileData?.about || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.about}
+            helperText={fieldErrors.about || ''}
+          />
+        );
+      case 'section':
+        return (
+          <TextField
+            key={index}
+            label="Section"
+            fullWidth
+            margin="normal"
+            name="section"
+            disabled={!isEditMode}
+            select
+            value={editProfileData?.section || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.section}
+            helperText={fieldErrors.section || 'Select your class section (required)'}
+            required
+          >
+            {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((option) => (
+              <MenuItem key={option} value={option}>
+                {`Section ${option}`}
+              </MenuItem>
+            ))}
+          </TextField>
+        );
+      case 'department':
+        return (
+          <TextField
+            key={index}
+            label="Department"
+            fullWidth
+            margin="normal"
+            name="department"
+            disabled={!isEditMode}
+            select
+            value={editProfileData?.department || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.department}
+            helperText={fieldErrors.department || ''}
+            required
+          >
+            {[
+              { value: 'AERO', label: 'Aeronautical Engineering' },
+              { value: 'CSC', label: 'Computer Science & Cybersecurity' },
+              { value: 'CSD', label: 'Computer Science & Data Science' },
+              { value: 'CSE', label: 'Computer Science & Engineering' },
+              { value: 'CSM', label: 'Computer Science & ML' },
+              { value: 'CSIT', label: 'Computer Science & IT' },
+              { value: 'IT', label: 'Information Technology' },
+              { value: 'ECE', label: 'Electronics & Communication Engineering' },
+              { value: 'MECH', label: 'Mechanical Engineering' },
+              { value: 'EEE', label: 'Electrical & Electronics Engineering' }
+            ].map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        );
+      case 'rollNumber':
+        return (
+          <TextField
+            key={index}
+            label="Roll Number"
+            fullWidth
+            margin="normal"
+            name="rollNumber"
+            disabled={!isEditMode}
+            value={editProfileData?.rollNumber || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.rollNumber}
+            helperText={fieldErrors.rollNumber || ''}
+            required
+          />
+        );
+      case 'graduationYear':
+        return (
+          <TextField
+            key={index}
+            label="Graduation Year"
+            fullWidth
+            margin="normal"
+            name="graduationYear"
+            disabled={!isEditMode}
+            type="number"
+            value={editProfileData?.graduationYear || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.graduationYear}
+            helperText={fieldErrors.graduationYear || ''}
+          />
+        );
+      case 'phone':
+        return (
+          <TextField
+            key={index}
+            label="Phone"
+            fullWidth
+            margin="normal"
+            name="phone"
+            disabled={!isEditMode}
+            value={editProfileData?.phone || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.phone}
+            helperText={fieldErrors.phone || 'Enter a valid 10-digit mobile number'}
+            required
+            inputProps={{
+              pattern: "[0-9]{10}",
+              maxLength: 10
+            }}
+          />
+        );
+      case 'linkedinUrl':
+        return (
+          <TextField
+            key={index}
+            label="LinkedIn URL"
+            fullWidth
+            margin="normal"
+            name="linkedinUrl"
+            disabled={!isEditMode}
+            value={editProfileData?.linkedinUrl || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.linkedinUrl}
+            helperText={fieldErrors.linkedinUrl || ''}
+          />
+        );
+      case 'githubUrl':
+        return (
+          <TextField
+            key={index}
+            label="GitHub Username"
+            fullWidth
+            margin="normal"
+            name="githubUrl"
+            disabled={!isEditMode}
+            value={editProfileData?.githubUrl || ''}
+            onChange={handleProfileChange}
+            error={!!fieldErrors.githubUrl}
+            helperText={fieldErrors.githubUrl || 'Enter your GitHub username (required)'}
+            required
+          />
+        );
+      case 'skills':
+        return (
+          <Autocomplete
+            key={index}
+            multiple
+            freeSolo
+            options={skillOptions}
+            value={Array.isArray(editProfileData?.skills) ? editProfileData.skills : []}
+            onChange={(e, newValue) => {
+              // Ensure we always have an array of strings
+              const processedSkills = newValue.map(skill => 
+                typeof skill === 'string' ? skill.trim() : skill
+              ).filter(skill => skill); // Remove any empty skills
+              setEditProfileData(prev => ({ ...prev, skills: processedSkills }));
+            }}
+            onBlur={(e) => {
+              // Check if there's text in the input and add it as a tag
+              const inputValue = e.target.value?.trim();
+              if (inputValue) {
+                handleAddSkill(inputValue);
+                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
+                setTimeout(() => {
+                  e.target.value = '';
+                }, 0);
+              }
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option}
+                  {...getTagProps({ index })}
+                  key={index}
+                  size="small"
+                  sx={{
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(0,136,204,0.1)' : 'rgba(0,136,204,0.05)',
+                    color: '#0088cc',
+                    border: '1px solid rgba(0,136,204,0.2)',
+                  }}
+                />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                margin="normal"
+                label="Skills"
+                placeholder="Add skills and press enter"
+                helperText={fieldErrors.skills || "Enter your skills and press Enter or select from suggestions"}
+                error={!!fieldErrors.skills}
+                disabled={!isEditMode}
+              />
+            )}
+            disabled={!isEditMode}
+            sx={{ width: '100%', marginTop: 2, marginBottom: 1 }}
+          />
+        );
+      case 'interests':
+        return (
+          <Autocomplete
+            key={index}
+            multiple
+            freeSolo
+            options={interestOptions}
+            value={Array.isArray(editProfileData?.interests) ? editProfileData.interests : []}
+            onChange={(e, newValue) => {
+              // Ensure we always have an array of strings
+              const processedInterests = newValue.map(interest => 
+                typeof interest === 'string' ? interest.trim() : interest
+              ).filter(interest => interest); // Remove any empty interests
+              setEditProfileData(prev => ({ ...prev, interests: processedInterests }));
+            }}
+            onBlur={(e) => {
+              // Check if there's text in the input and add it as a tag
+              const inputValue = e.target.value?.trim();
+              if (inputValue) {
+                handleAddInterest(inputValue);
+                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
+                setTimeout(() => {
+                  e.target.value = '';
+                }, 0);
+              }
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option}
+                  {...getTagProps({ index })}
+                  key={index}
+                  size="small"
+                  sx={{
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(25,118,210,0.1)' : 'rgba(25,118,210,0.05)',
+                    color: theme.palette.primary.main,
+                    border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(25,118,210,0.2)' : 'rgba(25,118,210,0.3)'}`,
+                  }}
+                />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                margin="normal"
+                label="Interests"
+                placeholder="Add interests and press enter"
+                helperText={fieldErrors.interests || "Enter your interests and press Enter or select from suggestions"}
+                error={!!fieldErrors.interests}
+                disabled={!isEditMode}
+              />
+            )}
+            disabled={!isEditMode}
+            sx={{ width: '100%', marginTop: 2, marginBottom: 1 }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <>

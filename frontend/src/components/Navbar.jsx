@@ -74,14 +74,21 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   
+  // Prevent duplicate notification requests
+  const [isRequestingNotifications, setIsRequestingNotifications] = useState(false);
+  
   // Check if current path is an auth page
   const isAuthPage = ['/login', '/register'].includes(location.pathname) || location.pathname.startsWith('/register');
 
+  // Add a check for mobile screens
+  const isMobileForNotifications = useMediaQuery(theme.breakpoints.down('sm'));
+  
   // Fetch notifications
   const fetchNotifications = async () => {
-    if (!token || isAuthPage) return;
+    if (!token || isAuthPage || isRequestingNotifications) return;
     
     try {
+      setIsRequestingNotifications(true);
       setLoading(true);
       const response = await axios.get(`${apiUrl}/notifications`, {
         headers: {
@@ -98,6 +105,8 @@ const Navbar = () => {
       console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
+      // Add a slight delay before allowing the next request
+      setTimeout(() => setIsRequestingNotifications(false), 1000);
     }
   };
   
@@ -112,10 +121,10 @@ const Navbar = () => {
       });
       
       // Update the local state
-      setNotifications(prevNotifications => 
+      setNotifications(prevNotifications =>
         prevNotifications.map(notification => 
           notification._id === notificationId 
-            ? { ...notification, read: true } 
+            ? { ...notification, read: true }
             : notification
         )
       );
@@ -147,6 +156,40 @@ const Navbar = () => {
     }
   };
   
+  // Get notifications on component mount and when token changes
+  useEffect(() => {
+    if (token && !isAuthPage) {
+      // Fetch notifications initially
+      fetchNotifications();
+      
+      // Set up a refresh interval for notifications - use a longer interval to reduce server load
+      const interval = setInterval(fetchNotifications, 60000); // every minute
+      
+      // Don't refetch notifications when the tab is inactive
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && token && !isAuthPage) {
+          fetchNotifications();
+        }
+      };
+      
+      // Listen for visibility changes
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      };
+    }
+  }, [token, isAuthPage, location.pathname]);
+  
+  const handleOpenNotificationsMenu = (event) => {
+    setAnchorElNotifications(event.currentTarget);
+    // If we have unread notifications, mark them as read when opening the menu
+    if (unreadCount > 0) {
+      markAllAsRead();
+    }
+  };
+
   // Format date for notifications
   const formatNotificationDate = (dateString) => {
     const date = new Date(dateString);
@@ -169,18 +212,6 @@ const Navbar = () => {
       return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, ${time}`;
     }
   };
-  
-  // Get notifications on component mount and when token changes
-  useEffect(() => {
-    if (token && !isAuthPage) {
-      fetchNotifications();
-      
-      // Set up a refresh interval for notifications
-      const interval = setInterval(fetchNotifications, 30000); // every 30 seconds
-      
-      return () => clearInterval(interval);
-    }
-  }, [token, isAuthPage, location.pathname]);
   
   // Define menu items only if authenticated and not on auth pages
   const menuItems = useMemo(() => {
@@ -232,14 +263,6 @@ const Navbar = () => {
     setAnchorElUser(event.currentTarget);
   };
   
-  const handleOpenNotificationsMenu = (event) => {
-    setAnchorElNotifications(event.currentTarget);
-    // If we have unread notifications, mark them as read when opening the menu
-    if (unreadCount > 0) {
-      markAllAsRead();
-    }
-  };
-
   const handleCloseNavMenu = () => {
     setAnchorElNav(null);
   };
@@ -455,9 +478,14 @@ const Navbar = () => {
             <Tooltip title="Notifications">
               <IconButton
                 onClick={handleOpenNotificationsMenu}
+                id="notification-button"
+                aria-controls={Boolean(anchorElNotifications) ? 'notification-menu' : undefined}
+                aria-haspopup="true"
+                aria-expanded={Boolean(anchorElNotifications) ? 'true' : undefined}
                 sx={{ 
                   color: themeColors.iconColor, 
                   mr: 2,
+                  position: 'relative',
                   backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
                   '&:hover': {
                     backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
@@ -481,42 +509,56 @@ const Navbar = () => {
 
             {/* Notifications Menu */}
             <Menu
-              sx={{ mt: '45px' }}
-              id="notifications-menu"
+              id="notification-menu"
               anchorEl={anchorElNotifications}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
               open={Boolean(anchorElNotifications)}
               onClose={handleCloseNotificationsMenu}
-              PaperProps={{
-                sx: { 
-                  backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
-                  color: themeColors.text,
-                  borderRadius: '12px',
-                  minWidth: 400,
-                  maxWidth: 480,
+              sx={{ 
+                mt: 0.5,
+                '& .MuiPaper-root': {
+                  width: {
+                    xs: 'calc(100vw - 32px)', // Full width minus margins on mobile
+                    sm: '450px',              // Wider width on small screens
+                    md: '500px',              // Even wider on medium screens
+                  },
+                  maxWidth: {
+                    xs: 'calc(100vw - 32px)', // Prevent overflow on mobile
+                    sm: '500px',               // Wider max width on tablets
+                    md: '600px',               // Even wider on medium screens
+                  },
                   maxHeight: 'calc(100vh - 100px)',
-                  display: 'flex',
-                  flexDirection: 'column',
+                  borderRadius: '12px',
                   boxShadow: darkMode 
                     ? '0 4px 20px rgba(0, 0, 0, 0.5)' 
                     : '0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 20px rgba(0, 0, 0, 0.08)',
+                  backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+                  color: themeColors.text,
+                  overflow: 'visible',
+                  display: 'flex',
+                  flexDirection: 'column'
                 }
               }}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'center',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'center',
+              }}
+              MenuListProps={{
+                style: {
+                  padding: 0
+                }
+              }}
+              keepMounted
               container={() => document.getElementById('dialog-container') || document.body}
               disableEnforceFocus
             >
               {/* Fixed Header */}
               <Box 
                 sx={{ 
-                  p: 2, 
+                  p: { xs: 1.5, sm: 2 }, 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center',
@@ -528,7 +570,7 @@ const Navbar = () => {
               >
                 <Typography variant="h6" sx={{ 
                   fontWeight: 600, 
-                  fontSize: '1.1rem',
+                  fontSize: { xs: '1rem', sm: '1.1rem' },
                   color: darkMode ? '#ffffff' : '#1a1a1a'
                 }}>
                   Notifications
@@ -539,7 +581,9 @@ const Navbar = () => {
                     onClick={markAllAsRead}
                     disabled={unreadCount === 0}
                     sx={{ 
-                      fontSize: '0.8rem',
+                      fontSize: { xs: '0.7rem', sm: '0.8rem' },
+                      padding: { xs: '2px 8px', sm: '3px 9px' },
+                      minWidth: { xs: 'auto', sm: '60px' },
                       opacity: unreadCount === 0 ? 0.6 : 1,
                       color: '#1976d2',
                       '&:hover': {
@@ -593,7 +637,7 @@ const Navbar = () => {
                       />
                     </Box>
                     <Typography variant="body1" color="text.secondary">
-                      No notifications
+                      {notifications.length === 0 ? 'No notifications' : 'Loading...'}
                     </Typography>
                   </Box>
                 ) : (
@@ -615,25 +659,32 @@ const Navbar = () => {
                           }}
                           onClick={() => markAsRead(notification._id)}
                         >
-                          <Box sx={{ width: '100%', p: 2, display: 'flex', gap: 2 }}>
+                          <Box sx={{ 
+                            width: '100%', 
+                            p: { xs: 2, sm: 2.5 }, 
+                            display: 'flex', 
+                            gap: { xs: 2, sm: 2.5 } 
+                          }}>
                             {/* Icon */}
                             <Box
                               sx={{
-                                width: 45,
-                                height: 45,
-                                borderRadius: '8px',
+                                width: { xs: 42, sm: 48 },
+                                height: { xs: 42, sm: 48 },
+                                borderRadius: '10px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                flexShrink: 0
+                                flexShrink: 0,
+                                backgroundColor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)'}`
                               }}
                             >
                               <img 
                                 src="/codestats.png" 
                                 alt="CodeStats" 
                                 style={{ 
-                                  width: 32, 
-                                  height: 32,
+                                  width: 30, 
+                                  height: 30,
                                   objectFit: 'contain'
                                 }} 
                               />
@@ -641,7 +692,13 @@ const Navbar = () => {
 
                             {/* Content */}
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'flex-start', 
+                                mb: 0.5,
+                                flexWrap: { xs: 'nowrap', sm: 'nowrap' }
+                              }}>
                                 <Typography
                                   variant="subtitle2"
                                   sx={{ 
@@ -649,7 +706,11 @@ const Navbar = () => {
                                     color: notification.read ? 
                                       (darkMode ? 'text.secondary' : '#424242') : 
                                       (darkMode ? 'text.primary' : '#1a1a1a'),
-                                    fontSize: '0.9rem'
+                                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                                    mr: 1,
+                                    flexGrow: 1,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
                                   }}
                                 >
                                   {notification.title}
@@ -658,9 +719,10 @@ const Navbar = () => {
                                   variant="caption"
                                   color="text.secondary"
                                   sx={{ 
-                                    fontSize: '0.75rem',
-                                    ml: 2,
-                                    flexShrink: 0
+                                    fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                                    flexShrink: 0,
+                                    minWidth: { xs: '85px', sm: '90px' },
+                                    textAlign: 'right'
                                   }}
                                 >
                                   {formatNotificationDate(notification.createdAt)}
@@ -673,10 +735,11 @@ const Navbar = () => {
                                     (darkMode ? 'text.secondary' : '#666666') : 
                                     (darkMode ? 'text.primary' : '#333333'),
                                   opacity: notification.read ? 0.8 : 1,
-                                  lineHeight: 1.4,
-                                  fontSize: '0.85rem',
+                                  lineHeight: 1.5,
+                                  fontSize: { xs: '0.85rem', sm: '0.9rem' },
                                   overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
+                                  textOverflow: 'ellipsis',
+                                  pr: { xs: 1, sm: 2 }
                                 }}
                               >
                                 {notification.message}

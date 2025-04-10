@@ -170,6 +170,24 @@ passport.use(
         try {
           await newUser.save();
           console.log(`New user created successfully with ID: ${newUser._id}`);
+          
+          // Create welcome notification for the new user
+          try {
+            const Notification = require('../models/Notification');
+            const welcomeNotification = new Notification({
+              userId: newUser._id,
+              title: 'Welcome to CodeStats!',
+              message: `Hey ${newUser.name}! Team SCOPE welcomes you to CodeStats!!`,
+              read: false,
+              autoDelete: true
+            });
+            await welcomeNotification.save();
+            console.log(`Welcome notification created for new user: ${newUser._id}`);
+          } catch (notificationErr) {
+            console.error('Error creating welcome notification:', notificationErr);
+            // Continue with authentication even if notification creation fails
+          }
+          
           return done(null, newUser);
         } catch (saveErr) {
           console.error('Error creating new user:', saveErr);
@@ -192,6 +210,24 @@ passport.use(
             try {
               await minimalUser.save();
               console.log(`Created minimal user with ID: ${minimalUser._id}`);
+              
+              // Create welcome notification for the minimal user
+              try {
+                const Notification = require('../models/Notification');
+                const welcomeNotification = new Notification({
+                  userId: minimalUser._id,
+                  title: 'Welcome to CodeStats!',
+                  message: `Hey ${minimalUser.name}! Team SCOPE welcomes you to CodeStats!!`,
+                  read: false,
+                  autoDelete: true
+                });
+                await welcomeNotification.save();
+                console.log(`Welcome notification created for minimal user: ${minimalUser._id}`);
+              } catch (notificationErr) {
+                console.error('Error creating welcome notification:', notificationErr);
+                // Continue with authentication even if notification creation fails
+              }
+              
               return done(null, minimalUser);
             } catch (minimalSaveErr) {
               console.error('Error creating minimal user:', minimalSaveErr);

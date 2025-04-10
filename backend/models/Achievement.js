@@ -32,6 +32,10 @@ const achievementSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  certificateId: {
+    type: String,
+    trim: true
+  },
   startDate: {
     type: Date
   },

@@ -128,15 +128,9 @@ class PlatformAPI {
    * @param {Object} data - GeeksforGeeks profile data
    * @returns {number} - Calculated score
    */
-  calculateGeeksforGeeksScore(codingScore, problemsSolved) {
-    // Base score from coding score (max 3000 points)
-    // GeeksforGeeks coding score is typically between 0-1000
-    const baseScore = codingScore;
-    // Problems solved score (max 5000 points)
-    // Each problem is worth more points initially, but with diminishing returns
-    const problemScore = problemsSolved * 10;
-    // Total score (max 10000 points)
-    return Math.round(baseScore + problemScore);
+  calculateGeeksforGeeksScore(data) {
+    // Use codingScore directly from the API response
+    return data.codingScore || 0;
   }
 
   /**
@@ -144,13 +138,14 @@ class PlatformAPI {
    * @param {Object} data - GitHub profile data
    * @returns {number} - Calculated score
    */
-  calculateGitHubScore(stars,contributions,followers) {
-    // Stars have high weight as they indicate project quality
-    const starsScore = stars * 10;
-    const contri=contributions*10;
-    const followersScore = followers * 2;
+  calculateGitHubScore(data) {
+    // Points for repositories (10 points each)
+    const repoScore = (data.publicRepos || data.public_repos || 0) * 10;
     
-    return Math.round(starsScore + contri+ followersScore);
+    // Points for stars received (5 points each)
+    const starsScore = (data.starsReceived || 0) * 5;
+    
+    return Math.round(repoScore + starsScore);
   }
 
   /**
@@ -158,16 +153,10 @@ class PlatformAPI {
    * @param {Object} data - HackerRank profile data
    * @returns {number} - Calculated score
    */
-  calculateHackerRankScore(totalSolved, starsCount) {
-    // Base score from problems solved (max 5000 points)
-    const problemsScore = totalSolved * 10;
-    
-    // Bonus from stars earned across all badges (max 5000 points)
-    // Each star is worth 100 points
-    const starsScore = starsCount * 100;
-    
-    // Total score (max 10000 points)
-    return Math.round(problemsScore + starsScore);
+  calculateHackerRankScore(data) {
+    // 7 points for each problem solved
+    const problemsSolved = data.totalSolved || data.problemsSolved || 0;
+    return problemsSolved * 7;
   }
 
   /**
@@ -1332,7 +1321,7 @@ class PlatformAPI {
       });
       
       // Calculate total score using our scoring algorithm
-      const score = this.calculateGeeksforGeeksScore(info.codingScore, problemsSolved);
+      const score = this.calculateGeeksforGeeksScore(info);
 
       // Determine rank based on score
       const rank = this.getGeeksforGeeksRank(score);
@@ -1395,7 +1384,7 @@ class PlatformAPI {
       console.log(`Fetching GitHub profile for user: ${username}`);
       
       // Check if we have a GitHub token configured
-      if (!GITHUB_ACCESS_TOKEN) {
+      if (!GITHUB_ACCESS_TOKEN || GITHUB_ACCESS_TOKEN === 'your_github_token_here') {
         console.warn('GitHub API token not configured. API calls will be limited to 60 requests/hour.');
       } else {
         console.log('Using authenticated GitHub API request');
@@ -1407,7 +1396,7 @@ class PlatformAPI {
       }
       
       // Use authenticated API call for user data
-      const authHeader = GITHUB_ACCESS_TOKEN
+      const authHeader = GITHUB_ACCESS_TOKEN && GITHUB_ACCESS_TOKEN !== 'your_github_token_here' 
         ? { 'Authorization': `token ${GITHUB_ACCESS_TOKEN}` } 
         : {};
         
@@ -1491,7 +1480,7 @@ class PlatformAPI {
             // Extract contributions
             if (graphqlData.contributionsCollection && 
                 graphqlData.contributionsCollection.contributionCalendar) {
-              contributions = graphqlData.contributionsCollection.contributionCalendar.totalContributions;
+              contributions = graphqlData.contributionsCollection.contributionCalendar.totalContributions || 0;
               console.log(`GraphQL API: Found ${contributions} contributions for ${username}`);
             }
             
@@ -1521,12 +1510,11 @@ class PlatformAPI {
         console.warn('GitHub token not available - contribution data will be limited');
       }
       
-      // Calculate score using our scoring algorithm
-      const score = this.calculateGitHubScore(
-        totalStars,
-        contributions,
-        followersCount
-      );
+      // Calculate score using our scoring algorithm with the correct data structure
+      const score = this.calculateGitHubScore({
+        publicRepos: userData.public_repos || 0,
+        starsReceived: totalStars || 0
+      });
       
       return {
         username,

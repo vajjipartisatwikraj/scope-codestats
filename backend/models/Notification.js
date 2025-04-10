@@ -28,6 +28,11 @@ const notificationSchema = new mongoose.Schema({
   global: {
     type: Boolean,
     default: false
+  },
+  // Flag to determine if notification should auto-delete when read
+  autoDelete: {
+    type: Boolean,
+    default: false
   }
 });
 

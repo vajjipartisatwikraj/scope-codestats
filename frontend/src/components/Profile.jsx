@@ -5,12 +5,16 @@ import {
   Box, Container, Grid, Typography, Button, Card, CardContent,
   IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Chip, Stack, MenuItem, useMediaQuery, DialogContentText,
-  CircularProgress, Divider, Avatar
+  CircularProgress, Divider, Avatar, Tooltip, CardMedia, CardHeader,
+  CardActions, Zoom, Fade, Alert, Collapse
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon, Edit as EditIcon, GitHub, LinkedIn, Email, Phone, School,
-  Badge, OpenInNew, Delete as DeleteIcon, Close as CloseIcon
+  Badge, OpenInNew, Delete as DeleteIcon, Close as CloseIcon,
+  CalendarToday as CalendarIcon, Link as LinkIcon,
+  VerifiedUser as CertificateIcon, Work as InternshipIcon,
+  EmojiEvents as AchievementIcon, Code as ProjectIcon
 } from '@mui/icons-material';
 import { apiUrl } from '../config/apiConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,12 +23,12 @@ import EditProfile from './EditProfile';
 import { alpha } from '@mui/material/styles';
 import { getProfileImageUrl } from '../utils/profileUtils';
 
-// Achievement types
+// Achievement types with icons
 const achievementTypes = [
-  { value: 'achievement', label: 'Achievements' },
-  { value: 'project', label: 'Projects' },
-  { value: 'internship', label: 'Internships' },
-  { value: 'certification', label: 'Certifications' }
+  { value: 'achievement', label: 'Achievements', icon: <AchievementIcon /> },
+  { value: 'project', label: 'Projects', icon: <ProjectIcon /> },
+  { value: 'internship', label: 'Internships', icon: <InternshipIcon /> },
+  { value: 'certification', label: 'Certifications', icon: <CertificateIcon /> }
 ];
 
 const Profile = () => {
@@ -68,9 +72,8 @@ const Profile = () => {
     type: 'achievement',
     title: '',
     description: '',
-    tags: '',
+    tags: [],
     link: '',
-    imageUrl: '',
     startDate: '',
     endDate: ''
   });
@@ -82,6 +85,12 @@ const Profile = () => {
   );
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Add confirmation dialog state
+  const [deleteConfirmation, setDeleteConfirmation] = useState({ open: false, achievementId: null });
+
+  // Add handlers for tags input
+  const [tagInput, setTagInput] = useState('');
 
   // Load profile data when component mounts
   useEffect(() => {
@@ -179,9 +188,8 @@ const Profile = () => {
       type: activeTab,
       title: '',
       description: '',
-      tags: '',
+      tags: [],
       link: '',
-      imageUrl: '',
       startDate: '',
       endDate: ''
     });
@@ -192,10 +200,10 @@ const Profile = () => {
   const handleEditAchievement = (achievement) => {
     setEditingAchievement(achievement);
     
-    // Convert array tags to comma-separated string if needed
+    // Use the tags array directly if it exists
     const tags = Array.isArray(achievement.tags) 
-      ? achievement.tags.join(', ') 
-      : achievement.tags || '';
+      ? achievement.tags
+      : achievement.tags ? achievement.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [];
     
     setAchievementForm({
       ...achievement,
@@ -214,20 +222,26 @@ const Profile = () => {
         setErrorDialog({
           open: true,
           title: 'Missing Required Fields',
-        message: 'Please fill in all required fields.'
+          message: 'Please fill in all required fields.'
         });
         return;
-      }
+    }
+    
+    // Validate word count in description
+    const wordCount = achievementForm.description.trim().split(/\s+/).length;
+    if (wordCount > 40) {
+        setErrorDialog({
+          open: true,
+          title: 'Description Too Long',
+          message: `Your description is ${wordCount} words. Please limit it to 40 words or less.`
+        });
+        return;
+    }
       
     try {
-      // Format tags from comma-separated string to array if needed
-      const formattedTags = typeof achievementForm.tags === 'string'
-        ? achievementForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
-        : achievementForm.tags;
-      
+      // Use the tags array directly from state
       const achievementData = {
-        ...achievementForm,
-        tags: formattedTags
+        ...achievementForm
       };
       
       let response;
@@ -275,12 +289,71 @@ const Profile = () => {
     }
   };
 
-  // Format image URL (add default if empty)
-  const formatImageUrl = (url) => {
-    if (!url || url.trim() === '') {
-      return 'https://via.placeholder.com/300x200?text=No+Image';
+  // Add delete achievement handler
+  const handleDeleteAchievement = async (achievementId) => {
+    try {
+      await axios.delete(
+        `${apiUrl}/achievements/${achievementId}`,
+        { headers: { Authorization: `Bearer ${auth.token}` } }
+      );
+      
+      // Remove the achievement from state
+      setAchievements(prevAchievements => 
+        prevAchievements.filter(achievement => achievement._id !== achievementId)
+      );
+      
+      toast.success('Achievement deleted successfully');
+    } catch (error) {
+      console.error('Error deleting achievement:', error);
+      setErrorDialog({
+        open: true,
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to delete achievement. Please try again.'
+      });
     }
-    return url;
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = (achievementId) => {
+    setDeleteConfirmation({ open: true, achievementId });
+  };
+
+  // Handle actual deletion
+  const handleDeleteConfirmed = async () => {
+    if (!deleteConfirmation.achievementId) return;
+    
+    try {
+      await handleDeleteAchievement(deleteConfirmation.achievementId);
+      setDeleteConfirmation({ open: false, achievementId: null });
+    } catch (error) {
+      console.error('Error during deletion:', error);
+    }
+  };
+
+  // Add handlers for tags input
+  const handleTagInputChange = (e) => {
+    setTagInput(e.target.value);
+  };
+
+  const handleTagInputKeyDown = (e) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (!achievementForm.tags.includes(newTag)) {
+        setAchievementForm({
+          ...achievementForm,
+          tags: [...achievementForm.tags, newTag]
+        });
+      }
+      setTagInput('');
+    }
+  };
+
+  const handleDeleteTag = (tagToDelete) => {
+    setAchievementForm({
+      ...achievementForm,
+      tags: achievementForm.tags.filter(tag => tag !== tagToDelete)
+    });
   };
 
   // If loading, show spinner
@@ -579,73 +652,62 @@ const Profile = () => {
             </Box>
           )}
 
-          {/* Social Links with improved styling */}
+          {/* Social Links Section */}
           <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            p: 3,
-            borderRadius: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: `1px solid ${theme.palette.divider}`,
-            bgcolor: theme.palette.background.paper,
-            mb: 3
+            p: { xs: 2, md: 3 }, 
+            mb: 3,
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(20, 20, 20, 0.95)' : theme.palette.background.paper,
+            borderRadius: 2,
+            boxShadow: theme.shadows[4],
+            border: `1px solid ${theme.palette.divider}`
           }}>
-            <Typography variant="h6" sx={{ color: theme.palette.text.primary, mr: 2 }}>
+            <Typography variant="h6" sx={{ 
+              color: theme.palette.text.primary, 
+              mb: 2,
+              fontWeight: 500,
+              fontSize: { xs: '1.1rem', md: '1.25rem' }
+            }}>
               Social Links
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, ml: 2 }}>
-              <IconButton 
-                href={profileData.linkedinUrl ? (profileData.linkedinUrl.includes('linkedin.com') ? profileData.linkedinUrl : `https://www.linkedin.com/in/${profileData.linkedinUrl}`) : '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                size="large"
-                disabled={!profileData.linkedinUrl}
-                sx={{ 
-                  width: 60,
-                  height: 60,
-                  borderRadius: '50%',
-                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0,119,181,0.2)' : 'rgba(0,119,181,0.1)',
-                  color: '#0077b5',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': { 
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0,119,181,0.3)' : 'rgba(0,119,181,0.2)',
-                    transform: 'scale(1.1)'
-                  },
-                  '&.Mui-disabled': {
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
-                  }
-                }}
-              >
-                <LinkedIn sx={{ fontSize: 30 }} />
-              </IconButton>
-              <IconButton 
-                href={profileData.profiles?.github?.username ? (profileData.profiles.github.username.includes('github.com') ? profileData.profiles.github.username : `https://github.com/${profileData.profiles.github.username}`) : '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                size="large"
-                disabled={!profileData.profiles?.github?.username}
-                sx={{ 
-                  width: 60,
-                  height: 60,
-                  borderRadius: '50%',
-                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(36,41,46,0.1)',
-                  color: theme.palette.mode === 'dark' ? '#ffffff' : '#24292e',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': { 
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(36,41,46,0.2)',
-                    transform: 'scale(1.1)'
-                  },
-                  '&.Mui-disabled': {
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
-                  }
-                }}
-              >
-                <GitHub sx={{ fontSize: 30 }} />
-              </IconButton>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {profileData.linkedinUrl && (
+                <IconButton 
+                  href={profileData.linkedinUrl ? (profileData.linkedinUrl.includes('linkedin.com') ? profileData.linkedinUrl : `https://www.linkedin.com/in/${profileData.linkedinUrl}`) : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ 
+                    width: { xs: 45, md: 50 },
+                    height: { xs: 45, md: 50 },
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 119, 181, 0.3)' : 'rgba(0, 119, 181, 0.1)',
+                    color: '#0077b5',
+                    '&:hover': { 
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 119, 181, 0.4)' : 'rgba(0, 119, 181, 0.2)'
+                    }
+                  }}
+                >
+                  <LinkedIn sx={{ fontSize: { xs: 22, md: 24 } }} />
+                </IconButton>
+              )}
+              {profileData.profiles?.github?.username && (
+                <IconButton 
+                  href={profileData.profiles?.github?.username ? (profileData.profiles.github.username.includes('github.com') ? profileData.profiles.github.username : `https://github.com/${profileData.profiles.github.username}`) : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ 
+                    width: { xs: 45, md: 50 },
+                    height: { xs: 45, md: 50 },
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(33, 33, 33, 0.4)' : 'rgba(33, 33, 33, 0.1)',
+                    color: theme.palette.mode === 'dark' ? 'white' : '#333',
+                    '&:hover': { 
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(33, 33, 33, 0.6)' : 'rgba(33, 33, 33, 0.2)'
+                    }
+                  }}
+                >
+                  <GitHub sx={{ fontSize: { xs: 22, md: 24 } }} />
+                </IconButton>
+              )}
               {!profileData.linkedinUrl && !profileData.profiles?.github?.username && (
-                <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
+                <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
                   No social links added yet
                 </Typography>
               )}
@@ -654,28 +716,34 @@ const Profile = () => {
         </Box>
       </Box>
 
-      {/* Achievements Section with improved styling */}
+      {/* Achievements Section */}
       <Box sx={{ 
-        p: { xs: 2, sm: 3 },
-        borderRadius: '16px',
-        boxShadow: theme.shadows[2],
+        borderRadius: 2,
+        bgcolor: theme.palette.mode === 'dark' ? 'rgba(20, 20, 20, 0.95)' : theme.palette.background.paper,
+        boxShadow: theme.shadows[4],
         border: `1px solid ${theme.palette.divider}`,
-        bgcolor: theme.palette.background.paper,
+        overflow: 'hidden',
         mb: 4,
-        width: '100%',
-        overflow: 'hidden'
+        pb: 2
       }}>
         <Box sx={{ 
+          px: { xs: 2, md: 3 },
+          pt: { xs: 2, md: 3 },
+          pb: 2,
           display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          gap: { xs: 2, sm: 0 },
-          mb: { xs: 3, sm: 4 }
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: { md: 'space-between' },
+          alignItems: { md: 'center' },
+          gap: { xs: 2, md: 0 }
         }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+          <Typography variant="h6" sx={{ 
+            fontWeight: 600, 
+            color: theme.palette.text.primary,
+            fontSize: { xs: '1.25rem', md: '1.5rem' }
+          }}>
             Achievements
           </Typography>
+          
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -685,202 +753,235 @@ const Profile = () => {
             }}
             sx={{ 
               bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
-              width: { xs: '100%', sm: 'auto' }
+              '&:hover': {
+                bgcolor: theme.palette.primary.dark
+              },
+              py: { xs: 1, md: 0.75 },
+              width: { xs: '100%', md: 'auto' },
+              borderRadius: 1
             }}
           >
-            Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            Add Achievement
           </Button>
         </Box>
 
-        {/* Achievement Tabs */}
-        <Box sx={{ 
-          bgcolor: theme.palette.action.hover,
-          borderRadius: '16px',
-          p: { xs: 1, sm: 2 },
+        {/* Achievement Type Tabs */}
+        <Box sx={{
+          px: { xs: 2, md: 3 },
           mb: 3
         }}>
-          <Stack 
-            direction="row" 
-            spacing={1}
-            sx={{
-              overflowX: 'auto',
-              pb: 1,
-              '&::-webkit-scrollbar': {
-                height: '6px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: theme.palette.divider,
-                borderRadius: '3px',
-              },
-              flexWrap: { xs: 'nowrap', sm: 'wrap' }
-            }}
-          >
-            {achievementTypes.map((type) => (
-              <Chip
-                key={type.value}
-                label={type.label}
-                onClick={() => handleTabClick(type.value)}
-                sx={{
-                  bgcolor: activeTab === type.value ? theme.palette.primary.main : theme.palette.action.selected,
-                  color: activeTab === type.value ? theme.palette.primary.contrastText : theme.palette.text.secondary,
-                  '&:hover': {
-                    bgcolor: activeTab === type.value ? theme.palette.primary.dark : theme.palette.action.hover,
-                  },
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  height: { xs: '28px', sm: '32px' },
-                  flexShrink: 0
-                }}
-              />
-            ))}
-          </Stack>
-        </Box>
-
-        {/* Achievements Grid with Empty State */}
-        {filteredAchievements.length > 0 ? (
-          <Grid container spacing={2}>
-            {filteredAchievements.map((achievement) => (
-              <Grid item xs={12} sm={6} md={4} key={achievement._id}>
-                <Card sx={{ 
-                  bgcolor: theme.palette.background.paper,
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: '16px',
-                  transition: 'transform 0.2s',
-                  overflow: 'hidden',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&:hover': {
-                    transform: 'translateY(-4px)'
-                  }
-                }}>
-                  {/* Image Section */}
-                  <Box sx={{ 
-                    position: 'relative',
-                    width: '100%',
-                    height: { xs: '150px', sm: '180px' },
-                    overflow: 'hidden',
-                    bgcolor: theme.palette.action.disabledBackground
-                  }}>
-                    <Box 
-                      component="img"
-                      src={formatImageUrl(achievement.imageUrl)}
-                      alt={achievement.title}
-                      sx={{ 
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                      onError={(e) => {
-                        e.target.onerror = null; 
-                        e.target.src = "https://via.placeholder.com/150";
-                      }}
-                    />
-                  </Box>
-                  <CardContent sx={{ 
-                    flexGrow: 1,
-                    p: { xs: 1.5, sm: 2 }
-                  }}>
-                    <Typography variant="h6" sx={{ 
-                      mb: 1,
-                      fontSize: { xs: '1rem', sm: '1.25rem' }
-                    }}>
-                      {achievement.title}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      color: theme.palette.text.secondary,
-                      mb: 1.5, 
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                    }}>
-                      {achievement.description}
-                    </Typography>
-                    <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mb: 1.5 }}>
-                      {(Array.isArray(achievement.tags) ? achievement.tags : 
-                        achievement.tags?.split(',') || []).map((tag, index) => (
-                        <Chip
-                          key={index}
-                          label={typeof tag === 'string' ? tag.trim() : tag}
-                          size="small"
-                          sx={{
-                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                            color: theme.palette.primary.main,
-                            height: { xs: '20px', sm: '24px' },
-                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
-                          }}
-                        />
-                      ))}
-                    </Stack>
-                    <Box sx={{ 
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <Typography variant="caption" sx={{ 
-                        color: theme.palette.text.disabled,
-                        fontSize: { xs: '0.65rem', sm: '0.75rem' }
-                      }}>
-                        {achievement.startDate}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {achievement.link && (
-                          <IconButton
-                            size="small"
-                            onClick={() => window.open(achievement.link, '_blank')}
-                            sx={{ color: theme.palette.text.secondary }}
-                          >
-                            <OpenInNew fontSize="small" />
-                          </IconButton>
-                        )}
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEditAchievement(achievement)}
-                          sx={{ color: theme.palette.text.secondary }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Box 
-            sx={{ 
-              textAlign: 'center', 
-              py: { xs: 5, sm: 8 },
-              px: { xs: 2, sm: 3 },
-              bgcolor: theme.palette.action.hover,
-              borderRadius: '16px',
-            }}
-          >
-            <Typography variant="h6" sx={{ 
-              color: theme.palette.text.disabled, 
-              mb: 2,
-              fontSize: { xs: '0.95rem', sm: '1.25rem' }
-            }}>
-              No {activeTab === 'achievement' ? 'achievements' : activeTab + 's'} added yet
-            </Typography>
+          <Box sx={{
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(30, 30, 30, 0.9)' : theme.palette.background.default,
+            borderRadius: 8,
+            p: 0.5,
+            display: 'flex',
+            overflowX: 'auto',
+            '&::-webkit-scrollbar': {
+              display: 'none'
+            },
+            scrollbarWidth: 'none',
+            border: `1px solid ${theme.palette.divider}`
+          }}>
             <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                resetAchievementForm();
-                setOpenDialog(true);
-              }}
-              sx={{ 
-                bgcolor: theme.palette.primary.main,
-                '&:hover': { bgcolor: theme.palette.primary.dark },
-                width: { xs: '100%', sm: 'auto' },
-                fontSize: { xs: '0.8rem', sm: '0.875rem' }
+              onClick={() => handleTabClick('achievement')}
+              sx={{
+                color: activeTab === 'achievement' ? 'white' : theme.palette.text.secondary,
+                bgcolor: activeTab === 'achievement' ? theme.palette.primary.main : 'transparent',
+                borderRadius: 6,
+                mx: 0.5,
+                px: 2,
+                py: 0.75,
+                textTransform: 'none',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                minWidth: 'auto'
               }}
             >
-              Add Your First {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+              Achievements
+            </Button>
+            <Button
+              onClick={() => handleTabClick('project')}
+              sx={{
+                color: activeTab === 'project' ? 'white' : theme.palette.text.secondary,
+                bgcolor: activeTab === 'project' ? theme.palette.primary.main : 'transparent',
+                borderRadius: 6,
+                mx: 0.5,
+                px: 2,
+                py: 0.75,
+                textTransform: 'none',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                minWidth: 'auto'
+              }}
+            >
+              Projects
+            </Button>
+            <Button
+              onClick={() => handleTabClick('internship')}
+              sx={{
+                color: activeTab === 'internship' ? 'white' : theme.palette.text.secondary,
+                bgcolor: activeTab === 'internship' ? theme.palette.primary.main : 'transparent',
+                borderRadius: 6,
+                mx: 0.5,
+                px: 2,
+                py: 0.75,
+                textTransform: 'none',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                minWidth: 'auto'
+              }}
+            >
+              Internships
+            </Button>
+            <Button
+              onClick={() => handleTabClick('certification')}
+              sx={{
+                color: activeTab === 'certification' ? 'white' : theme.palette.text.secondary,
+                bgcolor: activeTab === 'certification' ? theme.palette.primary.main : 'transparent',
+                borderRadius: 6,
+                mx: 0.5,
+                px: 2,
+                py: 0.75,
+                textTransform: 'none',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                minWidth: 'auto'
+              }}
+            >
+              Certifications
             </Button>
           </Box>
-        )}
+        </Box>
+
+        {/* Achievements Cards */}
+        <Box sx={{ px: { xs: 2, md: 3 } }}>
+          {filteredAchievements.length > 0 ? (
+            <Box sx={{ 
+              display: { xs: 'block', md: 'grid' },
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: 3
+            }}>
+              {filteredAchievements.map((achievement) => (
+                <Box
+                  key={achievement._id}
+                  sx={{
+                    mb: { xs: 3, md: 0 },
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(40, 40, 40, 0.9)' : theme.palette.background.default,
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    transition: 'transform 0.2s',
+                    height: '100%',
+                    border: `1px solid ${theme.palette.divider}`
+                  }}
+                >
+                  {/* Content area */}
+                  <Box sx={{ 
+                    p: { xs: 2, md: 3 }, 
+                    flex: 1, 
+                    display: 'flex', 
+                    flexDirection: 'column' 
+                  }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        color: theme.palette.text.primary,
+                        mb: 1,
+                        fontSize: '1.1rem'
+                      }}
+                    >
+                      {achievement.title}
+                    </Typography>
+                    
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: theme.palette.text.secondary,
+                        mb: 1,
+                        fontSize: '0.9rem',
+                        flex: 1
+                      }}
+                    >
+                      {achievement.description}
+                    </Typography>
+
+                    {achievement.certificateId && (
+                      <Chip
+                        label="certificate"
+                        size="small"
+                        sx={{
+                          bgcolor: 'transparent',
+                          color: theme.palette.primary.main,
+                          border: `1px solid ${theme.palette.primary.main}`,
+                          height: 24,
+                          fontSize: '0.75rem',
+                          width: 'fit-content',
+                          mb: 1
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  {/* Action Buttons */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end',
+                    p: 1,
+                    borderTop: `1px solid ${theme.palette.divider}`
+                  }}>
+                    <IconButton
+                      href={achievement.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="small"
+                      sx={{ color: theme.palette.primary.main }}
+                      onClick={(e) => {
+                        if (!achievement.link) {
+                          e.preventDefault();
+                        }
+                      }}
+                      disabled={!achievement.link}
+                    >
+                      <OpenInNew fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleEditAchievement(achievement)}
+                      size="small"
+                      sx={{ color: theme.palette.text.secondary }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleDeleteConfirm(achievement._id)}
+                      size="small"
+                      sx={{ color: theme.palette.text.secondary }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Box 
+              sx={{ 
+                textAlign: 'center', 
+                py: 4,
+                px: 2,
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(30, 30, 30, 0.5)' : theme.palette.background.default,
+                borderRadius: 2,
+                mb: 3,
+                border: `1px solid ${theme.palette.divider}`
+              }}
+            >
+              <Typography variant="body2" color={theme.palette.text.secondary}>
+                No {activeTab === 'achievement' ? 'achievements' : activeTab + 's'} added yet
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* Achievement Dialog */}
@@ -951,15 +1052,44 @@ const Profile = () => {
                   value={achievementForm.description}
                   onChange={(e) => setAchievementForm({ ...achievementForm, description: e.target.value })}
                   required
+                  helperText={`${achievementForm.description.trim().split(/\s+/).filter(word => word !== '').length}/40 words (30-40 words recommended)`}
+                  error={achievementForm.description.trim().split(/\s+/).filter(word => word !== '').length > 40}
+                  FormHelperTextProps={{
+                    sx: {
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      mt: 0.5
+                    }
+                  }}
+                  placeholder="Keep your description concise (max 40 words)"
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Tags (comma-separated)"
-                  value={achievementForm.tags}
-                  onChange={(e) => setAchievementForm({ ...achievementForm, tags: e.target.value })}
+                  label="Tags"
+                  value={tagInput}
+                  onChange={handleTagInputChange}
+                  onKeyDown={handleTagInputKeyDown}
+                  placeholder="Type and press Enter to add tags"
+                  helperText="Press Enter to add a tag"
                 />
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  {achievementForm.tags.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      onDelete={() => handleDeleteTag(tag)}
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        color: theme.palette.primary.main,
+                        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+                      }}
+                    />
+                  ))}
+                </Box>
               </Grid>
               <Grid item xs={12}>
                 <TextField
@@ -967,29 +1097,7 @@ const Profile = () => {
                   label="Link"
                   value={achievementForm.link}
                   onChange={(e) => setAchievementForm({ ...achievementForm, link: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Image URL"
-                  value={achievementForm.imageUrl}
-                  onChange={(e) => {
-                    // Basic URL validation
-                    const url = e.target.value.trim();
-                    // Allow empty value or a valid URL
-                    setAchievementForm({ 
-                      ...achievementForm, 
-                      imageUrl: url 
-                    });
-                  }}
-                  error={!!(achievementForm.imageUrl && !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(achievementForm.imageUrl))}
-                  helperText={
-                    achievementForm.imageUrl && 
-                    !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(achievementForm.imageUrl) ?
-                    "Please enter a valid URL" : 
-                    "Enter an image URL (e.g., https://example.com/image.jpg)"
-                  }
+                  placeholder="Link to your certificate, project, etc."
                 />
               </Grid>
               {achievementForm.type === 'internship' && (
@@ -1066,6 +1174,53 @@ const Profile = () => {
             OK
             </Button>
           </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmation.open}
+        onClose={() => setDeleteConfirmation({ open: false, achievementId: null })}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          elevation: 24,
+          sx: {
+            borderRadius: 2,
+            position: 'relative',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <DeleteIcon color="error" />
+            <Typography variant="h6">Confirm Deletion</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This action cannot be undone.
+          </Alert>
+          <DialogContentText>
+            Are you sure you want to delete this {activeTab}?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button 
+            onClick={() => setDeleteConfirmation({ open: false, achievementId: null })}
+            color="inherit"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirmed}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+          >
+            Delete
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );

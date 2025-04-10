@@ -39,12 +39,19 @@ router.put('/:id/read', auth, async (req, res) => {
       return res.status(404).json({ message: 'Notification not found' });
     }
 
-    notification.read = true;
-    await notification.save();
-
-    res.json({ message: 'Notification marked as read' });
+    // Check if this notification should be auto-deleted
+    if (notification.autoDelete) {
+      // Delete the notification instead of marking it as read
+      await Notification.deleteOne({ _id: req.params.id });
+      res.json({ message: 'Notification deleted' });
+    } else {
+      // Mark the notification as read
+      notification.read = true;
+      await notification.save();
+      res.json({ message: 'Notification marked as read' });
+    }
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    console.error('Error handling notification:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
@@ -52,14 +59,34 @@ router.put('/:id/read', auth, async (req, res) => {
 // Mark all notifications as read for a user
 router.put('/read-all', auth, async (req, res) => {
   try {
+    // Find auto-delete notifications
+    const autoDeleteNotifications = await Notification.find({
+      userId: req.user.id,
+      read: false,
+      autoDelete: true
+    });
+    
+    // Delete auto-delete notifications if any
+    if (autoDeleteNotifications.length > 0) {
+      await Notification.deleteMany({
+        userId: req.user.id,
+        autoDelete: true
+      });
+    }
+    
+    // Mark remaining notifications as read
     await Notification.updateMany(
-      { userId: req.user.id, read: false },
+      { userId: req.user.id, read: false, autoDelete: false },
       { $set: { read: true } }
     );
 
-    res.json({ message: 'All notifications marked as read' });
+    res.json({ 
+      message: 'All notifications processed',
+      deleted: autoDeleteNotifications.length,
+      markedAsRead: true 
+    });
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    console.error('Error processing notifications:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });

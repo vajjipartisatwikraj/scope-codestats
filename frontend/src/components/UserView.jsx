@@ -24,10 +24,19 @@ import { PieChart, Pie, Cell, Legend, Tooltip as RechartsTooltip, ResponsiveCont
 import axios from 'axios';
 import 'github-calendar/dist/github-calendar.css';
 import GitHubCalendar from 'github-calendar';
-import { OpenInNew, LinkedIn, GitHub } from '@mui/icons-material';
+import { 
+  OpenInNew, 
+  LinkedIn, 
+  GitHub, 
+  Code, 
+  Work, 
+  VerifiedUser, 
+  EmojiEvents,
+  Edit as EditIcon,
+  Delete as DeleteIcon
+} from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiUrl } from '../config/apiConfig';
-import { getProfileImageUrl } from '../utils/profileUtils';
 
 const achievementTypes = [
   { value: 'project', label: 'Project' },
@@ -117,21 +126,6 @@ const fetchGitHubRepos = async (username) => {
 const fetchGitHubContributions = async (username) => {
   // Return 0 instead of making GitHub API call that causes 401 errors
   return 0;
-};
-
-// Helper function to validate and format image URLs
-const formatImageUrl = (url) => {
-  if (!url) return "https://via.placeholder.com/150";
-  
-  // Remove spaces and replace quotes if they were accidentally copied
-  url = url.trim().replace(/['"]/g, '');
-  
-  // Ensure URL starts with http:// or https://
-  if (!url.match(/^https?:\/\//)) {
-    url = 'https://' + url;
-  }
-  
-  return url;
 };
 
 const UserView = () => {
@@ -1399,226 +1393,195 @@ const UserView = () => {
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
+              bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
+              border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.03)'
             }}>
-              <Typography variant="h5" sx={{ 
-                color: darkMode ? '#fff' : '#000',
-                fontWeight: 700,
-                position: 'relative',
-                mb: 3
-              }}>
-                {achievementTypes.find(t => t.value === activeTab)?.label}s
-              </Typography>
-
               <Box sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'row', sm: 'row' },
-                gap: 2,
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 2
+              }}>
+                <Typography variant="h5" sx={{ 
+                  color: darkMode ? '#fff' : '#000',
+                  fontWeight: 600
+                }}>
+                  Achievements
+                </Typography>
+              </Box>
+
+              {/* Mobile-friendly tabs */}
+              <Box sx={{ 
+                bgcolor: darkMode ? 'rgba(30, 30, 30, 0.5)' : 'rgba(240, 240, 240, 0.5)',
+                borderRadius: 2,
+                p: 0.75,
                 mb: 3,
-                borderBottom: `1px solid ${getDividerColor()}`,
-                pb: 1,
+                display: 'flex',
                 overflowX: 'auto',
-                overflowY: 'hidden',
-                whiteSpace: 'nowrap',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
                 '&::-webkit-scrollbar': {
                   display: 'none'
                 },
-                WebkitOverflowScrolling: 'touch'
+                scrollbarWidth: 'none'
               }}>
                 {achievementTypes.map((type) => (
-                  <Typography 
+                  <Button
                     key={type.value}
-                    variant="button"
+                    startIcon={
+                      type.value === 'project' ? <Code /> :
+                      type.value === 'internship' ? <Work /> :
+                      type.value === 'certification' ? <VerifiedUser /> :
+                      <EmojiEvents />
+                    }
                     onClick={() => setActiveTab(type.value)}
-                    sx={{ 
-                      color: activeTab === type.value ? '#0088cc' : getTextColor(0.5),
-                      cursor: 'pointer',
-                      position: 'relative',
-                      pb: 1,
-                      px: { xs: 2, sm: 0 },
-                      mr: 3,
-                      '&:hover': {
-                        color: activeTab === type.value ? '#0088cc' : getTextColor(0.8)
-                      },
-                      '&:after': activeTab === type.value ? {
-                        content: '""',
-                        position: 'absolute',
-                        bottom: -1,
-                        left: 0,
-                        width: '100%',
-                        height: '2px',
-                        bgcolor: '#0088cc',
-                      } : {}
+                    sx={{
+                      color: activeTab === type.value ? 'white' : darkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.7)',
+                      bgcolor: activeTab === type.value ? '#0088cc' : 'transparent',
+                      borderRadius: 2,
+                      mx: 0.5,
+                      px: 2,
+                      py: 0.75,
+                      minWidth: 'auto',
+                      textTransform: 'none',
+                      fontSize: '0.85rem',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     {type.label}s
-                  </Typography>
+                  </Button>
                 ))}
               </Box>
 
               <Box sx={{ width: '100%' }}>
-                {filteredAchievements.map((achievement, index) => (
-                  <Box
-                    key={achievement._id || `achievement-${index}`}
-                    sx={{
-                      mb: 2,
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      width: '100%',
-                      transition: 'all 0.3s ease',
-                      ...getInnerCardStyle(),
-                      transform: 'none',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: darkMode 
-                          ? '0 8px 25px rgba(0, 0, 0, 0.3)' 
-                          : '0 8px 25px rgba(0, 0, 0, 0.15)',
-                      }
-                    }}
-                  >
-                    {/* Image area - Full width on mobile, 35% on desktop */}
+                {filteredAchievements.length > 0 ? (
+                  filteredAchievements.map((achievement, index) => (
                     <Box
+                      key={achievement._id || `achievement-${index}`}
                       sx={{
-                        width: { xs: '100%', sm: '35%' },
-                        position: 'relative',
-                        background: 'linear-gradient(135deg, #4a6cf7 0%, #2651fc 100%)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        p: 0,
+                        mb: 2,
+                        borderRadius: 2,
                         overflow: 'hidden',
-                        minHeight: { xs: '180px', sm: '250px' },
-                      }}
-                    >
-                      <Box 
-                        component="img"
-                        src={formatImageUrl(achievement.imageUrl)}
-                        alt={achievement.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          display: 'block',
-                        }}
-                        onError={(e) => {
-                          e.target.onerror = null; 
-                          e.target.src = "https://via.placeholder.com/150";
-                        }}
-                      />
-                    </Box>
-
-                    {/* Content area - Full width on mobile, 65% on desktop */}
-                    <Box
-                      sx={{
-                        width: { xs: '100%', sm: '65%' },
-                        p: { xs: 2, sm: 3 },
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        bgcolor: darkMode ? '#242424' : '#ffffff',
+                        width: '100%',
+                        bgcolor: darkMode ? '#242424' : '#f5f5f5',
+                        transition: 'transform 0.2s',
+                        border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
+                        boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.08)',
+                        '&:hover': {
+                          transform: 'translateY(-3px)',
+                          boxShadow: darkMode ? '0 6px 16px rgba(0, 0, 0, 0.25)' : '0 6px 16px rgba(0, 0, 0, 0.12)',
+                        }
                       }}
                     >
-                      <Box>
+                      {/* Achievement Content */}
+                      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
                         <Typography
-                          variant="h5"
+                          variant="h6"
                           sx={{
-                            fontWeight: 700,
-                            color: darkMode ? '#fff' : '#000',
+                            fontWeight: 600,
+                            color: darkMode ? 'white' : '#000000',
                             mb: 1,
-                            fontSize: { xs: '1.2rem', sm: '1.5rem' },
+                            fontSize: { xs: '1.1rem', sm: '1.2rem' },
                           }}
                         >
                           {achievement.title}
                         </Typography>
 
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: 1,
-                            mb: 2,
-                          }}
-                        >
-                          {achievement.tags?.map((tech, i) => (
-                            <Chip
-                              key={i}
-                              label={tech.trim()}
-                              size={isMobile ? "small" : "medium"}
-                              sx={{
-                                bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
-                                color: '#0088cc',
-                                border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
-                                borderRadius: '20px',
-                                fontSize: { xs: '0.75rem', sm: '0.85rem' },
-                                fontWeight: 500,
-                                height: 'auto',
-                                py: 0.5,
-                                '&:hover': { 
-                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)' 
-                                }
-                              }}
-                            />
-                          ))}
-                        </Box>
-
                         <Typography
                           variant="body2"
                           sx={{
-                            color: getTextColor(0.7),
-                            mb: { xs: 2, sm: 3 },
-                            overflow: 'hidden',
-                            display: '-webkit-box',
-                            WebkitLineClamp: { xs: 3, sm: 2 },
-                            WebkitBoxOrient: 'vertical',
-                            textOverflow: 'ellipsis',
-                            fontSize: { xs: '0.875rem', sm: '1rem' },
-                            lineHeight: { xs: 1.4, sm: 1.6 },
+                            color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                            mb: 2,
+                            overflow: 'visible',
+                            whiteSpace: 'normal',
+                            fontSize: '0.875rem',
+                            lineHeight: 1.5,
                           }}
                         >
-                          {achievement.description || "Work on developing and..."}
+                          {achievement.description || "No description provided"}
                         </Typography>
-                      </Box>
 
-                      {achievement.link && (
-                        <Button
-                          variant="contained"
-                          component="a"
-                          href={achievement.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{
-                            bgcolor: '#0088cc',
-                            color: '#fff',
-                            fontWeight: 600,
-                            boxShadow: 'none',
-                            px: { xs: 3, sm: 4 },
-                            py: 1,
-                            width: 'fit-content',
-                            borderRadius: '8px',
-                            textTransform: 'none',
-                            fontSize: { xs: '0.875rem', sm: '1rem' },
-                            '&:hover': {
-                              bgcolor: '#006699',
-                            },
-                          }}
-                        >
-                          Visit
-                        </Button>
-                      )}
+                        {achievement.tags && achievement.tags.length > 0 && (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 1,
+                              mb: 2,
+                            }}
+                          >
+                            {achievement.tags.map((tech, i) => (
+                              <Chip
+                                key={i}
+                                label={tech.trim()}
+                                size="small"
+                                sx={{
+                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                  color: '#0088cc',
+                                  border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
+                                  fontSize: '0.7rem',
+                                  height: 24,
+                                  fontWeight: 500
+                                }}
+                              />
+                            ))}
+                            
+                            {achievement.certificateId && (
+                              <Chip
+                                label="certificate"
+                                size="small"
+                                sx={{
+                                  bgcolor: 'transparent',
+                                  color: '#0088cc',
+                                  border: '1px solid #0088cc',
+                                  fontSize: '0.7rem',
+                                  height: 24,
+                                  fontWeight: 500
+                                }}
+                              />
+                            )}
+                          </Box>
+                        )}
+                        
+                        {/* Visit Button */}
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'flex-end',
+                          mt: 'auto', 
+                          pt: 1
+                        }}>
+                          {achievement.link && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              href={achievement.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              startIcon={<OpenInNew fontSize="small" />}
+                              sx={{
+                                bgcolor: '#0088cc',
+                                color: 'white',
+                                '&:hover': { bgcolor: '#006699' },
+                                textTransform: 'none',
+                                borderRadius: '8px',
+                                px: 2
+                              }}
+                            >
+                              Visit
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
                     </Box>
-                  </Box>
-                ))}
-                {filteredAchievements.length === 0 && (
+                  ))
+                ) : (
                   <Box sx={{ 
                     textAlign: 'center',
                     py: 4,
-                    color: getTextColor(0.5),
-                    bgcolor: darkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
-                    borderRadius: '16px',
-                    border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                    bgcolor: darkMode ? 'rgba(30, 30, 30, 0.5)' : 'rgba(240, 240, 240, 0.5)',
+                    borderRadius: 2,
+                    border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
                   }}>
                     <Typography>
                       No {achievementTypes.find(t => t.value === activeTab)?.label}s found
