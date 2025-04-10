@@ -1387,22 +1387,28 @@ const Leaderboard = () => {
       />
 
       {/* Top 3 Section - Below stats cards */}
-      {users.length > 0 && users.slice(0, 3).length === 3 && !searchTerm && (
+      {users.length > 0 && filteredUsers.slice(0, 3).length > 0 && !searchTerm && (
         <Box sx={{ 
           mb: { xs: 3, sm: 4 },
           maxWidth: '1200px',
           mx: 'auto'
         }}>
           <Grid container spacing={2} justifyContent="center">
-            <Grid item xs={12} sm={4} md={3} order={{ xs: 2, sm: 1 }}>
-              <TopThreeCard user={users[1]} rank={2} delay="200ms" leaderboardType={leaderboardType} />
-            </Grid>
-            <Grid item xs={12} sm={4} md={3} order={{ xs: 1, sm: 2 }}>
-              <TopThreeCard user={users[0]} rank={1} delay="0ms" leaderboardType={leaderboardType} />
-            </Grid>
-            <Grid item xs={12} sm={4} md={3} order={{ xs: 3, sm: 3 }}>
-              <TopThreeCard user={users[2]} rank={3} delay="400ms" leaderboardType={leaderboardType} />
-            </Grid>
+            {filteredUsers.length > 1 && (
+              <Grid item xs={12} sm={4} md={3} order={{ xs: 2, sm: 1 }}>
+                <TopThreeCard user={filteredUsers[1]} rank={2} delay="200ms" leaderboardType={leaderboardType} />
+              </Grid>
+            )}
+            {filteredUsers.length > 0 && (
+              <Grid item xs={12} sm={4} md={3} order={{ xs: 1, sm: 2 }}>
+                <TopThreeCard user={filteredUsers[0]} rank={1} delay="0ms" leaderboardType={leaderboardType} />
+              </Grid>
+            )}
+            {filteredUsers.length > 2 && (
+              <Grid item xs={12} sm={4} md={3} order={{ xs: 3, sm: 3 }}>
+                <TopThreeCard user={filteredUsers[2]} rank={3} delay="400ms" leaderboardType={leaderboardType} />
+              </Grid>
+            )}
           </Grid>
         </Box>
       )}
@@ -1590,7 +1596,7 @@ const Leaderboard = () => {
                 }}
               >
                 <MenuItem value="ALL">All Years</MenuItem>
-                {[2024, 2025, 2026, 2027].map((yr) => (
+                {[2025, 2026, 2027, 2028].map((yr) => (
                   <MenuItem key={yr} value={yr}>{yr}</MenuItem>
                 ))}
               </Select>

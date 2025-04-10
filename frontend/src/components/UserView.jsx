@@ -33,7 +33,9 @@ import {
   VerifiedUser, 
   EmojiEvents,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  ChevronLeft,
+  ChevronRight
 } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiUrl } from '../config/apiConfig';
@@ -119,13 +121,23 @@ const preparePieChartData = (codingProfiles, type) => {
 };
 
 const fetchGitHubRepos = async (username) => {
-  // Return 0 instead of making GitHub API call that causes 401 errors
-  return 0;
+  try {
+    const response = await axios.get(`${apiUrl}/profiles/platform/github/${username}`);
+    return response.data.publicRepos || 0;
+  } catch (error) {
+    console.error('Error fetching GitHub repos:', error);
+    return 0;
+  }
 };
 
 const fetchGitHubContributions = async (username) => {
-  // Return 0 instead of making GitHub API call that causes 401 errors
-  return 0;
+  try {
+    const response = await axios.get(`${apiUrl}/profiles/platform/github/${username}`);
+    return response.data.totalCommits || 0;
+  } catch (error) {
+    console.error('Error fetching GitHub contributions:', error);
+    return 0;
+  }
 };
 
 const UserView = () => {
@@ -193,6 +205,32 @@ const UserView = () => {
         : '0 6px 16px rgba(0, 0, 0, 0.12)',
     }
   });
+
+  const [achievementCounts, setAchievementCounts] = useState({
+    project: 0,
+    internship: 0,
+    certification: 0,
+    achievement: 0
+  });
+
+  useEffect(() => {
+    if (userData?.achievements) {
+      const counts = {
+        project: 0,
+        internship: 0,
+        certification: 0,
+        achievement: 0
+      };
+      
+      userData.achievements.forEach(achievement => {
+        if (counts.hasOwnProperty(achievement.type)) {
+          counts[achievement.type]++;
+        }
+      });
+      
+      setAchievementCounts(counts);
+    }
+  }, [userData?.achievements]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -915,7 +953,7 @@ const UserView = () => {
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
                 {userData.skills?.map((skill, index) => (
                   <Chip
-                    key={index}
+                    key={`skill-${skill}-${index}`}
                     label={skill}
                     size={isMobile ? "small" : "medium"}
                     sx={{
@@ -937,7 +975,7 @@ const UserView = () => {
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {userData.interests?.map((interest, index) => (
                   <Chip
-                    key={index}
+                    key={`interest-${interest}-${index}`}
                     label={interest}
                     size={isMobile ? "small" : "medium"}
                     sx={{
@@ -1311,7 +1349,6 @@ const UserView = () => {
                             }}>
                               Contribution Activity
                             </Typography>
-                            
                           </Box>
                           <Box sx={{ 
                             '.calendar': {
@@ -1358,7 +1395,8 @@ const UserView = () => {
                                 display: 'flex',
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                position: 'relative'
                               }}>
                                 <img 
                                   src={`https://github-readme-streak-stats.herokuapp.com/?user=${userData.codingProfiles?.github?.username}&theme=${darkMode ? 'dark' : 'default'}&hide_border=true&background=${darkMode ? '242424' : 'ffffff'}&ring=0088cc&fire=0088cc&currStreakLabel=0088cc&sideLabels=${darkMode ? 'ffffff' : '333333'}&dates=${darkMode ? 'ffffff' : '333333'}&stroke=0088cc&card_width=850&sideNums=${darkMode ? 'ffffff' : '333333'}&currStreakNum=${darkMode ? 'ffffff' : '333333'}`}
@@ -1369,6 +1407,17 @@ const UserView = () => {
                                     objectFit: 'contain',
                                     transform: 'scale(1.15)',
                                     transformOrigin: 'center'
+                                  }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.parentElement.innerHTML = `
+                                      <Typography sx={{ 
+                                        color: '${darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}',
+                                        textAlign: 'center'
+                                      }}>
+                                        Unable to load streak stats. Please try again later.
+                                      </Typography>
+                                    `;
                                   }}
                                 />
                               </Box>
@@ -1410,170 +1459,220 @@ const UserView = () => {
                 </Typography>
               </Box>
 
-              {/* Mobile-friendly tabs */}
-              <Box sx={{ 
-                bgcolor: darkMode ? 'rgba(30, 30, 30, 0.5)' : 'rgba(240, 240, 240, 0.5)',
-                borderRadius: 2,
-                p: 0.75,
+              {/* Achievement Type Tabs */}
+              <Box sx={{
                 mb: 3,
-                display: 'flex',
+                width: '100%',
                 overflowX: 'auto',
                 '&::-webkit-scrollbar': {
-                  display: 'none'
+                  height: '6px'
                 },
-                scrollbarWidth: 'none'
+                '&::-webkit-scrollbar-track': {
+                  background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                  borderRadius: '3px'
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                  borderRadius: '3px'
+                }
               }}>
-                {achievementTypes.map((type) => (
-                  <Button
-                    key={type.value}
-                    startIcon={
-                      type.value === 'project' ? <Code /> :
-                      type.value === 'internship' ? <Work /> :
-                      type.value === 'certification' ? <VerifiedUser /> :
-                      <EmojiEvents />
-                    }
-                    onClick={() => setActiveTab(type.value)}
-                    sx={{
-                      color: activeTab === type.value ? 'white' : darkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.7)',
-                      bgcolor: activeTab === type.value ? '#0088cc' : 'transparent',
-                      borderRadius: 2,
-                      mx: 0.5,
-                      px: 2,
-                      py: 0.75,
-                      minWidth: 'auto',
-                      textTransform: 'none',
-                      fontSize: '0.85rem',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {type.label}s
-                  </Button>
-                ))}
-              </Box>
+                <Box sx={{
+                  display: 'flex',
+                  bgcolor: darkMode ? 'rgba(30, 30, 30, 0.9)' : 'rgba(240, 240, 240, 0.5)',
+                  borderRadius: '12px',
+                  p: 1,
+                  gap: 1,
+                  minWidth: 'min-content'
+                }}>
+                  {[
+                    { value: 'project', label: 'Projects', icon: <Code /> },
+                    { value: 'internship', label: 'Internships', icon: <Work /> },
+                    { value: 'certification', label: 'Certifications', icon: <VerifiedUser /> },
+                    { value: 'achievement', label: 'Achievements', icon: <EmojiEvents /> }
+                  ].map((type) => {
+                    const isActive = activeTab === type.value;
+                    const count = achievementCounts[type.value];
 
-              <Box sx={{ width: '100%' }}>
-                {filteredAchievements.length > 0 ? (
-                  filteredAchievements.map((achievement, index) => (
-                    <Box
-                      key={achievement._id || `achievement-${index}`}
-                      sx={{
-                        mb: 2,
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        width: '100%',
-                        bgcolor: darkMode ? '#242424' : '#f5f5f5',
-                        transition: 'transform 0.2s',
-                        border: darkMode ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-                        boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.08)',
-                        '&:hover': {
-                          transform: 'translateY(-3px)',
-                          boxShadow: darkMode ? '0 6px 16px rgba(0, 0, 0, 0.25)' : '0 6px 16px rgba(0, 0, 0, 0.12)',
-                        }
-                      }}
-                    >
-                      {/* Achievement Content */}
-                      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontWeight: 600,
-                            color: darkMode ? 'white' : '#000000',
-                            mb: 1,
-                            fontSize: { xs: '1.1rem', sm: '1.2rem' },
-                          }}
-                        >
-                          {achievement.title}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-                            mb: 2,
-                            overflow: 'visible',
-                            whiteSpace: 'normal',
-                            fontSize: '0.875rem',
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {achievement.description || "No description provided"}
-                        </Typography>
-
-                        {achievement.tags && achievement.tags.length > 0 && (
-                          <Box
+                    return (
+                      <Button
+                        key={type.value}
+                        onClick={() => setActiveTab(type.value)}
+                        sx={{
+                          position: 'relative',
+                          color: isActive ? 'white' : darkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.7)',
+                          bgcolor: isActive ? '#0088cc' : 'transparent',
+                          borderRadius: '8px',
+                          px: 2,
+                          py: 1,
+                          minWidth: 'auto',
+                          textTransform: 'none',
+                          fontSize: '0.9rem',
+                          whiteSpace: 'nowrap',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          '&:hover': {
+                            bgcolor: isActive ? '#0088cc' : darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {type.icon}
+                          <Typography
+                            component="span"
                             sx={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: 1,
-                              mb: 2,
+                              fontSize: '0.9rem',
+                              fontWeight: isActive ? 600 : 400
                             }}
                           >
-                            {achievement.tags.map((tech, i) => (
-                              <Chip
-                                key={i}
-                                label={tech.trim()}
-                                size="small"
-                                sx={{
-                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
-                                  color: '#0088cc',
-                                  border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.15)'}`,
-                                  fontSize: '0.7rem',
-                                  height: 24,
-                                  fontWeight: 500
-                                }}
-                              />
-                            ))}
-                            
-                            {achievement.certificateId && (
-                              <Chip
-                                label="certificate"
-                                size="small"
-                                sx={{
-                                  bgcolor: 'transparent',
-                                  color: '#0088cc',
-                                  border: '1px solid #0088cc',
-                                  fontSize: '0.7rem',
-                                  height: 24,
-                                  fontWeight: 500
-                                }}
-                              />
-                            )}
-                          </Box>
-                        )}
-                        
-                        {/* Visit Button */}
+                            {type.label}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            ml: 'auto',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: '24px',
+                            height: '24px',
+                            borderRadius: '12px',
+                            bgcolor: isActive ? 'rgba(0,0,0,0.2)' : darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                            color: isActive ? 'white' : 'inherit',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            px: 1
+                          }}
+                        >
+                          {count}/5
+                        </Box>
+                      </Button>
+                    );
+                  })}
+                </Box>
+              </Box>
+
+              {/* Achievements Cards Container */}
+              <Box sx={{ 
+                position: 'relative',
+                width: '100%',
+                overflowX: 'hidden'
+              }}>
+                {filteredAchievements.length > 0 ? (
+                  <Box sx={{
+                    display: 'flex',
+                    gap: 2,
+                    pb: 2,
+                    overflowX: 'auto',
+                    scrollBehavior: 'smooth',
+                    '&::-webkit-scrollbar': {
+                      height: '6px'
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                      borderRadius: '3px'
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                      borderRadius: '3px'
+                    }
+                  }}>
+                    {filteredAchievements.map((achievement, index) => (
+                      <Box
+                        key={`achievement-${achievement._id || index}`}
+                        sx={{
+                          minWidth: { xs: '280px', sm: '320px' },
+                          maxWidth: { xs: '280px', sm: '320px' },
+                          bgcolor: darkMode ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          transition: 'all 0.2s ease-in-out',
+                          height: '100%',
+                          minHeight: '220px',
+                          border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                          boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: darkMode ? '0 6px 16px rgba(0, 0, 0, 0.4)' : '0 6px 16px rgba(0, 0, 0, 0.15)',
+                          },
+                          flexShrink: 0
+                        }}
+                      >
                         <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'flex-end',
-                          mt: 'auto', 
-                          pt: 1
+                          p: 3,
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column'
                         }}>
-                          {achievement.link && (
-                            <Button
-                              variant="contained"
-                              size="small"
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 600,
+                              color: darkMode ? 'white' : '#000000',
+                              mb: 1
+                            }}
+                          >
+                            {achievement.title}
+                          </Typography>
+                          
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                              mb: 2,
+                              flex: 1
+                            }}
+                          >
+                            {achievement.description}
+                          </Typography>
+
+                          {achievement.tags && achievement.tags.length > 0 && (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                              {achievement.tags.map((tag, tagIndex) => (
+                                <Chip
+                                  key={`tag-${achievement._id || index}-${tagIndex}`}
+                                  label={tag}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                    color: '#0088cc',
+                                    border: '1px solid rgba(0, 136, 204, 0.2)',
+                                    height: '24px'
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
+
+                        {achievement.link && (
+                          <Box sx={{ 
+                            p: 2,
+                            borderTop: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                            display: 'flex',
+                            justifyContent: 'flex-end'
+                          }}>
+                            <IconButton
                               href={achievement.link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              startIcon={<OpenInNew fontSize="small" />}
-                              sx={{
-                                bgcolor: '#0088cc',
-                                color: 'white',
-                                '&:hover': { bgcolor: '#006699' },
-                                textTransform: 'none',
-                                borderRadius: '8px',
-                                px: 2
+                              size="small"
+                              sx={{ 
+                                color: '#0088cc',
+                                '&:hover': {
+                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)'
+                                }
                               }}
                             >
-                              Visit
-                            </Button>
-                          )}
-                        </Box>
+                              <OpenInNew fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
                       </Box>
-                    </Box>
-                  ))
+                    ))}
+                  </Box>
                 ) : (
                   <Box sx={{ 
                     textAlign: 'center',

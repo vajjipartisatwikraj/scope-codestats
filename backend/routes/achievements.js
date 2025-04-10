@@ -3,6 +3,8 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Achievement = require('../models/Achievement');
 
+const MAX_ITEMS_PER_TYPE = 5;
+
 // Get all achievements for the logged-in user
 router.get('/', auth, async (req, res) => {
   try {
@@ -17,6 +19,18 @@ router.get('/', auth, async (req, res) => {
 // Create a new achievement
 router.post('/', auth, async (req, res) => {
   try {
+    // Check if user has reached the limit for this type
+    const existingCount = await Achievement.countDocuments({
+      user: req.user.id,
+      type: req.body.type
+    });
+
+    if (existingCount >= MAX_ITEMS_PER_TYPE) {
+      return res.status(400).json({
+        message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${req.body.type}s. Please delete an existing one to add more.`
+      });
+    }
+
     const { type, title, description, tags, link, imageUrl, startDate, endDate } = req.body;
 
     if (!type || !title || !description) {

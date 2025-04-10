@@ -31,6 +31,9 @@ const achievementTypes = [
   { value: 'certification', label: 'Certifications', icon: <CertificateIcon /> }
 ];
 
+// Add this constant at the top of the file after imports
+const MAX_ITEMS_PER_TYPE = 5;
+
 const Profile = () => {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -219,25 +222,36 @@ const Profile = () => {
     
     // Validate form
     if (!achievementForm.title || !achievementForm.description) {
-        setErrorDialog({
-          open: true,
-          title: 'Missing Required Fields',
-          message: 'Please fill in all required fields.'
-        });
-        return;
+      setErrorDialog({
+        open: true,
+        title: 'Missing Required Fields',
+        message: 'Please fill in all required fields.'
+      });
+      return;
+    }
+    
+    // Check if limit is reached for this type
+    const currentTypeCount = achievements.filter(a => a.type === achievementForm.type).length;
+    if (!editingAchievement && currentTypeCount >= MAX_ITEMS_PER_TYPE) {
+      setErrorDialog({
+        open: true,
+        title: 'Limit Reached',
+        message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${achievementForm.type}s. Please delete an existing one to add more.`
+      });
+      return;
     }
     
     // Validate word count in description
     const wordCount = achievementForm.description.trim().split(/\s+/).length;
     if (wordCount > 40) {
-        setErrorDialog({
-          open: true,
-          title: 'Description Too Long',
-          message: `Your description is ${wordCount} words. Please limit it to 40 words or less.`
-        });
-        return;
+      setErrorDialog({
+        open: true,
+        title: 'Description Too Long',
+        message: `Your description is ${wordCount} words. Please limit it to 40 words or less.`
+      });
+      return;
     }
-      
+
     try {
       // Use the tags array directly from state
       const achievementData = {
@@ -748,6 +762,15 @@ const Profile = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => {
+              const currentTypeCount = achievements.filter(a => a.type === activeTab).length;
+              if (currentTypeCount >= MAX_ITEMS_PER_TYPE) {
+                setErrorDialog({
+                  open: true,
+                  title: 'Limit Reached',
+                  message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${activeTab}s. Please delete an existing one to add more.`
+                });
+                return;
+              }
               resetAchievementForm();
               setOpenDialog(true);
             }}
@@ -760,6 +783,7 @@ const Profile = () => {
               width: { xs: '100%', md: 'auto' },
               borderRadius: 1
             }}
+            disabled={achievements.filter(a => a.type === activeTab).length >= MAX_ITEMS_PER_TYPE}
           >
             Add Achievement
           </Button>
@@ -782,74 +806,46 @@ const Profile = () => {
             scrollbarWidth: 'none',
             border: `1px solid ${theme.palette.divider}`
           }}>
-            <Button
-              onClick={() => handleTabClick('achievement')}
-              sx={{
-                color: activeTab === 'achievement' ? 'white' : theme.palette.text.secondary,
-                bgcolor: activeTab === 'achievement' ? theme.palette.primary.main : 'transparent',
-                borderRadius: 6,
-                mx: 0.5,
-                px: 2,
-                py: 0.75,
-                textTransform: 'none',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                minWidth: 'auto'
-              }}
-            >
-              Achievements
-            </Button>
-            <Button
-              onClick={() => handleTabClick('project')}
-              sx={{
-                color: activeTab === 'project' ? 'white' : theme.palette.text.secondary,
-                bgcolor: activeTab === 'project' ? theme.palette.primary.main : 'transparent',
-                borderRadius: 6,
-                mx: 0.5,
-                px: 2,
-                py: 0.75,
-                textTransform: 'none',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                minWidth: 'auto'
-              }}
-            >
-              Projects
-            </Button>
-            <Button
-              onClick={() => handleTabClick('internship')}
-              sx={{
-                color: activeTab === 'internship' ? 'white' : theme.palette.text.secondary,
-                bgcolor: activeTab === 'internship' ? theme.palette.primary.main : 'transparent',
-                borderRadius: 6,
-                mx: 0.5,
-                px: 2,
-                py: 0.75,
-                textTransform: 'none',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                minWidth: 'auto'
-              }}
-            >
-              Internships
-            </Button>
-            <Button
-              onClick={() => handleTabClick('certification')}
-              sx={{
-                color: activeTab === 'certification' ? 'white' : theme.palette.text.secondary,
-                bgcolor: activeTab === 'certification' ? theme.palette.primary.main : 'transparent',
-                borderRadius: 6,
-                mx: 0.5,
-                px: 2,
-                py: 0.75,
-                textTransform: 'none',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                minWidth: 'auto'
-              }}
-            >
-              Certifications
-            </Button>
+            {achievementTypes.map((type) => (
+              <Button
+                key={`type-${type.value}`}
+                startIcon={type.icon}
+                onClick={() => setActiveTab(type.value)}
+                sx={{
+                  color: activeTab === type.value ? 'white' : theme.palette.text.secondary,
+                  bgcolor: activeTab === type.value ? '#0088cc' : 'transparent',
+                  borderRadius: 6,
+                  mx: 0.5,
+                  px: 2,
+                  py: 0.75,
+                  textTransform: 'none',
+                  fontSize: '0.85rem',
+                  whiteSpace: 'nowrap',
+                  minWidth: 'auto',
+                  position: 'relative',
+                  '&:hover': {
+                    bgcolor: activeTab === type.value ? '#0088cc' : theme.palette.action.hover
+                  }
+                }}
+              >
+                {type.label}s
+                <Typography
+                  component="span"
+                  sx={{
+                    ml: 1,
+                    fontSize: '0.75rem',
+                    color: activeTab === type.value ? 'rgba(255,255,255,0.8)' : theme.palette.text.secondary,
+                    bgcolor: activeTab === type.value ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.1)',
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: '10px',
+                    display: 'inline-block'
+                  }}
+                >
+                  {achievements.filter(a => a.type === type.value).length}/{MAX_ITEMS_PER_TYPE}
+                </Typography>
+              </Button>
+            ))}
           </Box>
         </Box>
 
@@ -867,29 +863,37 @@ const Profile = () => {
                   sx={{
                     mb: { xs: 3, md: 0 },
                     bgcolor: theme.palette.mode === 'dark' ? 'rgba(40, 40, 40, 0.9)' : theme.palette.background.default,
-                    borderRadius: 2,
+                    borderRadius: '16px',
                     overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
-                    transition: 'transform 0.2s',
+                    transition: 'all 0.2s ease-in-out',
                     height: '100%',
-                    border: `1px solid ${theme.palette.divider}`
+                    minHeight: '220px',
+                    border: `1px solid ${theme.palette.divider}`,
+                    boxShadow: theme.palette.mode === 'dark' ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: theme.palette.mode === 'dark' ? '0 6px 16px rgba(0, 0, 0, 0.4)' : '0 6px 16px rgba(0, 0, 0, 0.15)',
+                    }
                   }}
                 >
                   {/* Content area */}
                   <Box sx={{ 
-                    p: { xs: 2, md: 3 }, 
+                    p: { xs: 2.5, md: 3 }, 
                     flex: 1, 
                     display: 'flex', 
-                    flexDirection: 'column' 
+                    flexDirection: 'column',
+                    gap: 1.5
                   }}>
                     <Typography 
                       variant="h6" 
                       sx={{ 
                         fontWeight: 600, 
                         color: theme.palette.text.primary,
-                        mb: 1,
-                        fontSize: '1.1rem'
+                        fontSize: '1.1rem',
+                        lineHeight: 1.3,
+                        mb: 0.5
                       }}
                     >
                       {achievement.title}
@@ -899,13 +903,38 @@ const Profile = () => {
                       variant="body2" 
                       sx={{ 
                         color: theme.palette.text.secondary,
-                        mb: 1,
                         fontSize: '0.9rem',
-                        flex: 1
+                        lineHeight: 1.6,
+                        flex: 1,
+                        mb: 1
                       }}
                     >
                       {achievement.description}
                     </Typography>
+
+                    {/* Tags Section */}
+                    {achievement.tags && achievement.tags.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                        {achievement.tags.map((tag, idx) => (
+                          <Chip
+                            key={idx}
+                            label={tag}
+                            size="small"
+                            sx={{
+                              bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                              color: '#0088cc',
+                              border: '1px solid rgba(0, 136, 204, 0.2)',
+                              height: '24px',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              '&:hover': {
+                                bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)'
+                              }
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    )}
 
                     {achievement.certificateId && (
                       <Chip
@@ -913,12 +942,12 @@ const Profile = () => {
                         size="small"
                         sx={{
                           bgcolor: 'transparent',
-                          color: theme.palette.primary.main,
-                          border: `1px solid ${theme.palette.primary.main}`,
-                          height: 24,
+                          color: '#0088cc',
+                          border: '1px solid #0088cc',
+                          height: '24px',
                           fontSize: '0.75rem',
                           width: 'fit-content',
-                          mb: 1
+                          fontWeight: 500
                         }}
                       />
                     )}
@@ -928,15 +957,22 @@ const Profile = () => {
                   <Box sx={{ 
                     display: 'flex', 
                     justifyContent: 'flex-end',
-                    p: 1,
-                    borderTop: `1px solid ${theme.palette.divider}`
+                    alignItems: 'center',
+                    p: 1.5,
+                    borderTop: `1px solid ${theme.palette.divider}`,
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.02)'
                   }}>
                     <IconButton
                       href={achievement.link}
                       target="_blank"
                       rel="noopener noreferrer"
                       size="small"
-                      sx={{ color: theme.palette.primary.main }}
+                      sx={{ 
+                        color: '#0088cc',
+                        '&:hover': {
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)'
+                        }
+                      }}
                       onClick={(e) => {
                         if (!achievement.link) {
                           e.preventDefault();
@@ -949,14 +985,26 @@ const Profile = () => {
                     <IconButton
                       onClick={() => handleEditAchievement(achievement)}
                       size="small"
-                      sx={{ color: theme.palette.text.secondary }}
+                      sx={{ 
+                        color: theme.palette.text.secondary,
+                        ml: 1,
+                        '&:hover': {
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+                        }
+                      }}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       onClick={() => handleDeleteConfirm(achievement._id)}
                       size="small"
-                      sx={{ color: theme.palette.text.secondary }}
+                      sx={{ 
+                        color: theme.palette.error.main,
+                        ml: 1,
+                        '&:hover': {
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 0, 0, 0.1)' : 'rgba(255, 0, 0, 0.05)'
+                        }
+                      }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

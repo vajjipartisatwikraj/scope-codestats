@@ -1,6 +1,6 @@
 {
-  "short_name": "Scope",
-  "name": "Scope - Competitive Programming Tracker",
+  "short_name": "CodeStats",
+  "name": "CodeStats - Coding Profile Analytics",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,13 +8,18 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "codestats.png",
       "type": "image/png",
       "sizes": "192x192"
+    },
+    {
+      "src": "codestats.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ],
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#0088cc",
   "background_color": "#ffffff"
 } 

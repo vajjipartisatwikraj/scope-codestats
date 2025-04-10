@@ -49,7 +49,7 @@ const Logo = () => (
       letterSpacing: '.01rem',
     }}
   >
-    Scope
+    SCOPE
   </Typography>
 );
 
@@ -163,7 +163,8 @@ const Navbar = () => {
       fetchNotifications();
       
       // Set up a refresh interval for notifications - use a longer interval to reduce server load
-      const interval = setInterval(fetchNotifications, 60000); // every minute
+      // Polling every 120 seconds (2 minutes) to minimize server requests while maintaining reasonable update frequency
+      const interval = setInterval(fetchNotifications, 240000);
       
       // Don't refetch notifications when the tab is inactive
       const handleVisibilityChange = () => {
