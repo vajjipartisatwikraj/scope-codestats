@@ -12,7 +12,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target:'http://localhost:5173',
+        target:'https://scope.mlrit.ac.in',
         changeOrigin: true,
         secure: false
       }
