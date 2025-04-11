@@ -647,16 +647,16 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
   }
 };
 
-// Schedule cron job to run at 1:40 PM IST (8:10 AM UTC)
+// Schedule cron job to run at 12:00 AM IST (6:30 PM UTC)
 const scheduleCronJob = () => {
-  // Schedule cron job for 1:40 PM IST (UTC+5:30)
-  // This is 8:10 AM UTC
-  cron.schedule('10 8 * * *', () => {
-    console.log('Running scheduled profile update at 1:40 PM IST');
+  // Schedule cron job for 12:00 AM IST (UTC+5:30)
+  // This is 6:30 PM UTC
+  cron.schedule('30 18 * * *', () => {
+    console.log('Running scheduled profile update at 12:00 AM IST');
     updateAllUserProfiles();
   });
   
-  console.log('Cron job scheduled for 1:40 PM IST (8:10 AM UTC)');
+  console.log('Cron job scheduled for 12:00 AM IST (6:30 PM UTC)');
 };
 
 // If running as standalone script
