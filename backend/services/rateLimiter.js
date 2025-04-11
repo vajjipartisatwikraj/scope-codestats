@@ -34,8 +34,8 @@ const checkProfileUpdateRateLimit = async (userId, platform) => {
       return { allowed: true };
     }
     
-    // Get the cooldown time (12 hours = 43200000 ms)
-    const cooldownTime = 12 * 60 * 60 * 1000; 
+    // Get the cooldown time (6 hours = 21600000 ms)
+    const cooldownTime = 6 * 60 * 60 * 1000; 
     
     // Calculate time since last update
     const now = new Date();

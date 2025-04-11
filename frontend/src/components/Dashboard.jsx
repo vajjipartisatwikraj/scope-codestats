@@ -448,10 +448,10 @@ const Dashboard = () => {
         if (key === 'github') {
           // Don't set cooldown for GitHub
         } else {
-          // Check if this platform is in cooldown period (updated in the last 12 hours)
+          // Check if this platform is in cooldown period (updated in the last 6 hours)
           if (lastUpdateAttempt) {
             const timeSinceLastAttempt = now - lastUpdateAttempt;
-            const cooldownPeriod = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+            const cooldownPeriod = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
             
             if (timeSinceLastAttempt < cooldownPeriod) {
               // Calculate remaining cooldown time
@@ -545,9 +545,9 @@ const Dashboard = () => {
         
         // Only set cooldown after successful updates for non-GitHub platforms
         if (platform !== 'github') {
-          const cooldownEnd = Date.now() + (12 * 60 * 60 * 1000); // 12 hours in milliseconds
+          const cooldownEnd = Date.now() + (6 * 60 * 60 * 1000); // 6 hours in milliseconds
           setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
-          setRemainingTimes(prev => ({ ...prev, [platform]: 12 * 60 * 60 })); // 12 hours in seconds
+          setRemainingTimes(prev => ({ ...prev, [platform]: 6 * 60 * 60 })); // 6 hours in seconds
         }
       } else {
         // If the update wasn't successful, don't set a cooldown
@@ -575,7 +575,7 @@ const Dashboard = () => {
         
         // Only set a cooldown for rate limit errors if not GitHub
         if (platform !== 'github') {
-          const remainingTime = error.response.data.remainingTime || 12 * 60 * 60;
+          const remainingTime = error.response.data.remainingTime || 6 * 60 * 60;
           const cooldownEnd = Date.now() + (remainingTime * 1000);
           setCooldowns(prev => ({ ...prev, [platform]: cooldownEnd }));
           setRemainingTimes(prev => ({ ...prev, [platform]: remainingTime }));
@@ -981,7 +981,7 @@ const Dashboard = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <CircularProgress
                             variant="determinate"
-                            value={(remainingTimes[platform.key] / (12 * 60 * 60)) * 100}
+                            value={(remainingTimes[platform.key] / (6 * 60 * 60)) * 100}
                             size={20}
                             sx={{ 
                               color: 'rgba(255,255,255,0.9)',
