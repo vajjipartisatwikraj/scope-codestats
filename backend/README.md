@@ -1,6 +1,6 @@
 # CodeStats Backend
 
-This is the backend server for the CodeStats application, which tracks and displays users' coding profiles across multiple platforms.
+This is the backend server for the scope-CodeStats application, which tracks and displays users' coding profiles across multiple platforms.
 
 ## Setup
 
