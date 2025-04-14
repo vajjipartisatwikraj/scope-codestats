@@ -35,7 +35,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CalendarMonth
 } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiUrl } from '../config/apiConfig';
@@ -46,6 +47,8 @@ const achievementTypes = [
   { value: 'certification', label: 'Certification' },
   { value: 'achievement', label: 'Achievement' },
 ];
+
+const LIMITED_TYPES = ['project', 'internship'];
 
 const getYear = (graduationYear) => {
   const currentYear = new Date().getFullYear();
@@ -137,6 +140,34 @@ const fetchGitHubContributions = async (username) => {
   } catch (error) {
     console.error('Error fetching GitHub contributions:', error);
     return 0;
+  }
+};
+
+// Date formatting function
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  
+  // Handle ISO dates or regular date strings
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // Return original if invalid
+  
+  // Format as "Month DD, YYYY"
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+// Format date range
+const formatDateRange = (startDate, endDate) => {
+  const formattedStart = formatDate(startDate);
+  const formattedEnd = formatDate(endDate);
+  
+  if (formattedStart && formattedEnd) {
+    return `${formattedStart} - ${formattedEnd}`;
+  } else {
+    return formattedStart || formattedEnd || '';
   }
 };
 
@@ -502,7 +533,7 @@ const UserView = () => {
               top: 0,
               left: 0,
               right: 0,
-              height: '120px',
+              height: '80px',
               background: 'linear-gradient(135deg, #0088cc 0%, #005580 100%)',
               opacity: darkMode ? 0.8 : 0.7,
             }} />
@@ -517,15 +548,18 @@ const UserView = () => {
                     bgcolor: '#0088cc',
                     border: `4px solid ${darkMode ? '#1a1a1a' : '#ffffff'}`,
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: { xs: '2.5rem', sm: '3rem' },
                     color: 'white',
                     mx: { xs: 'auto', sm: 0 },
-                    mt: { xs: 4, sm: 8 },
+                    mt: { xs: 0, sm: 0 },
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
                     textTransform: 'uppercase',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    position: 'relative',
+                    zIndex: 2
                   }}>
                     {userData.profilePicture ? (
                       <img
@@ -542,34 +576,47 @@ const UserView = () => {
                   </Box>
                 </Box>
               </Grid>
-              <Grid item xs={12} sm={9} md={10} sx={{ position: 'relative' }}>
-                <Box sx={{ mt: { xs: 2, sm: 8 } }}>
+              <Grid item xs={12} sm={9} md={10} sx={{ position: 'relative', zIndex: 1 }}>
+                <Box sx={{ mt: { xs: 6, sm: 10 } }}>
                   <Typography variant="h2" sx={{ 
-                    fontWeight: 800, 
-                    color: darkMode ? '#fff' : '#000', 
-                    textShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
+                    fontWeight: 600, 
+                    color: darkMode ? '#ffffff' : '#000000',
+                    textShadow: 'none',
                     letterSpacing: '0.5px',
-                    fontSize: { xs: '1.0rem', sm: '2.0rem' },
+                    fontSize: { xs: '0.9rem', sm: '1.5rem' },
                     lineHeight: 1.2,
                     wordBreak: 'break-word',
-                    maxWidth: '100%'
+                    maxWidth: '100%',
+                    textTransform: 'uppercase',
+                    mb: 0.5
                   }}>
                     {userData.name}
                   </Typography>
+                  
                   <Typography variant="h5" sx={{ 
-                    mb: 3, 
-                    color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)',
-                    textShadow: darkMode ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
-                    fontWeight: 600
+                    mb: 2,
+                    color: darkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+                    textShadow: 'none',
+                    fontWeight: 500,
+                    fontSize: { xs: '0.8rem', sm: '1rem' }
                   }}>
                     {userData.department} • {userData.section}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                  
+                  <Box sx={{ display: 'flex', gap: 2 }}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', fontWeight: 400 }}>
+                      <Typography variant="body2" sx={{ 
+                        color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', 
+                        fontWeight: 400,
+                        fontSize: { xs: '0.7rem', sm: '0.8rem' }
+                      }}>
                         Score
                       </Typography>
-                      <Typography variant="h6" sx={{ color: '#0088cc', fontWeight: 600 }}>
+                      <Typography variant="h6" sx={{ 
+                        color: darkMode ? '#36a9e0' : '#0088cc', 
+                        fontWeight: 600,
+                        fontSize: { xs: '0.9rem', sm: '1.1rem' }
+                      }}>
                         {userData.totalScore || 0}
                       </Typography>
                     </Box>
@@ -1479,16 +1526,18 @@ const UserView = () => {
                 <Box sx={{
                   display: 'flex',
                   bgcolor: darkMode ? 'rgba(30, 30, 30, 0.9)' : 'rgba(240, 240, 240, 0.5)',
-                  borderRadius: '12px',
-                  p: 1,
-                  gap: 1,
-                  minWidth: 'min-content'
+                  borderRadius: '8px',
+                  p: 0.75,
+                  gap: 0,
+                  minWidth: 'min-content',
+                  justifyContent: 'space-between',
+                  width: '100%'
                 }}>
                   {[
-                    { value: 'project', label: 'Projects', icon: <Code /> },
-                    { value: 'internship', label: 'Internships', icon: <Work /> },
-                    { value: 'certification', label: 'Certifications', icon: <VerifiedUser /> },
-                    { value: 'achievement', label: 'Achievements', icon: <EmojiEvents /> }
+                    { value: 'project', label: 'Projects', icon: <Code fontSize="small" /> },
+                    { value: 'internship', label: 'Internships', icon: <Work fontSize="small" /> },
+                    { value: 'certification', label: 'Certifications', icon: <VerifiedUser fontSize="small" /> },
+                    { value: 'achievement', label: 'Achievements', icon: <EmojiEvents fontSize="small" /> }
                   ].map((type) => {
                     const isActive = activeTab === type.value;
                     const count = achievementCounts[type.value];
@@ -1501,27 +1550,39 @@ const UserView = () => {
                           position: 'relative',
                           color: isActive ? 'white' : darkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.7)',
                           bgcolor: isActive ? '#0088cc' : 'transparent',
-                          borderRadius: '8px',
-                          px: 2,
-                          py: 1,
+                          borderRadius: '6px',
+                          px: 1.5,
+                          py: 0.5,
                           minWidth: 'auto',
                           textTransform: 'none',
-                          fontSize: '0.9rem',
+                          fontSize: '0.8rem',
                           whiteSpace: 'nowrap',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1,
+                          gap: 0.75,
+                          height: '28px',
+                          flex: 1,
+                          mx: 0.375,
                           '&:hover': {
                             bgcolor: isActive ? '#0088cc' : darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
                           }
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {type.icon}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            '& svg': {
+                              fontSize: '0.85rem'
+                            }
+                          }}>
+                            {type.icon}
+                          </Box>
                           <Typography
                             component="span"
                             sx={{
-                              fontSize: '0.9rem',
+                              fontSize: '0.8rem',
                               fontWeight: isActive ? 600 : 400
                             }}
                           >
@@ -1534,17 +1595,17 @@ const UserView = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            minWidth: '24px',
-                            height: '24px',
-                            borderRadius: '12px',
+                            minWidth: '18px',
+                            height: '18px',
+                            borderRadius: '9px',
                             bgcolor: isActive ? 'rgba(0,0,0,0.2)' : darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                             color: isActive ? 'white' : 'inherit',
-                            fontSize: '0.75rem',
+                            fontSize: '0.65rem',
                             fontWeight: 600,
-                            px: 1
+                            px: 0.5
                           }}
                         >
-                          {count}/5
+                          {LIMITED_TYPES.includes(type.value) ? `${count}/5` : count}
                         </Box>
                       </Button>
                     );
@@ -1560,118 +1621,205 @@ const UserView = () => {
               }}>
                 {filteredAchievements.length > 0 ? (
                   <Box sx={{
-                    display: 'flex',
-                    gap: 2,
-                    pb: 2,
-                    overflowX: 'auto',
-                    scrollBehavior: 'smooth',
-                    '&::-webkit-scrollbar': {
-                      height: '6px'
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                      borderRadius: '3px'
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-                      borderRadius: '3px'
-                    }
+                    position: 'relative',
+                    width: '100%',
+                    mt: 2
                   }}>
-                    {filteredAchievements.map((achievement, index) => (
-                      <Box
-                        key={`achievement-${achievement._id || index}`}
-                        sx={{
-                          minWidth: { xs: '280px', sm: '320px' },
-                          maxWidth: { xs: '280px', sm: '320px' },
-                          bgcolor: darkMode ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-                          borderRadius: '16px',
-                          overflow: 'hidden',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          transition: 'all 0.2s ease-in-out',
-                          height: '100%',
-                          minHeight: '220px',
-                          border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                          boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    {/* Carousel Container */}
+                    <Box 
+                      id="achievement-carousel"
+                      sx={{
+                        display: 'flex',
+                        gap: 3,
+                        pb: 2,
+                        overflowX: 'auto',
+                        scrollBehavior: 'smooth',
+                        '&::-webkit-scrollbar': {
+                          height: '8px'
+                        },
+                        '&::-webkit-scrollbar-track': {
+                          background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                          borderRadius: '4px'
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          background: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                          borderRadius: '4px',
                           '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: darkMode ? '0 6px 16px rgba(0, 0, 0, 0.4)' : '0 6px 16px rgba(0, 0, 0, 0.15)',
-                          },
-                          flexShrink: 0
-                        }}
-                      >
-                        <Box sx={{ 
-                          p: 3,
-                          flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column'
-                        }}>
-                          <Typography 
-                            variant="h6" 
-                            sx={{ 
-                              fontWeight: 600,
-                              color: darkMode ? 'white' : '#000000',
-                              mb: 1
-                            }}
-                          >
-                            {achievement.title}
-                          </Typography>
-                          
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-                              mb: 2,
-                              flex: 1
-                            }}
-                          >
-                            {achievement.description}
-                          </Typography>
-
-                          {achievement.tags && achievement.tags.length > 0 && (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                              {achievement.tags.map((tag, tagIndex) => (
-                                <Chip
-                                  key={`tag-${achievement._id || index}-${tagIndex}`}
-                                  label={tag}
+                            background: darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'
+                          }
+                        },
+                        px: 0
+                      }}
+                    >
+                      {filteredAchievements.map((achievement, index) => (
+                        <Paper
+                          key={`achievement-${achievement._id || index}`}
+                          sx={{
+                            width: '100%',
+                            minWidth: '100%',
+                            maxWidth: '100%',
+                            bgcolor: darkMode ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            transition: 'box-shadow 0.2s ease-in-out',
+                            height: '100%',
+                            minHeight: '220px',
+                            border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                            boxShadow: darkMode ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Box sx={{ 
+                            p: 3,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '100%'
+                          }}>
+                            {/* Header with icon and title */}
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'flex-start',
+                              justifyContent: 'space-between',
+                              mb: 2
+                            }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                {/* Icon based on achievement type */}
+                                <Box sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '40px',
+                                  height: '40px',
+                                  borderRadius: '10px',
+                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                  color: '#0088cc'
+                                }}>
+                                  {achievement.type === 'project' && <Code fontSize="medium" />}
+                                  {achievement.type === 'internship' && <Work fontSize="medium" />}
+                                  {achievement.type === 'certification' && <VerifiedUser fontSize="medium" />}
+                                  {achievement.type === 'achievement' && <EmojiEvents fontSize="medium" />}
+                                </Box>
+                                
+                                <Typography 
+                                  variant="h6" 
+                                  sx={{ 
+                                    fontWeight: 600,
+                                    color: darkMode ? 'white' : '#000000',
+                                    fontSize: '1.1rem'
+                                  }}
+                                >
+                                  {achievement.title}
+                                </Typography>
+                              </Box>
+                              
+                              {/* External Link */}
+                              {achievement.link && (
+                                <IconButton
+                                  href={achievement.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   size="small"
-                                  sx={{
-                                    bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                  sx={{ 
                                     color: '#0088cc',
-                                    border: '1px solid rgba(0, 136, 204, 0.2)',
-                                    height: '24px'
+                                    bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                    '&:hover': {
+                                      bgcolor: darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)'
+                                    }
+                                  }}
+                                >
+                                  <OpenInNew fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
+                            
+                            {/* Duration/Date - Make it more prominent for internships */}
+                            {(achievement.duration || achievement.startDate || achievement.endDate) && (
+                              <Box 
+                                sx={{ 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                  mb: 2,
+                                  mt: 0.5,
+                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.08)' : 'rgba(0, 136, 204, 0.04)',
+                                  borderRadius: '6px',
+                                  px: 1.5,
+                                  py: 0.75,
+                                  border: '1px solid',
+                                  borderColor: darkMode ? 'rgba(0, 136, 204, 0.15)' : 'rgba(0, 136, 204, 0.1)',
+                                  width: 'fit-content'
+                                }}
+                              >
+                                <CalendarMonth 
+                                  fontSize="small" 
+                                  sx={{ 
+                                    color: '#0088cc',
+                                    fontSize: '1rem'
                                   }}
                                 />
-                              ))}
-                            </Box>
-                          )}
-                        </Box>
-
-                        {achievement.link && (
-                          <Box sx={{ 
-                            p: 2,
-                            borderTop: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                            display: 'flex',
-                            justifyContent: 'flex-end'
-                          }}>
-                            <IconButton
-                              href={achievement.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              size="small"
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 500,
+                                    lineHeight: 1.4,
+                                    letterSpacing: '0.01em'
+                                  }}
+                                >
+                                  {achievement.duration 
+                                    ? achievement.duration
+                                    : formatDateRange(achievement.startDate, achievement.endDate)}
+                                </Typography>
+                              </Box>
+                            )}
+                            
+                            <Typography 
+                              variant="body2" 
                               sx={{ 
-                                color: '#0088cc',
-                                '&:hover': {
-                                  bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)'
-                                }
+                                color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                                fontSize: '0.9rem',
+                                lineHeight: 1.6,
+                                flex: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical'
                               }}
                             >
-                              <OpenInNew fontSize="small" />
-                            </IconButton>
+                              {achievement.description}
+                            </Typography>
+
+                            <Divider sx={{ 
+                              my: 1.5, 
+                              borderColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            }} />
+
+                            {achievement.tags && achievement.tags.length > 0 && (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {achievement.tags.map((tag, tagIndex) => (
+                                  <Chip
+                                    key={`tag-${achievement._id || index}-${tagIndex}`}
+                                    label={tag}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
+                                      color: '#0088cc',
+                                      border: '1px solid rgba(0, 136, 204, 0.2)',
+                                      height: '24px',
+                                      fontSize: '0.75rem'
+                                    }}
+                                  />
+                                ))}
+                              </Box>
+                            )}
                           </Box>
-                        )}
-                      </Box>
-                    ))}
+                        </Paper>
+                      ))}
+                    </Box>
                   </Box>
                 ) : (
                   <Box sx={{ 

@@ -25,6 +25,7 @@ import UserView from './components/UserView';
 import ConditionalDashboard from './components/ConditionalDashboard';
 import CodePad from './components/CodePad';
 import TestGoogleImage from './components/TestGoogleImage';
+import NotificationSettingsPage from './pages/NotificationSettingsPage';
 
 // MainContent component that uses the theme from context
 const MainContent = () => {
@@ -121,6 +122,11 @@ const MainContent = () => {
               <Route path="/profile" element={
                 <PrivateRoute>
                   <Profile />
+                </PrivateRoute>
+              } />
+              <Route path="/notification-settings" element={
+                <PrivateRoute>
+                  <NotificationSettingsPage />
                 </PrivateRoute>
               } />
               <Route path="/course-management" element={

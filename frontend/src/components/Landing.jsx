@@ -751,7 +751,7 @@ const Landing = () => {
                   </Typography>
                 </Stack>
                 <Typography variant="body2" sx={{ color: '#000' }}>
-                  © {new Date().getFullYear()} MLRIT. All rights reserved.
+                  © {new Date().getFullYear()} MLRIT SCOPE. All rights reserved.
                 </Typography>
               </Stack>
             </Fade>

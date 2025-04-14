@@ -258,6 +258,10 @@ router.get('/stats', [auth, adminAuth], async (req, res) => {
     const totalUsers = await User.countDocuments() || 0;
     const activeUsers = await User.countDocuments({ lastActive: { $gte: oneWeekAgo } }) || 0;
     
+    // Add proper admin and regular user counts based on userType
+    const adminCount = await User.countDocuments({ userType: 'admin' }) || 0;
+    const regularCount = await User.countDocuments({ userType: 'user' }) || 0;
+    
     // Get top 5 users by total problems solved - EXCLUDE admin users
     const topUsers = await User.find({ userType: { $ne: 'admin' } })
       .sort({ totalScore: -1 })
@@ -451,6 +455,8 @@ router.get('/stats', [auth, adminAuth], async (req, res) => {
       userStats: {
         totalUsers,
         activeUsers,
+        adminUsers: adminCount,
+        regularUsers: regularCount,
         topUsers,
         userGrowthData: userGrowthData.map(item => ({
           month: item._id,
@@ -536,6 +542,198 @@ router.get('/problems-by-platform/:platform', [auth, adminAuth], async (req, res
     console.error('Error fetching platform problems data:', error);
     res.status(500).json({ 
       message: 'Error fetching platform problems data',
+      error: error.message
+    });
+  }
+});
+
+// User registration statistics
+router.get('/user-registration-stats', [auth, adminAuth], async (req, res) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(now - 90 * 24 * 60 * 60 * 1000);
+    const oneYearAgo = new Date(now - 365 * 24 * 60 * 60 * 1000);
+
+    // Daily registrations (last 30 days)
+    const dailyRegistrations = await User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 },
+          adminCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "admin"] }, 1, 0] }
+          },
+          regularCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "user"] }, 1, 0] }
+          }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    // Weekly registrations (last 12 weeks)
+    const weeklyRegistrations = await User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: ninetyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { 
+            year: { $year: "$createdAt" },
+            week: { $week: "$createdAt" }
+          },
+          count: { $sum: 1 },
+          adminCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "admin"] }, 1, 0] }
+          },
+          regularCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "user"] }, 1, 0] }
+          },
+          // Store a sample date from this week for display purposes
+          sampleDate: { $first: "$createdAt" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id.year",
+          week: "$_id.week",
+          count: 1,
+          adminCount: 1,
+          regularCount: 1,
+          sampleDate: 1,
+          weekLabel: { 
+            $concat: [
+              "Week ", 
+              { $toString: "$_id.week" }, 
+              ", ",
+              { $toString: "$_id.year" }
+            ]
+          }
+        }
+      },
+      { $sort: { "year": 1, "week": 1 } }
+    ]);
+
+    // Monthly registrations (last 12 months)
+    const monthlyRegistrations = await User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: oneYearAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { 
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" }
+          },
+          count: { $sum: 1 },
+          adminCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "admin"] }, 1, 0] }
+          },
+          regularCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "user"] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id.year",
+          month: "$_id.month",
+          count: 1,
+          adminCount: 1,
+          regularCount: 1,
+          monthLabel: {
+            $let: {
+              vars: {
+                monthsInString: [
+                  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                ]
+              },
+              in: {
+                $concat: [
+                  { $arrayElemAt: ["$$monthsInString", "$_id.month"] },
+                  " ",
+                  { $toString: "$_id.year" }
+                ]
+              }
+            }
+          }
+        }
+      },
+      { $sort: { "year": 1, "month": 1 } }
+    ]);
+
+    // Get department-wise user registration
+    const departmentRegistrations = await User.aggregate([
+      {
+        $group: {
+          _id: "$department",
+          count: { $sum: 1 },
+          adminCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "admin"] }, 1, 0] }
+          },
+          regularCount: {
+            $sum: { $cond: [{ $eq: ["$userType", "user"] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          department: "$_id",
+          count: 1,
+          adminCount: 1,
+          regularCount: 1,
+          _id: 0
+        }
+      },
+      { $sort: { "count": -1 } }
+    ]);
+
+    // Overall summary
+    const summary = {
+      totalUsers: await User.countDocuments(),
+      admins: await User.countDocuments({ userType: 'admin' }),
+      regularUsers: await User.countDocuments({ userType: 'user' }),
+      today: await User.countDocuments({ 
+        createdAt: { 
+          $gte: new Date(now.setHours(0, 0, 0, 0)) 
+        }
+      }),
+      thisWeek: await User.countDocuments({
+        createdAt: {
+          $gte: new Date(now - now.getDay() * 24 * 60 * 60 * 1000)
+        }
+      }),
+      thisMonth: await User.countDocuments({
+        createdAt: {
+          $gte: new Date(now.getFullYear(), now.getMonth(), 1)
+        }
+      })
+    };
+
+    res.json({
+      summary,
+      dailyRegistrations,
+      weeklyRegistrations,
+      monthlyRegistrations,
+      departmentRegistrations
+    });
+  } catch (error) {
+    console.error('Error fetching user registration stats:', error);
+    res.status(500).json({ 
+      message: 'Error fetching user registration statistics',
       error: error.message
     });
   }

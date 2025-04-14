@@ -33,6 +33,8 @@ const achievementTypes = [
 
 // Add this constant at the top of the file after imports
 const MAX_ITEMS_PER_TYPE = 5;
+// Types that have limits
+const LIMITED_TYPES = ['project', 'internship'];
 
 const Profile = () => {
   const auth = useAuth();
@@ -230,15 +232,17 @@ const Profile = () => {
       return;
     }
     
-    // Check if limit is reached for this type
-    const currentTypeCount = achievements.filter(a => a.type === achievementForm.type).length;
-    if (!editingAchievement && currentTypeCount >= MAX_ITEMS_PER_TYPE) {
-      setErrorDialog({
-        open: true,
-        title: 'Limit Reached',
-        message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${achievementForm.type}s. Please delete an existing one to add more.`
-      });
-      return;
+    // Check if limit is reached for this type (only for limited types)
+    if (LIMITED_TYPES.includes(achievementForm.type) && !editingAchievement) {
+      const currentTypeCount = achievements.filter(a => a.type === achievementForm.type).length;
+      if (currentTypeCount >= MAX_ITEMS_PER_TYPE) {
+        setErrorDialog({
+          open: true,
+          title: 'Limit Reached',
+          message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${achievementForm.type}s. Please delete an existing one to add more.`
+        });
+        return;
+      }
     }
     
     // Validate word count in description
@@ -762,14 +766,17 @@ const Profile = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => {
-              const currentTypeCount = achievements.filter(a => a.type === activeTab).length;
-              if (currentTypeCount >= MAX_ITEMS_PER_TYPE) {
-                setErrorDialog({
-                  open: true,
-                  title: 'Limit Reached',
-                  message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${activeTab}s. Please delete an existing one to add more.`
-                });
-                return;
+              // Only check limits for project and internship types
+              if (LIMITED_TYPES.includes(activeTab)) {
+                const currentTypeCount = achievements.filter(a => a.type === activeTab).length;
+                if (currentTypeCount >= MAX_ITEMS_PER_TYPE) {
+                  setErrorDialog({
+                    open: true,
+                    title: 'Limit Reached',
+                    message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${activeTab}s. Please delete an existing one to add more.`
+                  });
+                  return;
+                }
               }
               resetAchievementForm();
               setOpenDialog(true);
@@ -783,7 +790,7 @@ const Profile = () => {
               width: { xs: '100%', md: 'auto' },
               borderRadius: 1
             }}
-            disabled={achievements.filter(a => a.type === activeTab).length >= MAX_ITEMS_PER_TYPE}
+            disabled={LIMITED_TYPES.includes(activeTab) && achievements.filter(a => a.type === activeTab).length >= MAX_ITEMS_PER_TYPE}
           >
             Add Achievement
           </Button>
@@ -842,7 +849,8 @@ const Profile = () => {
                     display: 'inline-block'
                   }}
                 >
-                  {achievements.filter(a => a.type === type.value).length}/{MAX_ITEMS_PER_TYPE}
+                  {achievements.filter(a => a.type === type.value).length}
+                  {LIMITED_TYPES.includes(type.value) ? `/${MAX_ITEMS_PER_TYPE}` : ''}
                 </Typography>
               </Button>
             ))}

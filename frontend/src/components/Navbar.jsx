@@ -519,16 +519,16 @@ const Navbar = () => {
                 '& .MuiPaper-root': {
                   width: {
                     xs: 'calc(100vw - 32px)', // Full width minus margins on mobile
-                    sm: '450px',              // Wider width on small screens
-                    md: '500px',              // Even wider on medium screens
+                    sm: '450px',              // Wider width
+                    md: '480px',              // Wider width
                   },
                   maxWidth: {
                     xs: 'calc(100vw - 32px)', // Prevent overflow on mobile
-                    sm: '500px',               // Wider max width on tablets
-                    md: '600px',               // Even wider on medium screens
+                    sm: '450px',              // Wider max width
+                    md: '480px',              // Wider max width
                   },
                   maxHeight: 'calc(100vh - 100px)',
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   boxShadow: darkMode 
                     ? '0 4px 20px rgba(0, 0, 0, 0.5)' 
                     : '0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 20px rgba(0, 0, 0, 0.08)',
@@ -559,7 +559,7 @@ const Navbar = () => {
               {/* Fixed Header */}
               <Box 
                 sx={{ 
-                  p: { xs: 1.5, sm: 2 }, 
+                  p: { xs: 1, sm: 1.5 }, 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center',
@@ -569,10 +569,10 @@ const Navbar = () => {
                   flexShrink: 0
                 }}
               >
-                <Typography variant="h6" sx={{ 
+                <Typography variant="subtitle1" sx={{ 
                   fontWeight: 600, 
-                  fontSize: { xs: '1rem', sm: '1.1rem' },
-                  color: darkMode ? '#ffffff' : '#1a1a1a'
+                  fontSize: { xs: '0.95rem', sm: '1.05rem' },
+                  color: darkMode ? '#ffffff' : '#000000'
                 }}>
                   Notifications
                 </Typography>
@@ -582,9 +582,9 @@ const Navbar = () => {
                     onClick={markAllAsRead}
                     disabled={unreadCount === 0}
                     sx={{ 
-                      fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                      padding: { xs: '2px 8px', sm: '3px 9px' },
-                      minWidth: { xs: 'auto', sm: '60px' },
+                      fontSize: '0.75rem',
+                      padding: '3px 8px',
+                      minWidth: 'auto',
                       opacity: unreadCount === 0 ? 0.6 : 1,
                       color: '#1976d2',
                       '&:hover': {
@@ -601,43 +601,60 @@ const Navbar = () => {
               <Box sx={{ 
                 flex: 1,
                 minHeight: 0,
+                maxHeight: '450px',
                 overflowY: 'auto',
                 overflowX: 'hidden',
-                msOverflowStyle: 'none',
-                scrollbarWidth: 'none',
                 '&::-webkit-scrollbar': {
-                  display: 'none'
-                }
+                  width: '8px',
+                  display: 'block',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    background: darkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                  }
+                },
+                scrollbarWidth: 'thin',
+                scrollbarColor: darkMode 
+                  ? 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05)' 
+                  : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)',
               }}>
                 {loading ? (
-                  <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <CircularProgress size={24} />
+                  <Box sx={{ p: 2, textAlign: 'center' }}>
+                    <CircularProgress size={20} />
                   </Box>
                 ) : notifications.length === 0 ? (
-                  <Box sx={{ p: 4, textAlign: 'center' }}>
+                  <Box sx={{ p: 2, textAlign: 'center' }}>
                     <Box
                       sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '8px',
+                        width: 32,
+                        height: 32,
+                        borderRadius: '4px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto',
-                        mb: 2
+                        mb: 1,
+                        backgroundColor: 'transparent',
+                        border: 'none'
                       }}
                     >
                       <img 
                         src="/codestats.png" 
                         alt="CodeStats" 
                         style={{ 
-                          width: 32, 
-                          height: 32,
+                          width: 24, 
+                          height: 24,
                           objectFit: 'contain'
                         }} 
                       />
                     </Box>
-                    <Typography variant="body1" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
                       {notifications.length === 0 ? 'No notifications' : 'Loading...'}
                     </Typography>
                   </Box>
@@ -662,56 +679,47 @@ const Navbar = () => {
                         >
                           <Box sx={{ 
                             width: '100%', 
-                            p: { xs: 2, sm: 2.5 }, 
+                            p: { xs: 1.5, sm: 1.8 }, 
                             display: 'flex', 
-                            gap: { xs: 2, sm: 2.5 } 
+                            gap: { xs: 1.2, sm: 1.5 } 
                           }}>
                             {/* Icon */}
                             <Box
                               sx={{
-                                width: { xs: 42, sm: 48 },
-                                height: { xs: 42, sm: 48 },
-                                borderRadius: '10px',
+                                width: 30,
+                                height: 30,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 flexShrink: 0,
-                                backgroundColor: darkMode ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.05)',
-                                border: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)'}`
+                                backgroundColor: 'transparent',
+                                border: 'none'
                               }}
                             >
                               <img 
                                 src="/codestats.png" 
                                 alt="CodeStats" 
                                 style={{ 
-                                  width: 30, 
-                                  height: 30,
+                                  width: 22, 
+                                  height: 22,
                                   objectFit: 'contain'
                                 }} 
                               />
                             </Box>
-
+                            
                             {/* Content */}
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'flex-start', 
-                                mb: 0.5,
-                                flexWrap: { xs: 'nowrap', sm: 'nowrap' }
-                              }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                 <Typography
                                   variant="subtitle2"
                                   sx={{ 
                                     fontWeight: notification.read ? 500 : 600,
-                                    color: notification.read ? 
-                                      (darkMode ? 'text.secondary' : '#424242') : 
-                                      (darkMode ? 'text.primary' : '#1a1a1a'),
-                                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                                    fontSize: '0.9rem',
+                                    color: !notification.read ? 
+                                      (darkMode ? '#ffffff' : '#000000') : 
+                                      (darkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)'),
                                     mr: 1,
-                                    flexGrow: 1,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
+                                    paddingRight: '4px'
                                   }}
                                 >
                                   {notification.title}
@@ -720,9 +728,9 @@ const Navbar = () => {
                                   variant="caption"
                                   color="text.secondary"
                                   sx={{ 
-                                    fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                                    fontSize: '0.75rem',
                                     flexShrink: 0,
-                                    minWidth: { xs: '85px', sm: '90px' },
+                                    minWidth: '65px',
                                     textAlign: 'right'
                                   }}
                                 >
@@ -733,14 +741,18 @@ const Navbar = () => {
                                 variant="body2"
                                 sx={{ 
                                   color: notification.read ? 
-                                    (darkMode ? 'text.secondary' : '#666666') : 
-                                    (darkMode ? 'text.primary' : '#333333'),
-                                  opacity: notification.read ? 0.8 : 1,
+                                    (darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)') : 
+                                    (darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)'),
                                   lineHeight: 1.5,
-                                  fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                                  fontSize: '0.85rem',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
-                                  pr: { xs: 1, sm: 2 }
+                                  whiteSpace: 'normal',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  maxHeight: '3.4rem',
+                                  pr: { xs: 0.5, sm: 1 }
                                 }}
                               >
                                 {notification.message}
@@ -840,6 +852,22 @@ const Navbar = () => {
                 }}
               >
                 <Typography>Profile</Typography>
+              </MenuItem>
+              <MenuItem 
+                onClick={() => {
+                  handleMenuClick('/notification-settings');
+                  handleCloseUserMenu();
+                }}
+                sx={{
+                  py: 1.5,
+                  px: 2,
+                  color: themeColors.text,
+                  '&:hover': {
+                    background: themeColors.menuHover,
+                  }
+                }}
+              >
+                <Typography>Notification Settings</Typography>
               </MenuItem>
               <MenuItem 
                 onClick={handleLogout}

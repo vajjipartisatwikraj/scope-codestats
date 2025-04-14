@@ -645,9 +645,7 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
     // Re-throw for promise rejection handling
     throw error;
   }
-};
-
-// Schedule cron job to run at 12:00 AM IST (6:30 PM UTC)
+};// Schedule cron job to run at 12:00 AM IST (6:30 PM UTC)
 const scheduleCronJob = () => {
   // Schedule cron job for 12:00 AM IST (UTC+5:30)
   // This is 6:30 PM UTC
@@ -658,7 +656,6 @@ const scheduleCronJob = () => {
   
   console.log('Cron job scheduled for 12:00 AM IST (6:30 PM UTC)');
 };
-
 // If running as standalone script
 if (require.main === module) {
   scheduleCronJob();
@@ -666,3 +663,6 @@ if (require.main === module) {
 
 // Export for direct usage
 module.exports = updateAllUserProfiles; 
+
+
+

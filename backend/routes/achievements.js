@@ -4,6 +4,8 @@ const auth = require('../middleware/auth');
 const Achievement = require('../models/Achievement');
 
 const MAX_ITEMS_PER_TYPE = 5;
+// Types that have limits
+const LIMITED_TYPES = ['project', 'internship'];
 
 // Get all achievements for the logged-in user
 router.get('/', auth, async (req, res) => {
@@ -19,19 +21,21 @@ router.get('/', auth, async (req, res) => {
 // Create a new achievement
 router.post('/', auth, async (req, res) => {
   try {
-    // Check if user has reached the limit for this type
-    const existingCount = await Achievement.countDocuments({
-      user: req.user.id,
-      type: req.body.type
-    });
-
-    if (existingCount >= MAX_ITEMS_PER_TYPE) {
-      return res.status(400).json({
-        message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${req.body.type}s. Please delete an existing one to add more.`
-      });
-    }
-
     const { type, title, description, tags, link, imageUrl, startDate, endDate } = req.body;
+
+    // Check if user has reached the limit for this type (only for limited types)
+    if (LIMITED_TYPES.includes(type)) {
+      const existingCount = await Achievement.countDocuments({
+        user: req.user.id,
+        type: type
+      });
+
+      if (existingCount >= MAX_ITEMS_PER_TYPE) {
+        return res.status(400).json({
+          message: `You can only add up to ${MAX_ITEMS_PER_TYPE} ${type}s. Please delete an existing one to add more.`
+        });
+      }
+    }
 
     if (!type || !title || !description) {
       return res.status(400).json({

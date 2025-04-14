@@ -39,18 +39,23 @@ const passport = require('passport');
 const session = require('express-session');
 const googleAuthRoutes = require('./routes/auth/googleAuth');
 const registerCronJobs = require('./ensure-cron-jobs');
+const webPushUtil = require('./utils/webPushUtil');
 
 const app = express();
 
 // Initialize syncProgress tracking for profile synchronization
 app.locals.syncProgress = {};
 
+// Initialize Web Push
+const publicVapidKey = webPushUtil.initWebPush();
+console.log('Web Push initialized with public VAPID key');
+
 // Connect Database
 connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://scope.mlrit.ac.in'], 
+  origin: ['http://localhost:5173'], 
   credentials: true
 }));
 app.use(express.json());
@@ -95,6 +100,16 @@ app.get('/api/debug', (req, res) => {
       '/api/opportunities'
     ]
   });
+});
+
+// Web Push public key endpoint
+app.get('/api/push/vapidPublicKey', (req, res) => {
+  try {
+    res.json({ publicKey: webPushUtil.getVapidPublicKey() });
+  } catch (error) {
+    console.error('Error getting VAPID public key:', error);
+    res.status(500).json({ message: 'Error retrieving VAPID public key' });
+  }
 });
 
 // Routes

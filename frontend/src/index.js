@@ -5,6 +5,16 @@ import './index.css';
 import './fonts.css';
 import './utils/axiosConfig';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { registerServiceWorker } from './utils/pushNotificationUtil';
+
+// Register service worker for push notifications
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+  try {
+    registerServiceWorker();
+  } catch (error) {
+    // Silently fail if service worker registration fails
+  }
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

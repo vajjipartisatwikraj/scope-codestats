@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const webPushUtil = require('../utils/webPushUtil');
 
 // Get all notifications for the current user
 router.get('/', auth, async (req, res) => {
@@ -110,7 +111,7 @@ router.get('/admin/users', auth, adminAuth, async (req, res) => {
 // Create a notification for a specific user
 router.post('/admin/user/:userId', auth, adminAuth, async (req, res) => {
   try {
-    const { title, message } = req.body;
+    const { title, message, deletionTime } = req.body;
     const userId = req.params.userId;
     
     // Validate request
@@ -128,10 +129,41 @@ router.post('/admin/user/:userId', auth, adminAuth, async (req, res) => {
     const notification = new Notification({
       userId,
       title,
-      message
+      message,
+      deletionTime: deletionTime ? new Date(deletionTime) : null
     });
     
     await notification.save();
+    
+    // Send push notification if user has push subscriptions
+    if (user.pushSubscriptions && user.pushSubscriptions.length > 0) {
+      const payload = {
+        title,
+        body: message,
+        icon: '/codestats.png',
+        badge: '/codestats.png',
+        data: {
+          type: 'notification',
+          notificationId: notification._id
+        },
+        actions: [
+          {
+            action: 'open',
+            title: 'View'
+          }
+        ]
+      };
+      
+      // Send to all of the user's subscriptions
+      await Promise.all(
+        user.pushSubscriptions.map(subscription => 
+          webPushUtil.sendPushNotification({
+            endpoint: subscription.endpoint,
+            keys: subscription.keys
+          }, payload)
+        )
+      );
+    }
     
     res.status(201).json({
       message: 'Notification created successfully',
@@ -146,15 +178,19 @@ router.post('/admin/user/:userId', auth, adminAuth, async (req, res) => {
 // Create a global notification for all users
 router.post('/admin/global', auth, adminAuth, async (req, res) => {
   try {
-    const { title, message } = req.body;
+    const { title, message, deletionTime } = req.body;
     
     // Validate request
     if (!title || !message) {
       return res.status(400).json({ message: 'Title and message are required' });
     }
     
-    // Create global notification
-    const notifications = await Notification.createGlobalNotification(title, message);
+    // Create global notification with deletion time
+    const notifications = await Notification.createGlobalNotification(
+      title, 
+      message, 
+      deletionTime ? new Date(deletionTime) : null
+    );
     
     res.status(201).json({
       message: `Global notification created for ${notifications.length} users`,
@@ -186,6 +222,7 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
           title: { $first: '$title' },
           message: { $first: '$message' },
           createdAt: { $first: '$createdAt' },
+          deletionTime: { $first: '$deletionTime' },
           count: { $sum: 1 }
         }
       },
@@ -196,6 +233,7 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
           title: 1,
           message: 1,
           createdAt: 1,
+          deletionTime: 1,
           recipientCount: '$count',
           type: { $literal: 'global' }
         }
@@ -225,6 +263,7 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
       title: n.title,
       message: n.message,
       createdAt: n.createdAt,
+      deletionTime: n.deletionTime,
       user: n.userId,
       type: 'individual'
     }));
@@ -243,17 +282,25 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
 // Update a notification (admin)
 router.put('/admin/:id', auth, adminAuth, async (req, res) => {
   try {
-    const { title, message } = req.body;
+    const { title, message, deletionTime } = req.body;
     
     // Validate request
-    if (!title && !message) {
-      return res.status(400).json({ message: 'Title or message is required' });
+    if (!title && !message && deletionTime === undefined) {
+      return res.status(400).json({ message: 'Title, message, or deletion time is required' });
     }
     
     const notification = await Notification.findById(req.params.id);
     
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
+    }
+    
+    // Prepare update object
+    const updateFields = {};
+    if (title) updateFields.title = title;
+    if (message) updateFields.message = message;
+    if (deletionTime !== undefined) {
+      updateFields.deletionTime = deletionTime ? new Date(deletionTime) : null;
     }
     
     // If global notification, update all matching notifications
@@ -264,20 +311,16 @@ router.put('/admin/:id', auth, adminAuth, async (req, res) => {
           message: notification.message,
           global: true
         },
-        { 
-          $set: { 
-            title: title || notification.title,
-            message: message || notification.message
-          }
-        }
+        { $set: updateFields }
       );
       
       res.json({ message: 'Global notification updated' });
     } else {
       // Update individual notification
-      notification.title = title || notification.title;
-      notification.message = message || notification.message;
-      await notification.save();
+      await Notification.findByIdAndUpdate(
+        notification._id, 
+        { $set: updateFields }
+      );
       
       res.json({ message: 'Notification updated' });
     }
@@ -316,6 +359,156 @@ router.delete('/admin/:id', auth, adminAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Error deleting notification:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Clean up expired notifications (can be called by cron job)
+router.post('/cleanup', auth, adminAuth, async (req, res) => {
+  try {
+    const now = new Date();
+    
+    // Find and delete notifications that have passed their deletion time
+    const result = await Notification.deleteMany({
+      deletionTime: { $ne: null, $lte: now }
+    });
+    
+    res.json({
+      message: 'Expired notifications cleanup completed',
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Error cleaning up expired notifications:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Automatically clean up expired notifications
+const cleanupExpiredNotifications = async () => {
+  try {
+    const now = new Date();
+    
+    // Find and delete notifications that have passed their deletion time
+    const result = await Notification.deleteMany({
+      deletionTime: { $ne: null, $lte: now }
+    });
+    
+    if (result.deletedCount > 0) {
+      console.log(`Auto-cleanup: Deleted ${result.deletedCount} expired notifications`);
+    }
+  } catch (error) {
+    console.error('Error during auto-cleanup of expired notifications:', error);
+  }
+};
+
+// Run cleanup every hour
+setInterval(cleanupExpiredNotifications, 60 * 60 * 1000);
+
+// Run an initial cleanup when the server starts
+cleanupExpiredNotifications();
+
+// Push Notification Routes
+
+// Subscribe to push notifications
+router.post('/push/subscribe', auth, async (req, res) => {
+  try {
+    const subscription = req.body;
+    const deviceInfo = req.body.deviceInfo || '';
+    
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).json({ message: 'Invalid subscription object' });
+    }
+    
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Check if this subscription already exists
+    const existingSubscription = user.pushSubscriptions.find(
+      sub => sub.endpoint === subscription.endpoint
+    );
+    
+    if (existingSubscription) {
+      return res.json({ message: 'Subscription already exists' });
+    }
+    
+    // Add the new subscription
+    user.pushSubscriptions.push({
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth
+      },
+      deviceInfo
+    });
+    
+    await user.save();
+    
+    // Send a test notification
+    const testPayload = {
+      title: 'Notification Enabled',
+      body: 'You will now receive push notifications from SCOPE',
+      icon: '/codestats.png'
+    };
+    
+    webPushUtil.sendPushNotification(subscription, testPayload);
+    
+    res.status(201).json({ message: 'Push notification subscription saved successfully' });
+  } catch (error) {
+    console.error('Error subscribing to push notifications:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Unsubscribe from push notifications
+router.post('/push/unsubscribe', auth, async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    
+    if (!endpoint) {
+      return res.status(400).json({ message: 'Endpoint is required' });
+    }
+    
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Remove the subscription
+    user.pushSubscriptions = user.pushSubscriptions.filter(
+      sub => sub.endpoint !== endpoint
+    );
+    
+    await user.save();
+    
+    res.json({ message: 'Push notification subscription removed successfully' });
+  } catch (error) {
+    console.error('Error unsubscribing from push notifications:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Get user's push notification subscriptions
+router.get('/push/subscriptions', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({
+      subscriptions: user.pushSubscriptions.map(sub => ({
+        endpoint: sub.endpoint,
+        deviceInfo: sub.deviceInfo,
+        createdAt: sub.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error retrieving push notification subscriptions:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });

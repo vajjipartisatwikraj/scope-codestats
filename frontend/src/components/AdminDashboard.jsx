@@ -60,7 +60,9 @@ import {
   Delete as DeleteIcon,
   Person as PersonIcon,
   CheckCircle as CheckCircleIcon,
-  Group as GroupIcon
+  Group as GroupIcon,
+  CalendarToday as CalendarIcon,
+  Timeline as TimelineIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -771,6 +773,9 @@ const AdminDashboard = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('weekly');
   const [activePieIndex, setActivePieIndex] = useState(0);
   const [leaderboardData, setLeaderboardData] = useState([]);
+  // Add state for user registration statistics
+  const [userRegistrationStats, setUserRegistrationStats] = useState(null);
+  const [registrationTimeframe, setRegistrationTimeframe] = useState('daily');
   // Add state to track if component is mounted
   const [isMounted, setIsMounted] = useState(false);
 
@@ -789,6 +794,8 @@ const AdminDashboard = () => {
       });
 
       if (response.data) {
+        // Debug: Log the admin stats response to see available properties
+        
         // Process and order the days in weekly data
         const processWeeklyData = (data) => {
           if (!Array.isArray(data) || data.length === 0) return [];
@@ -882,8 +889,32 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch user registration statistics
+  const fetchUserRegistrationStats = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${apiUrl}/admin/user-registration-stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data) {
+        setUserRegistrationStats(response.data);
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch registration statistics';
+      toast.error(errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAdminStats();
+    fetchUserRegistrationStats();
     // Set isMounted to true after initial render
     setIsMounted(true);
     
@@ -918,7 +949,7 @@ const AdminDashboard = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      // Use the dedicated export endpoint instead of the general leaderboard endpoint
+      // Use the export endpoint as it should return detailed data
       const response = await axios.get(`${apiUrl}/leaderboard/export`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -926,7 +957,7 @@ const AdminDashboard = () => {
         },
         params: {
           includeComplete: 'true',
-          debug: 'true'  // This will enable debug logging on the server
+          debug: 'true'
         }
       });
       
@@ -939,80 +970,137 @@ const AdminDashboard = () => {
       
       toast.info(`Processing export data for ${response.data.length} users...`, { autoClose: 2000 });
       
+      // Sort users by totalScore in descending order (higher scores get higher ranks)
+      const sortedData = [...response.data].sort((a, b) => {
+        // Try different possible locations of the totalScore
+        const scoreA = Math.max(
+          Number(a.totalScore) || 0,
+          Number(a.profiles?.totalScore) || 0, 
+          Number(a.platformData?.totalScore) || 0
+        );
+        
+        const scoreB = Math.max(
+          Number(b.totalScore) || 0,
+          Number(b.profiles?.totalScore) || 0, 
+          Number(b.platformData?.totalScore) || 0
+        );
+        
+        return scoreB - scoreA;
+      });
+      
       // Process the data for export
-      const exportData = response.data.map((user, index) => {
-        // Extract coding profiles data from the dedicated codingProfiles object
+      const exportData = sortedData.map((user, index) => {
+        // Calculate rank based on sorted position
+        const calculatedRank = index + 1;
+        
+        // Try to find totalScore and totalProblems in various locations
+        const totalScore = Math.max(
+          Number(user.totalScore) || 0,
+          Number(user.profiles?.totalScore) || 0,
+          Number(user.platformData?.totalScore) || 0
+        );
+        
+        const totalProblems = Math.max(
+          Number(user.totalProblemsSolved) || 0,
+          Number(user.problemStats?.totalProblemsSolved) || 0,
+          Number(user.profiles?.problemsSolved) || 0
+        );
+        
+        // Try all possible locations for platform data
+        const platformData = user.platformData || {};
         const codingProfiles = user.codingProfiles || {};
-        
-        // Get platform-specific data from codingProfiles
-        const leetcode = codingProfiles.leetcode || {};
-        const codeforces = codingProfiles.codeforces || {};
-        const codechef = codingProfiles.codechef || {};
-        const geeksforgeeks = codingProfiles.geeksforgeeks || {};
-        const hackerrank = codingProfiles.hackerrank || {};
-        const github = codingProfiles.github || {};
-        
-        // Also try platformData as fallback
-        const leetcodeData = user.platformData?.leetcode || {};
-        const codeforcesData = user.platformData?.codeforces || {};
-        const codechefData = user.platformData?.codechef || {};
-        const geeksforgeeksData = user.platformData?.geeksforgeeks || {};
-        const hackerrankData = user.platformData?.hackerrank || {};
-        
-        // Get GitHub specific metrics from various sources
-        const githubContributions = github.contributionsLastYear || user.githubStats?.contributionsLastYear || 0;
-        const githubCommits = github.totalCommits || user.githubStats?.totalCommits || 0;
-        const githubRepos = github.publicRepos || user.githubStats?.publicRepos || 0;
-        
-        // Get usernames from profiles object
         const profiles = user.profiles || {};
+        const platforms = user.platforms || {};
+        
+        // Function to get platform score from various locations
+        const getPlatformScore = (platform) => {
+          return Math.max(
+            Number(platforms[platform]?.score) || 0,
+            Number(codingProfiles[platform]?.score) || 0,
+            Number(platformData[platform]?.score) || 0,
+            Number(user.platformScores?.[platform]) || 0
+          );
+        };
+        
+        // Function to get platform problems from various locations
+        const getPlatformProblems = (platform) => {
+          return Math.max(
+            Number(platforms[platform]?.problemsSolved) || 0,
+            Number(codingProfiles[platform]?.problemsSolved) || 0,
+            Number(platformData[platform]?.problemsSolved) || 0,
+            Number(platformData[platform]?.totalSolved) || 0
+          );
+        };
+        
+        // Function to get username for a platform
+        const getPlatformUsername = (platform) => {
+          return platforms[platform]?.username || 
+                 codingProfiles[platform]?.username || 
+                 platformData[platform]?.username || 
+                 profiles[platform] || 
+                 '-';
+        };
+        
+        // Get GitHub stats from various possible locations
+        const githubStats = user.githubStats || platforms.github || codingProfiles.github || {};
         
         return {
-          'Rank': user.rank || index + 1,
-          'Name': user.name,
+          'Rank': calculatedRank,
+          'Name': user.name || '',
           'Roll Number': user.rollNumber || '-',
-          'Department': user.department || '-',
-          'Section': user.section || '-',
-          'Email': user.email,
-          'Total Score': user.totalScore || 0,
-          'Total Problems': user.totalProblemsSolved || 0,
+          'Department': user.department || platformData.department || '-',
+          'Section': user.section || platformData.section || '-',
+          'Email': user.email || '-',
+          'Graduation Year': user.graduatingYear || platformData.graduatingYear || '-',
+          'Total Score': totalScore,
+          'Total Problems': totalProblems,
           
           // LeetCode data
-          'LeetCode Username': leetcode.username || leetcodeData.username || profiles.leetcode || '-',
-          'LeetCode Problems': leetcode.problemsSolved || leetcodeData.totalSolved || 0,
-          'LeetCode Rating': leetcode.rating || leetcodeData.rating || 0,
-          'LeetCode Contests': leetcode.contestsParticipated || leetcodeData.contestsParticipated || 0,
+          'LeetCode Username': getPlatformUsername('leetcode'),
+          'LeetCode Score': getPlatformScore('leetcode'),
+          'LeetCode Problems': getPlatformProblems('leetcode'),
+          'LeetCode Rating': platforms.leetcode?.rating || 
+                             codingProfiles.leetcode?.rating || 
+                             platformData.leetcode?.rating || 0,
           
           // CodeForces data
-          'CodeForces Username': codeforces.username || codeforcesData.username || profiles.codeforces || '-',
-          'CodeForces Problems': codeforces.problemsSolved || codeforcesData.problemsSolved || 0,
-          'CodeForces Rating': codeforces.rating || codeforcesData.rating || 0,
-          'CodeForces Contests': codeforces.contestsParticipated || codeforcesData.contestsParticipated || 0,
+          'CodeForces Username': getPlatformUsername('codeforces'),
+          'CodeForces Score': getPlatformScore('codeforces'),
+          'CodeForces Problems': getPlatformProblems('codeforces'),
+          'CodeForces Rating': platforms.codeforces?.rating || 
+                               codingProfiles.codeforces?.rating || 
+                               platformData.codeforces?.rating || 0,
           
           // CodeChef data
-          'CodeChef Username': codechef.username || codechefData.username || profiles.codechef || '-',
-          'CodeChef Problems': codechef.problemsSolved || codechefData.problemsSolved || 0,
-          'CodeChef Rating': codechef.rating || codechefData.rating || 0,
-          'CodeChef Contests': codechef.contestsParticipated || codechefData.contestsParticipated || 0,
+          'CodeChef Username': getPlatformUsername('codechef'),
+          'CodeChef Score': getPlatformScore('codechef'),
+          'CodeChef Problems': getPlatformProblems('codechef'),
+          'CodeChef Rating': platforms.codechef?.rating || 
+                             codingProfiles.codechef?.rating || 
+                             platformData.codechef?.rating || 0,
           
           // GeeksforGeeks data
-          'GFG Username': geeksforgeeks.username || geeksforgeeksData.username || profiles.geeksforgeeks || '-',
-          'GFG Problems': geeksforgeeks.problemsSolved || geeksforgeeksData.problemsSolved || 0,
-          'GFG Rating': geeksforgeeks.rating || geeksforgeeksData.codingScore || 0,
-          'GFG Institute Rank': geeksforgeeks.instituteRank || geeksforgeeksData.instituteRank || 0,
+          'GFG Username': getPlatformUsername('geeksforgeeks'),
+          'GFG Score': getPlatformScore('geeksforgeeks'),
+          'GFG Problems': getPlatformProblems('geeksforgeeks'),
+          'GFG Rating': platforms.geeksforgeeks?.rating || 
+                        platforms.geeksforgeeks?.codingScore ||
+                        codingProfiles.geeksforgeeks?.rating || 
+                        codingProfiles.geeksforgeeks?.codingScore || 
+                        platformData.geeksforgeeks?.rating || 
+                        platformData.geeksforgeeks?.codingScore || 0,
           
           // HackerRank data
-          'HackerRank Username': hackerrank.username || hackerrankData.username || profiles.hackerrank || '-',
-          'HackerRank Problems': hackerrank.problemsSolved || hackerrankData.problemsSolved || 0,
-          'HackerRank Certificates': hackerrank.certificates || hackerrankData.certificates || 0,
+          'HackerRank Username': getPlatformUsername('hackerrank'),
+          'HackerRank Score': getPlatformScore('hackerrank'),
+          'HackerRank Problems': getPlatformProblems('hackerrank'),
           
           // GitHub data
-          'GitHub Username': github.username || profiles.github || '-',
-          'GitHub Contributions': githubContributions,
-          'GitHub Commits': githubCommits,
-          'GitHub Repositories': githubRepos,
-          'GitHub Stars': github.starsReceived || user.githubStats?.starsReceived || 0,
-          'GitHub Followers': github.followers || user.githubStats?.followers || 0,
+          'GitHub Username': getPlatformUsername('github'),
+          'GitHub Score': getPlatformScore('github'),
+          'GitHub Repositories': githubStats.publicRepos || 0,
+          'GitHub Stars': githubStats.starsReceived || 0,
+          'GitHub Followers': githubStats.followers || 0,
         };
       });
 
@@ -1037,6 +1125,7 @@ const AdminDashboard = () => {
           'Department': 20,
           'Section': 10,
           'Email': 25,
+          'Graduation Year': 15,
           'Total Score': 10,
           'Total Problems': 12
         };
@@ -1046,6 +1135,8 @@ const AdminDashboard = () => {
             column.width = colWidths[column.header];
           } else if (column.header.includes('Username')) {
             column.width = 20;
+          } else if (column.header.includes('Score')) {
+            column.width = 15;
           } else {
             column.width = 15;
           }
@@ -1298,9 +1389,24 @@ const AdminDashboard = () => {
                   <Typography variant="h4" fontWeight="bold">
                     {stats?.userStats.totalUsers || 0}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {stats?.userStats.activeUsers || 0} active this week
-                  </Typography>
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="body2" color="primary.main" fontWeight="medium">
+                        Admin Users
+                      </Typography>
+                      <Typography variant="h6">
+                        {stats?.userStats.adminUsers || 0}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" fontWeight="medium">
+                        Regular Users
+                      </Typography>
+                      <Typography variant="h6">
+                        {stats?.userStats.regularUsers || 0}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </CardContent>
             </Card>
@@ -1447,6 +1553,7 @@ const AdminDashboard = () => {
           >
             <Tab label="Problem Analytics" icon={<BarChartIcon />} iconPosition={isMobile ? "top" : "start"} />
             <Tab label="Department Stats" icon={<PieChartIcon />} iconPosition={isMobile ? "top" : "start"} />
+            <Tab label="User Registrations" icon={<CalendarIcon />} iconPosition={isMobile ? "top" : "start"} />
             <Tab label="Profile Sync" icon={<SyncIcon />} iconPosition={isMobile ? "top" : "start"} />
           </Tabs>
         </Box>
@@ -1924,6 +2031,223 @@ const AdminDashboard = () => {
         )}
         
         {activeTab === 2 && (
+          <Grid container spacing={3}>
+            {/* Registration Statistics Header */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2, borderRadius: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                  <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                    User Registration Analytics
+                  </Typography>
+                  
+                  <FormControl sx={{ minWidth: 150 }}>
+                    <InputLabel id="registration-timeframe-select-label">View By</InputLabel>
+                    <Select
+                      labelId="registration-timeframe-select-label"
+                      value={registrationTimeframe}
+                      label="View By"
+                      onChange={(e) => setRegistrationTimeframe(e.target.value)}
+                      size="small"
+                    >
+                      <MenuItem value="daily">Daily</MenuItem>
+                      <MenuItem value="weekly">Weekly</MenuItem>
+                      <MenuItem value="monthly">Monthly</MenuItem>
+                      <MenuItem value="department">By Department</MenuItem>
+                    </Select>
+                  </FormControl>
+                  
+                  <Tooltip title="Refresh data">
+                    <IconButton onClick={fetchUserRegistrationStats} size="small">
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Paper>
+            </Grid>
+            
+            {/* Summary Cards */}
+            <Grid item xs={12}>
+              <Grid container spacing={2}>
+                {registrationTimeframe !== 'department' && (
+                  <Grid item xs={6} md={4}>
+                    <Card sx={{ 
+                      borderRadius: 2, 
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                      backgroundColor: theme.palette.mode === 'dark' ? '#1E1E1E' : '#fff',
+                      overflow: 'hidden',
+                      height: '100%'
+                    }}>
+                      <Box sx={{ height: 5, bgcolor: '#4CAF50' }}></Box>
+                      <CardContent>
+                        <Typography color="textSecondary" variant="body2" gutterBottom>
+                          {registrationTimeframe === 'daily' ? "Today's Registrations" : 
+                           registrationTimeframe === 'weekly' ? "This Week" : 
+                           "This Month"}
+                        </Typography>
+                        <Typography variant="h5" fontWeight="bold">
+                          {registrationTimeframe === 'daily' ? (userRegistrationStats?.summary?.today || 0) : 
+                           registrationTimeframe === 'weekly' ? (userRegistrationStats?.summary?.thisWeek || 0) : 
+                           (userRegistrationStats?.summary?.thisMonth || 0)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+                
+                <Grid item xs={6} md={registrationTimeframe === 'department' ? 6 : 4}>
+                  <Card sx={{ 
+                    borderRadius: 2, 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    backgroundColor: theme.palette.mode === 'dark' ? '#1E1E1E' : '#fff',
+                    overflow: 'hidden',
+                    height: '100%'
+                  }}>
+                    <Box sx={{ height: 5, bgcolor: '#FF9800' }}></Box>
+                    <CardContent>
+                      <Typography color="textSecondary" variant="body2" gutterBottom>
+                        Total Users
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold">
+                        {userRegistrationStats?.summary?.totalUsers || 0}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={6} md={registrationTimeframe === 'department' ? 6 : 4}>
+                  <Card sx={{ 
+                    borderRadius: 2, 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    backgroundColor: theme.palette.mode === 'dark' ? '#1E1E1E' : '#fff',
+                    overflow: 'hidden',
+                    height: '100%'
+                  }}>
+                    <Box sx={{ height: 5, bgcolor: '#00BCD4' }}></Box>
+                    <CardContent>
+                      <Typography color="textSecondary" variant="body2" gutterBottom>
+                        Regular Users
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold">
+                        {userRegistrationStats?.summary?.regularUsers || 0}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </Grid>
+            
+            {/* Registration Chart */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  {registrationTimeframe === 'daily' ? 'Daily Registrations (Last 30 Days)' : 
+                   registrationTimeframe === 'weekly' ? 'Weekly Registrations (Last 12 Weeks)' : 
+                   registrationTimeframe === 'monthly' ? 'Monthly Registrations (Last 12 Months)' :
+                   'Registration by Department'}
+                </Typography>
+                
+                <Box sx={{ 
+                  height: isMobile ? 300 : 400, 
+                  mt: 3,
+                  position: 'relative'
+                }}>
+                  {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      {registrationTimeframe === 'department' ? (
+                        <BarChart
+                          data={userRegistrationStats?.departmentRegistrations || []}
+                          margin={{ top: 20, right: 30, left: 30, bottom: isMobile ? 130 : 50 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis 
+                            dataKey="department" 
+                            tick={{ fontSize: isMobile ? 10 : 12 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={isMobile ? 130 : 60}
+                            interval={0}
+                          />
+                          <YAxis />
+                          <RechartsTooltip 
+                            formatter={(value, name) => {
+                              if (name === 'regularCount') return [`${value} users`, 'Users'];
+                              return [value, name];
+                            }}
+                          />
+                          <Legend />
+                          <Bar dataKey="regularCount" name="Regular Users" fill="#4CAF50" />
+                        </BarChart>
+                      ) : (
+                        <AreaChart 
+                          data={registrationTimeframe === 'daily' 
+                            ? userRegistrationStats?.dailyRegistrations?.map(item => ({
+                                date: item._id,
+                                display: new Date(item._id).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                                regularCount: item.regularCount,
+                              }))
+                            : registrationTimeframe === 'weekly'
+                            ? userRegistrationStats?.weeklyRegistrations?.map(item => ({
+                                date: item.weekLabel,
+                                display: item.weekLabel,
+                                regularCount: item.regularCount,
+                              }))
+                            : userRegistrationStats?.monthlyRegistrations?.map(item => ({
+                                date: item.monthLabel,
+                                display: item.monthLabel,
+                                regularCount: item.regularCount,
+                              }))
+                          }
+                          margin={{ top: 20, right: 30, left: 30, bottom: isMobile ? 60 : 30 }}
+                        >
+                          <defs>
+                            <linearGradient id="colorRegular" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.8}/>
+                              <stop offset="95%" stopColor="#4CAF50" stopOpacity={0.1}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis 
+                            dataKey="display" 
+                            tick={{ fontSize: isMobile ? 10 : 12 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={isMobile ? 60 : 30}
+                            interval={registrationTimeframe === 'daily' ? (isMobile ? 3 : 1) : 0}
+                          />
+                          <YAxis />
+                          <RechartsTooltip 
+                            formatter={(value, name) => {
+                              if (name === 'regularCount') return [`${value} users`, 'Users'];
+                              return [value, name];
+                            }}
+                            labelFormatter={(label) => {
+                              return `Date: ${label}`;
+                            }}
+                          />
+                          <Legend />
+                          <Area 
+                            type="monotone" 
+                            dataKey="regularCount" 
+                            name="Users"
+                            stroke="#4CAF50" 
+                            fillOpacity={1} 
+                            fill="url(#colorRegular)" 
+                          />
+                        </AreaChart>
+                      )}
+                    </ResponsiveContainer>
+                  )}
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
+        
+        {activeTab === 3 && (
           <ProfileSyncTab token={token} />
         )}
       </Container>

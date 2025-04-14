@@ -28,7 +28,9 @@ import {
   FormControlLabel,
   Switch,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  FormHelperText,
+  Tooltip
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -38,7 +40,9 @@ import {
   CheckCircle as CheckCircleIcon,
   Group as GroupIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  AccessTime as AccessTimeIcon,
+  HelpOutline as HelpOutlineIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -69,7 +73,8 @@ const NotificationManagement = () => {
     title: '',
     message: '',
     targetType: 'global',
-    selectedUser: ''
+    selectedUser: '',
+    deletionTime: ''
   });
 
   // Fetch notifications for admin
@@ -108,10 +113,36 @@ const NotificationManagement = () => {
     }
   };
   
+  // Format notification date
+  const formatNotificationDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Format deletion time for display
+  const formatDeletionTime = (dateString) => {
+    if (!dateString) return 'Never';
+    
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
   // Create or update notification
   const handleNotificationSubmit = async () => {
     try {
-      const { title, message, targetType, selectedUser } = notificationFormData;
+      const { title, message, targetType, selectedUser, deletionTime } = notificationFormData;
       
       if (!title || !message) {
         toast.error('Title and message are required');
@@ -120,7 +151,13 @@ const NotificationManagement = () => {
       
       let endpoint = '';
       let method = 'post';
-      let data = { title, message };
+      let data = { 
+        title, 
+        message,
+        deletionTime: deletionTime || null
+      };
+      
+      console.log('Sending notification with data:', data);
       
       if (editNotificationId) {
         // Update existing notification
@@ -184,7 +221,8 @@ const NotificationManagement = () => {
       title: notification.title,
       message: notification.message,
       targetType: notification.type === 'global' ? 'global' : 'user',
-      selectedUser: notification.user?._id || ''
+      selectedUser: notification.user?._id || '',
+      deletionTime: notification.deletionTime ? new Date(notification.deletionTime).toISOString().slice(0, 16) : ''
     });
     setEditNotificationId(notification.id);
     setNotificationDialogOpen(true);
@@ -196,21 +234,28 @@ const NotificationManagement = () => {
       title: '',
       message: '',
       targetType: 'global',
-      selectedUser: ''
+      selectedUser: '',
+      deletionTime: ''
     });
     setEditNotificationId(null);
   };
   
-  // Format notification date
-  const formatNotificationDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  // Run cleanup manually
+  const handleRunCleanup = async () => {
+    try {
+      const response = await axios.post(`${apiUrl}/notifications/cleanup`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      toast.success(`Cleanup complete: Deleted ${response.data.deletedCount} expired notifications`);
+      fetchNotifications();
+    } catch (error) {
+      console.error('Error running cleanup:', error);
+      toast.error('Failed to run cleanup');
+    }
   };
   
   useEffect(() => {
@@ -268,7 +313,24 @@ const NotificationManagement = () => {
                 Create and manage notifications for your users. Send targeted messages or broadcast announcements.
               </Typography>
             </Grid>
-            <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+            <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' }, gap: 2 }}>
+              <Button 
+                variant="outlined" 
+                startIcon={<AccessTimeIcon />}
+                onClick={handleRunCleanup}
+                sx={{ 
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                  },
+                  fontWeight: 600
+                }}
+              >
+                Clean Expired
+              </Button>
               <Button 
                 variant="contained" 
                 startIcon={<NotificationsIcon />}
@@ -416,6 +478,7 @@ const NotificationManagement = () => {
                     <TableCell sx={{ fontWeight: 'bold' }}>Message</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Created</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Auto-Delete</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -465,6 +528,20 @@ const NotificationManagement = () => {
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
                           {formatNotificationDate(notification.createdAt)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography 
+                          variant="body2" 
+                          color={notification.deletionTime ? 'warning.main' : 'text.secondary'}
+                          sx={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5
+                          }}
+                        >
+                          {notification.deletionTime && <AccessTimeIcon fontSize="small" />}
+                          {formatDeletionTime(notification.deletionTime)}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
@@ -562,6 +639,30 @@ const NotificationManagement = () => {
                 </Select>
               </FormControl>
             )}
+            
+            {/* Auto-deletion field */}
+            <FormControl fullWidth margin="normal">
+              <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                <AccessTimeIcon fontSize="small" sx={{ mr: 1 }} />
+                Auto-Deletion Time 
+                <Tooltip title="Set a time when this notification will be automatically deleted. Leave empty for no auto-deletion.">
+                  <HelpOutlineIcon fontSize="small" sx={{ ml: 1, color: 'text.secondary', fontSize: '16px' }} />
+                </Tooltip>
+              </Typography>
+              <TextField
+                type="datetime-local"
+                value={notificationFormData.deletionTime}
+                onChange={(e) => setNotificationFormData({ ...notificationFormData, deletionTime: e.target.value })}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                variant="outlined"
+                fullWidth
+              />
+              <FormHelperText>
+                Leave empty if you don't want the notification to be automatically deleted
+              </FormHelperText>
+            </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>

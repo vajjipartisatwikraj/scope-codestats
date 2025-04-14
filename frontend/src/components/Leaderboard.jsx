@@ -60,7 +60,9 @@ import {
   EmojiPeople,
   Equalizer,
   FilterList,
-  Refresh
+  Refresh,
+  ArrowBack,
+  ArrowForward
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -167,8 +169,30 @@ const Leaderboard = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [leaderboardType, setLeaderboardType] = useState('score');
   const [animateTop3, setAnimateTop3] = useState(false);
-  const { token } = useAuth();
+  const { token, user: currentAuthUser } = useAuth();
   const { darkMode } = useTheme();
+
+  // Custom scrollbar styles
+  const scrollbarStyles = {
+    '&::-webkit-scrollbar': {
+      width: '8px',
+      height: '8px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 136, 204, 0.05)',
+      borderRadius: '10px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 136, 204, 0.4)',
+      borderRadius: '10px',
+      '&:hover': {
+        backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 136, 204, 0.6)',
+      },
+    },
+  };
+
+  // Add state for current user's leaderboard position
+  const [currentUserData, setCurrentUserData] = useState(null);
 
   useEffect(() => {
     if (!token) {
@@ -387,7 +411,7 @@ const Leaderboard = () => {
     }
     
     // Only use sortBy for column clicks like names, dept, etc.
-    if (['name', 'department', 'section', 'rollNumber', 'graduatingYear'].includes(sortBy)) {
+    if (['name', 'department', 'section', 'rollNumber'].includes(sortBy)) {
       actualSortField = sortBy;
     }
 
@@ -637,12 +661,15 @@ const Leaderboard = () => {
     
     const platformValues = getPlatformValues();
     
+    // Determine sizes based on rank
+    const isFirstPlace = rank === 1;
+    
     return (
       <Zoom in={animateTop3} style={{ transitionDelay: delay }}>
         <Card
           sx={{
-            p: { xs: 2, sm: 3 },
-            pt: { xs: 3, sm: 4 },
+            p: { xs: isFirstPlace ? 2 : 1.5, sm: isFirstPlace ? 3 : 2 },
+            pt: { xs: isFirstPlace ? 3 : 2, sm: isFirstPlace ? 4 : 3 },
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -656,24 +683,30 @@ const Leaderboard = () => {
             position: 'relative',
             overflow: 'visible',
             boxShadow: `0 8px 32px ${colors[rank - 1]}22`,
-            transform: rank === 1 ? { sm: 'scale(1.05)' } : 'none',
+            transform: isFirstPlace ? { sm: 'scale(1.05)' } : 'none',
             transition: 'all 0.3s ease',
             '&:hover': {
-              transform: { sm: 'translateY(-8px)' },
+              transform: { sm: isFirstPlace ? 'translateY(-8px) scale(1.05)' : 'translateY(-8px)' },
               boxShadow: `0 12px 40px ${colors[rank - 1]}33`,
             },
             mt: 6,
-            height: { xs: 430, sm: 460 }
+            height: { 
+              xs: isFirstPlace ? 480 : 420, 
+              sm: isFirstPlace ? 520 : 450 
+            },
+            maxWidth: isFirstPlace ? '100%' : '90%',
+            mx: 'auto'
           }}
         >
+          {/* Trophy Icon Badge */}
           <Box
             sx={{
               position: 'absolute',
               top: -25,
               left: '50%',
               transform: 'translateX(-50%)',
-              width: 60,
-              height: 60,
+              width: isFirstPlace ? 50 : 40,
+              height: isFirstPlace ? 50 : 40,
               borderRadius: '50%',
               bgcolor: colors[rank - 1],
               display: 'flex',
@@ -684,23 +717,55 @@ const Leaderboard = () => {
               border: `3px solid ${darkMode ? '#1a1a1a' : '#ffffff'}`,
             }}
           >
-            <Icon sx={{ fontSize: 34, color: darkMode ? '#1a1a1a' : '#ffffff' }} />
+            <Icon sx={{ fontSize: isFirstPlace ? 28 : 22, color: darkMode ? '#1a1a1a' : '#ffffff' }} />
           </Box>
-          <Box sx={{ height: 35, width: '100%' }} />
+          
+          <Box sx={{ height: isFirstPlace ? 35 : 30, width: '100%' }} />
+          
+          {/* Rank Badge */}
+          <Box
+            sx={{
+              width: isFirstPlace ? 80 : 70,
+              height: isFirstPlace ? 36 : 32,
+              borderRadius: 20,
+              bgcolor: colors[rank - 1],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 4px 10px rgba(0,0,0,0.3)`,
+              border: `2px solid ${darkMode ? '#1a1a1a' : '#ffffff'}`,
+              zIndex: 3,
+              fontWeight: 'bold',
+              fontSize: isFirstPlace ? '1rem' : '0.9rem',
+              color: '#ffffff',
+              mb: isFirstPlace ? 1.5 : 1
+            }}
+          >
+            Rank: {rank}
+          </Box>
+          
           <Avatar
             alt={user.name}
             src={profileImage}
             sx={{
-              width: { xs: 60, sm: 70, md: 90 },
-              height: { xs: 60, sm: 70, md: 90 },
+              width: { 
+                xs: isFirstPlace ? 65 : 55, 
+                sm: isFirstPlace ? 75 : 65, 
+                md: isFirstPlace ? 90 : 75 
+              },
+              height: { 
+                xs: isFirstPlace ? 65 : 55, 
+                sm: isFirstPlace ? 75 : 65, 
+                md: isFirstPlace ? 90 : 75 
+              },
               border: `4px solid ${['#FFD700', '#C0C0C0', '#CD7F32'][rank-1]}`,
               boxShadow: `0 2px 10px ${['#FFD700', '#C0C0C0', '#CD7F32'][rank-1]}50`,
-              mb: 2,
-              mt: 1,
+              mb: isFirstPlace ? 2 : 1.5,
               position: 'relative',
               zIndex: 1,
             }}
           />
+          
           <Typography variant="h6" sx={{ 
             fontWeight: 600, 
             mb: 1, 
@@ -709,15 +774,26 @@ const Leaderboard = () => {
             width: '100%',
             overflow: 'hidden',
             display: '-webkit-box',
-            WebkitLineClamp: 2,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical',
             lineHeight: 1.3,
-            height: '2.6em',
+            minHeight: isFirstPlace ? '3.9em' : '3.6em',
             px: 1,
+            fontSize: { 
+              xs: isFirstPlace ? '0.95rem' : '0.85rem', 
+              sm: isFirstPlace ? '1.1rem' : '0.95rem' 
+            }
           }}>
             {user.name}
           </Typography>
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          
+          <Stack direction="row" spacing={1} sx={{ 
+            mb: 2, 
+            flexWrap: 'wrap', 
+            justifyContent: 'center', 
+            gap: 0.5,
+            px: 1
+          }}>
             <Chip
               label={user.department}
               size="small"
@@ -725,6 +801,9 @@ const Leaderboard = () => {
                 bgcolor: `${colors[rank - 1]}22`,
                 color: colors[rank - 1],
                 fontWeight: 500,
+                m: 0.5,
+                fontSize: isFirstPlace ? '0.7rem' : '0.65rem',
+                height: isFirstPlace ? 20 : 18
               }}
             />
             <Chip
@@ -733,19 +812,24 @@ const Leaderboard = () => {
               sx={{
                 bgcolor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
                 color: darkMode ? 'white' : 'rgba(0,0,0,0.7)',
+                m: 0.5,
+                fontSize: isFirstPlace ? '0.7rem' : '0.65rem',
+                height: isFirstPlace ? 20 : 18
               }}
             />
           </Stack>
+          
           <Box sx={{ 
             display: 'flex', 
-            gap: 2, 
+            gap: isFirstPlace ? 2 : 1.5, 
             mb: 2,
             flexWrap: 'wrap',
             justifyContent: 'center',
-            maxHeight: 70,
+            maxHeight: isFirstPlace ? 90 : 80,
             overflow: 'auto',
             width: '100%',
-            px: 1
+            px: 1,
+            ...scrollbarStyles
           }}>
             {platformValues.length > 0 ? (
               platformValues.map(({ platform, value }) => (
@@ -759,12 +843,12 @@ const Leaderboard = () => {
                     px: 1,
                     py: 0.5,
                     borderRadius: 1,
-                    fontSize: '0.75rem'
+                    fontSize: isFirstPlace ? '0.7rem' : '0.65rem'
                   }}>
                     <Box
                       sx={{
-                        width: 6,
-                        height: 6,
+                        width: isFirstPlace ? 5 : 4,
+                        height: isFirstPlace ? 5 : 4,
                         borderRadius: '50%',
                         bgcolor: platformColors[platform],
                       }}
@@ -774,18 +858,31 @@ const Leaderboard = () => {
                 </Tooltip>
               ))
             ) : (
-              <Typography variant="caption" sx={{ opacity: 0.7, fontStyle: 'italic' }}>
+              <Typography variant="caption" sx={{ 
+                opacity: 0.7, 
+                fontStyle: 'italic',
+                fontSize: isFirstPlace ? '0.7rem' : '0.65rem'
+              }}>
                 No platform data available
               </Typography>
             )}
           </Box>
+          
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: colors[rank - 1] }}>
+            <Typography variant="h4" sx={{ 
+              fontWeight: 700, 
+              color: colors[rank - 1],
+              fontSize: { 
+                xs: isFirstPlace ? '1.8rem' : '1.5rem', 
+                sm: isFirstPlace ? '2.2rem' : '1.8rem' 
+              }
+            }}>
               {getValue()}
             </Typography>
             <Typography variant="body2" sx={{ 
               color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)', 
-              mt: 1 
+              mt: 1,
+              fontSize: isFirstPlace ? '0.75rem' : '0.7rem'
             }}>
               {config.label}
             </Typography>
@@ -1095,37 +1192,186 @@ const Leaderboard = () => {
 
       {/* Center - Page numbers */}
       <Stack direction="row" spacing={0.5}>
-        {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-          const pageNum = idx + 1;
-          return (
-            <Button
-              key={idx}
-              onClick={() => onPageChange(pageNum)}
-              variant={page === pageNum ? 'contained' : 'text'}
-              sx={{
-                minWidth: 32,
-                height: 32,
-                p: 0,
-                bgcolor: page === pageNum ? '#0088cc !important' : 'transparent',
-                color: page === pageNum 
-                  ? 'white' 
-                  : darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                '&:hover': {
-                  bgcolor: page === pageNum 
-                    ? '#0088cc' 
-                    : darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
-                }
-              }}
-            >
-              {pageNum}
-            </Button>
-          );
-        })}
+        {/* Previous page button */}
+        <Button
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={page === 1}
+          sx={{
+            minWidth: 32,
+            height: 32,
+            p: 0,
+            color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+            '&:hover': {
+              bgcolor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+            },
+            '&.Mui-disabled': {
+              color: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
+            }
+          }}
+        >
+          <ArrowBack fontSize="small" />
+        </Button>
+
+        {(() => {
+          const pageButtons = [];
+          const maxVisiblePages = 5;
+          
+          // Calculate start and end page numbers to display
+          let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+          let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+          
+          // Adjust if we're near the end
+          if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+          }
+          
+          // Add first page button if needed
+          if (startPage > 1) {
+            pageButtons.push(
+              <Button
+                key="first-page"
+                onClick={() => onPageChange(1)}
+                variant={page === 1 ? 'contained' : 'text'}
+                sx={{
+                  minWidth: 32,
+                  height: 32,
+                  p: 0,
+                  bgcolor: page === 1 ? '#0088cc !important' : 'transparent',
+                  color: page === 1 
+                    ? 'white' 
+                    : darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                  '&:hover': {
+                    bgcolor: page === 1 
+                      ? '#0088cc' 
+                      : darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+                  }
+                }}
+              >
+                1
+              </Button>
+            );
+            
+            // Add ellipsis if there's a gap
+            if (startPage > 2) {
+              pageButtons.push(
+                <Box 
+                  key="ellipsis-start" 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    px: 1,
+                    color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' 
+                  }}
+                >
+                  ...
+                </Box>
+              );
+            }
+          }
+          
+          // Add page buttons
+          for (let i = startPage; i <= endPage; i++) {
+            // Skip first and last page buttons if they're handled separately
+            if ((i === 1 && startPage > 1) || (i === totalPages && endPage < totalPages)) continue;
+            
+            pageButtons.push(
+              <Button
+                key={i}
+                onClick={() => onPageChange(i)}
+                variant={page === i ? 'contained' : 'text'}
+                sx={{
+                  minWidth: 32,
+                  height: 32,
+                  p: 0,
+                  bgcolor: page === i ? '#0088cc !important' : 'transparent',
+                  color: page === i 
+                    ? 'white' 
+                    : darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                  '&:hover': {
+                    bgcolor: page === i 
+                      ? '#0088cc' 
+                      : darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+                  }
+                }}
+              >
+                {i}
+              </Button>
+            );
+          }
+          
+          // Add last page button if needed
+          if (endPage < totalPages) {
+            // Add ellipsis if there's a gap
+            if (endPage < totalPages - 1) {
+              pageButtons.push(
+                <Box 
+                  key="ellipsis-end" 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    px: 1,
+                    color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' 
+                  }}
+                >
+                  ...
+                </Box>
+              );
+            }
+            
+            pageButtons.push(
+              <Button
+                key="last-page"
+                onClick={() => onPageChange(totalPages)}
+                variant={page === totalPages ? 'contained' : 'text'}
+                sx={{
+                  minWidth: 32,
+                  height: 32,
+                  p: 0,
+                  bgcolor: page === totalPages ? '#0088cc !important' : 'transparent',
+                  color: page === totalPages 
+                    ? 'white' 
+                    : darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                  '&:hover': {
+                    bgcolor: page === totalPages 
+                      ? '#0088cc' 
+                      : darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+                  }
+                }}
+              >
+                {totalPages}
+              </Button>
+            );
+          }
+          
+          return pageButtons;
+        })()}
+        
+        {/* Next page button */}
+        <Button
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page === totalPages || totalPages === 0}
+          sx={{
+            minWidth: 32,
+            height: 32,
+            p: 0,
+            color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+            '&:hover': {
+              bgcolor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+            },
+            '&.Mui-disabled': {
+              color: darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
+            }
+          }}
+        >
+          <ArrowForward fontSize="small" />
+        </Button>
       </Stack>
 
       {/* Right side - Current range display */}
       <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>
-        {`${(page - 1) * rowsPerPage + 1}-${Math.min(page * rowsPerPage, totalPages * rowsPerPage)}`}
+        {totalPages === 0 
+          ? 'No results' 
+          : `${(page - 1) * rowsPerPage + 1}-${Math.min(page * rowsPerPage, filteredUsers.length)} of ${filteredUsers.length}`}
       </Typography>
     </Box>
   );
@@ -1232,7 +1478,7 @@ const Leaderboard = () => {
     
     // Make sure our total matches the recalculated problemsSolved value
     if (total !== topUser.problemsSolved) {
-      console.warn(`Platform values sum (${total}) doesn't match problemsSolved (${topUser.problemsSolved})`);
+      // Silently handle inconsistency without logging
     }
     
     return (
@@ -1300,6 +1546,52 @@ const Leaderboard = () => {
     }
   }, [leaderboardType]);
 
+  // After fetchLeaderboard function is defined, add this new function:
+  const findCurrentUserInLeaderboard = (leaderboardData) => {
+    if (!currentAuthUser || !leaderboardData.length) return null;
+    
+    // Try to find the user by email first
+    let userData = leaderboardData.find(u => u.email === currentAuthUser.email);
+    
+    // If not found by email, try by rollNumber if available
+    if (!userData && currentAuthUser.rollNumber) {
+      userData = leaderboardData.find(u => 
+        u.rollNumber && u.rollNumber.toLowerCase() === currentAuthUser.rollNumber.toLowerCase()
+      );
+    }
+    
+    return userData;
+  };
+
+  // Add this to the existing useEffect after fetchLeaderboard
+  useEffect(() => {
+    if (users.length > 0 && currentAuthUser) {
+      const userData = findCurrentUserInLeaderboard(users);
+      setCurrentUserData(userData);
+    }
+  }, [users, currentAuthUser]);
+
+  // After the findCurrentUserInLeaderboard function, add a new helper function to calculate filtered rank
+
+  // Add this function before the return statement
+  const getCurrentUserFilteredRank = () => {
+    if (!currentUserData || !filteredUsers.length) return { rank: '-', isVisible: false };
+    
+    // Find the current user in the filtered data
+    const userIndex = filteredUsers.findIndex(user => user._id === currentUserData._id);
+    
+    // If found, return the rank (index + 1)
+    if (userIndex > -1) {
+      return { 
+        rank: userIndex + 1,
+        isVisible: userIndex >= (page - 1) * rowsPerPage && userIndex < page * rowsPerPage
+      };
+    }
+    
+    // If not found in filtered data
+    return { rank: '-', isVisible: false };
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -1313,7 +1605,7 @@ const Leaderboard = () => {
       maxWidth={false} 
       sx={{ 
         mt: { xs: 2, sm: 4 }, 
-        mb: 4,
+        mb: { xs: 8, sm: 10 }, // Increase bottom margin to make room for sticky row
         px: { xs: 2, sm: 3 },
         maxWidth: '100vw',
         overflowX: 'hidden'
@@ -1393,19 +1685,19 @@ const Leaderboard = () => {
           maxWidth: '1200px',
           mx: 'auto'
         }}>
-          <Grid container spacing={2} justifyContent="center">
+          <Grid container spacing={2} justifyContent="center" alignItems="flex-start">
             {filteredUsers.length > 1 && (
-              <Grid item xs={12} sm={4} md={3} order={{ xs: 2, sm: 1 }}>
+              <Grid item xs={12} sm={4} md={3} order={{ xs: 2, sm: 1 }} sx={{ mt: { sm: 4 } }}>
                 <TopThreeCard user={filteredUsers[1]} rank={2} delay="200ms" leaderboardType={leaderboardType} />
               </Grid>
             )}
             {filteredUsers.length > 0 && (
-              <Grid item xs={12} sm={4} md={3} order={{ xs: 1, sm: 2 }}>
+              <Grid item xs={12} sm={4} md={3} order={{ xs: 1, sm: 2 }} sx={{ mt: { sm: -3 } }}>
                 <TopThreeCard user={filteredUsers[0]} rank={1} delay="0ms" leaderboardType={leaderboardType} />
               </Grid>
             )}
             {filteredUsers.length > 2 && (
-              <Grid item xs={12} sm={4} md={3} order={{ xs: 3, sm: 3 }}>
+              <Grid item xs={12} sm={4} md={3} order={{ xs: 3, sm: 3 }} sx={{ mt: { sm: 4 } }}>
                 <TopThreeCard user={filteredUsers[2]} rank={3} delay="400ms" leaderboardType={leaderboardType} />
               </Grid>
             )}
@@ -1830,10 +2122,15 @@ const Leaderboard = () => {
           bgcolor: darkMode ? 'transparent' : '#ffffff',
           borderRadius: 2,
           overflow: 'auto',
-          maxWidth: '100%'
+          maxWidth: '100%',
+          ...scrollbarStyles
         }}
       >
-        <TableContainer sx={{ maxWidth: '100%' }}>
+        <TableContainer sx={{ 
+          maxWidth: '100%',
+          ...scrollbarStyles,
+          position: 'relative' // Added to make relative positioning context for sticky row
+        }}>
           <Table sx={{ 
             width: '100%',
             '& .MuiTableCell-root': { 
@@ -1873,6 +2170,145 @@ const Leaderboard = () => {
                     />
                   ))
               )}
+              
+              {/* Current User Row - Inside the table */}
+              {currentUserData && (
+                <TableRow
+                  sx={{
+                    position: 'sticky',
+                    bottom: 0,
+                    zIndex: 10,
+                    bgcolor: darkMode 
+                      ? getCurrentUserFilteredRank().rank === '-' 
+                        ? 'rgba(128, 128, 128, 0.2)' // Gray if filtered out
+                        : 'rgba(0, 136, 204, 0.2)'  // Blue if visible
+                      : getCurrentUserFilteredRank().rank === '-' 
+                        ? 'rgba(128, 128, 128, 0.1)' // Light gray if filtered out
+                        : 'rgba(0, 136, 204, 0.1)',  // Light blue if visible
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: '0 -2px 10px rgba(0,0,0,0.2)',
+                    '& .MuiTableCell-root': {
+                      borderTop: `1px solid ${darkMode 
+                        ? getCurrentUserFilteredRank().rank === '-' 
+                          ? 'rgba(128, 128, 128, 0.3)' 
+                          : 'rgba(0, 136, 204, 0.3)' 
+                        : getCurrentUserFilteredRank().rank === '-' 
+                          ? 'rgba(128, 128, 128, 0.2)' 
+                          : 'rgba(0, 136, 204, 0.2)'}`,
+                      py: 1.5,
+                    },
+                    '&:hover': {
+                      bgcolor: darkMode 
+                        ? getCurrentUserFilteredRank().rank === '-' 
+                          ? 'rgba(128, 128, 128, 0.25)' 
+                          : 'rgba(0, 136, 204, 0.25)' 
+                        : getCurrentUserFilteredRank().rank === '-' 
+                          ? 'rgba(128, 128, 128, 0.15)' 
+                          : 'rgba(0, 136, 204, 0.15)'
+                    }
+                  }}
+                >
+                  <TableCell align="center">
+                    {(() => {
+                      const { rank, isVisible } = getCurrentUserFilteredRank();
+                      return (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Chip 
+                            label={rank !== '-' ? `#${rank}` : 'Not in filter'} 
+                            color={rank !== '-' ? 'primary' : 'default'}
+                            size="small" 
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                          {rank !== '-' && (
+                            <Typography variant="caption" sx={{ fontSize: '0.6rem', mt: 0.5, opacity: 0.7 }}>
+                              {isVisible ? "(on this page)" : "(filtered rank)"}
+                            </Typography>
+                          )}
+                        </Box>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar
+                        alt={currentUserData.name || 'User'}
+                        src={getProfileImageUrl(currentUserData.profilePicture)}
+                        sx={{ 
+                          width: 36, 
+                          height: 36,
+                          border: `2px solid ${darkMode ? 'rgba(0,136,204,0.5)' : 'rgba(0,136,204,0.3)'}`,
+                        }}
+                      />
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body1" fontWeight="medium">
+                            {currentUserData.name}
+                          </Typography>
+                          <Chip 
+                            size="small" 
+                            label="YOU" 
+                            color="primary" 
+                            variant="outlined" 
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {currentUserData.department} - {getStudentYear(currentUserData.graduatingYear)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {currentUserData.rollNumber ? currentUserData.rollNumber.toUpperCase() : '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{currentUserData.department || '-'}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{currentUserData.section || '-'}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{currentUserData.graduatingYear}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ color: '#0088cc', fontWeight: 600 }}>
+                      {leaderboardType === 'score' 
+                        ? (currentUserData.totalScore || 0) 
+                        : (currentUserData.problemsSolved || 0)}
+                    </Typography>
+                  </TableCell>
+                  
+                  {/* Platform cells for current user */}
+                  {leaderboardConfigs[leaderboardType].platforms.map((platform) => {
+                    const value = currentUserData.platformScores && currentUserData.platformScores[platform]
+                      ? (leaderboardType === 'score' 
+                        ? currentUserData.platformScores[platform].score 
+                        : currentUserData.platformScores[platform].problemsSolved) || 0
+                      : 0;
+                      
+                    return (
+                      <TableCell key={platform}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            color: platformColors[platform],
+                            opacity: value > 0 ? 1 : 0.4,
+                            fontWeight: value > 0 ? 600 : 400
+                          }}
+                        >
+                          {value}
+                        </Typography>
+                      </TableCell>
+                    );
+                  })}
+                  
+                  <TableCell>
+                    <Typography variant="body2">{currentUserData.departmentRank || '-'}</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -1896,7 +2332,7 @@ const Leaderboard = () => {
           {leaderboardType === 'score' ? 'Score Leaderboard' : 'Problems Solved Leaderboard'}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          Admin accounts are excluded from rankings
+          © 2025 MLRIT. All rights reserved.
         </Typography>
       </Box>
     </Container>
