@@ -285,6 +285,36 @@ const userSchema = new mongoose.Schema({
       default: ''
     }
   }],
+  loginSessions: [{
+    deviceInfo: {
+      userAgent: String,
+      browser: String,
+      platform: String,
+      deviceType: String
+    },
+    location: {
+      ip: String,
+      city: String,
+      country: String,
+      countryCode: String
+    },
+    loginTime: {
+      type: Date,
+      default: Date.now
+    },
+    lastActiveTime: {
+      type: Date,
+      default: Date.now
+    },
+    sessionId: {
+      type: String,
+      required: true
+    },
+    isCurrentSession: {
+      type: Boolean,
+      default: false
+    }
+  }],
 }, {
   timestamps: true
 });

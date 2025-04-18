@@ -40,6 +40,8 @@ const session = require('express-session');
 const googleAuthRoutes = require('./routes/auth/googleAuth');
 const registerCronJobs = require('./ensure-cron-jobs');
 const webPushUtil = require('./utils/webPushUtil');
+const sessionsRoutes = require('./routes/sessions');
+const issueRoutes = require('./routes/issueRoutes');
 
 const app = express();
 
@@ -97,7 +99,8 @@ app.get('/api/debug', (req, res) => {
       '/api/achievements',
       '/api/users',
       '/api/courses',
-      '/api/opportunities'
+      '/api/opportunities',
+      '/api/sessions'
     ]
   });
 });
@@ -124,6 +127,8 @@ app.use('/api/opportunities', opportunitiesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/auth/google', googleAuthRoutes);
+app.use('/api/sessions', sessionsRoutes);
+app.use('/api/issues', issueRoutes);
 
 // Test route for CodeChef profile scraping
 app.get('/api/test/codechef/:username', async (req, res) => {

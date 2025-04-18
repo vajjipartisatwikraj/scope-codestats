@@ -42,7 +42,8 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   AccessTime as AccessTimeIcon,
-  HelpOutline as HelpOutlineIcon
+  HelpOutline as HelpOutlineIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -427,6 +428,27 @@ const NotificationManagement = () => {
               border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar sx={{ bgcolor: 'rgba(33, 150, 243, 0.1)', color: '#2196F3' }}>
+                  <VisibilityIcon />
+                </Avatar>
+              </Box>
+              <Typography variant="h4" fontWeight="bold">
+                {notifications.reduce((total, n) => total + (n.views || 0), 0)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Total Views
+              </Typography>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Paper sx={{ 
+              p: 3, 
+              borderRadius: 2,
+              background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'white',
+              border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <Avatar sx={{ bgcolor: 'rgba(244, 67, 54, 0.1)', color: '#F44336' }}>
                   <GroupIcon />
                 </Avatar>
@@ -478,6 +500,7 @@ const NotificationManagement = () => {
                     <TableCell sx={{ fontWeight: 'bold' }}>Message</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Created</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Views</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Auto-Delete</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
                   </TableRow>
@@ -528,6 +551,11 @@ const NotificationManagement = () => {
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
                           {formatNotificationDate(notification.createdAt)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {notification.views || 0}
                         </Typography>
                       </TableCell>
                       <TableCell>

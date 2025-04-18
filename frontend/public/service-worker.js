@@ -62,8 +62,8 @@ self.addEventListener('push', (event) => {
     body: data.body || 'You have a new notification',
     icon: data.icon || '/codestats.png',
     badge: data.badge || '/codestats.png',
-    data: data.data || {},
-    actions: data.actions || []
+
+    data: data.data || {}
   };
   
   event.waitUntil(
@@ -77,39 +77,8 @@ self.addEventListener('notificationclick', (event) => {
   
   event.notification.close();
   
-  // If the notification has a URL, open it
-  if (event.notification.data && event.notification.data.url) {
-    event.waitUntil(
-      clients.openWindow(event.notification.data.url)
-    );
-    return;
-  }
-  
-  // Handle click action if defined
-  if (event.action === 'open' && event.notification.data && event.notification.data.notificationId) {
-    // Open the notifications UI
-    event.waitUntil(
-      clients.openWindow('/dashboard?openNotifications=true')
-    );
-    return;
-  }
-  
-  // Default action - open the app or focus if already open
+  // Always direct to notifications page when a notification is clicked
   event.waitUntil(
-    clients.matchAll({
-      type: 'window'
-    })
-    .then((clientList) => {
-      // If we have an open window, focus it
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Otherwise open a new window
-      if (clients.openWindow) {
-        return clients.openWindow('/dashboard');
-      }
-    })
+    clients.openWindow('http://localhost:5173/notifications')
   );
 }); 

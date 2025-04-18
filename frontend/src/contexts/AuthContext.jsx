@@ -20,7 +20,9 @@ const AuthContext = createContext({
   isAuthenticated: false,
   isAdmin: false,
   setUser: () => {},
-  isInitialized: false
+  isInitialized: false,
+  currentSessionId: null,
+  registerLoginSession: async () => {}
 });
 
 export const useAuth = () => {
@@ -42,64 +44,106 @@ export const AuthProvider = ({ children }) => {
   
   const [token, setToken] = useState(() => localStorage.getItem('token') || null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(() => localStorage.getItem('sessionId') || null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch user data if needed
-  const fetchUserData = async () => {
+  // Register a login session
+  const registerLoginSession = async () => {
     if (!token) return null;
     
     try {
-      const response = await axios.get(`${apiUrl}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.post(
+        `${apiUrl}/sessions/register`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
       
-      const userData = response.data;
-      
-      // IMPORTANT: Verify userType is present in the response
-      if (!userData.userType) {
-        userData.userType = 'user';
+      if (response.data && response.data.sessionId) {
+        localStorage.setItem('sessionId', response.data.sessionId);
+        setCurrentSessionId(response.data.sessionId);
+        return response.data.sessionId;
       }
       
-      // If the user exists, update with API data
-      if (user) {
-        const updatedUser = {
-          ...user,
-          ...userData
-        };
-        
-        // Update local storage and state
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        
-        return updatedUser;
-      } else {
-        // If no user exists, create one from the API data
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-        return userData;
-      }
+      return null;
     } catch (error) {
-      return user; // Return existing user on error
+      console.error('Failed to register session:', error);
+      return null;
     }
   };
-
-  // Log auth state on initialization
+  
+  // Update session activity periodically
   useEffect(() => {
-    const initializeAuth = async () => {
-      if (!isInitialized) {
-        // If we have a token but user data is incomplete, fetch complete data
-        if (token && user && !user.userType) {
-          await fetchUserData();
-        }
-        
-        setIsInitialized(true);
+    if (!token || !currentSessionId) return;
+    
+    const updateActivity = async () => {
+      try {
+        await axios.put(
+          `${apiUrl}/sessions/update-activity`,
+          { sessionId: currentSessionId },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Failed to update session activity:', error);
       }
     };
     
-    initializeAuth();
-  }, [token, user, isInitialized]);
+    // Update activity every 5 minutes
+    const intervalId = setInterval(updateActivity, 5 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [token, currentSessionId]);
 
+  // Fetch user data on mount if token exists
+  const fetchUserData = async () => {
+    if (!token) {
+      setIsInitialized(true);
+      return;
+    }
+    
+    try {
+      const res = await axios.get(`${apiUrl}/auth/user`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (res.data) {
+        const fullUserData = {...res.data, id: res.data._id};
+        localStorage.setItem('user', JSON.stringify(fullUserData));
+        setUser(fullUserData);
+        
+        // Register the session if not already registered
+        if (!currentSessionId) {
+          await registerLoginSession();
+        }
+      }
+    } catch (error) {
+      // If error is 401, the token is invalid, so log out
+      if (error.response && error.response.status === 401) {
+        console.log('Token expired or invalid, logging out');
+        logout();
+      }
+    } finally {
+      setIsInitialized(true);
+    }
+  };
+  
+  // Fetch user data when component mounts
+  useEffect(() => {
+    fetchUserData();
+  }, [token]);
+  
   // Handle OAuth redirects
   useEffect(() => {
     const handleOAuthRedirect = async () => {
@@ -137,6 +181,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(token);
       setUser(userData);
+      
+      // Register a new login session
+      await registerLoginSession();
       
       // Fetch complete user data
       try {
@@ -239,6 +286,9 @@ export const AuthProvider = ({ children }) => {
       setToken(authToken);
       setUser(userData);
       
+      // Register login session after setting token
+      registerLoginSession();
+      
       // Return appropriate redirect path based on user type
       return userData?.userType === 'admin' ? '/admin' : '/dashboard';
     } catch (error) {
@@ -289,8 +339,10 @@ export const AuthProvider = ({ children }) => {
     // Proceed with logout
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('sessionId');
     setUser(null);
     setToken(null);
+    setCurrentSessionId(null);
     navigate('/login', { replace: true });
     return true; // Logout successful
   };
@@ -305,7 +357,9 @@ export const AuthProvider = ({ children }) => {
     isAdmin: user?.userType === 'admin',
     setUser: updateUser,
     isInitialized,
-    refreshUserData: fetchUserData
+    refreshUserData: fetchUserData,
+    currentSessionId,
+    registerLoginSession
   };
 
   return (

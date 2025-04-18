@@ -40,6 +40,11 @@ const notificationSchema = new mongoose.Schema({
   deletionTime: {
     type: Date,
     default: null
+  },
+  // Track the number of times the notification has been viewed
+  views: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -94,13 +99,7 @@ notificationSchema.statics.createGlobalNotification = async function(title, mess
           data: {
             type: 'notification',
             notificationId: createdNotifications.find(n => n.userId.toString() === user._id.toString())?._id
-          },
-          actions: [
-            {
-              action: 'open',
-              title: 'View'
-            }
-          ]
+          }
         };
         
         return Promise.all(

@@ -40,9 +40,16 @@ router.put('/:id/read', auth, async (req, res) => {
       return res.status(404).json({ message: 'Notification not found' });
     }
 
+    // Increment views count only if the notification hasn't been read yet
+    if (!notification.read) {
+      notification.views = (notification.views || 0) + 1;
+    }
+
     // Check if this notification should be auto-deleted
     if (notification.autoDelete) {
       // Delete the notification instead of marking it as read
+      // We still incremented the views count for tracking purposes
+      await notification.save();
       await Notification.deleteOne({ _id: req.params.id });
       res.json({ message: 'Notification deleted' });
     } else {
@@ -60,6 +67,18 @@ router.put('/:id/read', auth, async (req, res) => {
 // Mark all notifications as read for a user
 router.put('/read-all', auth, async (req, res) => {
   try {
+    // Find unread notifications first to increment their views
+    const unreadNotifications = await Notification.find({
+      userId: req.user.id,
+      read: false
+    });
+    
+    // Increment views for all unread notifications
+    for (const notification of unreadNotifications) {
+      notification.views = (notification.views || 0) + 1;
+      await notification.save();
+    }
+    
     // Find auto-delete notifications
     const autoDeleteNotifications = await Notification.find({
       userId: req.user.id,
@@ -145,13 +164,7 @@ router.post('/admin/user/:userId', auth, adminAuth, async (req, res) => {
         data: {
           type: 'notification',
           notificationId: notification._id
-        },
-        actions: [
-          {
-            action: 'open',
-            title: 'View'
-          }
-        ]
+        }
       };
       
       // Send to all of the user's subscriptions
@@ -223,7 +236,8 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
           message: { $first: '$message' },
           createdAt: { $first: '$createdAt' },
           deletionTime: { $first: '$deletionTime' },
-          count: { $sum: 1 }
+          count: { $sum: 1 },
+          totalViews: { $sum: '$views' }
         }
       },
       {
@@ -235,6 +249,7 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
           createdAt: 1,
           deletionTime: 1,
           recipientCount: '$count',
+          views: '$totalViews',
           type: { $literal: 'global' }
         }
       },
@@ -265,6 +280,7 @@ router.get('/admin/all', auth, adminAuth, async (req, res) => {
       createdAt: n.createdAt,
       deletionTime: n.deletionTime,
       user: n.userId,
+      views: n.views || 0,
       type: 'individual'
     }));
     
@@ -509,6 +525,26 @@ router.get('/push/subscriptions', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error retrieving push notification subscriptions:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Delete a single notification for a user
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      userId: req.user.id
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    await Notification.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Notification deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });

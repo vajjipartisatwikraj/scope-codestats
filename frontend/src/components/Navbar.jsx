@@ -28,6 +28,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import CloseIcon from '@mui/icons-material/Close';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from 'axios';
@@ -153,6 +155,38 @@ const Navbar = () => {
       setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
+    }
+  };
+  
+  // Delete notification
+  const deleteNotification = async (notificationId, event) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    try {
+      await axios.delete(`${apiUrl}/notifications/${notificationId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Update the local state
+      setNotifications(prevNotifications =>
+        prevNotifications.filter(notification => notification._id !== notificationId)
+      );
+      
+      // Also update unread count if needed
+      setUnreadCount(prev => {
+        const deletedNotification = notifications.find(n => n._id === notificationId);
+        if (deletedNotification && !deletedNotification.read) {
+          return Math.max(0, prev - 1);
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error('Error deleting notification:', error);
     }
   };
   
@@ -675,7 +709,15 @@ const Navbar = () => {
                                 'rgba(0, 0, 0, 0.02)'
                             }
                           }}
-                          onClick={() => markAsRead(notification._id)}
+                          onClick={() => {
+                            if (!notification.read) {
+                              markAsRead(notification._id);
+                            }
+                            if (notification.link) {
+                              handleCloseNotificationsMenu();
+                              navigate(notification.link);
+                            }
+                          }}
                         >
                           <Box sx={{ 
                             width: '100%', 
@@ -722,7 +764,7 @@ const Navbar = () => {
                                     paddingRight: '4px'
                                   }}
                                 >
-                                  {notification.title}
+                                  {notification.title || 'Notification'}
                                 </Typography>
                                 <Typography
                                   variant="caption"
@@ -755,7 +797,7 @@ const Navbar = () => {
                                   pr: { xs: 0.5, sm: 1 }
                                 }}
                               >
-                                {notification.message}
+                                {notification.message || ''}
                               </Typography>
                             </Box>
                           </Box>
@@ -772,7 +814,53 @@ const Navbar = () => {
                   </List>
                 )}
               </Box>
+              
+              {/* View All Notifications Button */}
+              <Box 
+                sx={{ 
+                  p: 1.5, 
+                  borderTop: `1px solid ${themeColors.border}`,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Button
+                  variant="text"
+                  component={RouterLink}
+                  to="/notifications"
+                  onClick={handleCloseNotificationsMenu}
+                  sx={{
+                    color: '#1976d2',
+                    textTransform: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: 500,
+                    '&:hover': {
+                      backgroundColor: darkMode ? 'rgba(25, 118, 210, 0.08)' : 'rgba(25, 118, 210, 0.04)'
+                    }
+                  }}
+                >
+                  View all notifications
+                </Button>
+              </Box>
             </Menu>
+
+            {/* Settings Icon */}
+            <Tooltip title="Settings">
+              <IconButton
+                onClick={() => navigate('/settings')}
+                sx={{ 
+                  color: themeColors.iconColor, 
+                  mr: 2,
+                  backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                  '&:hover': {
+                    backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+                  }
+                }}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
             
             <Tooltip title="Toggle Theme">
               <IconButton onClick={toggleTheme} sx={{ color: themeColors.iconColor, mr: 2 }}>
@@ -852,22 +940,6 @@ const Navbar = () => {
                 }}
               >
                 <Typography>Profile</Typography>
-              </MenuItem>
-              <MenuItem 
-                onClick={() => {
-                  handleMenuClick('/notification-settings');
-                  handleCloseUserMenu();
-                }}
-                sx={{
-                  py: 1.5,
-                  px: 2,
-                  color: themeColors.text,
-                  '&:hover': {
-                    background: themeColors.menuHover,
-                  }
-                }}
-              >
-                <Typography>Notification Settings</Typography>
               </MenuItem>
               <MenuItem 
                 onClick={handleLogout}
