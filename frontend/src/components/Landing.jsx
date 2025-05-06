@@ -741,11 +741,18 @@ const Landing = () => {
                 spacing={2}
               >
                 <Stack direction="row" spacing={1} alignItems="center">
+                 <a
+                   href="http://scopeclub.mlrit.ac.in/teams"
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   style={{ display: 'flex', alignItems: 'center' }}
+                  >
                   <img 
                     src="/codestats.png" 
                     alt="Code Stats Logo" 
                     style={{ width: 32, height: 32 }} 
                   />
+                  </a>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0077b6' }}>
                     Code Stats
                   </Typography>
