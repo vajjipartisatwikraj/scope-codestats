@@ -1,0 +1,28 @@
+/* Base styles */
+.css-ivyz4h-MuiGrid-root>.MuiGrid-item {
+    padding-bottom: 30px !important;
+}
+
+/* Tablet devices */
+@media (max-width: 768px) {
+    .css-ivyz4h-MuiGrid-root>.MuiGrid-item {
+        padding-left: 24px !important;
+        padding-bottom: 10px !important;
+    }
+}
+
+/* Large mobile devices */
+@media (max-width: 600px) {
+    .css-ivyz4h-MuiGrid-root>.MuiGrid-item {
+        padding-left: 0px !important;
+        padding-bottom: 10px !important;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 375px) {
+    .css-ivyz4h-MuiGrid-root>.MuiGrid-item {
+        padding-left: 0px !important;
+        padding-bottom: 10px !important;
+    }
+}
