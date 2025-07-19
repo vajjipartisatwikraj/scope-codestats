@@ -43,7 +43,7 @@ class PlatformAPI {
    * @returns {number} - Calculated score
    */
   calculateLeetCodeScore(totalSolved, ranking, rating, difficulty = {}, contestsParticipated = 0) {
-    // Formula: (LCPS*10 + (LCR-1300)²/10 + LCNC*50)
+    // Formula: (LCPS*5 + (LCR-1300)²/10 + LCNC*50)
     // Where LCPS = Problems solved (PS), LCR = Rating (R), LCNC = Number of contests participated (NC)
     
     // Problems solved component
@@ -102,7 +102,7 @@ class PlatformAPI {
    * @returns {number} - Calculated score
    */
   calculateCodeChefScore(rating, problemsSolved, globalRank, contestsParticipated = 0) {
-    // Formula: (CCPS*2 + (CCR-1200)²/10 + CCNC*50)
+    // Formula: (CCPS*0.5 + (CCR-1200)²/10 + CCNC*50)
     // Where CCPS = Problems solved, CCR = Rating, CCNC = Number of contests participated
     
     // Problems solved component
