@@ -102,12 +102,22 @@ const getInitials = (name) => {
     .toUpperCase();
 };
 
-// Add the getStudentYear function after the getInitials function
 const getStudentYear = (graduatingYear) => {
   if (!graduatingYear) return '-';
   
-  const currentYear = new Date().getFullYear();
-  const yearsToGraduation = graduatingYear - currentYear;
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-based (0 = January, 6 = July)
+  
+  // Academic year logic: Academic year runs from July to June
+  // If we've crossed July (month >= 6), students advance to next year
+  // If we haven't crossed July (month < 6), still in previous academic year
+  let yearsToGraduation;
+  if (currentMonth >= 6) { // July or later (academic year has progressed)
+    yearsToGraduation = graduatingYear - currentYear - 1;
+  } else { // Before July (still in previous academic year)
+    yearsToGraduation = graduatingYear - currentYear;
+  }
   
   switch (yearsToGraduation) {
     case 3:
@@ -123,20 +133,43 @@ const getStudentYear = (graduatingYear) => {
     case -3:
     case -4:
       return 'Graduated';
-    case 4:
-      return 'Incoming';
     default:
-      if (yearsToGraduation > 4) {
-        return 'Future';
-      } else if (yearsToGraduation < -4) {
-        return 'Alumni';
-      } else {
-        return `Year ${4 - yearsToGraduation}`;
-      }
+      return 'Graduated'; // Simplified to only show specified years
   }
 };
 
-// Add platform groupings for each leaderboard type
+// Function to convert year of study to graduation year based on current academic year
+const getGraduationYearFromStudyYear = (studyYear) => {
+  if (!studyYear || studyYear === 'ALL') return null;
+  
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-based (0 = January, 6 = July)
+  
+  let baseYear;
+  if (currentMonth >= 6) { // July or later (academic year has progressed)
+    baseYear = currentYear + 1;
+  } else { // Before July (still in previous academic year)
+    baseYear = currentYear;
+  }
+  
+  switch (studyYear) {
+    case 'First':
+      return baseYear + 3;
+    case 'Second':
+      return baseYear + 2;
+    case 'Third':
+      return baseYear + 1;
+    case 'Fourth':
+      return baseYear;
+    case 'Graduated':
+      // Return multiple years for graduated students (last 4 years)
+      return [baseYear - 1, baseYear - 2, baseYear - 3, baseYear - 4];
+    default:
+      return null;
+  }
+};
+
 const leaderboardConfigs = {
   problems: {
     title: 'Problems Solved Leaderboard',
@@ -146,7 +179,6 @@ const leaderboardConfigs = {
   },
   score: {
     title: 'Score Leaderboard',
-    // Use explicit array instead of Object.keys to ensure all platforms are included
     platforms: ['leetcode', 'codechef', 'hackerrank', 'codeforces', 'github', 'geeksforgeeks'],
     valueKey: 'totalScore',
     label: 'Total Score'
@@ -156,8 +188,9 @@ const leaderboardConfigs = {
 const Leaderboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [topUsersLoading, setTopUsersLoading] = useState(true);
   const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [topUsers, setTopUsers] = useState([]);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('totalScore');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -165,11 +198,33 @@ const Leaderboard = () => {
   const [year, setYear] = useState('ALL');
   const [section, setSection] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [anchorElDepartment, setAnchorElDepartment] = useState(null);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(10); // Changed from 25 to 10
   const [leaderboardType, setLeaderboardType] = useState('score');
   const [animateTop3, setAnimateTop3] = useState(false);
+  
+  // New state for server-side pagination
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalUsers: 0,
+    usersPerPage: 10, // Changed from 25 to 10
+    hasNextPage: false,
+    hasPrevPage: false
+  });
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    departments: [],
+    sections: [],
+    years: [],
+    totalScore: 0,
+    totalProblems: 0,
+    activePlatforms: 6
+  });
+  const [currentUserData, setCurrentUserData] = useState(null);
+  const [currentUserRank, setCurrentUserRank] = useState(null);
+  
   const { token, user: currentAuthUser } = useAuth();
   const { darkMode } = useTheme();
 
@@ -192,21 +247,111 @@ const Leaderboard = () => {
     },
   };
 
-  // Add state for current user's leaderboard position
-  const [currentUserData, setCurrentUserData] = useState(null);
+  // Debounce search to reduce API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
+  }, [department, section, year, leaderboardType, debouncedSearchTerm, sortBy, sortOrder]);
+
+  // Main data fetching effect
   useEffect(() => {
     if (!token) {
       navigate('/login');
       return;
     }
     fetchLeaderboard();
+  }, [department, section, year, leaderboardType, debouncedSearchTerm, sortBy, sortOrder, page, rowsPerPage, token]);
+
+  // Fetch top users separately for better performance
+  useEffect(() => {
+    if (token && !debouncedSearchTerm) {
+      fetchTopUsers();
+    }
   }, [department, section, year, leaderboardType, token]);
+
+  // Fetch stats once on mount
+  useEffect(() => {
+    if (token) {
+      fetchStats();
+    }
+  }, [token]);
 
   useEffect(() => {
     // Animate top 3 cards after component mounts
     setAnimateTop3(true);
   }, []);
+
+  // Debug current user data changes
+  useEffect(() => {
+    console.log('Current user data state changed:', {
+      hasCurrentUserData: !!currentUserData,
+      currentUserName: currentUserData?.name,
+      currentUserRank: currentUserRank,
+      hasAuthUser: !!currentAuthUser,
+      authUserName: currentAuthUser?.name
+    });
+  }, [currentUserData, currentUserRank, currentAuthUser]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await axios.get(`${apiUrl}/leaderboard/stats`, {
+        headers: { 'x-auth-token': token }
+      });
+      setStats(res.data);
+    } catch (err) {
+      console.warn('Failed to fetch stats:', err);
+    }
+  };
+
+  const fetchTopUsers = async () => {
+    try {
+      setTopUsersLoading(true);
+      
+      // Convert study year to graduation year(s) for API call
+      const graduationYears = getGraduationYearFromStudyYear(year);
+      
+      const params = new URLSearchParams({
+        leaderboardType,
+        limit: '3',
+        ...(department !== 'ALL' && { department }),
+        ...(section !== 'All' && { section })
+      });
+
+      // Add graduation year(s) to params
+      if (graduationYears) {
+        if (Array.isArray(graduationYears)) {
+          // For "Graduated" - add multiple graduation years
+          graduationYears.forEach(gradYear => {
+            params.append('graduatingYear', gradYear);
+          });
+        } else {
+          // For specific study years - add single graduation year
+          params.append('graduatingYear', graduationYears);
+        }
+      }
+
+      const res = await axios.get(`${apiUrl}/leaderboard/top?${params}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      setTopUsers(res.data || []);
+    } catch (err) {
+      console.warn('Failed to fetch top users:', err);
+      setTopUsers([]);
+    } finally {
+      setTopUsersLoading(false);
+    }
+  };
 
   const fetchLeaderboard = async () => {
     if (!token) return;
@@ -215,237 +360,68 @@ const Leaderboard = () => {
       setError('');
       setLoading(true);
 
-      // Determine the sort field based on leaderboard type
       const config = leaderboardConfigs[leaderboardType];
       const sortField = config.valueKey;
 
+      // Convert study year to graduation year(s) for API call
+      const graduationYears = getGraduationYearFromStudyYear(year);
+      
       const params = new URLSearchParams({
         sortBy: sortField,
         order: sortOrder,
+        page: page.toString(),
+        limit: rowsPerPage.toString(),
+        leaderboardType,
         ...(department !== 'ALL' && { department }),
         ...(section !== 'All' && { section }),
-        ...(year !== 'All' && { year }),
-        leaderboardType, // Send the leaderboard type to the backend
-        includeUserData: 'true', // Explicitly request data from users collection
-        includePlatformDetails: 'true', // Still include platform details
-        fields: 'contestsParticipated,rating,problemsSolved,score,totalScore', // Fields we need
-        debug: 'true' // Request debugging info from the backend
+        ...(debouncedSearchTerm.trim() && { search: debouncedSearchTerm.trim() })
       });
 
-      
+      // Add graduation year(s) to params
+      if (graduationYears) {
+        if (Array.isArray(graduationYears)) {
+          // For "Graduated" - add multiple graduation years
+          graduationYears.forEach(gradYear => {
+            params.append('graduatingYear', gradYear);
+          });
+        } else {
+          // For specific study years - add single graduation year
+          params.append('graduatingYear', graduationYears);
+        }
+      }
+
       const res = await axios.get(`${apiUrl}/leaderboard?${params}`, {
         headers: { 'x-auth-token': token }
       });
       
-      // Process the data to handle both users and profiles collections
-      const processedData = res.data.map(user => {
-        // Calculate totals for all platforms
-        let totalContests = 0;
-        let highestRating = 0;
-        let totalRating = 0; // Add a total rating counter
-        
-        // IMPORTANT: Recalculate the total problems solved from individual platform values
-        // to ensure consistency between total and individual platform displays
-        let totalProblemsSolved = 0;
-        
-        // Process platform data from both collections
-        const allPlatforms = leaderboardConfigs.problems.platforms;
-        
-        // First, check the user.platforms (from users collection) for data
-        if (user.platforms) {
-          allPlatforms.forEach(platform => {
-            if (!user.platforms[platform]) return;
-            
-            // Extract problems solved from the users collection
-            const platformData = user.platforms[platform];
-            const problemsValue = platformData.problemsSolved || platformData.totalSolved || 0;
-            totalProblemsSolved += parseInt(problemsValue) || 0;
-            
-            // Extract contest count and rating
-            let contestsValue = platformData.contestsParticipated || platformData.contests || 0;
-            let ratingValue = platformData.rating || platformData.maxRating || 0;
-            
-            // Add to totals
-            totalContests += parseInt(contestsValue) || 0;
-            if (parseInt(ratingValue) > 0) {
-              totalRating += parseInt(ratingValue) || 0; // Sum up all platform ratings
-              highestRating = Math.max(highestRating, parseInt(ratingValue) || 0);
-            }
-          });
-        }
-        
-        // Also check platformScores (from profiles collection) for platforms not already counted
-        if (user.platformScores) {
-          allPlatforms.forEach(platform => {
-            // Only use profile data if we don't have user data for this platform
-            if (!user.platforms?.[platform] && user.platformScores[platform]) {
-              const platformData = user.platformScores[platform];
-              
-              // Add problems solved
-              const problemsValue = platformData.problemsSolved || 0;
-              totalProblemsSolved += parseInt(problemsValue) || 0;
-              
-              // Add contests and rating if needed
-              const contestsValue = platformData.contestsParticipated || 0;
-              totalContests += parseInt(contestsValue) || 0;
-              
-              const ratingValue = platformData.rating || 0;
-              if (parseInt(ratingValue) > 0) {
-                totalRating += parseInt(ratingValue) || 0; // Sum up ratings from profiles too
-                highestRating = Math.max(highestRating, parseInt(ratingValue) || 0);
-              }
-            }
-          });
-        }
-        
-        // For debugging, compare our calculated values with the backend values
-        
-        return {
-          ...user,
-          problemsSolved: totalProblemsSolved, // Override with our calculated value
-          totalContestsParticipated: totalContests,
-          highestRating: highestRating,
-          totalRating: totalRating // Add the total rating to the user object
-        };
+      // Use backend data directly - no client-side processing needed
+      setUsers(res.data.users || []);
+      setPagination(res.data.pagination || {});
+      setCurrentUserData(res.data.currentUserData);
+      setCurrentUserRank(res.data.currentUserRank);
+      
+      // Debug logging
+      console.log('API Response:', {
+        usersCount: res.data.users?.length || 0,
+        hasCurrentUserData: !!res.data.currentUserData,
+        currentUserRank: res.data.currentUserRank,
+        currentUserName: res.data.currentUserData?.name
       });
       
-      // Ensure the data is sorted correctly in the frontend
-      const sortedData = [...processedData].sort((a, b) => {
-        let valueA, valueB;
-        
-        // Get the correct values based on leaderboard type
-        if (leaderboardType === 'score') {
-          valueA = a.totalScore || 0;
-          valueB = b.totalScore || 0;
-        } else if (leaderboardType === 'problems') {
-          valueA = a.problemsSolved || 0;
-          valueB = b.problemsSolved || 0;
-        } else if (leaderboardType === 'contests') {
-          valueA = a.totalContestsParticipated || 0;
-          valueB = b.totalContestsParticipated || 0;
-        } else if (leaderboardType === 'rating') {
-          // Use total rating for sorting in the rating leaderboard
-          valueA = a.totalRating || 0;
-          valueB = b.totalRating || 0;
-        } else {
-          valueA = a[sortBy] || 0;
-          valueB = b[sortBy] || 0;
-        }
-        
-        // Sort in the requested order
-        return sortOrder === 'desc' ? (valueB - valueA) : (valueA - valueB);
-      });
-      
-      const usersWithRanks = sortedData.map((user, index) => ({
-        ...user,
-        overallRank: index + 1
-      }));
-
-      // Calculate department-specific ranks
-      const departmentRanks = {};
-      departments.forEach(dept => {
-        if (dept !== 'ALL') {
-          const deptUsers = usersWithRanks.filter(u => u.department === dept);
-          deptUsers.forEach((user, index) => {
-            if (!departmentRanks[user._id]) departmentRanks[user._id] = {};
-            departmentRanks[user._id][dept] = index + 1;
-          });
-        }
-      });
-
-      // Add department ranks to users
-      const usersWithAllRanks = usersWithRanks.map(user => ({
-        ...user,
-        departmentRank: departmentRanks[user._id]?.[user.department] || '-',
-      }));
-
-      setUsers(usersWithAllRanks);
-      setFilteredUsers(usersWithAllRanks);
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to fetch leaderboard';
       setError(message);
       toast.error(message);
       setUsers([]);
-      setFilteredUsers([]);
+      setPagination({});
+      setCurrentUserData(null);
+      setCurrentUserRank(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update the applyFilters function to handle department, section, and year filters
-  const applyFilters = () => {
-    let filtered = [...users];
-
-    // If search term exists, filter by name first
-    if (searchTerm.trim() !== '') {
-      filtered = filtered.filter(user => 
-        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.rollNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply department, section, and year filters
-    if (department !== 'ALL') {
-      filtered = filtered.filter(user => user.department === department);
-    }
-    
-    if (section !== 'All') {
-      filtered = filtered.filter(user => user.section === section);
-    }
-    
-    if (year !== 'ALL') {
-      filtered = filtered.filter(user => user.graduatingYear === parseInt(year));
-    }
-
-    // Get the correct sort field based on leaderboard type
-    let actualSortField = sortBy;
-    // Make sure we're sorting by the correct field for the current leaderboard type
-    if (leaderboardType === 'score') {
-      actualSortField = 'totalScore';
-    } else if (leaderboardType === 'problems') {
-      actualSortField = 'problemsSolved';
-    } else if (leaderboardType === 'contests') {
-      actualSortField = 'totalContestsParticipated';
-    } else if (leaderboardType === 'rating') {
-      actualSortField = 'totalRating';
-    }
-    
-    // Only use sortBy for column clicks like names, dept, etc.
-    if (['name', 'department', 'section', 'rollNumber'].includes(sortBy)) {
-      actualSortField = sortBy;
-    }
-
-    filtered.sort((a, b) => {
-      let valueA, valueB;
-      
-      // Handle text fields with string comparison
-      if (['name', 'department', 'section', 'rollNumber'].includes(actualSortField)) {
-        valueA = (a[actualSortField] || '').toString().toLowerCase();
-        valueB = (b[actualSortField] || '').toString().toLowerCase();
-        
-        return sortOrder === 'asc' 
-          ? valueA.localeCompare(valueB)
-          : valueB.localeCompare(valueA);
-      } else {
-        // Numeric comparison for all other fields
-        valueA = a[actualSortField] || 0;
-        valueB = b[actualSortField] || 0;
-  
-        return sortOrder === 'desc' ? (valueB - valueA) : (valueA - valueB);
-      }
-    });
-
-    setFilteredUsers(filtered);
-  };
-
-  // Add effect to call applyFilters whenever filters change
-  useEffect(() => {
-    if (users.length > 0) {
-      applyFilters();
-    }
-  }, [searchTerm, department, section, year, sortBy, sortOrder, users]);
-
+  // Simplified handlers - no client-side processing
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
     switch (name) {
@@ -458,51 +434,50 @@ const Leaderboard = () => {
       case 'year':
         setYear(value);
         break;
-      case 'sortBy':
-        setSortBy(value);
-        break;
-      case 'sortOrder':
-        setSortOrder(value);
-        break;
       default:
         break;
     }
   };
 
   const handleSort = (field) => {
-    // Special case for the "Year" column - we need to map to the actual field name
     const actualField = field === 'year' ? 'graduatingYear' : field;
     
     if (sortBy === actualField) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(actualField);
-      // Default to descending for score/problems/etc, but ascending for names and other text fields
-      if (['name', 'department', 'section', 'rollNumber'].includes(actualField)) {
-        setSortOrder('asc');
-      } else {
-        setSortOrder('desc');
-      }
+      setSortOrder(['name', 'department', 'section', 'rollNumber'].includes(actualField) ? 'asc' : 'desc');
     }
   };
 
   const SortIcon = ({ field }) => {
-    // Special case for the "Year" column - we need to map to the actual field name
     const actualField = field === 'year' ? 'graduatingYear' : field;
     
     if (sortBy !== actualField) return null;
     return sortOrder === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />;
   };
 
-  const handleTabChange = (event, newValue) => {
-    setLeaderboardType(newValue);
+  const handleLeaderboardTypeChange = (type) => {
+    setLeaderboardType(type);
     
-    // Update sortBy based on the leaderboard type
-    if (newValue === 'score') {
+    // Update sortBy based on the new leaderboard type
+    if (type === 'score') {
       setSortBy('totalScore');
-    } else if (newValue === 'problems') {
+    } else if (type === 'problems') {
       setSortBy('problemsSolved');
     }
+    
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage) => {
+    setRowsPerPage(newRowsPerPage);
+    setPage(1);
   };
 
   const StatsCard = ({ title, value, icon: Icon, color }) => (
@@ -532,90 +507,41 @@ const Leaderboard = () => {
           {title}
         </Typography>
         <Typography variant="h6" sx={{ color: darkMode ? 'white' : 'black', fontWeight: 600 }}>
-          {value}
+          {typeof value === 'number' ? value.toLocaleString() : value}
         </Typography>
       </Box>
     </Card>
   );
 
-  // Update the getPlatformDataValue helper function to check data sources correctly
   const getPlatformDataValue = (user, platform, key) => {
-    if (!user) return 0;
-    
-    // First check in user.platforms (from users collection - platformData in backend)
-    if (user.platforms && user.platforms[platform]) {
-      const platformData = user.platforms[platform];
-      
-      // Check for direct property match
-      if (platformData[key] !== undefined && platformData[key] !== null) {
-        return parseInt(platformData[key]) || 0;
-      }
-      
-      // Special case for totalSolved in LeetCode -> problemsSolved
-      if (key === 'problemsSolved' && platformData.totalSolved !== undefined) {
-        return parseInt(platformData.totalSolved) || 0;
-      }
-      
-      // Special case for contests in various platforms
-      if (key === 'contestsParticipated') {
-        // Try various property names
-        const contestsValue = 
-          platformData.contestsParticipated || 
-          platformData.contests || 
-          platformData.attendedContestsCount || 
-          0;
-        return parseInt(contestsValue) || 0;
-      }
-      
-      // Special case for ratings
-      if (key === 'rating') {
-        // Try various property names
-        const ratingValue = 
-          platformData.rating || 
-          platformData.contestRating || 
-          platformData.currentRating || 
-          platformData.maxRating || 
-          platformData.ratingHistory?.[(platformData.ratingHistory?.length || 0) - 1]?.rating || // Get latest rating from history if exists
-          0;
-          
-        return parseInt(ratingValue) || 0;
-      }
-    }
-    
-    // Then check in platformScores (from profiles collection) as fallback
-    if (user.platformScores && user.platformScores[platform]) {
-      const platformData = user.platformScores[platform];
-      
-      // Check for direct property match
-      if (platformData[key] !== undefined && platformData[key] !== null) {
-        return parseInt(platformData[key]) || 0;
-      }
-      
-      // Special handling for rating in profiles
-      if (key === 'rating' && platformData.rating !== undefined) {
-        const ratingValue = platformData.rating;
-        return parseInt(ratingValue) || 0;
-      }
-      
-      // Check if the key is in details
-      if (platformData.details && platformData.details[key] !== undefined) {
-        const detailValue = platformData.details[key];
-        return parseInt(detailValue) || 0;
-      }
-    }
-    
-    return 0;
-  };
+  if (!user) return 0;
+  
+  // Check platformScores first (optimized backend response)
+  if (user.platformScores && user.platformScores[platform]) {
+    const value = user.platformScores[platform][key];
+    return parseInt(value) || 0;
+  }
+  
+  return 0;
+};
+
+// Helper function to calculate total problems solved from platform scores
+const calculateTotalProblemsFromPlatforms = (user, platforms) => {
+  if (!user?.platformScores) return 0;
+  
+  return platforms.reduce((total, platform) => {
+    const problems = user.platformScores[platform]?.problemsSolved || 0;
+    return total + (parseInt(problems) || 0);
+  }, 0);
+};
 
   const TopThreeCard = ({ user, rank, delay, leaderboardType }) => {
     const [profileImage, setProfileImage] = useState('');
     const [isVisible, setIsVisible] = useState(false);
     
     useEffect(() => {
-      // Set profile image from user data or default
       setProfileImage(getProfileImageUrl(user.profilePicture));
       
-      // Sequential animation timing
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, delay);
@@ -623,27 +549,25 @@ const Leaderboard = () => {
       return () => clearTimeout(timer);
     }, [user, delay]);
 
-    const colors = ['#FF8C00', '#4CAF50', '#2196F3']; // Orange, Green, Blue
+    const colors = ['#FF8C00', '#4CAF50', '#2196F3'];
     const icons = [WorkspacePremium, EmojiEvents, LocalFireDepartment];
     const Icon = icons[rank - 1];
     const config = leaderboardConfigs[leaderboardType];
     
-    // Get the value and label based on leaderboard type
     const getValue = () => {
       if (leaderboardType === 'score') {
         return user.totalScore || 0;
       } else if (leaderboardType === 'problems') {
-        return user.problemsSolved || 0;
-      } else if (leaderboardType === 'contests') {
-        return user.totalContestsParticipated || 0;
-      } else if (leaderboardType === 'rating') {
-        return user.totalRating || 0;
+        // If backend problemsSolved is 0 or not available, calculate from platform scores
+        const backendProblems = user.problemsSolved || 0;
+        if (backendProblems === 0) {
+          return calculateTotalProblemsFromPlatforms(user, config.platforms);
+        }
+        return backendProblems;
       }
-      
       return 0;
     };
     
-    // Get platform-specific values based on leaderboard type
     const getPlatformValues = () => {
       return config.platforms
         .map(platform => {
@@ -651,42 +575,22 @@ const Leaderboard = () => {
           
           if (leaderboardType === 'problems') {
             value = getPlatformDataValue(user, platform, 'problemsSolved');
-          } else if (leaderboardType === 'contests') {
-            value = getPlatformDataValue(user, platform, 'contestsParticipated');
-          } else if (leaderboardType === 'rating') {
-            value = getPlatformDataValue(user, platform, 'rating');
           } else {
-            // For score leaderboard
             value = getPlatformDataValue(user, platform, 'score');
           }
           
-          return {
-            platform,
-            value
-          };
+          return { platform, value };
         })
         .filter(item => item.value > 0);
     };
     
     const platformValues = getPlatformValues();
-    
-    // Determine sizes based on rank
     const isFirstPlace = rank === 1;
-    
-    // Calculate the total
-    const total = platformValues.reduce((sum, item) => sum + item.value, 0);
-    
-    // Make sure our total matches the recalculated problemsSolved value
-    if (total !== user.problemsSolved) {
-      // Silently handle inconsistency without logging
-    }
     
     return (
       <Zoom 
         in={isVisible} 
-        style={{ 
-          transformOrigin: 'center',
-        }}
+        style={{ transformOrigin: 'center' }}
         timeout={250}
       >
         <Card
@@ -719,11 +623,10 @@ const Leaderboard = () => {
             },
             maxWidth: isFirstPlace ? '100%' : '90%',
             mx: 'auto',
-            willChange: 'transform',
-            backfaceVisibility: 'hidden',
+            cursor: 'pointer'
           }}
+          onClick={() => handleUserClick(user.email)}
         >
-          {/* Trophy Icon Badge */}
           <Box
             sx={{
               position: 'absolute',
@@ -747,7 +650,6 @@ const Leaderboard = () => {
           
           <Box sx={{ height: isFirstPlace ? 35 : 30, width: '100%' }} />
           
-          {/* Rank Badge */}
           <Box
             sx={{
               width: isFirstPlace ? 80 : 70,
@@ -917,7 +819,6 @@ const Leaderboard = () => {
     );
   };
 
-  // Update the TableHead to show only relevant platforms
   const renderTableHead = () => {
     const config = leaderboardConfigs[leaderboardType];
     
@@ -942,7 +843,7 @@ const Leaderboard = () => {
             </Box>
           </TableCell>
           <TableCell>
-            <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: darkMode ? 'white' : 'black'}}
+            <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                  onClick={() => handleSort('rollNumber')}>
               Roll No <SortIcon field="rollNumber" />
             </Box>
@@ -972,7 +873,6 @@ const Leaderboard = () => {
             </Box>
           </TableCell>
           
-          {/* Platform headers */}
           {config.platforms.map((platform) => (
             <TableCell key={platform}>
               <Tooltip title={platforms[platform]}>
@@ -998,37 +898,35 @@ const Leaderboard = () => {
               </Tooltip>
             </TableCell>
           ))}
-          
-          <TableCell>Department Rank</TableCell>
         </TableRow>
       </TableHead>
     );
   };
 
   const LeaderboardRow = ({ user, index }) => {
-    // Add a state to track profile image loading
     const [profileImage, setProfileImage] = useState('');
     
     useEffect(() => {
-      // Set profile image from user data or default
       setProfileImage(getProfileImageUrl(user.profilePicture));
-    }, [user, index]);
+    }, [user]);
     
     const config = leaderboardConfigs[leaderboardType];
     
-    // Get the value for the current leaderboard type
     const getLeaderboardCellValue = () => {
       if (leaderboardType === 'score') {
         return user.totalScore || 0;
       } else if (leaderboardType === 'problems') {
-        return user.problemsSolved || 0;
+        // If backend problemsSolved is 0 or not available, calculate from platform scores
+        const backendProblems = user.problemsSolved || 0;
+        if (backendProblems === 0) {
+          return calculateTotalProblemsFromPlatforms(user, config.platforms);
+        }
+        return backendProblems;
       }
       return 0;
     };
     
-    // Get the platform-specific value for a given platform
     const getPlatformValue = (platform) => {
-      // Access platform data directly from platformScores
       if (user.platformScores && user.platformScores[platform]) {
         if (leaderboardType === 'problems') {
           return user.platformScores[platform].problemsSolved || 0;
@@ -1080,7 +978,7 @@ const Leaderboard = () => {
               fontWeight: 'bold'
             }}
           >
-            {index + 1}
+            {user.rank || index + 1}
           </Box>
         </TableCell>
         
@@ -1128,7 +1026,6 @@ const Leaderboard = () => {
           </Typography>
         </TableCell>
         
-        {/* Platform-specific cells */}
         {config.platforms.map((platform) => (
           <TableCell key={platform}>
             <Typography 
@@ -1143,10 +1040,6 @@ const Leaderboard = () => {
             </Typography>
           </TableCell>
         ))}
-        
-        <TableCell>
-          <Typography variant="body2">{user.departmentRank}</Typography>
-        </TableCell>
       </TableRow>
     );
   };
@@ -1154,28 +1047,10 @@ const Leaderboard = () => {
   const handleUserClick = (email) => {
     if (!email) return;
     const username = email.split('@')[0];
-    navigate(`/user-view/${username}`);
+    window.open(`/user-view/${username}`, '_blank');
   };
 
-  const handleDepartmentClick = (event) => {
-    setAnchorElDepartment(event.currentTarget);
-  };
-
-  const handleDepartmentClose = () => {
-    setAnchorElDepartment(null);
-  };
-
-  const handleDepartmentSelect = (dept) => {
-    handleFilterChange({ target: { name: 'department', value: dept } });
-    handleDepartmentClose();
-  };
-
-  const handleRowsPerPageChange = (event) => {
-    setRowsPerPage(event.target.value);
-    setPage(1);
-  };
-
-  const PaginationControls = ({ page, totalPages, rowsPerPage, onPageChange, onRowsPerPageChange }) => (
+  const PaginationControls = () => (
     <Box sx={{
       mt: 3,
       display: 'flex',
@@ -1186,7 +1061,6 @@ const Leaderboard = () => {
       borderRadius: '8px',
       p: 2
     }}>
-      {/* Left side - Entries per page */}
       <Box sx={{ 
         display: 'flex',
         alignItems: 'center',
@@ -1194,7 +1068,7 @@ const Leaderboard = () => {
       }}>
         <Select
           value={rowsPerPage}
-          onChange={(e) => onRowsPerPageChange(e.target.value)}
+          onChange={(e) => handleRowsPerPageChange(e.target.value)}
           size="small"
           sx={{
             minWidth: 65,
@@ -1206,7 +1080,7 @@ const Leaderboard = () => {
             '& .MuiSelect-icon': { color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)' }
           }}
         >
-          {[5, 10, 25, 50, 100].map(value => (
+          {[10, 25, 50, 100].map(value => (
             <MenuItem key={value} value={value}>{value}</MenuItem>
           ))}
         </Select>
@@ -1215,12 +1089,10 @@ const Leaderboard = () => {
         </Typography>
       </Box>
 
-      {/* Center - Page numbers */}
       <Stack direction="row" spacing={0.5}>
-        {/* Previous page button */}
         <Button
-          onClick={() => onPageChange(Math.max(1, page - 1))}
-          disabled={page === 1}
+          onClick={() => handlePageChange(Math.max(1, page - 1))}
+          disabled={!pagination.hasPrevPage}
           sx={{
             minWidth: 32,
             height: 32,
@@ -1240,69 +1112,20 @@ const Leaderboard = () => {
         {(() => {
           const pageButtons = [];
           const maxVisiblePages = 5;
+          const totalPages = pagination.totalPages;
           
-          // Calculate start and end page numbers to display
           let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
           let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
           
-          // Adjust if we're near the end
           if (endPage - startPage + 1 < maxVisiblePages) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
           }
           
-          // Add first page button if needed
-          if (startPage > 1) {
-            pageButtons.push(
-              <Button
-                key="first-page"
-                onClick={() => onPageChange(1)}
-                variant={page === 1 ? 'contained' : 'text'}
-                sx={{
-                  minWidth: 32,
-                  height: 32,
-                  p: 0,
-                  bgcolor: page === 1 ? '#0088cc !important' : 'transparent',
-                  color: page === 1 
-                    ? 'white' 
-                    : darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                  '&:hover': {
-                    bgcolor: page === 1 
-                      ? '#0088cc' 
-                      : darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
-                  }
-                }}
-              >
-                1
-              </Button>
-            );
-            
-            // Add ellipsis if there's a gap
-            if (startPage > 2) {
-              pageButtons.push(
-                <Box 
-                  key="ellipsis-start" 
-                  sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    px: 1,
-                    color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' 
-                  }}
-                >
-                  ...
-                </Box>
-              );
-            }
-          }
-          
-          // Add page buttons
           for (let i = startPage; i <= endPage; i++) {
-            // Skip first and last page buttons if they're handled separately
-            if ((i === 1 && startPage > 1) || (i === totalPages && endPage < totalPages)) continue;
-            
             pageButtons.push(
               <Button
                 key={i}
-                onClick={() => onPageChange(i)}
+                onClick={() => handlePageChange(i)}
                 variant={page === i ? 'contained' : 'text'}
                 sx={{
                   minWidth: 32,
@@ -1324,57 +1147,12 @@ const Leaderboard = () => {
             );
           }
           
-          // Add last page button if needed
-          if (endPage < totalPages) {
-            // Add ellipsis if there's a gap
-            if (endPage < totalPages - 1) {
-              pageButtons.push(
-                <Box 
-                  key="ellipsis-end" 
-                  sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    px: 1,
-                    color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' 
-                  }}
-                >
-                  ...
-                </Box>
-              );
-            }
-            
-            pageButtons.push(
-              <Button
-                key="last-page"
-                onClick={() => onPageChange(totalPages)}
-                variant={page === totalPages ? 'contained' : 'text'}
-                sx={{
-                  minWidth: 32,
-                  height: 32,
-                  p: 0,
-                  bgcolor: page === totalPages ? '#0088cc !important' : 'transparent',
-                  color: page === totalPages 
-                    ? 'white' 
-                    : darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                  '&:hover': {
-                    bgcolor: page === totalPages 
-                      ? '#0088cc' 
-                      : darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
-                  }
-                }}
-              >
-                {totalPages}
-              </Button>
-            );
-          }
-          
           return pageButtons;
         })()}
         
-        {/* Next page button */}
         <Button
-          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          disabled={page === totalPages || totalPages === 0}
+          onClick={() => handlePageChange(Math.min(pagination.totalPages, page + 1))}
+          disabled={!pagination.hasNextPage}
           sx={{
             minWidth: 32,
             height: 32,
@@ -1392,62 +1170,36 @@ const Leaderboard = () => {
         </Button>
       </Stack>
 
-      {/* Right side - Current range display */}
       <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>
-        {totalPages === 0 
+        {pagination.totalUsers === 0 
           ? 'No results' 
-          : `${(page - 1) * rowsPerPage + 1}-${Math.min(page * rowsPerPage, filteredUsers.length)} of ${filteredUsers.length}`}
+          : `${(page - 1) * rowsPerPage + 1}-${Math.min(page * rowsPerPage, pagination.totalUsers)} of ${pagination.totalUsers}`}
       </Typography>
     </Box>
   );
 
-  // Add a proper leaderboard type change handler
-  const handleLeaderboardTypeChange = (type) => {
-    setLeaderboardType(type);
-    
-    // Update sortBy based on the new leaderboard type
-    if (type === 'score') {
-      setSortBy('totalScore');
-    } else if (type === 'problems') {
-      setSortBy('problemsSolved');
-    } else if (type === 'contests') {
-      setSortBy('totalContestsParticipated');
-    } else if (type === 'rating') {
-      setSortBy('totalRating');
-    }
-    
-    setPage(1); // Reset to first page when changing leaderboard type
-  };
-
-  // Get the title for the current leaderboard type
-  const getLeaderboardTitle = () => {
-    return leaderboardConfigs[leaderboardType].title;
-  };
-
-  // Update getStatsCardInfo to use correct values
   const getStatsCardInfo = () => {
     const baseStats = [
       {
         title: "Total Users",
-        value: users.length,
+        value: stats.totalUsers,
         icon: Group,
         color: "#0088cc"
       }
     ];
 
-    // Add leaderboard type specific stats
     if (leaderboardType === 'score') {
       return [
         ...baseStats,
         {
           title: "Active Platforms",
-          value: Object.keys(platforms).length,
+          value: stats.activePlatforms,
           icon: Public,
           color: "#00bfff"
         },
         {
           title: "Total Score",
-          value: users.reduce((sum, user) => sum + (user.totalScore || 0), 0).toLocaleString(),
+          value: stats.totalScore,
           icon: EmojiEvents,
           color: "#ff9800"
         }
@@ -1463,7 +1215,7 @@ const Leaderboard = () => {
         },
         {
           title: "Total Problems Solved",
-          value: users.reduce((sum, user) => sum + (user.problemsSolved || 0), 0).toLocaleString(),
+          value: stats.totalProblems,
           icon: Code,
           color: "#ff9800"
         }
@@ -1473,151 +1225,11 @@ const Leaderboard = () => {
     return baseStats;
   };
 
-  // Update the ProblemsSolvedSummary component to work for any user
-  const ProblemsSolvedSummary = ({ users, leaderboardConfig }) => {
-    // Only show for problems leaderboard type
-    if (!users.length || leaderboardConfig.valueKey !== 'problemsSolved') {
-      return null;
-    }
-
-    // Get the user (current user or top user)
-    // If we wanted to show for the logged-in user, we'd need to filter the users array
-    const topUser = users[0]; // For now, just use the top user
-    
-    // Get all platform values for the user
-    const platformValues = leaderboardConfig.platforms
-      .map(platform => {
-        // We use this function to ensure consistent access to platform data
-        const value = getPlatformDataValue(topUser, platform, 'problemsSolved');
-        return {
-          platform,
-          value: value,
-          color: platformColors[platform]
-        };
-      })
-      .filter(item => item.value > 0)
-      .sort((a, b) => b.value - a.value); // Show highest values first
-
-    // Calculate the total
-    const total = platformValues.reduce((sum, item) => sum + item.value, 0);
-    
-    // Make sure our total matches the recalculated problemsSolved value
-    if (total !== topUser.problemsSolved) {
-      // Silently handle inconsistency without logging
-    }
-    
-    return (
-      <Card sx={{
-        bgcolor: darkMode ? '#1a1a1a' : '#ffffff',
-        p: 2,
-        borderRadius: 3,
-        border: darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-        mb: 3,
-        boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)'
-      }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ color: darkMode ? 'white' : 'black', fontWeight: 600 }}>
-            Problems Solved
-          </Typography>
-          <Typography variant="h4" sx={{ color: '#0088cc', fontWeight: 700 }}>
-            {topUser.problemsSolved}
-          </Typography>
-        </Box>
-        
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 1
-        }}>
-          {platformValues.map(({ platform, value, color }) => (
-            <Box key={platform} sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              bgcolor: `${color}22`,
-              py: 0.5,
-              px: 1.5,
-              borderRadius: 2,
-              gap: 1
-            }}>
-              <Typography variant="body2" sx={{ color: color, fontWeight: 600 }}>
-                {platforms[platform]}
-              </Typography>
-              <Typography variant="h6" sx={{ color: darkMode ? 'white' : 'black', fontWeight: 700 }}>
-                {value}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Card>
-    );
+  const getLeaderboardTitle = () => {
+    return leaderboardConfigs[leaderboardType].title;
   };
 
-  // Add effect to ensure sortBy is synchronized with leaderboardType
-  useEffect(() => {
-    // Update sortBy if it doesn't match the current leaderboard type
-    const config = leaderboardConfigs[leaderboardType];
-    if (config && config.valueKey && sortBy !== config.valueKey) {
-      if (leaderboardType === 'score') {
-        setSortBy('totalScore');
-      } else if (leaderboardType === 'problems') {
-        setSortBy('problemsSolved');
-      } else if (leaderboardType === 'contests') {
-        setSortBy('totalContestsParticipated');
-      } else if (leaderboardType === 'rating') {
-        setSortBy('totalRating');
-      }
-    }
-  }, [leaderboardType]);
-
-  // After fetchLeaderboard function is defined, add this new function:
-  const findCurrentUserInLeaderboard = (leaderboardData) => {
-    if (!currentAuthUser || !leaderboardData.length) return null;
-    
-    // Try to find the user by email first
-    let userData = leaderboardData.find(u => u.email === currentAuthUser.email);
-    
-    // If not found by email, try by rollNumber if available
-    if (!userData && currentAuthUser.rollNumber) {
-      userData = leaderboardData.find(u => 
-        u.rollNumber && u.rollNumber.toLowerCase() === currentAuthUser.rollNumber.toLowerCase()
-      );
-    }
-    
-    return userData;
-  };
-
-  // Add this to the existing useEffect after fetchLeaderboard
-  useEffect(() => {
-    if (users.length > 0 && currentAuthUser) {
-      const userData = findCurrentUserInLeaderboard(users);
-      setCurrentUserData(userData);
-    }
-  }, [users, currentAuthUser]);
-
-  // After the findCurrentUserInLeaderboard function, add a new helper function to calculate filtered rank
-
-  // Add this function before the return statement
-  const getCurrentUserFilteredRank = () => {
-    if (!currentUserData || !filteredUsers.length) return { rank: '-', isVisible: false };
-    
-    // Find the current user in the filtered data
-    const userIndex = filteredUsers.findIndex(user => user._id === currentUserData._id);
-    
-    // If found, return the rank (index + 1)
-    if (userIndex > -1) {
-      return { 
-        rank: userIndex + 1,
-        isVisible: userIndex >= (page - 1) * rowsPerPage && userIndex < page * rowsPerPage
-      };
-    }
-    
-    // If not found in filtered data
-    return { rank: '-', isVisible: false };
-  };
-
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
         <CircularProgress />
@@ -1630,7 +1242,7 @@ const Leaderboard = () => {
       maxWidth={false} 
       sx={{ 
         mt: { xs: 2, sm: 4 }, 
-        mb: { xs: 8, sm: 10 }, // Increase bottom margin to make room for sticky row
+        mb: { xs: 8, sm: 10 },
         px: { xs: 2, sm: 3 },
         maxWidth: '100vw',
         overflowX: 'hidden'
@@ -1644,8 +1256,6 @@ const Leaderboard = () => {
         maxWidth: '1200px',
         mx: 'auto'
       }}>
-        
-        
         <Typography 
           variant="h3" 
           component="h1" 
@@ -1697,40 +1307,40 @@ const Leaderboard = () => {
         ))}
       </Grid>
 
-      {/* Problems Solved Summary */}
-      <ProblemsSolvedSummary 
-        users={users} 
-        leaderboardConfig={leaderboardConfigs[leaderboardType]} 
-      />
-
-      {/* Top 3 Section - Below stats cards */}
-      {users.length > 0 && filteredUsers.slice(0, 3).length > 0 && !searchTerm && (
+      {/* Top 3 Section */}
+      {topUsers.length > 0 && !debouncedSearchTerm && (
         <Box sx={{ 
           mb: { xs: 3, sm: 4 },
           maxWidth: '1200px',
           mx: 'auto'
         }}>
-          <Grid container spacing={2} justifyContent="center" alignItems="flex-start">
-            {filteredUsers.length > 1 && (
-              <Grid item xs={12} sm={4} md={3} order={{ xs: 2, sm: 1 }} sx={{ mt: { sm: 4 } }}>
-                <TopThreeCard user={filteredUsers[1]} rank={2} delay={350} leaderboardType={leaderboardType} />
-              </Grid>
-            )}
-            {filteredUsers.length > 0 && (
-              <Grid item xs={12} sm={4} md={3} order={{ xs: 1, sm: 2 }} sx={{ mt: { sm: -3 } }}>
-                <TopThreeCard user={filteredUsers[0]} rank={1} delay={30} leaderboardType={leaderboardType} />
-              </Grid>
-            )}
-            {filteredUsers.length > 2 && (
-              <Grid item xs={12} sm={4} md={3} order={{ xs: 3, sm: 3 }} sx={{ mt: { sm: 4 } }}>
-                <TopThreeCard user={filteredUsers[2]} rank={3} delay={500} leaderboardType={leaderboardType} />
-              </Grid>
-            )}
-          </Grid>
+          {topUsersLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={2} justifyContent="center" alignItems="flex-start">
+              {topUsers.length > 1 && (
+                <Grid item xs={12} sm={4} md={3} order={{ xs: 2, sm: 1 }} sx={{ mt: { sm: 4 } }}>
+                  <TopThreeCard user={topUsers[1]} rank={2} delay={350} leaderboardType={leaderboardType} />
+                </Grid>
+              )}
+              {topUsers.length > 0 && (
+                <Grid item xs={12} sm={4} md={3} order={{ xs: 1, sm: 2 }} sx={{ mt: { sm: -3 } }}>
+                  <TopThreeCard user={topUsers[0]} rank={1} delay={30} leaderboardType={leaderboardType} />
+                </Grid>
+              )}
+              {topUsers.length > 2 && (
+                <Grid item xs={12} sm={4} md={3} order={{ xs: 3, sm: 3 }} sx={{ mt: { sm: 4 } }}>
+                  <TopThreeCard user={topUsers[2]} rank={3} delay={500} leaderboardType={leaderboardType} />
+                </Grid>
+              )}
+            </Grid>
+          )}
         </Box>
       )}
 
-      {/* Search and Filter Bar */}
+      {/* Search Bar */}
       <Box sx={{ 
         display: 'flex', 
         flexDirection: { xs: 'column', sm: 'row' }, 
@@ -1740,7 +1350,7 @@ const Leaderboard = () => {
         gap: 2
       }}>
         <TextField
-          placeholder="Search by name..."
+          placeholder="Search by name, email, or roll number..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           variant="outlined"
@@ -1765,6 +1375,7 @@ const Leaderboard = () => {
               },
             },
           }}
+          sx={{ minWidth: { xs: '100%', sm: '300px' } }}
         />
       </Box>
 
@@ -1820,24 +1431,12 @@ const Leaderboard = () => {
         </Box>
         
         <Grid container spacing={2}>
-          {/* Department Filter */}
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl 
-              fullWidth
-              size="small"
-              variant="outlined"
-            >
-              <InputLabel 
-                id="department-filter-label"
-                sx={{ 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-                }}
-              >
+            <FormControl fullWidth size="small" variant="outlined">
+              <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
                 Department
               </InputLabel>
               <Select
-                labelId="department-filter-label"
-                id="department-filter"
                 name="department"
                 value={department}
                 label="Department"
@@ -1854,13 +1453,6 @@ const Leaderboard = () => {
                     color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
                   }
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
-                    }
-                  }
-                }}
               >
                 <MenuItem value="ALL">All Departments</MenuItem>
                 {departments.filter(d => d !== 'ALL').map((dept) => (
@@ -1870,27 +1462,15 @@ const Leaderboard = () => {
             </FormControl>
           </Grid>
           
-          {/* Academic Year Filter */}
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl 
-              fullWidth
-              size="small"
-              variant="outlined"
-            >
-              <InputLabel 
-                id="year-filter-label"
-                sx={{ 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-                }}
-              >
-                Graduation Year
+            <FormControl fullWidth size="small" variant="outlined">
+              <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
+                Year of Study
               </InputLabel>
               <Select
-                labelId="year-filter-label"
-                id="year-filter"
                 name="year"
                 value={year}
-                label="Graduation Year"
+                label="Year of Study"
                 onChange={handleFilterChange}
                 sx={{
                   color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
@@ -1904,40 +1484,23 @@ const Leaderboard = () => {
                     color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
                   }
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
-                    }
-                  }
-                }}
               >
-                <MenuItem value="ALL">All Years</MenuItem>
-                {[2025, 2026, 2027, 2028].map((yr) => (
-                  <MenuItem key={yr} value={yr}>{yr}</MenuItem>
-                ))}
+                <MenuItem value="ALL">All Students</MenuItem>
+                <MenuItem value="First">First Year</MenuItem>
+                <MenuItem value="Second">Second Year</MenuItem>
+                <MenuItem value="Third">Third Year</MenuItem>
+                <MenuItem value="Fourth">Fourth Year</MenuItem>
+                <MenuItem value="Graduated">Graduated</MenuItem>
               </Select>
             </FormControl>
           </Grid>
           
-          {/* Section Filter */}
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl 
-              fullWidth
-              size="small"
-              variant="outlined"
-            >
-              <InputLabel 
-                id="section-filter-label"
-                sx={{ 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-                }}
-              >
+            <FormControl fullWidth size="small" variant="outlined">
+              <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
                 Section
               </InputLabel>
               <Select
-                labelId="section-filter-label"
-                id="section-filter"
                 name="section"
                 value={section}
                 label="Section"
@@ -1954,13 +1517,6 @@ const Leaderboard = () => {
                     color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
                   }
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
-                    }
-                  }
-                }}
               >
                 <MenuItem value="All">All Sections</MenuItem>
                 {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((sect) => (
@@ -1970,28 +1526,15 @@ const Leaderboard = () => {
             </FormControl>
           </Grid>
           
-          {/* Sort Order */}
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl 
-              fullWidth
-              size="small"
-              variant="outlined"
-            >
-              <InputLabel 
-                id="sort-order-label"
-                sx={{ 
-                  color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-                }}
-              >
+            <FormControl fullWidth size="small" variant="outlined">
+              <InputLabel sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>
                 Sort Order
               </InputLabel>
               <Select
-                labelId="sort-order-label"
-                id="sort-order"
-                name="sortOrder"
                 value={sortOrder}
                 label="Sort Order"
-                onChange={handleFilterChange}
+                onChange={(e) => setSortOrder(e.target.value)}
                 sx={{
                   color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
                   '& .MuiOutlinedInput-notchedOutline': {
@@ -2004,13 +1547,6 @@ const Leaderboard = () => {
                     color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.54)'
                   }
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      bgcolor: darkMode ? 'rgba(18, 18, 18, 0.98)' : '#ffffff',
-                    }
-                  }
-                }}
               >
                 <MenuItem value="desc">Highest First</MenuItem>
                 <MenuItem value="asc">Lowest First</MenuItem>
@@ -2020,7 +1556,7 @@ const Leaderboard = () => {
         </Grid>
         
         {/* Active Filters Display */}
-        {(department !== 'ALL' || section !== 'All' || year !== 'ALL' || searchTerm.trim() !== '') && (
+        {(department !== 'ALL' || section !== 'All' || year !== 'ALL' || debouncedSearchTerm.trim() !== '') && (
           <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', mr: 1 }}>
               Active Filters:
@@ -2047,16 +1583,16 @@ const Leaderboard = () => {
             {year !== 'ALL' && (
               <Chip 
                 size="small" 
-                label={`Year: ${year}`} 
+                label={`Year of Study: ${year}`} 
                 onDelete={() => setYear('ALL')}
                 sx={{ bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : '#0088cc20', color: '#0088cc' }}
               />
             )}
             
-            {searchTerm.trim() !== '' && (
+            {debouncedSearchTerm.trim() !== '' && (
               <Chip 
                 size="small" 
-                label={`Search: "${searchTerm}"`} 
+                label={`Search: "${debouncedSearchTerm}"`} 
                 onDelete={() => setSearchTerm('')}
                 sx={{ bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : '#0088cc20', color: '#0088cc' }}
               />
@@ -2067,10 +1603,10 @@ const Leaderboard = () => {
         {/* Results count */}
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}>
-            Showing {filteredUsers.length} of {users.length} users
+            Showing {users.length} users (Page {pagination.currentPage} of {pagination.totalPages})
           </Typography>
           
-          {filteredUsers.length === 0 && users.length > 0 && (
+          {users.length === 0 && (
             <Typography variant="body2" sx={{ color: 'warning.main' }}>
               No users match the current filters
             </Typography>
@@ -2154,7 +1690,7 @@ const Leaderboard = () => {
         <TableContainer sx={{ 
           maxWidth: '100%',
           ...scrollbarStyles,
-          position: 'relative' // Added to make relative positioning context for sticky row
+          position: 'relative'
         }}>
           <Table sx={{ 
             width: '100%',
@@ -2168,10 +1704,21 @@ const Leaderboard = () => {
           }}>
             {renderTableHead()}
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {loading && users.length === 0 ? (
                 <TableRow>
                   <TableCell 
-                    colSpan={10 + Object.keys(platforms).length} 
+                    colSpan={7 + leaderboardConfigs[leaderboardType].platforms.length} 
+                    align="center"
+                  >
+                    <Box sx={{ py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell 
+                    colSpan={7 + leaderboardConfigs[leaderboardType].platforms.length} 
                     align="center"
                   >
                     <Box sx={{ py: 4, color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
@@ -2179,87 +1726,55 @@ const Leaderboard = () => {
                         No users found
                       </Typography>
                       <Typography variant="body2">
-                        Try adjusting your filters
+                        Try adjusting your filters or search terms
                       </Typography>
                     </Box>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers
-                  .slice((page - 1) * rowsPerPage, page * rowsPerPage)
-                  .map((user, index) => (
-                    <LeaderboardRow 
-                      key={user._id} 
-                      user={user} 
-                      index={index + ((page - 1) * rowsPerPage)}
-                    />
-                  ))
+                users.map((user, index) => (
+                  <LeaderboardRow 
+                    key={user._id} 
+                    user={user} 
+                    index={index}
+                  />
+                ))
               )}
-              
-              {/* Current User Row - Inside the table */}
-              {currentUserData && (
+
+              {/* Current User Row */}
+              {(currentUserData || currentAuthUser) && (
                 <TableRow
-                  onClick={() => handleUserClick(currentUserData.email)}
+                  onClick={() => currentUserData?.email && handleUserClick(currentUserData.email)}
                   sx={{
                     position: 'sticky',
                     bottom: 0,
                     zIndex: 10,
-                    bgcolor: darkMode 
-                      ? getCurrentUserFilteredRank().rank === '-' 
-                        ? 'rgba(128, 128, 128, 0.2)' // Gray if filtered out
-                        : 'rgba(0, 136, 204, 0.2)'  // Blue if visible
-                      : getCurrentUserFilteredRank().rank === '-' 
-                        ? 'rgba(128, 128, 128, 0.1)' // Light gray if filtered out
-                        : 'rgba(0, 136, 204, 0.1)',  // Light blue if visible
+                    bgcolor: darkMode ? 'rgba(0, 136, 204, 0.2)' : 'rgba(0, 136, 204, 0.1)',
                     backdropFilter: 'blur(8px)',
                     boxShadow: '0 -2px 10px rgba(0,0,0,0.2)',
                     '& .MuiTableCell-root': {
-                      borderTop: `1px solid ${darkMode 
-                        ? getCurrentUserFilteredRank().rank === '-' 
-                          ? 'rgba(128, 128, 128, 0.3)' 
-                          : 'rgba(0, 136, 204, 0.3)' 
-                        : getCurrentUserFilteredRank().rank === '-' 
-                          ? 'rgba(128, 128, 128, 0.2)' 
-                          : 'rgba(0, 136, 204, 0.2)'}`,
+                      borderTop: `1px solid ${darkMode ? 'rgba(0, 136, 204, 0.3)' : 'rgba(0, 136, 204, 0.2)'}`,
                       py: 1.5,
                     },
                     '&:hover': {
-                      bgcolor: darkMode 
-                        ? getCurrentUserFilteredRank().rank === '-' 
-                          ? 'rgba(128, 128, 128, 0.25)' 
-                          : 'rgba(0, 136, 204, 0.25)' 
-                        : getCurrentUserFilteredRank().rank === '-' 
-                          ? 'rgba(128, 128, 128, 0.15)' 
-                          : 'rgba(0, 136, 204, 0.15)'
+                      bgcolor: darkMode ? 'rgba(0, 136, 204, 0.25)' : 'rgba(0, 136, 204, 0.15)'
                     },
-                    cursor: 'pointer' // Add cursor pointer to indicate clickable
+                    cursor: currentUserData?.email ? 'pointer' : 'default'
                   }}
                 >
                   <TableCell align="center">
-                    {(() => {
-                      const { rank, isVisible } = getCurrentUserFilteredRank();
-                      return (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <Chip 
-                            label={rank !== '-' ? `#${rank}` : 'Not in filter'} 
-                            color={rank !== '-' ? 'primary' : 'default'}
-                            size="small" 
-                            sx={{ fontWeight: 'bold' }}
-                          />
-                          {rank !== '-' && (
-                            <Typography variant="caption" sx={{ fontSize: '0.6rem', mt: 0.5, opacity: 0.7 }}>
-                              {isVisible ? "(on this page)" : "(filtered rank)"}
-                            </Typography>
-                          )}
-                        </Box>
-                      );
-                    })()}
+                    <Chip 
+                      label={currentUserRank ? `#${currentUserRank}` : (currentUserData ? 'Not in filter' : 'Loading...')} 
+                      color={currentUserRank ? 'primary' : 'default'}
+                      size="small" 
+                      sx={{ fontWeight: 'bold' }}
+                    />
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Avatar
-                        alt={currentUserData.name || 'User'}
-                        src={getProfileImageUrl(currentUserData.profilePicture)}
+                        alt={(currentUserData?.name || currentAuthUser?.name) || 'User'}
+                        src={getProfileImageUrl(currentUserData?.profilePicture || currentAuthUser?.profilePicture)}
                         sx={{ 
                           width: 36, 
                           height: 36,
@@ -2269,7 +1784,7 @@ const Leaderboard = () => {
                       <Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography variant="body1" fontWeight="medium">
-                            {currentUserData.name}
+                            {currentUserData?.name || currentAuthUser?.name || 'Unknown User'}
                           </Typography>
                           <Chip 
                             size="small" 
@@ -2280,36 +1795,43 @@ const Leaderboard = () => {
                           />
                         </Box>
                         <Typography variant="body2" color="text.secondary">
-                          {currentUserData.department} - {getStudentYear(currentUserData.graduatingYear)}
+                          {(currentUserData?.department || currentAuthUser?.department || 'Unknown')} - {getStudentYear(currentUserData?.graduatingYear || currentAuthUser?.graduatingYear)}
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {currentUserData.rollNumber ? currentUserData.rollNumber.toUpperCase() : '-'}
+                      {(currentUserData?.rollNumber || currentAuthUser?.rollNumber) ? (currentUserData?.rollNumber || currentAuthUser?.rollNumber).toUpperCase() : '-'}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{currentUserData.department || '-'}</Typography>
+                    <Typography variant="body2">{currentUserData?.department || currentAuthUser?.department || '-'}</Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{currentUserData.section || '-'}</Typography>
+                    <Typography variant="body2">{currentUserData?.section || currentAuthUser?.section || '-'}</Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{currentUserData.graduatingYear}</Typography>
+                    <Typography variant="body2">{currentUserData?.graduatingYear || currentAuthUser?.graduatingYear || '-'}</Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ color: '#0088cc', fontWeight: 600 }}>
-                      {leaderboardType === 'score' 
-                        ? (currentUserData.totalScore || 0) 
-                        : (currentUserData.problemsSolved || 0)}
+                      {currentUserData ? (
+                        leaderboardType === 'score' 
+                          ? (currentUserData.totalScore || 0) 
+                          : (() => {
+                              const backendProblems = currentUserData.problemsSolved || 0;
+                              if (backendProblems === 0) {
+                                return calculateTotalProblemsFromPlatforms(currentUserData, leaderboardConfigs[leaderboardType].platforms);
+                              }
+                              return backendProblems;
+                            })()
+                      ) : '-'}
                     </Typography>
                   </TableCell>
                   
-                  {/* Platform cells for current user */}
                   {leaderboardConfigs[leaderboardType].platforms.map((platform) => {
-                    const value = currentUserData.platformScores && currentUserData.platformScores[platform]
+                    const value = currentUserData?.platformScores && currentUserData.platformScores[platform]
                       ? (leaderboardType === 'score' 
                         ? currentUserData.platformScores[platform].score 
                         : currentUserData.platformScores[platform].problemsSolved) || 0
@@ -2325,49 +1847,36 @@ const Leaderboard = () => {
                             fontWeight: value > 0 ? 600 : 400
                           }}
                         >
-                          {value}
+                          {value || '-'}
                         </Typography>
                       </TableCell>
                     );
                   })}
-                  
-                  <TableCell>
-                    <Typography variant="body2">{currentUserData.departmentRank || '-'}</Typography>
-                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </TableContainer>
 
-        {/* Pagination and Entries Count */}
-        <PaginationControls
-          page={page}
-          totalPages={Math.ceil(filteredUsers.length / rowsPerPage)}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setPage}
-          onRowsPerPageChange={(value) => {
-            setRowsPerPage(value);
-            setPage(1);
-          }}
-        />
+        {/* Pagination Controls */}
+        {pagination.totalPages > 1 && <PaginationControls />}
       </Paper>
 
-      {/* Admin Exclusion Note */}
+      {/* Footer */}
       <Box sx={{ 
         px: 3, 
         pt: 3, 
         display: 'flex',
-        justifyContent: 'flex-end', // Changed from center to flex-end to align to right
+        justifyContent: 'flex-end',
         alignItems: 'center',
         width: '100%',
-        mb: 2 // Add bottom margin
+        mb: 2
       }}>
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center',
-          flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on mobile, horizontally on desktop
-          gap: { xs: 1, sm: 0 } // Add gap for mobile layout
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1, sm: 0 }
         }}>
           <a 
             href="http://scopeclub.mlrit.ac.in/teams" 
@@ -2392,7 +1901,7 @@ const Leaderboard = () => {
               color: 'text.secondary',
               fontWeight: 500,
               fontSize: { xs: '0.75rem', sm: '0.8rem' },
-              textAlign: { xs: 'center', sm: 'left' } // Center text on mobile
+              textAlign: { xs: 'center', sm: 'left' }
             }}
           >
             © 2025 SCOPE CLUB. All rights reserved.
