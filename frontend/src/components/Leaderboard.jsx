@@ -291,17 +291,6 @@ const Leaderboard = () => {
     setAnimateTop3(true);
   }, []);
 
-  // Debug current user data changes
-  useEffect(() => {
-    console.log('Current user data state changed:', {
-      hasCurrentUserData: !!currentUserData,
-      currentUserName: currentUserData?.name,
-      currentUserRank: currentUserRank,
-      hasAuthUser: !!currentAuthUser,
-      authUserName: currentAuthUser?.name
-    });
-  }, [currentUserData, currentUserRank, currentAuthUser]);
-
   const fetchStats = async () => {
     try {
       const res = await axios.get(`${apiUrl}/leaderboard/stats`, {
@@ -400,14 +389,6 @@ const Leaderboard = () => {
       setCurrentUserData(res.data.currentUserData);
       setCurrentUserRank(res.data.currentUserRank);
       
-      // Debug logging
-      console.log('API Response:', {
-        usersCount: res.data.users?.length || 0,
-        hasCurrentUserData: !!res.data.currentUserData,
-        currentUserRank: res.data.currentUserRank,
-        currentUserName: res.data.currentUserData?.name
-      });
-      
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to fetch leaderboard';
       setError(message);
@@ -472,7 +453,27 @@ const Leaderboard = () => {
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Smart scroll to show the leaderboard table without going to the very top
+    setTimeout(() => {
+      const tableElement = document.querySelector('#leaderboard-table');
+      if (tableElement) {
+        const rect = tableElement.getBoundingClientRect();
+        const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Calculate desired scroll position
+        // Offset by 100px to show some context above the table (works for both mobile and desktop)
+        const targetScrollY = currentScrollY + rect.top - 100;
+        
+        // Only scroll if the table is not already visible or if we need to scroll up significantly
+        if (rect.top < 0 || rect.top > window.innerHeight * 0.8) {
+          window.scrollTo({
+            top: Math.max(0, targetScrollY),
+            behavior: 'smooth'
+          });
+        }
+      }
+    }, 100); // Small delay to ensure the new page data has loaded
   };
 
   const handleRowsPerPageChange = (newRowsPerPage) => {
@@ -1687,7 +1688,9 @@ const calculateTotalProblemsFromPlatforms = (user, platforms) => {
           ...scrollbarStyles
         }}
       >
-        <TableContainer sx={{ 
+        <TableContainer 
+          id="leaderboard-table"
+          sx={{ 
           maxWidth: '100%',
           ...scrollbarStyles,
           position: 'relative'
