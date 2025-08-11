@@ -210,8 +210,8 @@ const MultiStepRegister = () => {
         <Box 
           sx={{
             position: 'absolute',
-            top: '45px',
-            left: '45px',
+            top: { xs: '20px', md: '45px' },
+            left: { xs: '20px', md: '45px' },
             display: 'flex',
             alignItems: 'center',
           }}
@@ -232,21 +232,21 @@ const MultiStepRegister = () => {
               sx={{ 
                 bgcolor: '#0585E0', 
                 borderRadius: '50%', 
-                width: 42, 
-                height: 42, 
+                width: { xs: 32, md: 42 }, 
+                height: { xs: 32, md: 42 }, 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                mr: 1.5
+                mr: { xs: 1, md: 1.5 }
               }}
             >
-              <ArrowBack sx={{ color: '#fff', fontSize: 22 }} />
+              <ArrowBack sx={{ color: '#fff', fontSize: { xs: 16, md: 22 } }} />
             </Box>
             <Typography 
               sx={{ 
                 color: '#fff', 
                 fontWeight: 400,
-                fontSize: '1.15rem'
+                fontSize: { xs: '0.9rem', md: '1.15rem' }
               }}
             >
               Go Back
@@ -270,22 +270,23 @@ const MultiStepRegister = () => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          p: { xs: 5, sm: 6 },
+          p: { xs: 3, sm: 4, md: 6 },
           zIndex: 1,
         }}
       >
-        <Box sx={{ maxWidth: 600, width: '100%', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+        <Box sx={{ maxWidth: 600, width: '100%', py: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' } }}>
+          <Box sx={{ mb: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' }, width: '100%' }}>
             {/* Logo and text on same line */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, md: 2 }, flexDirection: { xs: 'column', md: 'row' }, justifyContent: { xs: 'center', md: 'flex-start' }, width: '100%' }}>
               <Box 
                 component="img" 
                 src="/scope-white.png" 
                 alt="Scope Logo"
                 sx={{ 
-                  width: '90px',
+                  width: { xs: '60px', md: '90px' },
                   height: 'auto',
-                  mr: 2
+                  mr: { xs: 0, md: 2 },
+                  mb: { xs: 1, md: 0 }
                 }}
               />
               
@@ -293,10 +294,10 @@ const MultiStepRegister = () => {
                 <Typography
                   variant="h4"
                   sx={{
-                    fontWeight: 200,
+                    fontWeight: { xs: 300, md: 200 },
                     color: 'white',
-                    textAlign: 'left',
-                    fontSize: '2.2rem',
+                    textAlign: { xs: 'center', md: 'left' },
+                    fontSize: { xs: '1.4rem', sm: '1.8rem', md: '2.2rem' },
                     lineHeight: 1.2,
                   }}
                 >
@@ -305,10 +306,10 @@ const MultiStepRegister = () => {
                 <Typography
                   variant="h3"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: { xs: 600, md: 700 },
                     color: 'white',
-                    textAlign: 'left',
-                    fontSize: '2.8rem',
+                    textAlign: { xs: 'center', md: 'left' },
+                    fontSize: { xs: '1.6rem', sm: '2.2rem', md: '2.8rem' },
                     lineHeight: 1.2,
                   }}
                 >
@@ -318,18 +319,19 @@ const MultiStepRegister = () => {
             </Box>
           </Box>
 
-          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+          <Box sx={{ mt: { xs: 1, md: 2 }, display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' }, width: '100%' }}>
             {/* Sign up text */}
             <Typography
               variant="body1"
               sx={{
                 color: 'white',
-                mb: 4,
-                mt: 3,
-                textAlign: 'left',
+                mb: { xs: 2, md: 4 },
+                mt: { xs: 1, md: 3 },
+                textAlign: { xs: 'center', md: 'left' },
                 fontWeight: 400,
-                fontSize: '1.1rem',
+                fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
                 lineHeight: 1.5,
+                px: { xs: 0, md: 0 }
               }}
             >
               Sign up with your <b>MLRIT college email</b> to start tracking your competitive programming progress.
@@ -339,43 +341,44 @@ const MultiStepRegister = () => {
             <Typography
               variant="body1"
               sx={{
-                mt: 3,
+                mt: { xs: 1, md: 3 },
                 color: 'white',
-                mb: 2,
-                textAlign: 'left',
+                mb: { xs: 1.5, md: 2 },
+                textAlign: { xs: 'center', md: 'left' },
                 fontWeight: 400,
-                fontSize: '1rem',
+                fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1rem' },
               }}
             >
               Already have an account? <Link to="/login" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline' }}>Sign in</Link>
             </Typography>
             
-            {/* Google Login Button */}
+            {/* Google Register Button */}
             <Button
-              fullWidth
               variant="contained"
-              startIcon={<GoogleIcon sx={{ color: '#252525', fontSize: '28px' }} />}
+              startIcon={<GoogleIcon sx={{ color: '#252525', fontSize: { xs: '20px', md: '28px' } }} />}
               onClick={handleGoogleRegister}
               sx={{
-                mt: 1,
-                mb: 3,
+                mt: { xs: 1, md: 1 },
+                mb: { xs: 2, md: 3 },
                 color: '#252525',
                 backgroundColor: 'white',
                 textTransform: 'none',
-                fontSize: '1.3rem',
-                fontWeight: 700,
-                height: '40px',
-                maxWidth: '30%',
-                borderRadius: '4px',
+                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.3rem' },
+                fontWeight: { xs: 600, md: 700 },
+                height: { xs: '45px', md: '50px' },
+                minWidth: { xs: '140px', sm: '160px', md: '180px' },
+                maxWidth: { xs: '200px', sm: '250px', md: '30%' },
+                borderRadius: '8px',
                 justifyContent: 'center',
-                boxShadow: 'none',
-                px: 3,
-                p: 3,
+                boxShadow: '0px 2px 8px rgba(0,0,0,0.15)',
+                px: { xs: 2, md: 3 },
+                py: { xs: 1, md: 1.5 },
                 '&:hover': {
                   backgroundColor: '#f5f5f5',
-                  boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+                  boxShadow: '0px 4px 12px rgba(0,0,0,0.2)',
+                  transform: 'translateY(-1px)',
                 },
-                pl: 2,
+                transition: 'all 0.2s ease-in-out',
               }}
             >
               Google
