@@ -1,74 +1,71 @@
 name: Deploy CodeStats
 
 on:
-push:
-branches:
-- version-2.0.0
+  push:
+    branches:
+      - version-2.0.0
 
 jobs:
-deploy:
-runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-```
-steps:
-  - name: Checkout Repository
-    uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-  - name: Setup Node
-    uses: actions/setup-node@v4
-    with:
-      node-version: 20
+      - name: Build Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
 
-  - name: Build Frontend
-    working-directory: frontend
-    run: |
-      npm ci
-      npm run build
+      - name: Package Frontend
+        run: |
+          tar -czf frontend-dist.tar.gz -C frontend/dist .
 
-  - name: Package Frontend
-    run: |
-      tar -czf frontend-dist.tar.gz -C frontend/dist .
+      - name: Upload Frontend Bundle
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "frontend-dist.tar.gz"
+          target: "/home/ubuntu"
 
-  - name: Upload Frontend Bundle
-    uses: appleboy/scp-action@v0.1.7
-    with:
-      host: ${{ secrets.EC2_HOST }}
-      username: ${{ secrets.EC2_USER }}
-      key: ${{ secrets.EC2_SSH_KEY }}
-      source: "frontend-dist.tar.gz"
-      target: "/home/ubuntu"
+      - name: Deploy Backend + Frontend
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
 
-  - name: Deploy Backend + Frontend
-    uses: appleboy/ssh-action@v1.2.0
-    with:
-      host: ${{ secrets.EC2_HOST }}
-      username: ${{ secrets.EC2_USER }}
-      key: ${{ secrets.EC2_SSH_KEY }}
-      script: |
-        set -e
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            cd /home/ubuntu/scope-cohorts
 
-        cd /home/ubuntu/scope-cohorts
+            git fetch origin
+            git checkout version-2.0.0
+            git reset --hard origin/version-2.0.0
 
-        git fetch origin
-        git checkout version-2.0.0
-        git reset --hard origin/version-2.0.0
+            sudo rm -rf /var/www/codestats/*
+            sudo tar -xzf /home/ubuntu/frontend-dist.tar.gz -C /var/www/codestats
 
-        sudo rm -rf /var/www/codestats/*
-        sudo tar -xzf /home/ubuntu/frontend-dist.tar.gz -C /var/www/codestats
+            cd backend
 
-        cd backend
+            npm install
 
-        npm install
+            pm2 restart all
+            pm2 save
 
-        pm2 restart all
-        pm2 save
+            sudo systemctl restart nginx
 
-        sudo systemctl restart nginx
+            rm -f /home/ubuntu/frontend-dist.tar.gz
 
-        rm -f /home/ubuntu/frontend-dist.tar.gz
-
-        echo "Deployment completed successfully"
-```
+            echo "Deployment completed successfully"
