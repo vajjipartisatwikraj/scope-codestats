@@ -12,7 +12,7 @@ export default defineConfig({
     open: true,
     proxy: {
       "/api": {
-        target: "http://localhost:5000", // Backend API URL
+        target: "https://scope.mlrit.ac.in", // Backend API URL
         changeOrigin: true,
         secure: false,
       },
