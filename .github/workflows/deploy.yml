@@ -1,65 +1,74 @@
 name: Deploy CodeStats
 
 on:
-  push:
-    branches:
-      - version-2.0.0
+push:
+branches:
+- version-2.0.0
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+deploy:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0
+```
+steps:
+  - name: Checkout Repository
+    uses: actions/checkout@v4
 
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+  - name: Setup Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
 
-          script: |
-            set -e
+  - name: Build Frontend
+    working-directory: frontend
+    run: |
+      npm ci
+      npm run build
 
-            echo "Loading NVM..."
+  - name: Package Frontend
+    run: |
+      tar -czf frontend-dist.tar.gz -C frontend/dist .
 
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  - name: Upload Frontend Bundle
+    uses: appleboy/scp-action@v0.1.7
+    with:
+      host: ${{ secrets.EC2_HOST }}
+      username: ${{ secrets.EC2_USER }}
+      key: ${{ secrets.EC2_SSH_KEY }}
+      source: "frontend-dist.tar.gz"
+      target: "/home/ubuntu"
 
-            echo "Node Version:"
-            node -v
+  - name: Deploy Backend + Frontend
+    uses: appleboy/ssh-action@v1.2.0
+    with:
+      host: ${{ secrets.EC2_HOST }}
+      username: ${{ secrets.EC2_USER }}
+      key: ${{ secrets.EC2_SSH_KEY }}
+      script: |
+        set -e
 
-            echo "NPM Version:"
-            npm -v
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-            echo "Moving to project directory..."
-            cd /home/ubuntu/scope-cohorts
+        cd /home/ubuntu/scope-cohorts
 
-            echo "Updating source code..."
-            git fetch origin
-            git checkout version-2.0.0
-            git reset --hard origin/version-2.0.0
+        git fetch origin
+        git checkout version-2.0.0
+        git reset --hard origin/version-2.0.0
 
-            echo "Installing frontend dependencies..."
-            cd frontend
-            npm install
+        rm -rf /var/www/codestats/*
+        tar -xzf /home/ubuntu/frontend-dist.tar.gz -C /var/www/codestats
 
-            echo "Building frontend..."
-            npm run build
+        cd backend
 
-            echo "Deploying frontend..."
-            sudo rm -rf /var/www/codestats/*
-            sudo cp -R dist/* /var/www/codestats/
+        npm install
 
-            echo "Restarting nginx..."
-            sudo systemctl restart nginx
+        pm2 restart all
+        pm2 save
 
-            echo "Installing backend dependencies..."
-            cd ../backend
-            npm install
+        sudo systemctl restart nginx
 
-            echo "Restarting backend..."
-            pm2 restart all
-            pm2 save
+        rm -f /home/ubuntu/frontend-dist.tar.gz
 
-            echo "Deployment completed successfully!"
+        echo "Deployment completed successfully"
+```
