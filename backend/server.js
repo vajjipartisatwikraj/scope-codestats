@@ -68,10 +68,50 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const server = http.createServer(app);
 
+// ============================================
+// ENVIRONMENT-AWARE CONFIGURATION WITH FALLBACK
+// ============================================
+const isDev = process.env.NODE_ENV !== "production";
+const isProduction = process.env.NODE_ENV === "production";
+const appPort = process.env.PORT || 5000;
+
+// Get frontend URL with fallback mechanism
+const getFrontendUrl = () => {
+  if (process.env.FRONTEND_URL) {
+    return process.env.FRONTEND_URL;
+  }
+  return isProduction ? "https://scope.mlrit.ac.in" : "http://localhost:5173";
+};
+
+const frontendUrl = getFrontendUrl();
+
+// CORS Origins: Support multiple origins for different environments
+const corsOrigins = () => {
+  if (isProduction) {
+    return [
+      "https://scope.mlrit.ac.in",
+      "scope.mlrit.ac.in",
+    ];
+  } else {
+    // Development: Allow multiple localhost variants and any localhost
+    return [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ];
+  }
+};
+
+console.log(`[Server] 🔧 Environment: ${isDev ? "DEVELOPMENT" : "PRODUCTION"}`);
+console.log(`[Server] 🌐 Frontend URL: ${frontendUrl}`);
+console.log(`[Server] 📍 Allowed CORS Origins:`, corsOrigins());
+
 // Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: ["https://scope.mlrit.ac.in"], //modified
+    origin: corsOrigins(),
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -239,7 +279,7 @@ if (redisClient) {
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: corsOrigins(),
     credentials: true,
   }),
 );
