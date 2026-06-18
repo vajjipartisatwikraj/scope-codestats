@@ -1,0 +1,10 @@
+/* Override MUI styles for main content area */
+/*Desktop*/
+
+/* Hide navbar class */
+.hide-navbar {
+  margin-top: 0 !important;
+}
+
+
+  

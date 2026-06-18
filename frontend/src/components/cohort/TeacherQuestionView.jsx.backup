@@ -1,0 +1,811 @@
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Chip,
+  Tab,
+  Tabs,
+  IconButton,
+  useTheme,
+  Alert,
+  AppBar,
+  Toolbar,
+  alpha,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Paper,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import axios from "axios";
+import { apiUrl } from "../../config/apiConfig";
+import { toast } from "react-toastify";
+import { useAuth } from "../../contexts/AuthContext";
+import { useTheme as useAppTheme } from "../../contexts/ThemeContext";
+import SubmissionsPanel from "./SubmissionsPanel";
+import QuestionReport from "./QuestionReport";
+
+const TeacherQuestionView = () => {
+  const { cohortId, moduleId, questionId } = useParams();
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const { darkMode } = useAppTheme();
+  const { token, user } = useAuth();
+
+  const [question, setQuestion] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(0);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50);
+  const [allUsersSubmissions, setAllUsersSubmissions] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState("python");
+
+  useEffect(() => {
+    fetchQuestionData();
+    fetchAllSubmissions();
+  }, [questionId]);
+
+  useEffect(() => {
+    // Set the first available language as default when question loads
+    if (question?.languages && question.languages.length > 0) {
+      setSelectedLanguage(question.languages[0].name);
+    }
+  }, [question]);
+
+  const fetchQuestionData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `${apiUrl}/cohorts/${cohortId}/modules/${moduleId}/questions/${questionId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setQuestion(response.data);
+    } catch (error) {
+      console.error("Error fetching question:", error);
+      toast.error("Failed to load question");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllSubmissions = async () => {
+    try {
+      const response = await axios.get(
+        `${apiUrl}/cohorts/${cohortId}/modules/${moduleId}/questions/${questionId}/all-submissions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log(
+        "Teacher view - All users submissions fetched:",
+        response.data
+      );
+      setAllUsersSubmissions(response.data || []);
+    } catch (error) {
+      console.error("Error fetching all users submissions:", error);
+      setAllUsersSubmissions([]);
+    }
+  };
+
+  // Format time helper
+  const formatTime = (ms) => {
+    if (!ms && ms !== 0) return "N/A";
+    return `${ms} ms`;
+  };
+
+  // Format memory helper
+  const formatMemory = (bytes) => {
+    if (!bytes && bytes !== 0) return "N/A";
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const renderStatusIcon = () => {
+    if (!question) return null;
+
+    return (
+      <Chip
+        icon={<CheckCircleIcon />}
+        label="Published"
+        size="small"
+        sx={{
+          bgcolor: alpha("#4caf50", 0.1),
+          color: "#4caf50",
+          fontWeight: "bold",
+        }}
+      />
+    );
+  };
+
+  const handleBack = () => {
+    const isAdmin = user && user.userType === "admin";
+    if (isAdmin) {
+      navigate(`/admin/cohorts/${cohortId}`);
+    } else {
+      navigate(`/cohorts/${cohortId}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!question) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">Question not found</Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        height: { xs: "calc(100vh - 48px)", sm: "calc(100vh - 64px)" },
+        bgcolor: darkMode ? "#0a0b0f" : "#f5f5f5",
+        overflow: "hidden",
+      }}
+    >
+      {/* Left Panel - Problem Description */}
+      <Box
+        sx={{
+          width: `${leftPanelWidth}%`,
+          height: "100%",
+          borderRight: "1px solid",
+          borderColor: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+          overflow: "auto",
+          bgcolor: darkMode ? "#0a0c10" : "#FFFFFF",
+          "&::-webkit-scrollbar": {
+            width: "8px",
+          },
+          "&::-webkit-scrollbar-track": {
+            backgroundColor: darkMode
+              ? "rgba(0, 0, 0, 0.1)"
+              : "rgba(0, 0, 0, 0.05)",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: darkMode
+              ? "rgba(255, 255, 255, 0.1)"
+              : "rgba(0, 0, 0, 0.1)",
+            borderRadius: "4px",
+          },
+        }}
+      >
+        {/* Problem Title and Stats */}
+        <Box
+          sx={{
+            p: 2,
+            borderBottom: "1px solid",
+            borderColor: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: "bold",
+                color: darkMode ? "#fff" : "#000",
+              }}
+            >
+              {question.title}
+            </Typography>
+            {renderStatusIcon()}
+          </Box>
+
+          {/* Statistics bar */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              mt: 1.5,
+              color: darkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)",
+              fontSize: "0.75rem",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontWeight: "medium",
+                  fontSize: "0.75rem",
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                }}
+              >
+                Difficulty:
+              </Typography>
+              <Typography
+                component="span"
+                sx={{
+                  fontWeight: "bold",
+                  fontSize: "0.75rem",
+                  color:
+                    question.difficultyLevel === "easy"
+                      ? "#4caf50"
+                      : question.difficultyLevel === "medium"
+                      ? "#ff9800"
+                      : "#f44336",
+                }}
+              >
+                {question.difficultyLevel
+                  ? question.difficultyLevel.charAt(0).toUpperCase() +
+                    question.difficultyLevel.slice(1)
+                  : "Medium"}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontWeight: "medium",
+                  fontSize: "0.75rem",
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                }}
+              >
+                Accuracy:
+              </Typography>
+              <Typography
+                component="span"
+                sx={{ fontWeight: "bold", fontSize: "0.75rem" }}
+              >
+                {question.stats &&
+                typeof question.stats.acceptanceRate === "number"
+                  ? Math.round(question.stats.acceptanceRate)
+                  : "0"}
+                %
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontWeight: "medium",
+                  fontSize: "0.75rem",
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                }}
+              >
+                Submissions:
+              </Typography>
+              <Typography
+                component="span"
+                sx={{ fontWeight: "bold", fontSize: "0.75rem" }}
+              >
+                {question.stats &&
+                typeof question.stats.totalSubmissions === "number"
+                  ? question.stats.totalSubmissions
+                  : "0"}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontWeight: "medium",
+                  fontSize: "0.75rem",
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                }}
+              >
+                Points:
+              </Typography>
+              <Typography
+                component="span"
+                sx={{ fontWeight: "bold", fontSize: "0.75rem" }}
+              >
+                {question.marks || 10}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Problem Description */}
+        <Box sx={{ p: 2 }}>
+          <Box
+            className="question-description"
+            dangerouslySetInnerHTML={{ __html: question.description }}
+            sx={{
+              color: darkMode ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)",
+              lineHeight: 1.6,
+              fontSize: "0.85rem",
+              mb: 3,
+              "& code": {
+                backgroundColor: darkMode
+                  ? "rgba(0, 136, 204, 0.1)"
+                  : "rgba(10, 102, 194, 0.08)",
+                color: darkMode ? "#0088cc" : "#0a66c2",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontFamily:
+                  '"Fira Code", "JetBrains Mono", "Consolas", "Monaco", monospace',
+                fontSize: "0.9em",
+                fontWeight: "500",
+                border: darkMode
+                  ? "1px solid rgba(0, 136, 204, 0.3)"
+                  : "1px solid rgba(10, 102, 194, 0.2)",
+                display: "inline-block",
+                lineHeight: "1.5",
+              },
+              "& pre": {
+                backgroundColor: darkMode
+                  ? "rgba(255,255,255,0.05)"
+                  : "#f5f5f5",
+                padding: "16px",
+                borderRadius: "8px",
+                overflow: "auto",
+                border: `1px solid ${
+                  darkMode ? "rgba(255,255,255,0.2)" : "#e0e0e0"
+                }`,
+                margin: "16px 0",
+                fontFamily: '"Courier New", monospace',
+              },
+              "& table": {
+                borderCollapse: "collapse",
+                width: "100%",
+                margin: "16px 0",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              },
+              "& th, & td": {
+                border: `1px solid ${
+                  darkMode ? "rgba(255,255,255,0.3)" : "#ddd"
+                }`,
+                padding: "12px",
+                textAlign: "left",
+              },
+              "& th": {
+                backgroundColor: theme.palette.primary.main,
+                color: "white",
+                fontWeight: "bold",
+              },
+              "& tr:nth-of-type(even)": {
+                backgroundColor: darkMode
+                  ? "rgba(255,255,255,0.05)"
+                  : "#f9f9f9",
+              },
+              "& img": {
+                maxWidth: "100%",
+                height: "auto",
+                borderRadius: "8px",
+                margin: "16px 0",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              },
+              "& ul, & ol": {
+                margin: "16px 0",
+                paddingLeft: "24px",
+              },
+              "& li": {
+                margin: "8px 0",
+              },
+              "& blockquote": {
+                borderLeft: `4px solid ${theme.palette.primary.main}`,
+                paddingLeft: "16px",
+                margin: "16px 0",
+                fontStyle: "italic",
+                backgroundColor: darkMode
+                  ? "rgba(255,255,255,0.05)"
+                  : "#f8f9fa",
+                padding: "16px",
+                borderRadius: "0 8px 8px 0",
+              },
+            }}
+          />
+        </Box>
+      </Box>
+
+      {/* Resizer */}
+      <Box
+        sx={{
+          width: "4px",
+          bgcolor: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+          cursor: "col-resize",
+          "&:hover": {
+            bgcolor: theme.palette.primary.main,
+          },
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startWidth = leftPanelWidth;
+
+          const handleMouseMove = (e) => {
+            const deltaX = e.clientX - startX;
+            const newWidth = startWidth + (deltaX / window.innerWidth) * 100;
+            setLeftPanelWidth(Math.min(Math.max(newWidth, 30), 70));
+          };
+
+          const handleMouseUp = () => {
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+          };
+
+          document.addEventListener("mousemove", handleMouseMove);
+          document.addEventListener("mouseup", handleMouseUp);
+        }}
+      />
+
+      {/* Right Panel - Submissions and Reports */}
+      <Box
+        sx={{
+          width: `${100 - leftPanelWidth}%`,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: darkMode ? "#0a0c10" : "#FFFFFF",
+        }}
+      >
+        {/* Tabs */}
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{
+            mt: 2,
+            borderBottom: "1px solid",
+            borderColor: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            bgcolor: darkMode ? "#1a1d24" : "#f5f5f5",
+            "& .MuiTab-root": {
+              color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "0.875rem",
+            },
+            "& .Mui-selected": {
+              color: theme.palette.primary.main,
+            },
+          }}
+        >
+          <Tab label="Editorial" />
+          <Tab label="Solutions" />
+          <Tab label="Submissions" />
+          <Tab label="Report" />
+        </Tabs>
+
+        {/* Tab Content */}
+        <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+          {/* Editorial Tab */}
+          {activeTab === 0 && (
+            <Box sx={{ p: 3 }}>
+              <Typography
+                variant="h6"
+                sx={{ mb: 2, color: darkMode ? "#fff" : "#000" }}
+              >
+                Editorial
+              </Typography>
+              <Box
+                sx={{
+                  color: darkMode
+                    ? "rgba(255,255,255,0.85)"
+                    : "rgba(0,0,0,0.85)",
+                  lineHeight: 1.6,
+                  fontSize: "0.95rem",
+                }}
+              >
+                {question?.editorial ? (
+                  <Box
+                    dangerouslySetInnerHTML={{ __html: question.editorial }}
+                    sx={{
+                      "& h1": {
+                        fontSize: "1.75rem",
+                        fontWeight: "bold",
+                        marginTop: "1.5em",
+                        marginBottom: "0.75em",
+                        paddingBottom: "0.5em",
+                        borderBottom: "2px solid",
+                        borderColor: theme.palette.primary.main,
+                        color: theme.palette.primary.main,
+                      },
+                      "& h2": {
+                        fontSize: "1.35rem",
+                        fontWeight: "bold",
+                        marginTop: "1.5em",
+                        marginBottom: "0.75em",
+                        color: theme.palette.primary.main,
+                      },
+                      "& h3": {
+                        fontSize: "1.15rem",
+                        fontWeight: "600",
+                        marginTop: "1.25em",
+                        marginBottom: "0.5em",
+                        color: theme.palette.primary.main,
+                      },
+                      "& p": {
+                        marginBottom: "0.875rem",
+                        lineHeight: 1.7,
+                      },
+                      "& code": {
+                        backgroundColor: darkMode
+                          ? "rgba(0, 136, 204, 0.1)"
+                          : "rgba(10, 102, 194, 0.08)",
+                        color: darkMode ? "#0088cc" : "#0a66c2",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontFamily:
+                          '"Fira Code", "JetBrains Mono", "Consolas", "Monaco", monospace',
+                        fontSize: "0.9em",
+                        fontWeight: "500",
+                      },
+                      "& pre": {
+                        backgroundColor: darkMode
+                          ? "rgba(255,255,255,0.05)"
+                          : "#f5f5f5",
+                        padding: "16px",
+                        borderRadius: "8px",
+                        overflow: "auto",
+                        border: `1px solid ${
+                          darkMode ? "rgba(255,255,255,0.2)" : "#e0e0e0"
+                        }`,
+                        "& code": {
+                          backgroundColor: "transparent",
+                          border: "none",
+                          padding: 0,
+                        },
+                      },
+                      "& table": {
+                        borderCollapse: "collapse",
+                        width: "100% !important",
+                        minWidth: "100%",
+                        margin: "12px 0",
+                        tableLayout: "fixed",
+                        border: `1px solid ${
+                          darkMode ? "rgba(255,255,255,0.3)" : "#ddd"
+                        }`,
+                      },
+                      "& thead": {
+                        backgroundColor: theme.palette.primary.main,
+                      },
+                      "& th": {
+                        padding: "8px 12px",
+                        textAlign: "left",
+                        fontWeight: "bold",
+                        fontSize: "0.875rem",
+                        color: "white",
+                        border: `1px solid ${
+                          darkMode ? "rgba(255,255,255,0.3)" : "#ddd"
+                        }`,
+                        whiteSpace: "normal",
+                        wordWrap: "break-word",
+                        overflow: "hidden",
+                      },
+                      "& td": {
+                        padding: "8px 12px",
+                        fontSize: "0.875rem",
+                        border: `1px solid ${
+                          darkMode ? "rgba(255,255,255,0.3)" : "#ddd"
+                        }`,
+                        whiteSpace: "normal",
+                        wordWrap: "break-word",
+                        overflow: "hidden",
+                      },
+                      "& tbody tr:nth-of-type(even)": {
+                        backgroundColor: darkMode
+                          ? "rgba(255,255,255,0.05)"
+                          : "#f9f9f9",
+                      },
+                      "& ul, & ol": {
+                        margin: "12px 0",
+                        paddingLeft: "24px",
+                      },
+                      "& li": {
+                        margin: "6px 0",
+                      },
+                      "& blockquote": {
+                        borderLeft: `4px solid ${theme.palette.primary.main}`,
+                        paddingLeft: "16px",
+                        margin: "12px 0",
+                        fontStyle: "italic",
+                        backgroundColor: darkMode
+                          ? "rgba(255,255,255,0.05)"
+                          : "#f8f9fa",
+                        padding: "12px 12px 12px 16px",
+                        borderRadius: "0 8px 8px 0",
+                      },
+                      "& a": {
+                        color: theme.palette.primary.main,
+                        textDecoration: "none",
+                        "&:hover": {
+                          textDecoration: "underline",
+                        },
+                      },
+                      "& hr": {
+                        margin: "16px 0",
+                        border: "none",
+                        borderTop: `1px solid ${
+                          darkMode ? "rgba(255,255,255,0.2)" : "#e0e0e0"
+                        }`,
+                      },
+                      "& strong": {
+                        fontWeight: "bold",
+                      },
+                      "& em": {
+                        fontStyle: "italic",
+                      },
+                    }}
+                  />
+                ) : (
+                  <Typography color="textSecondary">
+                    Editorial content is not available for this question yet.
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {/* Solutions Tab */}
+          {activeTab === 1 && (
+            <Box sx={{ p: 3 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 3,
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{ color: darkMode ? "#fff" : "#000" }}
+                >
+                  Solutions
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel
+                    sx={{
+                      color: darkMode
+                        ? "rgba(255,255,255,0.7)"
+                        : "rgba(0,0,0,0.7)",
+                    }}
+                  >
+                    Language
+                  </InputLabel>
+                  <Select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    label="Language"
+                    sx={{
+                      color: darkMode ? "#fff" : "#000",
+                      ".MuiOutlinedInput-notchedOutline": {
+                        borderColor: darkMode
+                          ? "rgba(255,255,255,0.2)"
+                          : "rgba(0,0,0,0.2)",
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: darkMode
+                          ? "rgba(255,255,255,0.4)"
+                          : "rgba(0,0,0,0.4)",
+                      },
+                    }}
+                  >
+                    {question?.languages?.map((lang) => (
+                      <MenuItem key={lang.name} value={lang.name}>
+                        {lang.name.toUpperCase()}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {(() => {
+                const languageData = question?.languages?.find(
+                  (l) => l.name === selectedLanguage
+                );
+
+                if (!languageData || !languageData.solutionCode) {
+                  return (
+                    <Typography color="textSecondary">
+                      Solution code is not available for{" "}
+                      {selectedLanguage.toUpperCase()}.
+                    </Typography>
+                  );
+                }
+
+                return (
+                  <Paper
+                    sx={{
+                      backgroundColor: darkMode ? "#1e1e1e" : "#f5f5f5",
+                      border: `1px solid ${
+                        darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"
+                      }`,
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        backgroundColor: darkMode ? "#2d2d30" : "#e0e0e0",
+                        px: 2,
+                        py: 1,
+                        borderBottom: `1px solid ${
+                          darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"
+                        }`,
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: darkMode ? "#fff" : "#000",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {selectedLanguage.toUpperCase()} Solution
+                      </Typography>
+                    </Box>
+                    <Box
+                      component="pre"
+                      sx={{
+                        m: 0,
+                        p: 2,
+                        overflow: "auto",
+                        fontFamily:
+                          '"Fira Code", "JetBrains Mono", "Consolas", "Monaco", monospace',
+                        fontSize: "0.875rem",
+                        color: darkMode ? "#d4d4d4" : "#000",
+                        lineHeight: 1.6,
+                        "& code": {
+                          fontFamily: "inherit",
+                        },
+                      }}
+                    >
+                      <code>{languageData.solutionCode}</code>
+                    </Box>
+                  </Paper>
+                );
+              })()}
+            </Box>
+          )}
+
+          {/* Submissions Tab */}
+          {activeTab === 2 && (
+            <SubmissionsPanel
+              submissions={[]}
+              allUsersSubmissions={allUsersSubmissions}
+              darkMode={darkMode}
+              formatTime={formatTime}
+              formatMemory={formatMemory}
+              user={user}
+              teacherView={true}
+            />
+          )}
+
+          {/* Report Tab */}
+          {activeTab === 3 && (
+            <QuestionReport
+              cohortId={cohortId}
+              moduleId={moduleId}
+              questionId={questionId}
+              darkMode={darkMode}
+              user={user}
+              teacherView={true}
+            />
+          )}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+export default TeacherQuestionView;

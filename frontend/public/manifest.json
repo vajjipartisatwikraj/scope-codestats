@@ -1,0 +1,25 @@
+{
+  "short_name": "CodeStats",
+  "name": "CodeStats - Coding Profile Analytics",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "codestats.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "codestats.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0088cc",
+  "background_color": "#ffffff"
+} 
