@@ -1,545 +1,767 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect } from 'react';
+import './Landing.css';
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Button, 
+  Grid, 
+  Paper, 
+  useTheme, 
+  Stack,
+  Divider,
+  Avatar,
+  Card,
+  CardContent,
+  useMediaQuery,
+  Fade,
+  Grow,
+  Zoom,
+  GlobalStyles
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
+import { School, EmojiEvents, Timeline, Group, KeyboardArrowRight } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
-const stats = [
-  { label: 'Students Onboarded', value: 3000, suffix: '+' },
-  { label: 'Problems Tracked', value: 10000, suffix: '+' },
-  { label: 'Active Cohorts', value: 120, suffix: '+' },
-  { label: 'Daily Submissions', value: 5800, suffix: '+' },
-];
-
-const features = [
-  {
-    title: 'Unified Coding Dashboard',
-    description:
-      'Merge LeetCode, Codeforces, CodeChef, and GitHub activity into one elite view with trend awareness.',
-    icon: '[]',
-  },
-  {
-    title: 'Cohort-Based Learning',
-    description:
-      'Learn in focused circles with weekly challenge windows, mentor checkpoints, and accountability loops.',
-    icon: '</>',
-  },
-  {
-    title: 'Real-Time Leaderboards',
-    description:
-      'Watch rank shifts live during challenge windows and identify who is climbing before anyone else.',
-    icon: '#',
-  },
-  {
-    title: 'Performance Insights',
-    description:
-      'Pinpoint stagnation, optimize topic coverage, and track consistency using meaningful score signals.',
-    icon: '::',
-  },
-];
-
-const demoTabs = {
-  leaderboard: {
-    title: 'Leaderboard Dynamics',
-    caption: 'Live cohort standings with velocity and consistency multipliers.',
-    rows: [
-      { name: 'Anika', points: 982, streak: '21d' },
-      { name: 'Rohit', points: 961, streak: '18d' },
-      { name: 'Aarav', points: 945, streak: '15d' },
-      { name: 'Sana', points: 930, streak: '14d' },
-    ],
-  },
-  analytics: {
-    title: 'Analytics Graphs',
-    caption: 'Weekly growth pulse with solved volume and accuracy confidence.',
-    bars: [32, 48, 44, 61, 72, 68, 80],
-  },
-  profile: {
-    title: 'Student Performance Card',
-    caption: 'Skill mix, momentum score, and recent problem-solving consistency.',
-    chips: ['DP 82%', 'Graphs 74%', 'Greedy 88%', 'Trees 79%'],
-  },
-};
-
-const cohortTimeline = [
-  { week: 'Week 1', title: 'Foundation Sprint', text: 'Warm-up sheet + baseline rating snapshot.' },
-  { week: 'Week 2', title: 'Topic Deep Dive', text: 'Pattern clusters with timed problem blocks.' },
-  { week: 'Week 3', title: 'Contest Simulation', text: 'Ranked cohort duel and post-match analysis.' },
-  { week: 'Week 4', title: 'Performance Review', text: 'Growth report, feedback, and next path unlock.' },
-];
-
-const steps = ['Connect profiles', 'Join cohort', 'Track progress', 'Improve rankings'];
-
-const testimonials = [
-  {
-    name: 'Sanjana R.',
-    role: '3rd Year CSE',
-    text: 'Scope Cohorts turned random solving into a focused system. My consistency score jumped in just 4 weeks.',
-  },
-  {
-    name: 'Harsh V.',
-    role: 'Competitive Programmer',
-    text: 'The cohort leaderboard pressure is addictive in the best way. I now solve with intent, not guesswork.',
-  },
-  {
-    name: 'Nikhil P.',
-    role: 'Placement Prep Lead',
-    text: 'Our team used to study in silos. Now we track performance together and improve faster as a group.',
-  },
-];
-
-const container = {
-  hidden: { opacity: 0, y: 28 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: 'easeOut' },
-  },
-};
-
-function useCountUp(target, duration = 1400) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let frame;
-    const startedAt = performance.now();
-
-    const update = (now) => {
-      const progress = Math.min((now - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(target * eased));
-      if (progress < 1) {
-        frame = requestAnimationFrame(update);
-      }
-    };
-
-    frame = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(frame);
-  }, [target, duration]);
-
-  return count;
-}
-
-const Counter = ({ value, suffix, label }) => {
-  const count = useCountUp(value);
-
-  return (
-    <motion.div
-      variants={container}
-      className="rounded-2xl border border-scope-line/60 bg-white/[0.04] p-5 backdrop-blur-xl"
-    >
-      <p className="text-3xl font-semibold text-scope-text sm:text-4xl">
-        {count.toLocaleString()}
-        {suffix}
-      </p>
-      <p className="mt-2 text-sm text-scope-muted">{label}</p>
-    </motion.div>
-  );
-};
-
-const SectionHeading = ({ eyebrow, title, subtitle }) => (
-  <motion.div
-    variants={container}
-    initial="hidden"
-    whileInView="show"
-    viewport={{ once: true, amount: 0.2 }}
-    className="mx-auto mb-10 max-w-3xl text-center"
-  >
-    <p className="text-xs uppercase tracking-[0.3em] text-scope-cyan">{eyebrow}</p>
-    <h2 className="mt-4 font-display text-3xl font-semibold leading-tight text-white sm:text-4xl">{title}</h2>
-    <p className="mt-4 text-scope-muted">{subtitle}</p>
-  </motion.div>
-);
-
 const Landing = () => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState('leaderboard');
-  const [heroPulse, setHeroPulse] = useState({ rank: 128, streak: 16, solved: 146 });
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
-
-  const { scrollYProgress } = useScroll();
-  const glowY = useTransform(scrollYProgress, [0, 1], [0, 320]);
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   useEffect(() => {
     if (token) {
       navigate('/dashboard');
     }
-  }, [navigate, token]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHeroPulse((current) => ({
-        rank: Math.max(75, current.rank + Math.floor(Math.random() * 7) - 3),
-        streak: Math.max(3, current.streak + Math.floor(Math.random() * 3) - 1),
-        solved: current.solved + Math.floor(Math.random() * 3),
-      }));
-    }, 2400);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const onMove = (event) => {
-      const px = (event.clientX / window.innerWidth - 0.5) * 2;
-      const py = (event.clientY / window.innerHeight - 0.5) * 2;
-      setMouse({ x: px, y: py });
-    };
-
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
-
-  const activeDemo = useMemo(() => demoTabs[activeTab], [activeTab]);
+  }, [token, navigate]);
 
   if (token) {
     return null;
   }
 
+  const features = [
+    {
+      icon: <School sx={{ fontSize: 40, color: '#0077b6' }} />,
+      title: 'Track Your Progress',
+      description: 'Monitor your performance across multiple competitive programming platforms in one place.'
+    },
+    {
+      icon: <EmojiEvents sx={{ fontSize: 40, color: '#FFD700' }} />,
+      title: 'Compete & Compare',
+      description: 'Join the leaderboard and compete with fellow students to improve your skills.'
+    },
+    {
+      icon: <Timeline sx={{ fontSize: 40, color: '#4CAF50' }} />,
+      title: 'Learning Resources',
+      description: 'Access curated courses and materials to enhance your competitive programming journey.'
+    },
+    {
+      icon: <Group sx={{ fontSize: 40, color: '#2196F3' }} />,
+      title: 'Community',
+      description: 'Be part of a growing community of competitive programmers at MLRIT.'
+    }
+  ];
+
   return (
-    <div className="relative overflow-hidden bg-scope-glow text-scope-text">
-      <motion.div
-        style={{ y: glowY }}
-        className="pointer-events-none absolute -left-36 top-8 h-96 w-96 rounded-full bg-scope-violet/20 blur-3xl"
+    <>
+      {/* Global styles to ensure the landing page takes the full screen */}
+      <GlobalStyles 
+        styles={{
+          'body, html': {
+            margin: 0,
+            padding: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#0077b6',
+            overflowX: 'hidden'
+          },
+          '#root': {
+            width: '100%',
+            margin: 0,
+            padding: 0
+          },
+          '#root > div': {
+            width: '100%',
+            margin: 0,
+            padding: 0
+          }
+        }} 
       />
-      <motion.div
-        animate={{
-          x: mouse.x * 14,
-          y: mouse.y * 14,
-        }}
-        transition={{ type: 'spring', stiffness: 30, damping: 18 }}
-        className="pointer-events-none absolute right-0 top-20 h-[26rem] w-[26rem] rounded-full bg-scope-cyan/10 blur-3xl"
-      />
-      <div className="scope-grid pointer-events-none absolute inset-0 opacity-60" />
-
-      <section className="relative mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-16 px-6 pb-20 pt-28 md:grid-cols-2 md:px-10 xl:px-2">
-        <motion.div initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-          <p className="inline-flex rounded-full border border-scope-cyan/40 bg-scope-cyan/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-scope-cyan">
-            Elite Cohort Intelligence Platform
-          </p>
-          <h1 className="mt-7 font-display text-5xl font-semibold leading-[1.05] text-white sm:text-6xl lg:text-7xl">
-            Track. Compete. Improve.
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-scope-muted sm:text-lg">
-            Scope Cohorts unifies coding performance analytics, structured cohort learning, and competitive leaderboards into one premium growth engine.
-          </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="scope-button-glow rounded-xl bg-gradient-to-r from-scope-blue to-scope-violet px-7 py-4 font-semibold text-white shadow-neon transition duration-300 hover:brightness-110"
-            >
-              Get Started
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/cohorts')}
-              className="rounded-xl border border-scope-line bg-scope-panel/40 px-7 py-4 font-semibold text-scope-text backdrop-blur-xl transition hover:border-scope-cyan hover:text-white"
-            >
-              Explore Cohorts
-            </button>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.15, duration: 0.8 }}
-          className="relative"
+      
+      <Box sx={{ 
+        width: '100%',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: '#0077b6', // Main blue background color
+        margin: 0,
+        padding: 0,
+        boxSizing: 'border-box',
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        overflowX: 'hidden'
+      }}>
+        {/* Hero Section with Enhanced Design */}
+        <Box 
+          sx={{ 
+            background: 'linear-gradient(135deg, #005f8f 0%, #0077b6 50%, #00a8e8 100%)',
+            width: '100%',
+            height: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            color: 'white',
+            position: 'relative',
+            overflow: 'hidden',
+            py: { xs: 4, md: 0 }
+          }}
         >
-          <div className="absolute -left-6 top-6 h-20 w-48 rounded-2xl border border-scope-line bg-scope-panel/60 p-4 backdrop-blur-xl floating-card">
-            <p className="text-xs uppercase tracking-[0.2em] text-scope-muted">Current Rank</p>
-            <p className="mt-2 text-2xl font-semibold text-scope-cyan">#{heroPulse.rank}</p>
-          </div>
+          {/* Animated Background Elements */}
+          <Box sx={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            opacity: 0.07,
+            backgroundImage: 'url("data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z" fill="%23ffffff" fill-opacity="1" fill-rule="evenodd"/%3E%3C/svg%3E")',
+            backgroundSize: '15rem',
+            zIndex: 1
+          }} />
+          
+          {/* Floating Geometric Shapes */}
+          <Box sx={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden',
+            zIndex: 0
+          }}>
+            {/* Circle 1 */}
+            <Box sx={{
+              position: 'absolute',
+              width: '300px',
+              height: '300px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(0,168,232,0.3) 0%, rgba(0,119,182,0) 70%)',
+              top: '10%',
+              left: '5%',
+              animation: 'float 15s infinite ease-in-out'
+            }} />
+            
+            {/* Circle 2 */}
+            <Box sx={{
+              position: 'absolute',
+              width: '200px',
+              height: '200px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(0,168,232,0.2) 0%, rgba(0,119,182,0) 70%)',
+              bottom: '15%',
+              right: '10%',
+              animation: 'float 20s infinite ease-in-out reverse'
+            }} />
+            
+            {/* Circle 3 */}
+            <Box sx={{
+              position: 'absolute',
+              width: '150px',
+              height: '150px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)',
+              top: '30%',
+              right: '20%',
+              animation: 'float 12s infinite ease-in-out'
+            }} />
+            
+            {/* Blob Shape */}
+            <Box sx={{
+              position: 'absolute',
+              width: '500px',
+              height: '500px',
+              bottom: '-200px',
+              left: '-100px',
+              opacity: 0.05,
+              backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath fill=\'%23FFFFFF\' d=\'M47.5,-57.2C59.9,-46.1,67.3,-29.7,69.4,-13.2C71.5,3.3,68.3,19.8,59.9,32.5C51.5,45.2,37.8,54.1,22.7,59.5C7.6,64.9,-8.9,66.8,-23.6,62C-38.3,57.1,-51.1,45.4,-58.9,30.8C-66.7,16.1,-69.4,-1.7,-65.3,-17.9C-61.3,-34.1,-50.4,-48.8,-37,-58.7C-23.5,-68.6,-7.5,-73.6,7.2,-81.9C21.8,-90.2,43.6,-101.9,46.2,-93.1C48.8,-84.4,35.1,-68.2,47.5,-57.2Z\' transform=\'translate(100 100)\' /%3E%3C/svg%3E")',
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat'
+            }} />
+            
+            {/* Animated flow overlay */}
+            <Box sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'url("data:image/svg+xml,%3Csvg width=\'2000\' height=\'1500\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3ClinearGradient id=\'a\' gradientTransform=\'rotate(90)\'%3E%3Cstop offset=\'5%\' stop-color=\'%23007cbe\' stop-opacity=\'0\'/%3E%3Cstop offset=\'95%\' stop-color=\'%230096d5\' stop-opacity=\'.1\'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill=\'url(%23a)\' d=\'M0 0h2000v1500H0z\'/%3E%3Cpath d=\'M0 0v166c280 187 1720 187 2000 0V0z\' fill-opacity=\'.1\'/%3E%3C/svg%3E")',
+              backgroundSize: 'cover',
+              opacity: 0.3
+            }} />
+          </Box>
 
-          <div className="absolute -right-6 top-20 h-20 w-48 rounded-2xl border border-scope-line bg-scope-panel/60 p-4 backdrop-blur-xl floating-card-alt">
-            <p className="text-xs uppercase tracking-[0.2em] text-scope-muted">Streak</p>
-            <p className="mt-2 text-2xl font-semibold text-scope-violet">{heroPulse.streak} days</p>
-          </div>
-
-          <div className="absolute -bottom-6 left-8 h-20 w-52 rounded-2xl border border-scope-line bg-scope-panel/60 p-4 backdrop-blur-xl floating-card">
-            <p className="text-xs uppercase tracking-[0.2em] text-scope-muted">Solved This Month</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{heroPulse.solved}</p>
-          </div>
-
-          <div className="rounded-3xl border border-scope-line/80 bg-scope-panel/60 p-6 backdrop-blur-2xl shadow-neon">
-            <div className="mb-5 flex items-center justify-between">
-              <p className="text-sm uppercase tracking-[0.2em] text-scope-muted">Live Dashboard Mockup</p>
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.9)]" />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {[72, 84, 67].map((value, index) => (
-                <div key={index} className="rounded-xl border border-scope-line/60 bg-scope-deep/70 p-3">
-                  <p className="text-xs text-scope-muted">Metric {index + 1}</p>
-                  <p className="mt-2 text-xl font-semibold text-white">{value}%</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 rounded-2xl border border-scope-line bg-scope-ink/70 p-4">
-              <p className="mb-4 text-xs uppercase tracking-[0.2em] text-scope-muted">Weekly Performance</p>
-              <div className="flex h-28 items-end gap-2">
-                {[35, 52, 44, 70, 66, 82, 88].map((bar, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${bar}%` }}
-                    transition={{ delay: 0.3 + index * 0.08, duration: 0.55 }}
-                    className="flex-1 rounded-t-md bg-gradient-to-t from-scope-blue to-scope-cyan"
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
-      <section className="relative mx-auto max-w-7xl px-6 pb-20 md:px-10 xl:px-2">
-        <motion.div
-          variants={{ show: { transition: { staggerChildren: 0.08 } } }}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-          className="grid grid-cols-2 gap-4 md:grid-cols-4"
-        >
-          {stats.map((item) => (
-            <Counter key={item.label} value={item.value} suffix={item.suffix} label={item.label} />
-          ))}
-        </motion.div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10 xl:px-2">
-        <SectionHeading
-          eyebrow="Core Capabilities"
-          title="Everything You Need To Build Competitive Consistency"
-          subtitle="Purpose-built modules for motivated students, coding clubs, and high-performance cohorts."
-        />
-        <div className="grid gap-5 md:grid-cols-2">
-          {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ delay: index * 0.08, duration: 0.6 }}
-              className="group rounded-3xl border border-scope-line bg-white/[0.03] p-7 backdrop-blur-xl transition hover:-translate-y-1 hover:border-scope-cyan/70"
-            >
-              <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-scope-blue to-scope-violet font-mono text-sm font-semibold text-white shadow-neon">
-                {feature.icon}
-              </div>
-              <h3 className="text-xl font-semibold text-white">{feature.title}</h3>
-              <p className="mt-3 leading-7 text-scope-muted">{feature.description}</p>
-              <p className="mt-5 text-sm font-medium text-scope-cyan transition group-hover:translate-x-1">
-                Explore module {'->'}
-              </p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10 xl:px-2">
-        <SectionHeading
-          eyebrow="Interactive Preview"
-          title="See Leaderboards, Analytics, and Profiles In Motion"
-          subtitle="Switch between key product experiences with seamless transitions."
-        />
-        <div className="rounded-3xl border border-scope-line bg-scope-panel/50 p-6 backdrop-blur-2xl sm:p-8">
-          <div className="mb-6 flex flex-wrap gap-3">
-            {Object.keys(demoTabs).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveTab(key)}
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  activeTab === key
-                    ? 'bg-gradient-to-r from-scope-blue to-scope-violet text-white shadow-neon'
-                    : 'border border-scope-line bg-scope-deep/70 text-scope-muted hover:text-scope-text'
-                }`}
-              >
-                {key.charAt(0).toUpperCase() + key.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -18 }}
-              transition={{ duration: 0.35 }}
-              className="rounded-2xl border border-scope-line bg-scope-ink/70 p-6"
-            >
-              <h3 className="text-2xl font-semibold text-white">{activeDemo.title}</h3>
-              <p className="mt-2 text-scope-muted">{activeDemo.caption}</p>
-
-              {activeTab === 'leaderboard' && (
-                <div className="mt-6 space-y-3">
-                  {activeDemo.rows.map((row, index) => (
-                    <div key={row.name} className="flex items-center justify-between rounded-xl border border-scope-line/70 bg-scope-panel/60 px-4 py-3">
-                      <div>
-                        <p className="font-semibold text-white">{index + 1}. {row.name}</p>
-                        <p className="text-sm text-scope-muted">Streak {row.streak}</p>
-                      </div>
-                      <p className="text-lg font-semibold text-scope-cyan">{row.points}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 'analytics' && (
-                <div className="mt-7 flex h-44 items-end gap-3">
-                  {activeDemo.bars.map((bar, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ height: 0 }}
-                      animate={{ height: `${bar}%` }}
-                      transition={{ delay: index * 0.06, duration: 0.45 }}
-                      className="flex-1 rounded-t-lg bg-gradient-to-t from-scope-violet to-scope-cyan"
-                    />
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 'profile' && (
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {activeDemo.chips.map((chip) => (
-                    <div key={chip} className="rounded-xl border border-scope-line/70 bg-scope-panel/50 px-4 py-3 text-scope-text">
-                      {chip}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10 xl:px-2">
-        <SectionHeading
-          eyebrow="Cohorts Engine"
-          title="Structured Paths, Weekly Goals, Competitive Momentum"
-          subtitle="An accountability-first journey that compounds problem-solving confidence week by week."
-        />
-        <div className="grid gap-5 md:grid-cols-2">
-          {cohortTimeline.map((item, index) => (
-            <motion.div
-              key={item.week}
-              initial={{ opacity: 0, x: index % 2 ? 30 : -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.6 }}
-              className="relative rounded-2xl border border-scope-line bg-white/[0.03] p-6 backdrop-blur-xl"
-            >
-              <span className="mb-3 inline-block rounded-lg border border-scope-cyan/30 bg-scope-cyan/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-scope-cyan">
-                {item.week}
-              </span>
-              <h3 className="text-xl font-semibold text-white">{item.title}</h3>
-              <p className="mt-3 text-scope-muted">{item.text}</p>
-              <div className="mt-5 h-1 w-full overflow-hidden rounded bg-scope-line/70">
-                <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: '100%' }}
-                  viewport={{ once: true, amount: 0.4 }}
-                  transition={{ duration: 0.9, delay: index * 0.1 }}
-                  className="h-full bg-gradient-to-r from-scope-blue to-scope-cyan"
-                />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10 xl:px-2">
-        <SectionHeading
-          eyebrow="How It Works"
-          title="Simple Flow, Strong Outcomes"
-          subtitle="From account connection to ranking improvements in four focused steps."
-        />
-        <div className="grid gap-4 md:grid-cols-4">
-          {steps.map((step, index) => (
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.5, delay: index * 0.08 }}
-              className="relative rounded-2xl border border-scope-line bg-scope-panel/45 p-5"
-            >
-              <p className="text-sm uppercase tracking-[0.2em] text-scope-cyan">Step {index + 1}</p>
-              <p className="mt-2 text-lg font-semibold text-white">{step}</p>
-              {index < steps.length - 1 && (
-                <motion.span
-                  aria-hidden
-                  className="absolute -right-2 top-1/2 hidden h-0.5 w-5 bg-gradient-to-r from-scope-cyan to-transparent md:block"
-                  animate={{ opacity: [0.3, 1, 0.3], x: [0, 5, 0] }}
-                  transition={{ duration: 1.6, repeat: Infinity, delay: index * 0.2 }}
-                />
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10 xl:px-2">
-        <SectionHeading
-          eyebrow="Student Success"
-          title="Built By Community, Proven By Results"
-          subtitle="Stories from students using Scope Cohorts to drive measurable coding growth."
-        />
-        <div className="grid gap-5 md:grid-cols-3">
-          {testimonials.map((item, index) => (
-            <motion.div
-              key={item.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.55, delay: index * 0.08 }}
-              className="rounded-2xl border border-scope-line bg-white/[0.03] p-6"
-            >
-              <p className="text-sm leading-7 text-scope-muted">"{item.text}"</p>
-              <div className="mt-5 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-scope-blue to-scope-violet text-sm font-semibold text-white">
-                  {item.name
-                    .split(' ')
-                    .map((part) => part[0])
-                    .join('')}
-                </div>
-                <div>
-                  <p className="font-semibold text-white">{item.name}</p>
-                  <p className="text-sm text-scope-muted">{item.role}</p>
-                </div>
-              </div>
-              <div className="mt-4 text-scope-cyan">★★★★★</div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10 xl:px-2">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.7 }}
-          className="relative overflow-hidden rounded-3xl border border-scope-line bg-gradient-to-br from-scope-deep via-scope-panel to-scope-deep p-8 text-center sm:p-12"
-        >
-          <div className="pointer-events-none absolute -top-14 left-1/2 h-44 w-44 -translate-x-1/2 rounded-full bg-scope-cyan/20 blur-3xl" />
-          <p className="text-xs uppercase tracking-[0.3em] text-scope-cyan">Ready To Level Up</p>
-          <h2 className="mx-auto mt-4 max-w-2xl font-display text-3xl font-semibold text-white sm:text-5xl">
-            Start Your Coding Journey Today
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-scope-muted">
-            Join high-performing peers, unlock structured growth, and convert consistency into rank gains.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/register')}
-            className="scope-button-glow mt-8 rounded-xl bg-gradient-to-r from-scope-blue to-scope-violet px-8 py-4 text-lg font-semibold text-white shadow-neon transition hover:brightness-110"
+          <Container 
+            maxWidth={false} 
+            disableGutters 
+            sx={{ 
+              display: 'flex', 
+              width: '100%', 
+              height: '100%',
+              px: { xs: 3, sm: 4, md: 6, lg: 8 },
+              position: 'relative',
+              zIndex: 2
+            }}
           >
-            Launch Scope Cohorts
-          </button>
-        </motion.div>
-      </section>
-    </div>
+            <Fade in={true} timeout={1000}>
+              <Box
+                sx={{ 
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  alignItems: 'center',
+                  justifyContent: { xs: 'center', md: 'space-between' },
+                  width: '100%',
+                  height: '100%',
+                  gap: 4
+                }}
+              >
+                <Box sx={{ 
+                  maxWidth: { xs: '100%', md: '55%' }, 
+                  textAlign: { xs: 'center', md: 'left' },
+                  position: 'relative',
+                  zIndex: 3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: { xs: 'center', md: 'flex-start' }
+                }}>
+                  <Stack 
+                    direction="row" 
+                    spacing={2} 
+                    alignItems="center" 
+                    sx={{ 
+                      mb: 4, 
+                      justifyContent: { xs: 'center', md: 'flex-start' },
+                      position: 'relative',
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        width: { xs: '40px', md: '60px' },
+                        height: '2px',
+                        background: 'linear-gradient(90deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%)',
+                        bottom: '-10px',
+                        left: { xs: 'calc(50% - 20px)', md: '0' }
+                      }
+                    }}
+                  >
+                    <Box sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(5px)',
+                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                      <img 
+                        src="/scope_logo.png" 
+                        alt="Scope Logo" 
+                        style={{ 
+                          width: 40, 
+                          height: 40,
+                          objectFit: 'contain',
+                          filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.2))'
+                        }} 
+                      />
+                    </Box>
+                    <Fade in={true} style={{ transitionDelay: '300ms' }}>
+                      <Typography 
+                        variant="h6" 
+                        component="span"
+                        sx={{ 
+                          fontWeight: 700,
+                          letterSpacing: 2,
+                          textTransform: 'uppercase',
+                          color: 'rgba(255, 255, 255, 0.95)',
+                          background: 'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(200,240,255,0.9) 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                        }}
+                      >
+                        SCOPE presents
+                      </Typography>
+                    </Fade>
+                  </Stack>
+                  
+                  <Fade in={true} style={{ transitionDelay: '500ms' }}>
+                    <Typography
+                      variant="h1"
+                      component="h1"
+                      gutterBottom
+                      sx={{
+                        fontWeight: 800,
+                        lineHeight: 1.1,
+                        fontSize: { xs: '2.75rem', sm: '3.5rem', md: '4.5rem' },
+                        textShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+                        mb: 3,
+                        background: 'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(200,240,255,0.9) 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        position: 'relative',
+                        textAlign: { xs: 'center', md: 'left' },
+                        '&::after': {
+                          content: '""',
+                          position: 'absolute',
+                          width: { xs: '80px', md: '120px' },
+                          height: '8px',
+                          background: 'linear-gradient(90deg, rgba(0,168,232,0.7) 0%, rgba(0,168,232,0) 100%)',
+                          bottom: '-10px',
+                          left: { xs: 'calc(50% - 40px)', md: '0' },
+                          borderRadius: '4px'
+                        }
+                      }}
+                    >
+                      Code Stats
+                    </Typography>
+                  </Fade>
+                  
+                  <Fade in={true} style={{ transitionDelay: '700ms' }}>
+                    <Typography 
+                      variant="h6" 
+                      color="rgba(255, 255, 255, 0.9)"
+                      sx={{ 
+                        mb: 6, 
+                        fontWeight: 400, 
+                        fontSize: '1.25rem', 
+                        maxWidth: '600px',
+                        lineHeight: 1.6,
+                        textShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                        position: 'relative',
+                        pl: { md: 4, xs: 0 },
+                        textAlign: { xs: 'center', md: 'left' },
+                        mx: { xs: 'auto', md: 0 },
+                        '&::before': {
+                          content: { md: '""', xs: 'none' },
+                          position: 'absolute',
+                          width: '2px',
+                          height: '100%',
+                          background: 'linear-gradient(180deg, rgba(0,168,232,0.7) 0%, rgba(0,168,232,0) 100%)',
+                          left: '0',
+                          top: '0',
+                          borderRadius: '2px'
+                        }
+                      }}
+                    >
+                      Your one-stop solution for tracking competitive programming progress across multiple platforms
+                    </Typography>
+                  </Fade>
+                  
+                  <Stack 
+                    direction={{ xs: 'column', sm: 'row' }} 
+                    spacing={3}
+                    sx={{ 
+                      justifyContent: { xs: 'center', md: 'flex-start' },
+                      width: { xs: '100%', sm: 'auto' },
+                      alignItems: 'center'
+                    }}
+                  >
+                    <Fade in={true} style={{ transitionDelay: '900ms' }}>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        onClick={() => navigate('/register')}
+                        endIcon={<KeyboardArrowRight />}
+                        sx={{ 
+                          py: 2, 
+                          px: 4,
+                          fontWeight: 600,
+                          fontSize: '1rem',
+                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                          color: 'white',
+                          borderRadius: '50px',
+                          boxShadow: '0 5px 15px rgba(0, 0, 0, 0.2)',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          width: { xs: '100%', sm: 'auto' },
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: '-100%',
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                            transition: 'all 0.5s',
+                          },
+                          '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            transform: 'translateY(-3px)',
+                            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)',
+                            '&::before': {
+                              left: '100%'
+                            }
+                          }
+                        }}
+                      >
+                        Get Started
+                      </Button>
+                    </Fade>
+                    
+                    <Fade in={true} style={{ transitionDelay: '1100ms' }}>
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        onClick={() => navigate('/login')}
+                        sx={{ 
+                          py: 2, 
+                          px: 4,
+                          fontWeight: 600,
+                          fontSize: '1rem',
+                          color: 'white',
+                          borderColor: 'rgba(255, 255, 255, 0.4)',
+                          borderWidth: '2px',
+                          borderRadius: '50px',
+                          backdropFilter: 'blur(5px)',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          transition: 'all 0.3s ease',
+                          width: { xs: '100%', sm: 'auto' },
+                          '&:hover': {
+                            borderColor: 'white',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            transform: 'translateY(-3px)',
+                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)'
+                          }
+                        }}
+                      >
+                        Sign In
+                      </Button>
+                    </Fade>
+                  </Stack>
+                </Box>
+                
+                {/* Enhanced Dark container for Scope Club logo on the right */}
+                {!isMobile && (
+                  <Fade in={true} style={{ transitionDelay: '700ms' }}>
+                    <Box
+                      sx={{ 
+                        maxWidth: '40%',
+                        minWidth: { md: '400px' },
+                        minHeight: '350px',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        position: 'relative',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '20px',
+                        p: 4,
+                        boxShadow: '0px 20px 40px rgba(0, 0, 0, 0.3), 0px 0px 50px rgba(0, 168, 232, 0.1)',
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          width: '150%',
+                          height: '150%',
+                          background: 'radial-gradient(circle, rgba(0,168,232,0.05) 0%, rgba(0,0,0,0) 70%)',
+                          top: '-25%',
+                          left: '-25%'
+                        }
+                      }}
+                    >
+                      {/* Decorative dots */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: 15,
+                        height: 15,
+                        borderRadius: '50%',
+                        backgroundColor: '#444',
+                        top: '20px',
+                        left: '20px',
+                      }} />
+                      
+                      <Box sx={{
+                        position: 'absolute',
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        backgroundColor: '#666',
+                        top: '20px',
+                        left: '45px',
+                      }} />
+                      
+                      <Box sx={{
+                        position: 'absolute',
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        backgroundColor: '#333',
+                        top: '20px',
+                        left: '65px',
+                      }} />
+                      
+                      {/* Decorative grid lines */}
+                      <Box sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        opacity: 0.2,
+                        backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                      }} />
+                      
+                      {/* Main scope logo in center */}
+                      <Box
+                        component="img"
+                        src="/scope_logo.png"
+                        alt="SCOPE CLUB"
+                        sx={{
+                          width: '100%',
+                          maxWidth: 300,
+                          height: 'auto',
+                          objectFit: 'contain',
+                          filter: 'drop-shadow(0px 10px 25px rgba(0, 0, 0, 0.5))',
+                          animation: 'pulse 4s infinite ease-in-out',
+                          '@keyframes pulse': {
+                            '0%': { opacity: 0.9, transform: 'scale(0.98)' },
+                            '50%': { opacity: 1, transform: 'scale(1.02)' },
+                            '100%': { opacity: 0.9, transform: 'scale(0.98)' },
+                          }
+                        }}
+                      />
+                      
+                      {/* Decorative dot in bottom right */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #0077b6 0%, #00a8e8 100%)',
+                        boxShadow: '0 0 15px rgba(0, 168, 232, 0.7)',
+                        bottom: '30px',
+                        right: '30px',
+                      }} />
+                      
+                      {/* Glowing effect */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '80%',
+                        height: '40%',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(ellipse at center, rgba(0,168,232,0.15) 0%, rgba(0,119,182,0) 70%)',
+                        filter: 'blur(20px)',
+                        bottom: '-10%',
+                        left: '10%',
+                      }} />
+                    </Box>
+                  </Fade>
+                )}
+              </Box>
+            </Fade>
+          </Container>
+        </Box>
+
+        {/* Wave separator */}
+        <Box sx={{
+          height: 50,
+          width: '100%',
+          background: 'white',
+          position: 'relative',
+          zIndex: 1,
+          mt: 0,
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: -50,
+            left: 0,
+            right: 0,
+            height: 50,
+            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120'%3E%3Cpath fill='%23FFFFFF' fill-opacity='1' d='M0,96L80,101.3C160,107,320,117,480,112C640,107,800,85,960,80C1120,75,1280,85,1360,90.7L1440,96L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }
+        }} />
+
+        {/* Features Section */}
+        <Box sx={{ 
+          py: 8, 
+          bgcolor: 'white',
+          width: '100%'
+        }}>
+          <Container 
+            maxWidth={false} 
+            disableGutters
+            sx={{ 
+              width: '100%', 
+              px: { xs: 3, sm: 4, md: 6, lg: 8 } 
+            }}
+          >
+            <Fade in={true} timeout={1000}>
+              <Box sx={{ textAlign: 'center', mb: 8 }}>
+                <Typography 
+                  variant="overline" 
+                  component="p" 
+                  sx={{ 
+                    color: '#0077b6', 
+                    fontWeight: 600,
+                    letterSpacing: 2 
+                  }}
+                >
+                  POWERFUL FEATURES
+                </Typography>
+                <Typography 
+                  variant="h3" 
+                  component="h2" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 2,
+                    color: '#0077b6'
+                  }}
+                >
+                  Everything You Need
+                </Typography>
+                <Typography 
+                  variant="body1" 
+                  color="text.secondary" 
+                  sx={{ 
+                    maxWidth: 650, 
+                    mx: 'auto',
+                    fontSize: '1.1rem',
+                    color: '#000',
+                    fontWeight: 500
+                  }}
+                >
+                  Code Stats offers a suite of essential tools to help you monitor, analyze, and improve your competitive programming skills.
+                </Typography>
+              </Box>
+            </Fade>
+
+            <Grid container spacing={4} sx={{ mt: 2, width: '100%', mx: 0 }}>
+              {features.map((feature, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index}>
+                  <Zoom in={true} style={{ transitionDelay: `${200 * index}ms` }}>
+                    <Paper
+                      component={Card}
+                      elevation={3}
+                      sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        backgroundColor: '#0077b6',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        boxShadow: '0px 10px 25px rgba(0, 119, 182, 0.3)',
+                        '&:hover': {
+                          transform: 'translateY(-10px)',
+                          boxShadow: '0px 15px 35px rgba(0, 119, 182, 0.4)',
+                        }
+                      }}
+                    >
+                      <Box 
+                        sx={{ 
+                          p: 3, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          backgroundColor: 'rgba(255,255,255,0.15)',
+                          borderBottom: '1px solid rgba(255,255,255,0.1)'
+                        }}
+                      >
+                        <Avatar
+                          sx={{
+                            width: 70,
+                            height: 70,
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                          }}
+                        >
+                          {feature.icon}
+                        </Avatar>
+                      </Box>
+                      <CardContent sx={{ p: 3, flexGrow: 1 }}>
+                        <Typography 
+                          variant="h6" 
+                          component="h3" 
+                          gutterBottom
+                          sx={{ 
+                            fontWeight: 600,
+                            textAlign: 'center',
+                            color: 'white'
+                          }}
+                        >
+                          {feature.title}
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            textAlign: 'center',
+                            lineHeight: 1.6,
+                            color: 'rgba(255,255,255,0.9)'
+                          }}
+                        >
+                          {feature.description}
+                        </Typography>
+                      </CardContent>
+                    </Paper>
+                  </Zoom>
+                </Grid>
+              ))}
+            </Grid>
+          </Container>
+        </Box>
+
+        {/* Footer Section with Logo and Copyright */}
+        <Box 
+          component="footer" 
+          sx={{ 
+            py: 4, 
+            bgcolor: '#f8f9fa',
+            borderTop: '1px solid rgba(0,119,182,0.1)',
+            width: '100%'
+          }}
+        >
+          <Container 
+            maxWidth={false} 
+            disableGutters
+            sx={{ 
+              width: '100%', 
+              px: { xs: 3, sm: 4, md: 6, lg: 8 } 
+            }}
+          >
+            <Fade in={true} timeout={1000}>
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                justifyContent="space-between" 
+                alignItems="center" 
+                spacing={2}
+              >
+                <a
+                  href="http://scopeclub.mlrit.ac.in/teams"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center' }}
+                >
+                  <img 
+                    src="/footer-light.png" 
+                    alt="SCOPE CLUB" 
+                    style={{ height: 32, width: 'auto' }} 
+                  />
+                </a>
+                <Typography variant="body2" sx={{ color: '#000' }}>
+                  © {new Date().getFullYear()} MLRIT SCOPE. All rights reserved.
+                </Typography>
+              </Stack>
+            </Fade>
+          </Container>
+        </Box>
+      </Box>
+    </>
   );
 };
 
