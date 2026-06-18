@@ -1,6 +1,4 @@
 <div align="center">
-XXX
-
 <!-- Logo Placeholder -->
 <img src="https://res.cloudinary.com/dpimdnvpr/image/upload/v1767819386/Group_42_tonazk.png" alt="SCOPE Logo"/>
 
