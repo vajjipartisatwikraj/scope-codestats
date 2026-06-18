@@ -1,0 +1,56 @@
+name: Deploy CodeStats
+
+on:
+  push:
+    branches:
+      - version-2.0.0
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+
+          script: |
+            set -e
+
+            cd /home/ubuntu/scope-cohorts
+
+            git fetch origin
+
+            git checkout version-2.0.0
+
+            git reset --hard origin/version-2.0.0
+
+            echo "Building frontend"
+
+            cd frontend
+
+            npm install
+
+            npm run build
+
+            sudo rm -rf /var/www/codestats/*
+
+            sudo cp -R dist/* /var/www/codestats/
+
+            sudo systemctl restart nginx
+
+            echo "Restarting backend"
+
+            cd ../backend
+
+            npm install
+
+            pm2 restart all
+
+            pm2 save
+
+            echo "Deployment successful"
