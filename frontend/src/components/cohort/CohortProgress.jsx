@@ -91,6 +91,10 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Export-specific states
+  const [exportGraduationYears, setExportGraduationYears] = useState([]); // Array of selected years for export
+  const [showExportOptions, setShowExportOptions] = useState(false); // Toggle export options modal/dropdown
+
   // Get unique departments, years, and sections for filter options
   const uniqueDepartments = [
     ...new Set(
@@ -525,11 +529,22 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
 
       // ── Pre-compute data ──
       const totalModules = cohort?.modules?.length || 0;
-      const enrolledCount = stats?.enrolledUsers || leaderboard.length;
+      
+      // Filter leaderboard by selected graduation years if export years are specified
+      let exportedLeaderboard = leaderboard;
+      if (exportGraduationYears.length > 0) {
+        exportedLeaderboard = leaderboard.filter((user) => {
+          const userYear = user.user?.graduatingYear || user.user?.graduationYear;
+          return exportGraduationYears.includes(userYear?.toString());
+        });
+      }
+      
+      // Calculate enrolled count based on filtered or all leaderboard data
+      const enrolledCount = exportedLeaderboard.length;
       const cohortTitle = cohort?.title || cohort?.name || "Untitled Cohort";
 
       // Sort leaderboard by score descending for consistent ranking
-      const sortedLeaderboard = [...leaderboard].sort(
+      const sortedLeaderboard = [...exportedLeaderboard].sort(
         (a, b) => (b.totalScore || 0) - (a.totalScore || 0)
       );
 
@@ -550,6 +565,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
         ["End Date", cohort?.endDate ? new Date(cohort.endDate).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) : "-"],
         ["Total Modules", totalModules],
         ["Total Questions", cohort?.modules?.reduce((sum, m) => sum + (m?.questions?.length || 0), 0) || 0],
+        ...(exportGraduationYears.length > 0 ? [["Graduation Years (Filtered)", exportGraduationYears.sort().join(", ")]] : []),
         ["Total Eligible Students", stats?.totalEnrolled || "-"],
         ["Enrolled Students", enrolledCount],
         ["Active Students", stats?.activeUsers || 0],
@@ -926,7 +942,14 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
       });
       const safeName = cohortTitle.replace(/[^a-z0-9]/gi, "_");
       const dateStr = new Date().toISOString().split("T")[0];
-      const filename = `${safeName}_Progress_Report_${dateStr}.xlsx`;
+      
+      // Add graduation year to filename if filters are applied
+      let graduationYearPart = "";
+      if (exportGraduationYears.length > 0 && exportGraduationYears.length < uniqueYears.length) {
+        graduationYearPart = `_Grad${exportGraduationYears.sort().join("-")}`;
+      }
+      
+      const filename = `${safeName}_Progress_Report${graduationYearPart}_${dateStr}.xlsx`;
 
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -1528,27 +1551,110 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
               )}
             </Paper>
 
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-              {/* Export Button (Admin/Teacher Only) */}
+            <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+              {/* Export Options Section (Admin/Teacher Only) */}
               {isAdmin && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
-                  onClick={handleExportToExcel}
-                  sx={{
-                    height: "32px",
-                    fontSize: "0.78rem",
-                    textTransform: "none",
-                    bgcolor: "#0088CC",
-                    "&:hover": { bgcolor: "#006699" },
-                    boxShadow: "none",
-                    px: 2,
-                    borderRadius: 2,
-                  }}
-                >
-                  Export
-                </Button>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                  {showExportOptions && (
+                    <FormControl size="small" variant="outlined" sx={{ minWidth: 200 }}>
+                      <InputLabel
+                        sx={{
+                          color: isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)",
+                        }}
+                      >
+                        Select Graduation Year(s)
+                      </InputLabel>
+                      <Select
+                        multiple
+                        value={exportGraduationYears}
+                        onChange={(e) => setExportGraduationYears(e.target.value)}
+                        label="Select Graduation Year(s)"
+                        sx={{
+                          bgcolor: isDarkMode ? "rgba(23, 23, 23, 0.8)" : "#fff",
+                          color: isDarkMode ? "#fff" : "#000",
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#0088CC",
+                          },
+                        }}
+                        renderValue={(selected) =>
+                          selected.length === 0
+                            ? "All Years"
+                            : selected.length === uniqueYears.length
+                            ? "All Years"
+                            : `${selected.length} year(s) selected`
+                        }
+                      >
+                        <MenuItem value="">
+                          <em>All Years</em>
+                        </MenuItem>
+                        {uniqueYears.map((yr) => (
+                          <MenuItem key={yr} value={yr.toString()}>
+                            {yr}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => {
+                      if (showExportOptions) {
+                        handleExportToExcel();
+                        setShowExportOptions(false);
+                        setExportGraduationYears([]);
+                      } else {
+                        setShowExportOptions(true);
+                      }
+                    }}
+                    sx={{
+                      height: "32px",
+                      fontSize: "0.78rem",
+                      textTransform: "none",
+                      bgcolor: showExportOptions ? "#006699" : "#0088CC",
+                      "&:hover": { bgcolor: "#006699" },
+                      boxShadow: "none",
+                      px: 2,
+                      borderRadius: 2,
+                    }}
+                  >
+                    {showExportOptions ? "Confirm Export" : "Export"}
+                  </Button>
+
+                  {showExportOptions && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setShowExportOptions(false);
+                        setExportGraduationYears([]);
+                      }}
+                      sx={{
+                        height: "32px",
+                        fontSize: "0.78rem",
+                        textTransform: "none",
+                        color: isDarkMode ? "#fff" : "#0088CC",
+                        borderColor: isDarkMode ? "rgba(255,255,255,0.3)" : "#0088CC",
+                        "&:hover": {
+                          borderColor: isDarkMode ? "rgba(255,255,255,0.5)" : "#006699",
+                          bgcolor: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,136,204,0.05)",
+                        },
+                        px: 2,
+                        borderRadius: 2,
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </Box>
               )}
               <Tooltip title="Refresh Leaderboard">
                 <IconButton
