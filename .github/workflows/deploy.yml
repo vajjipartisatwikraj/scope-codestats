@@ -21,36 +21,45 @@ jobs:
           script: |
             set -e
 
+            echo "Loading NVM..."
+
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            echo "Node Version:"
+            node -v
+
+            echo "NPM Version:"
+            npm -v
+
+            echo "Moving to project directory..."
             cd /home/ubuntu/scope-cohorts
 
+            echo "Updating source code..."
             git fetch origin
-
             git checkout version-2.0.0
-
             git reset --hard origin/version-2.0.0
 
-            echo "Building frontend"
-
+            echo "Installing frontend dependencies..."
             cd frontend
-
             npm install
 
+            echo "Building frontend..."
             npm run build
 
+            echo "Deploying frontend..."
             sudo rm -rf /var/www/codestats/*
-
             sudo cp -R dist/* /var/www/codestats/
 
+            echo "Restarting nginx..."
             sudo systemctl restart nginx
 
-            echo "Restarting backend"
-
+            echo "Installing backend dependencies..."
             cd ../backend
-
             npm install
 
+            echo "Restarting backend..."
             pm2 restart all
-
             pm2 save
 
-            echo "Deployment successful"
+            echo "Deployment completed successfully!"
