@@ -17,6 +17,10 @@ jobs:
         with:
           node-version: 20
 
+      - name: Create Frontend Env
+        run: |
+          echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
+
       - name: Build Frontend
         working-directory: frontend
         run: |
@@ -51,10 +55,13 @@ jobs:
             cd /home/ubuntu/scope-cohorts
 
             git fetch origin
+
             git checkout version-2.0.0
+
             git reset --hard origin/version-2.0.0
 
             sudo rm -rf /var/www/codestats/*
+
             sudo tar -xzf /home/ubuntu/frontend-dist.tar.gz -C /var/www/codestats
 
             cd backend
@@ -62,6 +69,7 @@ jobs:
             npm install
 
             pm2 restart all
+
             pm2 save
 
             sudo systemctl restart nginx
