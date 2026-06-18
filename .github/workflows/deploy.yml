@@ -56,8 +56,8 @@ steps:
         git checkout version-2.0.0
         git reset --hard origin/version-2.0.0
 
-        rm -rf /var/www/codestats/*
-        tar -xzf /home/ubuntu/frontend-dist.tar.gz -C /var/www/codestats
+        sudo rm -rf /var/www/codestats/*
+        sudo tar -xzf /home/ubuntu/frontend-dist.tar.gz -C /var/www/codestats
 
         cd backend
 
