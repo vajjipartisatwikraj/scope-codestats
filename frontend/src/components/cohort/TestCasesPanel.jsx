@@ -1,10 +1,11 @@
 import React from "react";
-import { Box, Typography, Chip, Grid, Divider, Tab, Tabs, TextField } from "@mui/material";
+import { Box, Typography, Chip, Grid, Divider, Tab, Tabs, TextField, Button } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 import SpeedIcon from "@mui/icons-material/Speed";
 import DeveloperBoardIcon from "@mui/icons-material/DeveloperBoard";
 import ScoreIcon from "@mui/icons-material/Score";
 import TerminalIcon from "@mui/icons-material/Terminal";
+import BugReportIcon from "@mui/icons-material/BugReport";
 import RocketAnimation from "../RocketAnimation";
 
 const TestCasesPanel = ({
@@ -26,6 +27,8 @@ const TestCasesPanel = ({
   onCustomInputChange, // Callback when custom input text changes
   customOutput = null, // Raw output from custom input run { output, error, time, memory, status }
   running = false, // Whether code is currently running
+  panelMode = "testrun", // "debug" | "testrun" — controls tabs, raw vs parsed test cases, and submit availability
+  onPanelModeChange, // Callback to toggle the panel mode
 }) => {
   // State to track if animation has completed
   const [animationCompleted, setAnimationCompleted] = React.useState(false);
@@ -129,6 +132,17 @@ const TestCasesPanel = ({
       .map((tc) => tc.input)
       .join("\n")
       .trim();
+  };
+
+  // Get the raw stdin exactly as the judge feeds it: the test-case count (T)
+  // on the first line, followed by each visible test case's input.
+  // Mirrors the backend combined-stdin format: `${totalCases}\n${inputs.join("\n")}`.
+  const getRawStdin = () => {
+    if (!question?.testCases) return "";
+    const visibleTestCases = question.testCases.filter((tc) => !tc.hidden);
+    if (visibleTestCases.length === 0) return "";
+    const inputs = visibleTestCases.map((tc) => tc.input || "");
+    return `${visibleTestCases.length}\n${inputs.join("\n")}`;
   };
 
   // Scoring Tiers component - Shows which tier was achieved
@@ -702,6 +716,106 @@ const TestCasesPanel = ({
     );
   };
 
+  // Renders raw output text line-by-line, coloring each line green when it
+  // matches the corresponding line of the other output and red when it differs.
+  // Used in Debug mode to diff expected vs actual output after a run.
+  const RawOutputDiff = ({ text, otherText, hasRun, darkMode }) => {
+    const lines = (text || "").split("\n");
+    const otherLines = (otherText || "").split("\n");
+    return (
+      <>
+        {lines.map((line, i) => {
+          const matched = (line ?? "").trim() === (otherLines[i] ?? "").trim();
+          const color = hasRun
+            ? matched
+              ? darkMode
+                ? "#4caf50"
+                : "#2e7d32"
+              : darkMode
+              ? "#f44336"
+              : "#c62828"
+            : darkMode
+            ? "rgba(255,255,255,0.9)"
+            : "rgba(0,0,0,0.9)";
+          const bg = hasRun
+            ? matched
+              ? darkMode
+                ? "rgba(76,175,80,0.12)"
+                : "rgba(76,175,80,0.1)"
+              : darkMode
+              ? "rgba(244,67,54,0.12)"
+              : "rgba(244,67,54,0.1)"
+            : "transparent";
+          return (
+            <Box
+              key={i}
+              sx={{
+                px: 0.5,
+                borderRadius: "2px",
+                bgcolor: bg,
+                color,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {line === "" ? "\u00A0" : line}
+            </Box>
+          );
+        })}
+      </>
+    );
+  };
+
+  // Renders the raw stdin with per-test-case coloring in Debug mode:
+  // - line 0 (the T value) is white
+  // - the remaining lines are split into T blocks of K = (totalLines - 1) / T
+  //   lines each, and consecutive blocks alternate between a dark-blue and a
+  //   light-blue shade so each test case is visually distinct.
+  const RawInputColored = ({ text, testCaseCount, darkMode }) => {
+    const lines = (text || "").split("\n");
+    const total = lines.length;
+    const T = testCaseCount > 0 ? testCaseCount : 1;
+    const K = Math.max(1, Math.round((total - 1) / T)); // lines per test case
+    return (
+      <>
+        {lines.map((line, i) => {
+          let bg = "transparent";
+          let color = darkMode ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.9)";
+          if (i === 0) {
+            // First line = number of test cases (T) → white
+            color = darkMode ? "#ffffff" : "#111111";
+            bg = darkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+          } else {
+            const tcIndex = Math.floor((i - 1) / K);
+            const isDarkShade = tcIndex % 2 === 0;
+            bg = isDarkShade
+              ? darkMode
+                ? "rgba(40,66,104,0.45)" // muted dark blue
+                : "rgba(21,101,192,0.10)"
+              : darkMode
+              ? "rgba(70,100,140,0.22)" // muted light blue
+              : "rgba(100,181,246,0.06)";
+          }
+          return (
+            <Box
+              key={i}
+              sx={{
+                px: 0.5,
+                borderRadius: "2px",
+                bgcolor: bg,
+                color,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {line === "" ? "\u00A0" : line}
+            </Box>
+          );
+        })}
+      </>
+    );
+  };
+
   return (
     <>
       {/* Test panel resizer */}
@@ -777,6 +891,7 @@ const TestCasesPanel = ({
             px: 0,
             justifyContent: "space-between",
             display:
+              panelMode !== "debug" &&
               testResults &&
               testResults.some(
                 (r) =>
@@ -812,7 +927,10 @@ const TestCasesPanel = ({
               },
             }}
           >
+            {/* Test Cases tab is always shown (left). In Debug mode the Custom
+                Input tab appears to its right. */}
             <Tab
+              value={0}
               label={
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   {isSubmission && <LockIcon sx={{ fontSize: "0.85rem" }} />}
@@ -820,15 +938,57 @@ const TestCasesPanel = ({
                 </Box>
               }
             />
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <TerminalIcon sx={{ fontSize: "0.85rem" }} />
-                  Custom Input
-                </Box>
-              }
-            />
+            {panelMode === "debug" && (
+              <Tab
+                value={1}
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <TerminalIcon sx={{ fontSize: "0.85rem" }} />
+                    Custom Input
+                  </Box>
+                }
+              />
+            )}
           </Tabs>
+
+          {/* Debug / Test Run mode toggle */}
+          <Button
+            size="small"
+            disabled={running || submitting}
+            onClick={() =>
+              onPanelModeChange &&
+              onPanelModeChange(panelMode === "debug" ? "testrun" : "debug")
+            }
+            startIcon={
+              panelMode === "debug" ? null : (
+                <BugReportIcon sx={{ fontSize: "1rem" }} />
+              )
+            }
+            sx={{
+              mr: 1.5,
+              height: "28px",
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: "0.72rem",
+              borderRadius: "6px",
+              px: 1.5,
+              color: darkMode ? "#42a5f5" : "#1976d2",
+              border: "1px solid",
+              borderColor: darkMode
+                ? "rgba(66,165,245,0.4)"
+                : "rgba(25,118,210,0.4)",
+              bgcolor: darkMode
+                ? "rgba(66,165,245,0.08)"
+                : "rgba(25,118,210,0.06)",
+              "&:hover": {
+                bgcolor: darkMode
+                  ? "rgba(66,165,245,0.16)"
+                  : "rgba(25,118,210,0.12)",
+              },
+            }}
+          >
+            {panelMode === "debug" ? "Test Run" : "Debug"}
+          </Button>
         </Box>
 
         {/* Content */}
@@ -847,8 +1007,8 @@ const TestCasesPanel = ({
             },
           }}
         >
-          {/* Tab 0: Test Cases (existing behavior — untouched) */}
-          {activeInputTab === 0 && (
+          {/* Tab 0 — Test Run mode: parsed, test-case-wise display (existing behavior — untouched) */}
+          {activeInputTab === 0 && panelMode !== "debug" && (
           <Box sx={{ p: 2 }}>
             {/* Rocket Animation - Show during submission and until animation completes */}
             {showRocketAnimation && (
@@ -1418,6 +1578,153 @@ const TestCasesPanel = ({
           </Box>
           )}
 
+          {/* Tab 0 — Debug mode: RAW test case input, no parsing/formatting */}
+          {activeInputTab === 0 && panelMode === "debug" && (
+            <Box sx={{ p: 2 }}>
+              {/* Raw combined input */}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+                  fontWeight: "bold",
+                  fontSize: "0.8rem",
+                }}
+              >
+                Input:
+              </Typography>
+              <Box
+                sx={{
+                  p: 1.5,
+                  mt: 0.5,
+                  mb: 2,
+                  borderRadius: 1,
+                  bgcolor: darkMode ? "#0F0F0F" : "#FFFFFF",
+                  border: "1px solid",
+                  borderColor: darkMode
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(0,0,0,0.1)",
+                  fontFamily: "'Consolas', 'Source Code Pro', monospace",
+                  color: darkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)",
+                  fontSize: "0.82rem",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {getRawStdin() ? (
+                  <RawInputColored
+                    text={getRawStdin()}
+                    testCaseCount={
+                      question?.testCases
+                        ? question.testCases.filter((tc) => !tc.hidden).length
+                        : 0
+                    }
+                    darkMode={darkMode}
+                  />
+                ) : (
+                  "No input"
+                )}
+              </Box>
+
+              {/* Raw expected vs actual output, side by side */}
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+                      fontWeight: "bold",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Expected Output:
+                  </Typography>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      mt: 0.5,
+                      borderRadius: 1,
+                      bgcolor: darkMode ? "#0F0F0F" : "#FFFFFF",
+                      border: "1px solid",
+                      borderColor: darkMode
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(0,0,0,0.1)",
+                      fontFamily: "'Consolas', 'Source Code Pro', monospace",
+                      fontSize: "0.82rem",
+                      minHeight: "48px",
+                    }}
+                  >
+                    {getExpectedOutput() ? (
+                      <RawOutputDiff
+                        text={getExpectedOutput()}
+                        otherText={getActualOutput()}
+                        hasRun={!!getActualOutput()}
+                        darkMode={darkMode}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          color: darkMode
+                            ? "rgba(255,255,255,0.9)"
+                            : "rgba(0,0,0,0.9)",
+                        }}
+                      >
+                        No expected output
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+                      fontWeight: "bold",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Your Output:
+                  </Typography>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      mt: 0.5,
+                      borderRadius: 1,
+                      bgcolor: darkMode ? "#0F0F0F" : "#FFFFFF",
+                      border: "1px solid",
+                      borderColor: darkMode
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(0,0,0,0.1)",
+                      fontFamily: "'Consolas', 'Source Code Pro', monospace",
+                      fontSize: "0.82rem",
+                      minHeight: "48px",
+                    }}
+                  >
+                    {getActualOutput() ? (
+                      <RawOutputDiff
+                        text={getActualOutput()}
+                        otherText={getExpectedOutput()}
+                        hasRun={true}
+                        darkMode={darkMode}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          color: darkMode
+                            ? "rgba(255,255,255,0.4)"
+                            : "rgba(0,0,0,0.4)",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        Run your code to see the output
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
           {/* Tab 1: Custom Input */}
           {activeInputTab === 1 && (
             <Box sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -1435,6 +1742,19 @@ const TestCasesPanel = ({
                     }}
                   >
                     Input:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: darkMode ? "#ffb74d" : "#ed6c02",
+                      fontSize: "0.72rem",
+                      mb: 0.75,
+                      display: "block",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Note: Don't forget to add the T (number of test cases) value
+                    as the first line of your input.
                   </Typography>
                   <TextField
                     multiline

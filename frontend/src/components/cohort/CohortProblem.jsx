@@ -226,6 +226,20 @@ const CohortProblem = () => {
   const [customInput, setCustomInput] = useState("");
   const [customOutput, setCustomOutput] = useState(null); // { output, error, time, memory, status }
 
+  // Test panel mode: "testrun" (parsed test cases + submit enabled) or
+  // "debug" (raw stdin + custom input, submit disabled)
+  const [panelMode, setPanelMode] = useState("testrun");
+
+  // Toggle between Debug and Test Run modes.
+  const handlePanelModeChange = (mode) => {
+    setPanelMode(mode);
+    // The Custom Input tab only exists in Debug mode, so when returning to
+    // Test Run mode make sure the Test Cases tab (index 0) is active.
+    if (mode === "testrun") {
+      setActiveInputTab(0);
+    }
+  };
+
   // Add state for MCQ
   const [selectedMcqOption, setSelectedMcqOption] = useState(null);
   const [mcqSubmissionResult, setMcqSubmissionResult] = useState(null);
@@ -953,6 +967,11 @@ const CohortProblem = () => {
     if (question.type === "mcq") {
       await handleSubmitMcqAnswer();
     } else if (question.type === "programming") {
+      // Always open the submission view in the test-case panel: force Test Run
+      // mode and the Test Cases tab so the submit animation and performance
+      // summary are shown (even if the user submitted from Debug mode).
+      handlePanelModeChange("testrun");
+      setActiveInputTab(0);
       setSubmitting(true);
 
       try {
@@ -1962,12 +1981,21 @@ const CohortProblem = () => {
                           margin: "16px 0",
                           boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                         },
-                        "& ul, & ol": {
+                        "& ul": {
                           margin: "16px 0",
                           paddingLeft: "24px",
+                          listStyleType: "disc",
+                          listStylePosition: "outside",
+                        },
+                        "& ol": {
+                          margin: "16px 0",
+                          paddingLeft: "24px",
+                          listStyleType: "decimal",
+                          listStylePosition: "outside",
                         },
                         "& li": {
                           margin: "8px 0",
+                          display: "list-item",
                         },
                         "& blockquote": {
                           borderLeft: `4px solid ${theme.palette.primary.main}`,
@@ -2580,6 +2608,8 @@ const CohortProblem = () => {
                                 onCustomInputChange={setCustomInput}
                                 customOutput={customOutput}
                                 running={running}
+                                panelMode={panelMode}
+                                onPanelModeChange={handlePanelModeChange}
                               />
                             )}
                         </>
