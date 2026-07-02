@@ -185,6 +185,23 @@ const CodeEditorPanel = (
         handleEncryptedPasteRequest();
       });
 
+      // Disable Ctrl/Cmd + Shift + V (paste as plain text) on Windows, Linux and Mac.
+      // This is the common bypass around the encrypted-paste protection.
+      editor.addCommand(
+        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV,
+        () => {
+          toast.warning("Paste is disabled");
+        }
+      );
+
+      // Disable Shift + Insert (alternative paste shortcut)
+      editor.addCommand(
+        monaco.KeyMod.Shift | monaco.KeyCode.Insert,
+        () => {
+          toast.warning("Paste is disabled");
+        }
+      );
+
       // Override default copy command completely
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
         const selection = editor.getSelection();
@@ -223,6 +240,41 @@ const CodeEditorPanel = (
       const domNode = editor.getDomNode();
       
       if (domNode) {
+        // Block native paste completely — catches Ctrl+Shift+V, context-menu paste,
+        // middle-click paste, and paste events dispatched by virtual/online keyboards.
+        // Note: the platform's encrypted paste (Ctrl+V) uses executeEdits, not the native
+        // paste event, so it keeps working while raw pastes stay blocked.
+        domNode.addEventListener(
+          'paste',
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.warning('Paste is disabled');
+          },
+          true
+        );
+
+        // Block paste-related keyboard shortcuts at the capture phase so they never
+        // reach the editor. Covers Ctrl/Cmd+Shift+V and Shift+Insert on any OS/keyboard.
+        domNode.addEventListener(
+          'keydown',
+          (e) => {
+            const key = (e.key || '').toLowerCase();
+            const isV = key === 'v' || e.code === 'KeyV';
+            const isInsert = key === 'insert' || e.code === 'Insert';
+
+            const ctrlShiftV = (e.ctrlKey || e.metaKey) && e.shiftKey && isV;
+            const shiftInsert = e.shiftKey && isInsert;
+
+            if (ctrlShiftV || shiftInsert) {
+              e.preventDefault();
+              e.stopPropagation();
+              toast.warning('Paste is disabled');
+            }
+          },
+          true
+        );
+
         // Block drop event
         domNode.addEventListener('drop', (e) => {
           e.preventDefault();

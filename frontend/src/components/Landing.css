@@ -121,21 +121,23 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* MUI Accordion Customization */
-.MuiAccordion-root {
+/* MUI Accordion Customization — scoped to landing pages only so these
+   global !important overrides don't leak into the rest of the app (e.g. the
+   cohort problem view's Hints/Topics/Companies accordions). */
+body.landing-page .MuiAccordion-root {
   background: transparent !important;
   box-shadow: none !important;
 }
 
-.MuiAccordion-root::before {
+body.landing-page .MuiAccordion-root::before {
   display: none !important;
 }
 
-.MuiAccordionSummary-root {
+body.landing-page .MuiAccordionSummary-root {
   padding: 0 !important;
 }
 
-.MuiAccordionDetails-root {
+body.landing-page .MuiAccordionDetails-root {
   padding: 0 !important;
 }
 
