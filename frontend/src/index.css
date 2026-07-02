@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
+/* Import Instrument Serif & Inter from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,13 +7,25 @@
 
 body {
   margin: 0;
-  font-family: 'Nekst', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #000000;
   color: #ffffff;
+}
+
+/* Override for Landing page - use Instrument Serif for display text */
+body.landing-page {
+  font-family: 'Inter', sans-serif;
+}
+
+body.landing-page .font-display,
+body.landing-page h1,
+body.landing-page h2,
+body.landing-page h3 {
+  font-family: 'Instrument Serif', serif;
 }
 
 code {
@@ -70,9 +83,9 @@ code {
   color: #ffffff;
 }
 
-/* Hide navbar when needed */
-body.hide-navbar nav,
-body.hide-navbar header {
+/* Hide main dashboard navbar when needed (but not landing navbar) */
+body.hide-navbar nav:not(.landing-navbar),
+body.hide-navbar header:not(.landing-navbar-header) {
   display: none !important;
 }
 

@@ -359,4 +359,58 @@ router.get("/academic-year-config", auth, async (req, res) => {
   }
 });
 
+// Public endpoint: Get top 10 users for landing page (NO AUTH REQUIRED)
+router.get("/public/top10", async (req, res) => {
+  try {
+    console.log("Fetching top 10 users for public landing page");
+
+    // Filter to get only regular users (not admins or teachers)
+    const filter = { userType: { $nin: ["admin", "teacher"] } };
+
+    // Exclude graduated students
+    try {
+      const academicConfig = await AcademicYearConfig.getConfig();
+      const graduatedYears = academicConfig.yearMappings
+        .filter((mapping) => mapping.academicYear === "Graduated")
+        .map((mapping) => mapping.graduationYear);
+
+      if (graduatedYears.length > 0) {
+        filter.$or = [
+          { graduatingYear: { $exists: false } },
+          { graduatingYear: { $nin: graduatedYears } },
+        ];
+      }
+    } catch (configErr) {
+      console.warn("Could not load AcademicYearConfig for graduated filter:", configErr.message);
+    }
+
+    // Fetch top 10 users sorted by totalScore
+    const users = await User.find(filter)
+      .select("name rollNumber department graduatingYear totalScore")
+      .sort({ totalScore: -1 })
+      .limit(10)
+      .lean();
+
+    // Format the response with ranks
+    const leaderboard = users.map((user, index) => ({
+      rank: index + 1,
+      name: user.name,
+      rollNumber: user.rollNumber,
+      department: user.department,
+      graduatingYear: user.graduatingYear,
+      score: user.totalScore || 0,
+      institution: "MLRIT" // Default institution
+    }));
+
+    console.log(`Successfully fetched ${leaderboard.length} top users for public display`);
+    res.json(leaderboard);
+  } catch (error) {
+    console.error("Error fetching public top 10:", error);
+    res.status(500).json({ 
+      message: "Error fetching top users", 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

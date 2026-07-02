@@ -1,33 +1,418 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './Landing.css';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Button, 
-  Grid, 
-  Paper, 
-  useTheme, 
-  Stack,
-  Divider,
-  Avatar,
-  Card,
-  CardContent,
-  useMediaQuery,
-  Fade,
-  Grow,
-  Zoom,
-  GlobalStyles
-} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { School, EmojiEvents, Timeline, Group, KeyboardArrowRight } from '@mui/icons-material';
+import { 
+  ArrowForward,
+  Code,
+  PlayArrow,
+  EmojiEvents,
+  KeyboardArrowDown,
+  LinkedIn,
+  Email,
+  Star,
+  StarHalf,
+  StarBorder
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 
+// CountUp Component
+const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '' }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-15% 0px' });
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    const ease = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      setValue(Math.round(end * ease(p)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, end, duration]);
+
+  return (
+    <span ref={ref} className={className}>
+      {prefix}
+      {value.toLocaleString()}
+      {suffix}
+    </span>
+  );
+};
+
+// ScrollRevealText Component
+const Word = ({ children, progress, range, className = '' }) => {
+  const opacity = useTransform(progress, range, [0.1, 1], {
+    ease: (t) => t * t * (3 - 2 * t),
+  });
+  return (
+    <motion.span
+      style={{ opacity }}
+      className={`inline-block mr-[0.25em] ${className}`}
+    >
+      {children}
+    </motion.span>
+  );
+};
+
+const ScrollRevealText = ({ segments, className = '' }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start 0.85', 'end 0.45'],
+  });
+
+  const words = segments.flatMap((seg) =>
+    seg.text.split(/\s+/).filter(Boolean).map((w) => ({ text: w, className: seg.className }))
+  );
+
+  return (
+    <p ref={containerRef} className={className}>
+      {words.map((w, i) => {
+        const start = i / words.length;
+        const end = start + 1 / words.length;
+        return (
+          <Word key={i} progress={scrollYProgress} range={[start, end]} className={w.className}>
+            {w.text}
+          </Word>
+        );
+      })}
+    </p>
+  );
+};
+
+// FAQ Accordion Component - Custom implementation matching Dark Hero Section
+const FAQAccordion = () => {
+  const [openIndex, setOpenIndex] = useState(null);
+  const contentRefs = useRef([]);
+
+  const toggleAccordion = (index) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
+
+  const faqData = [
+    {
+      cat: "Platform",
+      q: "What exactly is CodeStats?",
+      a: "CodeStats is an in-house coding assessment platform built by SCOPE Club for MLR Institute of Technology. Students take coding assessments, join cohorts, practice in the arena, and track how their coding performance improves over time.",
+    },
+    {
+      cat: "Access",
+      q: "Who can use CodeStats?",
+      a: "It's exclusively for the MLRIT community — students, teachers, and admins of MLR Institute of Technology. It isn't open to other campuses or to external recruiters and hiring teams.",
+    },
+    {
+      cat: "For admins",
+      q: "What can admins and teachers do?",
+      a: "Admins and teachers can create and schedule coding assessments, build and manage cohorts with modules and questions, add and organise students, and review every submission — all from a dedicated management dashboard.",
+    },
+    {
+      cat: "Analytics",
+      q: "How can we analyse student performance?",
+      a: "CodeStats turns every submission into insight. You get class and cohort-level analytics, individual progress over time, question-wise accuracy, and clear views of where students are strong or struggling — so teaching decisions are backed by real data.",
+    },
+  ];
+
+  return (
+    <div className="w-full space-y-3">
+      {faqData.map((f, i) => {
+        const isOpen = openIndex === i;
+        return (
+          <div
+            key={i}
+            className={`group relative overflow-hidden rounded-2xl border bg-black px-5 transition-all duration-500 ease-out ${
+              isOpen
+                ? 'border-[rgba(0,170,255,0.45)] shadow-[0_0_20px_rgba(0,170,255,0.15)]'
+                : 'border-white/[0.08] hover:border-[rgba(0,170,255,0.35)]'
+            }`}
+            style={{
+              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            {/* Top glow line when open */}
+            <div
+              className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(0,170,255,0.4)] to-transparent transition-all duration-700 ease-out ${
+                isOpen ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+              }`}
+              style={{
+                transition: 'opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            />
+            
+            {/* Subtle background glow when open */}
+            <div
+              className={`pointer-events-none absolute inset-0 bg-gradient-to-br from-[rgba(0,170,255,0.03)] via-transparent to-transparent transition-opacity duration-700 ${
+                isOpen ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+            
+            {/* Accordion Trigger */}
+            <button
+              onClick={() => toggleAccordion(i)}
+              className="relative flex w-full items-center py-5 text-left outline-none focus:outline-none"
+            >
+              <div className="flex flex-1 items-center gap-4 pr-4">
+                <span 
+                  className={`font-display text-xs tabular-nums transition-colors duration-500 ${
+                    isOpen ? 'text-[rgb(120,200,255)]' : 'text-white/35'
+                  }`}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <span 
+                    className={`text-[10px] uppercase tracking-[0.22em] transition-colors duration-500 ${
+                      isOpen ? 'text-[rgb(120,200,255)]' : 'text-[rgb(120,200,255)]/80'
+                    }`}
+                  >
+                    {f.cat}
+                  </span>
+                  <span className="text-base font-medium text-white md:text-[17px]">{f.q}</span>
+                </div>
+              </div>
+              
+              {/* Chevron icon with smooth rotation */}
+              <KeyboardArrowDown
+                className={`h-5 w-5 shrink-0 text-white transition-all duration-500 ease-out ${
+                  isOpen ? 'rotate-180 text-[rgb(120,200,255)]' : 'rotate-0'
+                }`}
+                style={{
+                  transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease',
+                }}
+              />
+            </button>
+
+            {/* Accordion Content with smooth height transition */}
+            <div
+              ref={(el) => (contentRefs.current[i] = el)}
+              className="overflow-hidden transition-all duration-500 ease-out"
+              style={{
+                maxHeight: isOpen ? `${contentRefs.current[i]?.scrollHeight || 500}px` : '0px',
+                opacity: isOpen ? 1 : 0,
+                transition: 'max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
+              }}
+            >
+              <div 
+                className="pb-5 pl-10 pr-4 text-[14px] leading-relaxed text-white/65"
+                style={{
+                  transform: isOpen ? 'translateY(0)' : 'translateY(-10px)',
+                  transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
+                }}
+              >
+                {f.a}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Testimonial Card Component
+const TestimonialCard = ({ t }) => {
+  return (
+    <div className="group relative w-[280px] shrink-0 md:w-[340px] flex flex-col">
+      <div className="relative flex-1 flex flex-col justify-between rounded-[1rem] p-4 md:p-5 transition-all duration-500 hover:-translate-y-1 hover:bg-[rgba(0,136,204,0.18)] hover:border-[rgba(0,170,255,0.55)] bg-[rgba(0,136,204,0.08)] border border-[rgba(0,136,204,0.25)] shadow-[0_0_25px_rgba(0,136,204,0.2)] overflow-hidden" style={{ clipPath: 'inset(0 0 0 0 round 1rem)' }}>
+        {/* Reduced glow effects - contained within card */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,136,204,0.15),rgba(0,136,204,0.05)_50%,transparent_80%)] opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(0,170,255,0.12),transparent_40%)] opacity-50 group-hover:opacity-70 transition-opacity duration-500" />
+
+        <div className="relative z-10 flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-[12.5px] font-semibold text-white leading-tight">{t.name}</div>
+                <div className="truncate text-[10.5px] text-white/55 leading-tight mt-0.5">{t.role}</div>
+              </div>
+              <div className="flex gap-0.5 shrink-0 pt-0.5">
+                {[...Array(5)].map((_, i) => {
+                  const rating = t.rating ?? 5;
+                  const starValue = i + 1;
+                  const activeColor = 'rgb(120,200,255)';
+                  const inactiveColor = 'rgba(255,255,255,0.25)';
+                  if (rating >= starValue) {
+                    return <Star key={i} style={{ fontSize: '10px', fill: activeColor, color: activeColor }} />;
+                  }
+                  if (rating >= starValue - 0.5) {
+                    return <StarHalf key={i} style={{ fontSize: '10px', fill: activeColor, color: activeColor }} />;
+                  }
+                  return <StarBorder key={i} style={{ fontSize: '10px', fill: inactiveColor, color: inactiveColor }} />;
+                })}
+              </div>
+            </div>
+            <p className="mt-3 font-display text-[14.5px] leading-snug text-white/90 md:text-[16px]">
+              "{t.quote}"
+            </p>
+          </div>
+          <div className="mt-4">
+            <span className="inline-block rounded-full px-2 py-0.5 text-[8.5px] uppercase tracking-[0.18em] text-[rgb(120,200,255)] bg-[rgba(0,136,204,0.18)] border border-[rgba(0,170,255,0.3)]">
+              {t.tag}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MarqueeRow = ({ reverse = false, duration = 50, testimonials }) => {
+  const items = [...testimonials, ...testimonials];
+  return (
+    <div className="pause-on-hover relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-black to-transparent md:w-40" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-black to-transparent md:w-40" />
+      
+      <div
+        className={`marquee-content flex gap-4 md:gap-5 py-2 ${
+          reverse ? 'animate-marquee-rtl' : 'animate-marquee-ltr'
+        }`}
+        style={{ 
+          width: 'max-content',
+          '--duration': `${duration}s`
+        }}
+      >
+        {items.map((t, i) => (
+          <TestimonialCard key={`${t.name}-${i}`} t={t} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TestimonialsMarquee = () => {
+  const testimonials = [
+    {
+      quote: "Setting up assessments now takes just minutes. Tracking thousands of student submissions has never been easier.",
+      name: "Rani",
+      role: "CSE Faculty, MLRIT",
+      tag: "Faculty",
+      rating: 5,
+    },
+    {
+      quote: "The admin analytics make it easy to monitor student performance and track progress effectively.",
+      name: "Sandeep",
+      role: "IT Faculty, MLRIT",
+      tag: "Faculty",
+      rating: 4.5,
+    },
+    {
+      quote: "Managing cohort access is effortless. The intuitive UI and UX provide a smooth user experience.",
+      name: "RajaShekar",
+      role: "Training Faculty, MLRIT",
+      tag: "Faculty",
+      rating: 5,
+    },
+    {
+      quote: "The practice arena and cohort assessments kept me consistent. I can finally see my progress week over week.",
+      name: "Rahul Mehta",
+      role: "CSE Sophomore, MLRIT",
+      tag: "Student",
+      rating: 4.5,
+    },
+    {
+      quote: "It's built by our own SCOPE Club, so it just fits how we actually learn to code at MLRIT.",
+      name: "Sara Fatima",
+      role: "Final-year student, MLRIT",
+      tag: "Student",
+      rating: 5,
+    },
+    {
+      quote: "The secure code editor prevents malpractice and ensures fair, genuine scoring during assessments.",
+      name: "Satyanagadurga",
+      role: "2nd yr Student, MLRIT",
+      tag: "Student",
+      rating: 5,
+    },
+    {
+      quote: "The coding problems are engaging, fun, and make learning enjoyable! 😊",
+      name: "Sravanthi",
+      role: "2nd yr Student, MLRIT",
+      tag: "Student",
+      rating: 4.5,
+    },
+    {
+      quote: "The tasks are well-designed and greatly help in improving logical thinking and coding skills.",
+      name: "Siddhartha",
+      role: "3rd yr Student, MLRIT",
+      tag: "Student",
+      rating: 4,
+    },
+    {
+      quote: "A great platform for beginners to build confidence and strengthen their coding fundamentals.",
+      name: "Vishnu Vardhan",
+      role: "2nd yr Student, MLRIT",
+      tag: "Student",
+      rating: 4.5,
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden bg-black px-0 py-20 md:py-24">
+      <style>{`
+        @keyframes marquee-ltr {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0%); }
+        }
+        @keyframes marquee-rtl {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee-ltr {
+          animation: marquee-ltr var(--duration, 50s) linear infinite;
+        }
+        .animate-marquee-rtl {
+          animation: marquee-rtl var(--duration, 50s) linear infinite;
+        }
+        .pause-on-hover:hover .marquee-content {
+          animation-play-state: paused;
+        }
+      `}</style>
+
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.04),transparent_60%)]" />
+      <div className="relative mx-auto mb-10 max-w-6xl px-6 text-center md:px-12">
+        <div className="mb-2.5 text-xs uppercase tracking-[0.25em] text-white/50">
+          Testimonials
+        </div>
+        <h2 className="font-display text-2xl tracking-tight md:text-4xl">
+          Loved by <span className="italic text-white/70">students &amp; faculty at MLRIT.</span>
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-xs text-white/45 md:text-sm">
+          Real words from the people who use CodeStats every week to learn, teach, and measure how their code is improving.
+        </p>
+      </div>
+      <div className="relative space-y-4 md:space-y-5">
+        <MarqueeRow duration={45} testimonials={testimonials} />
+        <MarqueeRow reverse duration={55} testimonials={testimonials} />
+      </div>
+    </section>
+  );
+};
+
+// Main Landing Component
 const Landing = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { token } = useAuth();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const snippetVideoRef = useRef(null);
+  const [stats, setStats] = useState({ students: 0, admins: 0, teachers: 0 });
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [leaderboardSource, setLeaderboardSource] = useState('loading'); // 'loading', 'api', 'fallback'
+  const itemsPerPage = 5;
+
+  // Add landing-page class to body element
+  useEffect(() => {
+    document.body.classList.add('landing-page');
+    return () => {
+      document.body.classList.remove('landing-page');
+    };
+  }, []);
 
   useEffect(() => {
     if (token) {
@@ -35,732 +420,494 @@ const Landing = () => {
     }
   }, [token, navigate]);
 
-  if (token) {
-    return null;
-  }
-
-  const features = [
-    {
-      icon: <School sx={{ fontSize: 40, color: '#0077b6' }} />,
-      title: 'Track Your Progress',
-      description: 'Monitor your performance across multiple competitive programming platforms in one place.'
-    },
-    {
-      icon: <EmojiEvents sx={{ fontSize: 40, color: '#FFD700' }} />,
-      title: 'Compete & Compare',
-      description: 'Join the leaderboard and compete with fellow students to improve your skills.'
-    },
-    {
-      icon: <Timeline sx={{ fontSize: 40, color: '#4CAF50' }} />,
-      title: 'Learning Resources',
-      description: 'Access curated courses and materials to enhance your competitive programming journey.'
-    },
-    {
-      icon: <Group sx={{ fontSize: 40, color: '#2196F3' }} />,
-      title: 'Community',
-      description: 'Be part of a growing community of competitive programmers at MLRIT.'
+  useEffect(() => {
+    if (snippetVideoRef.current) {
+      snippetVideoRef.current.playbackRate = 2.5;
     }
-  ];
+  }, []);
+
+  // Fetch stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/stats`);
+        const data = await response.json();
+        if (data) {
+          setStats({
+            students: data.totalStudents || 3000,
+            admins: data.totalAdmins || 10,
+            teachers: data.totalTeachers || 50
+          });
+        }
+      } catch (error) {
+        setStats({ students: 3000, admins: 10, teachers: 50 });
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Fetch leaderboard from public endpoint
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      setLeaderboardLoading(true);
+      setLeaderboardSource('loading');
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/leaderboard/public/top10`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          setLeaderboard(data);
+          setLeaderboardSource('api');
+        } else {
+          setLeaderboardSource('fallback');
+          // Fallback data
+          setLeaderboard([
+            { rank: 1, name: 'Ananya Sharma', department: 'CSE', graduatingYear: 2026, score: 2987, institution: 'MLRIT' },
+            { rank: 2, name: 'Liu Wei', department: 'CSE', graduatingYear: 2025, score: 2914, institution: 'MLRIT' },
+            { rank: 3, name: 'Marco Rossi', department: 'IT', graduatingYear: 2026, score: 2856, institution: 'MLRIT' }
+          ]);
+        }
+      } catch (error) {
+        setLeaderboardSource('fallback');
+        // Fallback data
+        setLeaderboard([
+          { rank: 1, name: 'Ananya Sharma', department: 'CSE', graduatingYear: 2026, score: 2987, institution: 'MLRIT' },
+          { rank: 2, name: 'Liu Wei', department: 'CSE', graduatingYear: 2025, score: 2914, institution: 'MLRIT' },
+          { rank: 3, name: 'Marco Rossi', department: 'IT', graduatingYear: 2026, score: 2856, institution: 'MLRIT' }
+        ]);
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+    fetchLeaderboard();
+  }, []);
+
+  // Calculate paginated leaderboard
+  const totalPages = Math.ceil(leaderboard.length / itemsPerPage);
+  const paginatedLeaderboard = leaderboard.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  if (token) return null;
 
   return (
     <>
-      {/* Global styles to ensure the landing page takes the full screen */}
-      <GlobalStyles 
-        styles={{
-          'body, html': {
-            margin: 0,
-            padding: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: '#0077b6',
-            overflowX: 'hidden'
-          },
-          '#root': {
-            width: '100%',
-            margin: 0,
-            padding: 0
-          },
-          '#root > div': {
-            width: '100%',
-            margin: 0,
-            padding: 0
-          }
-        }} 
-      />
-      
-      <Box sx={{ 
-        width: '100%',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: '#0077b6', // Main blue background color
-        margin: 0,
-        padding: 0,
-        boxSizing: 'border-box',
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        overflowX: 'hidden'
-      }}>
-        {/* Hero Section with Enhanced Design */}
-        <Box 
-          sx={{ 
-            background: 'linear-gradient(135deg, #005f8f 0%, #0077b6 50%, #00a8e8 100%)',
-            width: '100%',
-            height: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            color: 'white',
-            position: 'relative',
-            overflow: 'hidden',
-            py: { xs: 4, md: 0 }
-          }}
-        >
-          {/* Animated Background Elements */}
-          <Box sx={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            opacity: 0.07,
-            backgroundImage: 'url("data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z" fill="%23ffffff" fill-opacity="1" fill-rule="evenodd"/%3E%3C/svg%3E")',
-            backgroundSize: '15rem',
-            zIndex: 1
-          }} />
-          
-          {/* Floating Geometric Shapes */}
-          <Box sx={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden',
-            zIndex: 0
-          }}>
-            {/* Circle 1 */}
-            <Box sx={{
-              position: 'absolute',
-              width: '300px',
-              height: '300px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(0,168,232,0.3) 0%, rgba(0,119,182,0) 70%)',
-              top: '10%',
-              left: '5%',
-              animation: 'float 15s infinite ease-in-out'
-            }} />
-            
-            {/* Circle 2 */}
-            <Box sx={{
-              position: 'absolute',
-              width: '200px',
-              height: '200px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(0,168,232,0.2) 0%, rgba(0,119,182,0) 70%)',
-              bottom: '15%',
-              right: '10%',
-              animation: 'float 20s infinite ease-in-out reverse'
-            }} />
-            
-            {/* Circle 3 */}
-            <Box sx={{
-              position: 'absolute',
-              width: '150px',
-              height: '150px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)',
-              top: '30%',
-              right: '20%',
-              animation: 'float 12s infinite ease-in-out'
-            }} />
-            
-            {/* Blob Shape */}
-            <Box sx={{
-              position: 'absolute',
-              width: '500px',
-              height: '500px',
-              bottom: '-200px',
-              left: '-100px',
-              opacity: 0.05,
-              backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath fill=\'%23FFFFFF\' d=\'M47.5,-57.2C59.9,-46.1,67.3,-29.7,69.4,-13.2C71.5,3.3,68.3,19.8,59.9,32.5C51.5,45.2,37.8,54.1,22.7,59.5C7.6,64.9,-8.9,66.8,-23.6,62C-38.3,57.1,-51.1,45.4,-58.9,30.8C-66.7,16.1,-69.4,-1.7,-65.3,-17.9C-61.3,-34.1,-50.4,-48.8,-37,-58.7C-23.5,-68.6,-7.5,-73.6,7.2,-81.9C21.8,-90.2,43.6,-101.9,46.2,-93.1C48.8,-84.4,35.1,-68.2,47.5,-57.2Z\' transform=\'translate(100 100)\' /%3E%3C/svg%3E")',
-              backgroundSize: 'contain',
-              backgroundRepeat: 'no-repeat'
-            }} />
-            
-            {/* Animated flow overlay */}
-            <Box sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'url("data:image/svg+xml,%3Csvg width=\'2000\' height=\'1500\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3ClinearGradient id=\'a\' gradientTransform=\'rotate(90)\'%3E%3Cstop offset=\'5%\' stop-color=\'%23007cbe\' stop-opacity=\'0\'/%3E%3Cstop offset=\'95%\' stop-color=\'%230096d5\' stop-opacity=\'.1\'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill=\'url(%23a)\' d=\'M0 0h2000v1500H0z\'/%3E%3Cpath d=\'M0 0v166c280 187 1720 187 2000 0V0z\' fill-opacity=\'.1\'/%3E%3C/svg%3E")',
-              backgroundSize: 'cover',
-              opacity: 0.3
-            }} />
-          </Box>
+      <main className="relative w-full bg-black font-body text-white antialiased selection:bg-white/20">
+        {/* HERO Section */}
+      <section className="relative h-screen w-full overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
+        />
+        <div className="absolute top-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/4 z-[1] bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
 
-          <Container 
-            maxWidth={false} 
-            disableGutters 
-            sx={{ 
-              display: 'flex', 
-              width: '100%', 
-              height: '100%',
-              px: { xs: 3, sm: 4, md: 6, lg: 8 },
-              position: 'relative',
-              zIndex: 2
-            }}
-          >
-            <Fade in={true} timeout={1000}>
-              <Box
-                sx={{ 
-                  display: 'flex',
-                  flexDirection: { xs: 'column', md: 'row' },
-                  alignItems: 'center',
-                  justifyContent: { xs: 'center', md: 'space-between' },
-                  width: '100%',
-                  height: '100%',
-                  gap: 4
+        <div className="relative z-10 flex h-full flex-col justify-between px-6 py-4 md:px-12 md:py-6">
+          <div className="h-14" />
+
+          <section className="flex flex-1 flex-col justify-center max-w-4xl py-4">
+            <div className="mb-6 inline-flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-white/70">
+              <span className="h-px w-8 bg-white/60" />
+              A coding platform by SCOPE Club · MLRIT
+            </div>
+            <h1 className="font-display text-5xl font-normal leading-[0.95] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-[7.5rem]">
+              Sharpen every
+              <br />
+              <span className="italic text-white/80">line of code.</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-sm font-normal leading-relaxed text-white/75 md:text-base">
+              Transform everyday practice into measurable technical growth. CodeStats provides a streamlined environment to complete coding assessments, participate in targeted cohorts, and leverage data-driven insights to continuously elevate your engineering skills.
+            </p>
+            <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              <button onClick={() => navigate('/login')} className="liquid-glass-strong group inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.02]">
+                Login
+                <ArrowForward className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
+              <a
+                href="#code-snippet"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('code-snippet')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
+                className="liquid-glass group inline-flex items-center gap-3 rounded-full pl-1.5 pr-5 py-1.5 text-sm font-medium text-white/90 transition-colors hover:text-white"
               >
-                <Box sx={{ 
-                  maxWidth: { xs: '100%', md: '55%' }, 
-                  textAlign: { xs: 'center', md: 'left' },
-                  position: 'relative',
-                  zIndex: 3,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: { xs: 'center', md: 'flex-start' }
-                }}>
-                  <Stack 
-                    direction="row" 
-                    spacing={2} 
-                    alignItems="center" 
-                    sx={{ 
-                      mb: 4, 
-                      justifyContent: { xs: 'center', md: 'flex-start' },
-                      position: 'relative',
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        width: { xs: '40px', md: '60px' },
-                        height: '2px',
-                        background: 'linear-gradient(90deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%)',
-                        bottom: '-10px',
-                        left: { xs: 'calc(50% - 20px)', md: '0' }
-                      }
-                    }}
-                  >
-                    <Box sx={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      backdropFilter: 'blur(5px)',
-                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}>
-                      <img 
-                        src="/scope_logo.png" 
-                        alt="Scope Logo" 
-                        style={{ 
-                          width: 40, 
-                          height: 40,
-                          objectFit: 'contain',
-                          filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.2))'
-                        }} 
-                      />
-                    </Box>
-                    <Fade in={true} style={{ transitionDelay: '300ms' }}>
-                      <Typography 
-                        variant="h6" 
-                        component="span"
-                        sx={{ 
-                          fontWeight: 700,
-                          letterSpacing: 2,
-                          textTransform: 'uppercase',
-                          color: 'rgba(255, 255, 255, 0.95)',
-                          background: 'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(200,240,255,0.9) 100%)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                        }}
-                      >
-                        SCOPE presents
-                      </Typography>
-                    </Fade>
-                  </Stack>
-                  
-                  <Fade in={true} style={{ transitionDelay: '500ms' }}>
-                    <Typography
-                      variant="h1"
-                      component="h1"
-                      gutterBottom
-                      sx={{
-                        fontWeight: 800,
-                        lineHeight: 1.1,
-                        fontSize: { xs: '2.75rem', sm: '3.5rem', md: '4.5rem' },
-                        textShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
-                        mb: 3,
-                        background: 'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(200,240,255,0.9) 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        position: 'relative',
-                        textAlign: { xs: 'center', md: 'left' },
-                        '&::after': {
-                          content: '""',
-                          position: 'absolute',
-                          width: { xs: '80px', md: '120px' },
-                          height: '8px',
-                          background: 'linear-gradient(90deg, rgba(0,168,232,0.7) 0%, rgba(0,168,232,0) 100%)',
-                          bottom: '-10px',
-                          left: { xs: 'calc(50% - 40px)', md: '0' },
-                          borderRadius: '4px'
-                        }
-                      }}
-                    >
-                      Code Stats
-                    </Typography>
-                  </Fade>
-                  
-                  <Fade in={true} style={{ transitionDelay: '700ms' }}>
-                    <Typography 
-                      variant="h6" 
-                      color="rgba(255, 255, 255, 0.9)"
-                      sx={{ 
-                        mb: 6, 
-                        fontWeight: 400, 
-                        fontSize: '1.25rem', 
-                        maxWidth: '600px',
-                        lineHeight: 1.6,
-                        textShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                        position: 'relative',
-                        pl: { md: 4, xs: 0 },
-                        textAlign: { xs: 'center', md: 'left' },
-                        mx: { xs: 'auto', md: 0 },
-                        '&::before': {
-                          content: { md: '""', xs: 'none' },
-                          position: 'absolute',
-                          width: '2px',
-                          height: '100%',
-                          background: 'linear-gradient(180deg, rgba(0,168,232,0.7) 0%, rgba(0,168,232,0) 100%)',
-                          left: '0',
-                          top: '0',
-                          borderRadius: '2px'
-                        }
-                      }}
-                    >
-                      Your one-stop solution for tracking competitive programming progress across multiple platforms
-                    </Typography>
-                  </Fade>
-                  
-                  <Stack 
-                    direction={{ xs: 'column', sm: 'row' }} 
-                    spacing={3}
-                    sx={{ 
-                      justifyContent: { xs: 'center', md: 'flex-start' },
-                      width: { xs: '100%', sm: 'auto' },
-                      alignItems: 'center'
-                    }}
-                  >
-                    <Fade in={true} style={{ transitionDelay: '900ms' }}>
-                      <Button
-                        variant="contained"
-                        size="large"
-                        onClick={() => navigate('/register')}
-                        endIcon={<KeyboardArrowRight />}
-                        sx={{ 
-                          py: 2, 
-                          px: 4,
-                          fontWeight: 600,
-                          fontSize: '1rem',
-                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                          color: 'white',
-                          borderRadius: '50px',
-                          boxShadow: '0 5px 15px rgba(0, 0, 0, 0.2)',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          width: { xs: '100%', sm: 'auto' },
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: '-100%',
-                            width: '100%',
-                            height: '100%',
-                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                            transition: 'all 0.5s',
-                          },
-                          '&:hover': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                            transform: 'translateY(-3px)',
-                            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)',
-                            '&::before': {
-                              left: '100%'
-                            }
-                          }
-                        }}
-                      >
-                        Get Started
-                      </Button>
-                    </Fade>
-                    
-                    <Fade in={true} style={{ transitionDelay: '1100ms' }}>
-                      <Button
-                        variant="outlined"
-                        size="large"
-                        onClick={() => navigate('/login')}
-                        sx={{ 
-                          py: 2, 
-                          px: 4,
-                          fontWeight: 600,
-                          fontSize: '1rem',
-                          color: 'white',
-                          borderColor: 'rgba(255, 255, 255, 0.4)',
-                          borderWidth: '2px',
-                          borderRadius: '50px',
-                          backdropFilter: 'blur(5px)',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          transition: 'all 0.3s ease',
-                          width: { xs: '100%', sm: 'auto' },
-                          '&:hover': {
-                            borderColor: 'white',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            transform: 'translateY(-3px)',
-                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)'
-                          }
-                        }}
-                      >
-                        Sign In
-                      </Button>
-                    </Fade>
-                  </Stack>
-                </Box>
-                
-                {/* Enhanced Dark container for Scope Club logo on the right */}
-                {!isMobile && (
-                  <Fade in={true} style={{ transitionDelay: '700ms' }}>
-                    <Box
-                      sx={{ 
-                        maxWidth: '40%',
-                        minWidth: { md: '400px' },
-                        minHeight: '350px',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        position: 'relative',
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '20px',
-                        p: 4,
-                        boxShadow: '0px 20px 40px rgba(0, 0, 0, 0.3), 0px 0px 50px rgba(0, 168, 232, 0.1)',
-                        overflow: 'hidden',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          width: '150%',
-                          height: '150%',
-                          background: 'radial-gradient(circle, rgba(0,168,232,0.05) 0%, rgba(0,0,0,0) 70%)',
-                          top: '-25%',
-                          left: '-25%'
-                        }
-                      }}
-                    >
-                      {/* Decorative dots */}
-                      <Box sx={{
-                        position: 'absolute',
-                        width: 15,
-                        height: 15,
-                        borderRadius: '50%',
-                        backgroundColor: '#444',
-                        top: '20px',
-                        left: '20px',
-                      }} />
-                      
-                      <Box sx={{
-                        position: 'absolute',
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        backgroundColor: '#666',
-                        top: '20px',
-                        left: '45px',
-                      }} />
-                      
-                      <Box sx={{
-                        position: 'absolute',
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        backgroundColor: '#333',
-                        top: '20px',
-                        left: '65px',
-                      }} />
-                      
-                      {/* Decorative grid lines */}
-                      <Box sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        opacity: 0.2,
-                        backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
-                        backgroundSize: '20px 20px',
-                      }} />
-                      
-                      {/* Main scope logo in center */}
-                      <Box
-                        component="img"
-                        src="/scope_logo.png"
-                        alt="SCOPE CLUB"
-                        sx={{
-                          width: '100%',
-                          maxWidth: 300,
-                          height: 'auto',
-                          objectFit: 'contain',
-                          filter: 'drop-shadow(0px 10px 25px rgba(0, 0, 0, 0.5))',
-                          animation: 'pulse 4s infinite ease-in-out',
-                          '@keyframes pulse': {
-                            '0%': { opacity: 0.9, transform: 'scale(0.98)' },
-                            '50%': { opacity: 1, transform: 'scale(1.02)' },
-                            '100%': { opacity: 0.9, transform: 'scale(0.98)' },
-                          }
-                        }}
-                      />
-                      
-                      {/* Decorative dot in bottom right */}
-                      <Box sx={{
-                        position: 'absolute',
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #0077b6 0%, #00a8e8 100%)',
-                        boxShadow: '0 0 15px rgba(0, 168, 232, 0.7)',
-                        bottom: '30px',
-                        right: '30px',
-                      }} />
-                      
-                      {/* Glowing effect */}
-                      <Box sx={{
-                        position: 'absolute',
-                        width: '80%',
-                        height: '40%',
-                        borderRadius: '50%',
-                        background: 'radial-gradient(ellipse at center, rgba(0,168,232,0.15) 0%, rgba(0,119,182,0) 70%)',
-                        filter: 'blur(20px)',
-                        bottom: '-10%',
-                        left: '10%',
-                      }} />
-                    </Box>
-                  </Fade>
-                )}
-              </Box>
-            </Fade>
-          </Container>
-        </Box>
+                <span className="liquid-glass flex h-9 w-9 items-center justify-center rounded-full">
+                  <PlayArrow className="h-3.5 w-3.5 fill-white text-white" />
+                </span>
+                Watch a sample assessment
+              </a>
+            </div>
+          </section>
 
-        {/* Wave separator */}
-        <Box sx={{
-          height: 50,
-          width: '100%',
-          background: 'white',
-          position: 'relative',
-          zIndex: 1,
-          mt: 0,
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: -50,
-            left: 0,
-            right: 0,
-            height: 50,
-            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120'%3E%3Cpath fill='%23FFFFFF' fill-opacity='1' d='M0,96L80,101.3C160,107,320,117,480,112C640,107,800,85,960,80C1120,75,1280,85,1360,90.7L1440,96L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }
-        }} />
+          <div className="flex flex-col items-start justify-between gap-4 border-t border-white/15 pt-4 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-white/60">
+              <Code className="h-3.5 w-3.5" />
+              Built by SCOPE Club — MLR Institute of Technology
+            </div>
+            <div className="flex items-center gap-6 text-[11px] text-white/60">
+              <span>3,000+ students</span>
+              <span className="h-3 w-px bg-white/20" />
+              <span>50+ teachers</span>
+              <span className="h-3 w-px bg-white/20" />
+              <span>10+ admins</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        {/* Features Section */}
-        <Box sx={{ 
-          py: 8, 
-          bgcolor: 'white',
-          width: '100%'
-        }}>
-          <Container 
-            maxWidth={false} 
-            disableGutters
-            sx={{ 
-              width: '100%', 
-              px: { xs: 3, sm: 4, md: 6, lg: 8 } 
-            }}
-          >
-            <Fade in={true} timeout={1000}>
-              <Box sx={{ textAlign: 'center', mb: 8 }}>
-                <Typography 
-                  variant="overline" 
-                  component="p" 
-                  sx={{ 
-                    color: '#0077b6', 
-                    fontWeight: 600,
-                    letterSpacing: 2 
-                  }}
-                >
-                  POWERFUL FEATURES
-                </Typography>
-                <Typography 
-                  variant="h3" 
-                  component="h2" 
-                  sx={{ 
-                    fontWeight: 700, 
-                    mb: 2,
-                    color: '#0077b6'
-                  }}
-                >
-                  Everything You Need
-                </Typography>
-                <Typography 
-                  variant="body1" 
-                  color="text.secondary" 
-                  sx={{ 
-                    maxWidth: 650, 
-                    mx: 'auto',
-                    fontSize: '1.1rem',
-                    color: '#000',
-                    fontWeight: 500
-                  }}
-                >
-                  Code Stats offers a suite of essential tools to help you monitor, analyze, and improve your competitive programming skills.
-                </Typography>
-              </Box>
-            </Fade>
+      {/* 1. ABOUT Section */}
+      <section className="bg-black px-6 py-32 md:px-12 md:py-48">
+        <div className="mx-auto max-w-6xl text-center">
+          <ScrollRevealText
+            segments={[
+              { text: 'CodeStats', className: 'font-display italic' },
+              { text: 'gives', className: 'font-light text-white/70' },
+              { text: 'MLRIT students', className: 'italic text-white/60' },
+              { text: 'a real place to', className: 'font-light text-white/70' },
+              { text: 'write code,', className: 'font-semibold' },
+              { text: 'take assessments,', className: 'italic text-white/80' },
+              { text: 'and track progress —', className: 'font-semibold' },
+              { text: 'turning everyday practice', className: 'font-light text-white/65' },
+              { text: 'into measurable growth', className: 'italic' },
+              { text: 'that teachers and', className: 'font-light text-white/70' },
+              { text: 'students can', className: 'font-light text-white/70' },
+              { text: 'actually see.', className: 'font-semibold' },
+            ]}
+            className="font-display text-3xl font-normal leading-[1.25] tracking-[0.02em] text-white md:text-5xl lg:text-6xl"
+          />
+        </div>
+      </section>
 
-            <Grid container spacing={4} sx={{ mt: 2, width: '100%', mx: 0 }}>
-              {features.map((feature, index) => (
-                <Grid item xs={12} sm={6} md={3} key={index}>
-                  <Zoom in={true} style={{ transitionDelay: `${200 * index}ms` }}>
-                    <Paper
-                      component={Card}
-                      elevation={3}
-                      sx={{
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                        transition: 'all 0.3s ease',
-                        backgroundColor: '#0077b6',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        boxShadow: '0px 10px 25px rgba(0, 119, 182, 0.3)',
-                        '&:hover': {
-                          transform: 'translateY(-10px)',
-                          boxShadow: '0px 15px 35px rgba(0, 119, 182, 0.4)',
-                        }
-                      }}
-                    >
-                      <Box 
-                        sx={{ 
-                          p: 3, 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          backgroundColor: 'rgba(255,255,255,0.15)',
-                          borderBottom: '1px solid rgba(255,255,255,0.1)'
-                        }}
-                      >
-                        <Avatar
-                          sx={{
-                            width: 70,
-                            height: 70,
-                            backgroundColor: 'rgba(255,255,255,0.9)',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-                          }}
-                        >
-                          {feature.icon}
-                        </Avatar>
-                      </Box>
-                      <CardContent sx={{ p: 3, flexGrow: 1 }}>
-                        <Typography 
-                          variant="h6" 
-                          component="h3" 
-                          gutterBottom
-                          sx={{ 
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            color: 'white'
-                          }}
-                        >
-                          {feature.title}
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            textAlign: 'center',
-                            lineHeight: 1.6,
-                            color: 'rgba(255,255,255,0.9)'
-                          }}
-                        >
-                          {feature.description}
-                        </Typography>
-                      </CardContent>
-                    </Paper>
-                  </Zoom>
-                </Grid>
-              ))}
-            </Grid>
-          </Container>
-        </Box>
+      {/* 2. STATS Section */}
+      <section className="bg-black px-6 py-24 md:px-12">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-y-0 md:divide-x">
+          <div className="px-2 py-10 md:px-10 md:py-4 text-center">
+            <CountUp
+              end={stats.students}
+              suffix="+"
+              className="font-display text-6xl tracking-tight md:text-7xl lg:text-8xl text-white"
+            />
+            <div className="mt-4 text-sm tracking-wide text-white/55">Students registered</div>
+          </div>
+          <div className="px-2 py-10 md:px-10 md:py-4 text-center">
+            <CountUp
+              end={400}
+              suffix="+"
+              className="font-display text-6xl tracking-tight md:text-7xl lg:text-8xl text-white"
+            />
+            <div className="mt-4 text-sm tracking-wide text-white/55">Coding questions available</div>
+          </div>
+          <div className="px-2 py-10 md:px-10 md:py-4 text-center">
+            <CountUp
+              end={stats.teachers}
+              suffix="+"
+              className="font-display text-6xl tracking-tight md:text-7xl lg:text-8xl text-white"
+            />
+            <div className="mt-4 text-sm tracking-wide text-white/55">Teachers onboarded</div>
+          </div>
+        </div>
+      </section>
 
-        {/* Footer Section with Logo and Copyright */}
-        <Box 
-          component="footer" 
-          sx={{ 
-            py: 4, 
-            bgcolor: '#f8f9fa',
-            borderTop: '1px solid rgba(0,119,182,0.1)',
-            width: '100%'
-          }}
-        >
-          <Container 
-            maxWidth={false} 
-            disableGutters
-            sx={{ 
-              width: '100%', 
-              px: { xs: 3, sm: 4, md: 6, lg: 8 } 
-            }}
-          >
-            <Fade in={true} timeout={1000}>
-              <Stack 
-                direction={{ xs: 'column', sm: 'row' }} 
-                justifyContent="space-between" 
-                alignItems="center" 
-                spacing={2}
+      {/* 3. CAMPUSES Section */}
+      <section className="bg-black px-6 py-24 md:px-12">
+        <div className="mx-auto max-w-5xl text-center">
+          <div className="mb-6 inline-flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-white/60">
+            Institutions
+          </div>
+          <h2 className="font-display text-3xl tracking-tight md:text-5xl">
+            Collaborated with <span className="italic text-white/70">institutions.</span>
+          </h2>
+          <div className="mt-12 flex flex-col items-center text-center">
+            <img
+              src="/MLRIT.png"
+              alt="MLR Institute of Technology"
+              className="w-full max-w-[300px] object-contain"
+            />
+            <div className="mt-5 font-display text-xl md:text-2xl">MLR Institute of Technology</div>
+            <p className="mt-2 max-w-md text-xs leading-relaxed text-white/55 md:text-sm">
+              Dundigal V, Survey No. 444, Dundigal, Gandi Maisama, Medchal Malkajgiri, Telangana – 500 043, Telangana
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. LEADERBOARD Section */}
+      <section className="relative overflow-hidden px-6 py-24 md:px-12">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260402_054547_9875cfc5-155a-4229-8ec8-b7ba7125cbf8.mp4"
+        />
+        <div className="absolute inset-0 z-[1] bg-black/60" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-b from-black to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-t from-black to-transparent pointer-events-none" />
+        <div className="relative z-10 mx-auto max-w-4xl">
+          <div className="mb-10 flex items-end justify-between">
+            <div>
+              <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/60">Top performers</div>
+              <h2 className="font-display text-3xl tracking-tight md:text-5xl">Leaderboard</h2>
+            </div>
+            <EmojiEvents className="h-8 w-8 text-white/60" />
+          </div>
+          
+          {/* Leaderboard Items */}
+          <div className="space-y-3 mb-6">
+            {paginatedLeaderboard.map((p) => (
+              <div
+                key={p.rank}
+                onClick={() => p.rollNumber && navigate(`/public-profile/${p.rollNumber}`)}
+                role={p.rollNumber ? 'button' : undefined}
+                tabIndex={p.rollNumber ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (p.rollNumber && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    navigate(`/public-profile/${p.rollNumber}`);
+                  }
+                }}
+                className={`liquid-glass flex items-center gap-5 rounded-[1.25rem] p-5 transition-all duration-300 hover:bg-[rgba(0,136,204,0.15)] ${
+                  p.rollNumber ? 'cursor-pointer hover:scale-[1.01]' : ''
+                }`}
               >
-                <a
-                  href="http://scopeclub.mlrit.ac.in/teams"
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center' }}
-                >
-                  <img 
-                    src="/footer-light.png" 
-                    alt="SCOPE CLUB" 
-                    style={{ height: 32, width: 'auto' }} 
+                <div className="liquid-glass flex h-12 w-12 items-center justify-center rounded-[0.75rem] font-display text-xl">
+                  {p.rank}
+                </div>
+                <div className="flex-1">
+                  <div className="font-display text-lg">{p.name}</div>
+                  <div className="text-xs text-white/55">
+                    {p.department} {p.graduatingYear ? `'${p.graduatingYear.toString().slice(-2)}` : ''} • {p.institution}
+                  </div>
+                </div>
+                <div className="liquid-glass rounded-full px-3 py-1 text-[11px] tracking-wider text-white/80">
+                  {p.score} pts
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 0}
+                className={`liquid-glass rounded-full px-5 py-2 text-sm font-medium transition-all duration-300 ${
+                  currentPage === 0
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-[rgba(0,136,204,0.2)] hover:scale-105 cursor-pointer'
+                }`}
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-2">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i)}
+                    className={`h-2 w-2 rounded-full transition-all duration-300 ${
+                      currentPage === i
+                        ? 'w-6 bg-[rgb(120,200,255)]'
+                        : 'bg-white/30 hover:bg-white/50'
+                    }`}
+                    aria-label={`Go to page ${i + 1}`}
                   />
-                </a>
-                <Typography variant="body2" sx={{ color: '#000' }}>
-                  © {new Date().getFullYear()} MLRIT SCOPE. All rights reserved.
-                </Typography>
-              </Stack>
-            </Fade>
-          </Container>
-        </Box>
-      </Box>
+                ))}
+              </div>
+
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages - 1}
+                className={`liquid-glass rounded-full px-5 py-2 text-sm font-medium transition-all duration-300 ${
+                  currentPage === totalPages - 1
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-[rgba(0,136,204,0.2)] hover:scale-105 cursor-pointer'
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 5. CODING SNIPPET Section */}
+      <section id="code-snippet" className="scroll-mt-24 bg-black px-6 py-24 md:px-12">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-8">
+            <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/60">Live sample</div>
+            <h2 className="font-display text-3xl tracking-tight md:text-5xl">
+              A real challenge, <span className="italic text-white/70">auto-graded.</span>
+            </h2>
+          </div>
+          <div className="liquid-glass-strong rounded-[1.25rem] overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3">
+              <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+              <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+              <span className="ml-3 text-[11px] tracking-wider text-white/50">code-stats</span>
+            </div>
+            <div className="bg-black/40">
+              <video
+                ref={snippetVideoRef}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="block w-full h-auto object-cover"
+                src="https://sritulasiseeds.sgp1.cdn.digitaloceanspaces.com/scopecodestats.mp4"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. TESTIMONIALS Section */}
+      <TestimonialsMarquee />
+
+      {/* 7. FAQ Section */}
+      <section className="relative overflow-hidden bg-black px-6 py-28 md:px-12 md:py-32">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-[0.35]"
+          style={{
+            backgroundImage: "linear-gradient(rgba(0,170,255,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(0,170,255,0.18) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+            WebkitMaskImage: "radial-gradient(ellipse 60% 70% at 50% 0%, black 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
+            maskImage: "radial-gradient(ellipse 60% 70% at 50% 0%, black 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
+          }}
+        />
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(0,136,204,0.18),transparent_70%)] blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+
+        <div className="relative mx-auto grid max-w-6xl gap-14 md:grid-cols-[0.9fr_1.4fr] md:gap-20">
+          <div className="md:sticky md:top-24 md:self-start">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.12)] px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-[rgb(120,200,255)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(120,200,255)] shadow-[0_0_8px_rgba(0,170,255,0.9)]" />
+              FAQ
+            </div>
+            <h2 className="font-display text-4xl leading-[1.05] tracking-tight md:text-5xl">
+              Questions, <br />
+              <span className="italic text-white/65">answered with clarity.</span>
+            </h2>
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/55">
+              Everything you need to know about CodeStats — what it does, who it's for, and how MLRIT uses it.
+              Still can't find your answer?
+            </p>
+
+            <a
+              href="#"
+              className="group relative mt-8 inline-flex w-full max-w-sm items-center justify-between overflow-hidden rounded-2xl border border-[rgba(0,170,255,0.25)] bg-[rgba(0,136,204,0.07)] px-5 py-4 transition-all duration-500 hover:border-[rgba(0,170,255,0.55)] hover:bg-[rgba(0,136,204,0.14)]"
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(0,170,255,0.25),transparent_60%)] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
+              <div className="relative">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-white/45">Still curious?</div>
+                <div className="mt-1 text-sm font-medium text-white">Talk to our team</div>
+              </div>
+              <ArrowForward className="relative h-4 w-4 text-white/70 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-white" />
+            </a>
+          </div>
+
+          <FAQAccordion />
+        </div>
+      </section>
+
+      {/* 8. CTA Section */}
+      <section className="relative overflow-hidden px-6 py-32 md:px-12">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4"
+        />
+        <div className="absolute inset-0 z-[1] bg-black/55" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-b from-black to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-t from-black to-transparent pointer-events-none" />
+        <div className="relative z-10 mx-auto max-w-4xl text-center">
+          <h2 className="font-display text-4xl leading-[1.05] tracking-tight md:text-7xl">
+            Ready to level up <br />
+            <span className="italic text-white/70">your coding?</span>
+          </h2>
+          <p className="mx-auto mt-6 max-w-xl text-white/65">
+            Log in with your MLRIT account and start practicing today — one assessment at a time.
+          </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <button onClick={() => navigate('/login')} className="liquid-glass-strong group inline-flex items-center gap-2 rounded-full px-8 py-4 text-sm font-medium text-white transition-transform hover:scale-[1.02]">
+              Login
+              <ArrowForward className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+            <button onClick={() => navigate('/about')} className="liquid-glass inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-medium text-white/90 hover:text-white">
+              Learn more
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 9. FOOTER Section */}
+      <footer className="bg-black border-t border-white/10 px-6 py-16 md:px-12">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
+            <div className="col-span-2">
+              <span className="font-display text-2xl italic tracking-tight">CodeStats</span>
+              <p className="mt-4 max-w-xs text-sm text-white/55">
+                The coding assessment and performance-analysis platform built by SCOPE Club for the students of MLR Institute of Technology.
+              </p>
+              <div className="mt-6 flex items-center gap-4 text-white/60">
+                <a href="https://www.linkedin.com/school/mlr-institute-of-technology/" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="hover:text-white"><LinkedIn sx={{ fontSize: 16 }} /></a>
+                <a href="mailto:scopeclub@mlrinstitutions.ac.in" aria-label="Email" className="hover:text-white"><Email sx={{ fontSize: 16 }} /></a>
+              </div>
+            </div>
+            {[
+              { title: 'Platform', links: ['Assessments', 'Cohorts', 'Practice Arena', 'Leaderboard'] },
+              { title: 'SCOPE Club', links: ['About', 'Contact', 'Workshops', 'Hackathons'] },
+              { title: 'Institution', links: ['MLRIT', 'Docs', 'Login', 'Register'] },
+            ].map((col) => (
+              <div key={col.title}>
+                <div className="mb-4 text-xs uppercase tracking-[0.2em] text-white/50">{col.title}</div>
+                <ul className="space-y-2">
+                  {col.links.map((l) => (
+                    <li key={l}>
+                      <a href="#" className="text-sm text-white/75 hover:text-white">{l}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/45 sm:flex-row sm:items-center">
+            <div>© {new Date().getFullYear()} SCOPE Club · MLR Institute of Technology. All rights reserved.</div>
+            <div className="flex items-center gap-5">
+              <a href="mailto:scopeclub@mlrinstitutions.ac.in" className="hover:text-white">scopeclub@mlrinstitutions.ac.in</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+      </main>
     </>
   );
 };

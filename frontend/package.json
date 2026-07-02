@@ -18,7 +18,7 @@
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
-    "framer-motion": "^12.23.22",
+    "framer-motion": "^12.40.0",
     "github-calendar": "^2.3.4",
     "lottie-react": "^2.4.1",
     "react": "^18.2.0",

@@ -26,6 +26,7 @@ import {
 } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -45,6 +46,9 @@ import Opportunities from "./components/Opportunities";
 import Landing from "./components/Landing";
 import Profile from "./components/Profile";
 import PrivateRoute from "./components/PrivateRoute";
+import About from "./pages/About";
+import Docs from "./pages/Docs";
+import Contact from "./pages/Contact";
 import CourseManagement from "./components/CourseManagement";
 import OpportunityManagement from "./components/OpportunityManagement";
 import NotificationManagement from "./components/NotificationManagement";
@@ -60,6 +64,8 @@ import NotificationPage from "./pages/NotificationPage";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./components/NotFound";
 import MobileRestrictedRoute from "./components/MobileRestrictedRoute";
+import PageTransition from "./components/PageTransition";
+import LandingNavbar from "./components/LandingNavbar";
 
 // Import Practice Arena components
 import PracticeArena from "./components/PracticeArena/PracticeArena";
@@ -126,6 +132,13 @@ const MainContent = () => {
     location.pathname === "/register" ||
     location.pathname.startsWith("/register");
 
+  // Check if current path is a landing-related page
+  const isLandingPage =
+    location.pathname === "/" ||
+    location.pathname === "/about" ||
+    location.pathname === "/docs" ||
+    location.pathname === "/contact";
+
   // Check if current path is a public page (no authentication required)
   const isPublicPage = location.pathname.startsWith("/public-profile/");
 
@@ -160,7 +173,7 @@ const MainContent = () => {
   // Check if current path should not show footer
   const isNoFooterPage =
     isCohortProblemPage ||
-    location.pathname === "/" || // Landing page has its own footer
+    isLandingPage || // Landing pages have their own footer
     location.pathname === "/codepad" ||
     isCohortPage || // All cohort pages (list, detail, admin)
     isTestPage;
@@ -168,6 +181,9 @@ const MainContent = () => {
   // List of valid routes (excluding dynamic routes)
   const validStaticRoutes = [
     "/",
+    "/about",
+    "/docs",
+    "/contact",
     "/login",
     "/register",
     "/dashboard",
@@ -206,6 +222,7 @@ const MainContent = () => {
   const shouldShowNavigation =
     token &&
     !isAuthPage &&
+    !isLandingPage &&
     !isCohortProblemPage &&
     !is404Page &&
     !isTestPage &&
@@ -354,13 +371,52 @@ const MainContent = () => {
                 overflow: "visible",
                 boxSizing: "border-box",
                 p:
-                  isPublicPage || isAuthPage || location.pathname === "/search"
+                  isPublicPage ||
+                  isAuthPage ||
+                  isLandingPage ||
+                  location.pathname === "/search"
                     ? 0
                     : { xs: 2, md: 0 },
               }}
             >
-              <Routes>
-                <Route path="/" element={<Landing />} />
+              {/* Persistent navbar for public/landing pages - rendered
+                  outside AnimatePresence so it stays static and does not
+                  animate during page transitions */}
+              {isLandingPage && <LandingNavbar />}
+              <AnimatePresence mode="wait" initial={false}>
+                <Routes location={location} key={location.pathname}>
+                  <Route
+                    path="/"
+                    element={
+                      <PageTransition>
+                        <Landing />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/about"
+                    element={
+                      <PageTransition>
+                        <About />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/docs"
+                    element={
+                      <PageTransition>
+                        <Docs />
+                      </PageTransition>
+                    }
+                  />
+                  <Route
+                    path="/contact"
+                    element={
+                      <PageTransition>
+                        <Contact />
+                      </PageTransition>
+                    }
+                  />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<MultiStepRegister />} />
                 <Route
@@ -687,7 +743,8 @@ const MainContent = () => {
 
                 {/* 404 catch-all route - must be the last route */}
                 <Route path="*" element={<NotFound />} />
-              </Routes>
+                </Routes>
+              </AnimatePresence>
             </Container>
           </Box>
         </Box>{" "}

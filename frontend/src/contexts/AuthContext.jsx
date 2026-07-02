@@ -225,9 +225,12 @@ export const AuthProvider = ({ children }) => {
 
     // If we're on a protected path without auth, redirect to login
     const isAuthPath =
-      location.pathname === "/login" ||
-      location.pathname === "/register" ||
       location.pathname === "/" ||
+      location.pathname === "/register" ||
+      location.pathname === "/login" ||
+      location.pathname === "/about" ||
+      location.pathname === "/docs" ||
+      location.pathname === "/contact" ||
       location.pathname === "/auth/success" ||
       location.pathname.startsWith("/public-profile/");
 

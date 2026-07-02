@@ -63,6 +63,7 @@ const statsRoutes = require("./routes/stats");
 const dailyStatsRoutes = require("./routes/dailyStats");
 const profileSyncRoutes = require("./routes/profileSync");
 const compilerRoutes = require("./routes/compiler");
+const contactRoutes = require("./routes/contact");
 const jwt = require("jsonwebtoken");
 
 const app = express();
@@ -368,6 +369,7 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/dailyStats", dailyStatsRoutes);
 app.use("/api/profile-sync", profileSyncRoutes);
 app.use("/api/compiler", compilerRoutes);
+app.use("/api/contact", contactRoutes);
 app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/user-stats", require("./routes/UserStatisticsGenerator"));
