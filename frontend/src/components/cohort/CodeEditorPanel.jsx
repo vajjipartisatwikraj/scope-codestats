@@ -48,6 +48,9 @@ const CodeEditorPanel = (
     encryptionSettings = {}, // NEW: Encryption settings from question
     fillInTheBlankEnabled = false, // NEW: Enable Fill in the Blank mode
     portalContainer = null, // Container ref for portaling menus (needed for fullscreen)
+    fillHeight = false, // When true, the editor fills its parent instead of reserving testCasesPanelHeight
+    collapsed = false, // When true, only the header is shown (folded)
+    onToggleCollapse = null, // Callback for the fold/unfold button
   },
   ref
 ) => {
@@ -633,6 +636,12 @@ const CodeEditorPanel = (
         m: 0,
         p: 0,
         position: "relative",
+        border: "1px solid",
+        borderColor: darkMode
+          ? "rgba(255,255,255,0.12)"
+          : "rgba(0,0,0,0.12)",
+        borderRadius: "12px",
+        bgcolor: darkMode ? "#0A0A0A" : "#FFFFFF",
       }}
     >
       {/* Encryption Indicator */}
@@ -824,6 +833,33 @@ const CodeEditorPanel = (
               <FullscreenIcon sx={{ fontSize: "1.2rem" }} />
             )}
           </Button>
+
+          {onToggleCollapse && (
+            <Button
+              size="small"
+              aria-label={collapsed ? "Unfold editor" : "Fold editor"}
+              onClick={onToggleCollapse}
+              sx={{
+                minWidth: "auto",
+                p: 0.5,
+                bgcolor: "transparent",
+                color: darkMode ? "#aaa" : "#555",
+                border: "none",
+                "&:hover": {
+                  bgcolor: "transparent",
+                  color: darkMode ? "#fff" : "#000",
+                },
+              }}
+            >
+              <KeyboardArrowDownIcon
+                sx={{
+                  fontSize: "1.3rem",
+                  transition: "transform 0.2s ease",
+                  transform: collapsed ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -831,13 +867,13 @@ const CodeEditorPanel = (
       <Box
         ref={containerRef}
         sx={{
-          display: "flex",
+          display: collapsed ? "none" : "flex",
           flexGrow: 1,
           overflow: "hidden",
           position: "relative",
           m: 0,
           p: 0,
-          height: `calc(100% - ${testCasesPanelHeight}%)`,
+          height: fillHeight ? "100%" : `calc(100% - ${testCasesPanelHeight}%)`,
           "& .monaco-editor": {
             ".margin": {
               background: darkMode

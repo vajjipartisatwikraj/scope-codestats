@@ -43,6 +43,8 @@ import {
   Radio,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
@@ -66,6 +68,12 @@ import SubmissionsPanel from "./SubmissionsPanel";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import QuestionReport from "./QuestionReport";
 import LockIcon from "@mui/icons-material/Lock";
+
+// Platform-aware modifier label for keyboard-shortcut hints
+const IS_MAC =
+  typeof navigator !== "undefined" &&
+  /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+const MOD_KEY = IS_MAC ? "⌘" : "Ctrl";
 
 // Direct code execution API calls to backend simpleCodeExecutionService
 const codeExecutionApi = {
@@ -229,6 +237,55 @@ const CohortProblem = () => {
   // Test panel mode: "testrun" (parsed test cases + submit enabled) or
   // "debug" (raw stdin + custom input, submit disabled)
   const [panelMode, setPanelMode] = useState("testrun");
+
+  // Fold/unfold state for the right side: null (both expanded), "editor"
+  // (editor folded → header only), or "test" (test panel folded → header only)
+  const [collapsedPanel, setCollapsedPanel] = useState(null);
+
+  const toggleEditorCollapse = () =>
+    setCollapsedPanel((prev) => (prev === "editor" ? null : "editor"));
+  const toggleTestCollapse = () =>
+    setCollapsedPanel((prev) => (prev === "test" ? null : "test"));
+
+  // Fold/unfold state for the left problem-description panel (horizontal collapse)
+  const [descCollapsed, setDescCollapsed] = useState(false);
+
+  // Problem List overlay — expands the blue sidebar into a panel with the
+  // module's question list (rendered inside SidebarNavigation).
+  const [problemListOpen, setProblemListOpen] = useState(false);
+
+  // Keyboard shortcuts — refs hold the latest handlers/state so the listener
+  // can be registered once. Run = Ctrl/Cmd + '   Submit = Ctrl/Cmd + Enter
+  const runCodeRef = useRef(null);
+  const submitSolutionRef = useRef(null);
+  const shortcutStateRef = useRef({});
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const s = shortcutStateRef.current;
+      if (s.questionType !== "programming") return;
+
+      // Submit: Ctrl/Cmd + Enter
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!s.running && !s.submitting && s.activeInputTab !== 1) {
+          submitSolutionRef.current && submitSolutionRef.current();
+        }
+        return;
+      }
+      // Run: Ctrl/Cmd + '
+      if (e.key === "'") {
+        e.preventDefault();
+        if (!s.running && !s.submitting) {
+          runCodeRef.current && runCodeRef.current();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   // Toggle between Debug and Test Run modes.
   const handlePanelModeChange = (mode) => {
@@ -1560,6 +1617,16 @@ const CohortProblem = () => {
     );
   };
 
+  // Keep shortcut refs pointing at the latest handlers/state each render
+  runCodeRef.current = handleRunCode;
+  submitSolutionRef.current = handleSubmitSolution;
+  shortcutStateRef.current = {
+    running,
+    submitting,
+    activeInputTab,
+    questionType: question?.type,
+  };
+
   return (
     <Box
       sx={{
@@ -1579,7 +1646,12 @@ const CohortProblem = () => {
       }}
     >
       {/* Add Sidebar Navigation */}
-      <SidebarNavigation darkMode={darkMode} />
+      <SidebarNavigation
+        darkMode={darkMode}
+        problemListOpen={problemListOpen}
+        onCloseProblemList={() => setProblemListOpen(false)}
+      />
+
 
       {/* Main Content */}
       <Box
@@ -1607,50 +1679,31 @@ const CohortProblem = () => {
               : "linear-gradient(to right, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.9))",
           }}
         >
-          <Tabs
-            value={activeTab}
-            onChange={handleTabChange}
+          {/* Problem/Editorial/Submissions/Report/Notes switcher moved into the
+              left description panel and rendered as buttons (see below). */}
+
+          {/* Problem List button — opens the module's problem list overlay */}
+          <Button
+            onClick={() => setProblemListOpen(true)}
+            startIcon={<FormatListBulletedIcon sx={{ fontSize: 18 }} />}
+            endIcon={<ArrowForwardIosIcon sx={{ fontSize: 12 }} />}
             sx={{
-              "& .MuiTab-root": {
-                minWidth: "auto",
-                px: 2,
-                fontSize: "0.875rem",
-                textTransform: "none",
-                fontWeight: "medium",
-                color: darkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)",
-                minHeight: "48px",
-                "&.Mui-selected": {
-                  color: darkMode ? "#fff !important" : theme.palette.primary.main,
-                },
-              },
-              "& .MuiTabs-indicator": {
-                backgroundColor: darkMode ? "#fff" : theme.palette.primary.main,
-                height: 2,
+              height: 36,
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              borderRadius: "8px",
+              px: 1.5,
+              color: darkMode ? "#fff" : "#0f172a",
+              "&:hover": {
+                bgcolor: darkMode
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(0,0,0,0.05)",
               },
             }}
           >
-            <Tab
-              icon={<CodeIcon sx={{ fontSize: 16, mr: 1 }} />}
-              label="Problem"
-              iconPosition="start"
-              sx={{
-                borderBottom:
-                  activeTab === 0
-                    ? `2px solid ${
-                        darkMode ? "#fff" : theme.palette.primary.main
-                      }`
-                    : "none",
-              }}
-            />
-            <Tab label="Editorial" />
-            <Tab label="Submissions" />
-            <Tab
-              icon={<ReportProblemIcon sx={{ fontSize: 16, mr: 1 }} />}
-              label="Report"
-              iconPosition="start"
-            />
-            <Tab label="Notes" />
-          </Tabs>
+            Problem List
+          </Button>
 
           <Box sx={{ flexGrow: 1 }} />
 
@@ -1660,44 +1713,52 @@ const CohortProblem = () => {
             {/* Add Run and Submit buttons to top navigation - only for programming questions */}
             {question?.type === "programming" && (
               <>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  size="small"
-                  onClick={handleRunCode}
-                  disabled={running || submitting || (activeInputTab === 1 && !customInput.trim())}
-                  startIcon={<PlayArrowIcon />}
-                  sx={{
-                    height: 36,
-                    textTransform: "none",
-                    borderRadius: "4px",
-                    px: 2,
-                    bgcolor: darkMode
-                      ? "rgba(0, 136, 204, 0.05)"
-                      : "rgba(0, 136, 204, 0.02)",
-                  }}
-                >
-                  {running ? "Running..." : "Run Code"}
-                </Button>
+                <Tooltip title={`Run Code (${MOD_KEY} + ')`} arrow>
+                  <span>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      onClick={handleRunCode}
+                      disabled={running || submitting || (activeInputTab === 1 && !customInput.trim())}
+                      startIcon={<PlayArrowIcon />}
+                      sx={{
+                        height: 36,
+                        textTransform: "none",
+                        borderRadius: "4px",
+                        px: 2,
+                        bgcolor: darkMode
+                          ? "rgba(0, 136, 204, 0.05)"
+                          : "rgba(0, 136, 204, 0.02)",
+                      }}
+                    >
+                      {running ? "Running..." : "Run Code"}
+                    </Button>
+                  </span>
+                </Tooltip>
 
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleSubmitSolution}
-                  disabled={running || submitting || activeInputTab === 1}
-                  sx={{
-                    height: 36,
-                    textTransform: "none",
-                    borderRadius: "4px",
-                    px: 2,
-                    backgroundColor: activeInputTab === 1 ? (darkMode ? "#333" : "#ccc") : "#01780F",
-                    "&:hover": {
-                      backgroundColor: activeInputTab === 1 ? (darkMode ? "#333" : "#ccc") : "#015c0c",
-                    },
-                  }}
-                >
-                  {submitting ? "Submitting..." : "Submit"}
-                </Button>
+                <Tooltip title={`Submit (${MOD_KEY} + Enter)`} arrow>
+                  <span>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleSubmitSolution}
+                      disabled={running || submitting || activeInputTab === 1}
+                      sx={{
+                        height: 36,
+                        textTransform: "none",
+                        borderRadius: "4px",
+                        px: 2,
+                        backgroundColor: activeInputTab === 1 ? (darkMode ? "#333" : "#ccc") : "#01780F",
+                        "&:hover": {
+                          backgroundColor: activeInputTab === 1 ? (darkMode ? "#333" : "#ccc") : "#015c0c",
+                        },
+                      }}
+                    >
+                      {submitting ? "Submitting..." : "Submit"}
+                    </Button>
+                  </span>
+                </Tooltip>
               </>
             )}
           </Box>
@@ -1731,16 +1792,20 @@ const CohortProblem = () => {
                 {/* Problem Description Panel */}
                 <Box
                   sx={{
-                    width: `${leftPanelWidth}%`,
-                    height: "100%",
-                    borderRight: "1px solid",
+                    width: descCollapsed ? "48px" : `${leftPanelWidth}%`,
+                    flexShrink: 0,
+                    height: "calc(100% - 16px)",
+                    border: "1px solid",
                     borderColor: darkMode
-                      ? "rgba(255,255,255,0.1)"
-                      : "rgba(0,0,0,0.1)",
-                    overflow: "auto",
-                    bgcolor: darkMode ? "#0a0c10" : "#FFFFFF",
+                      ? "rgba(255,255,255,0.12)"
+                      : "rgba(0,0,0,0.12)",
+                    borderRadius: "12px",
+                    overflow: descCollapsed ? "hidden" : "auto",
+                    bgcolor: darkMode ? "#0A0A0A" : "#FFFFFF",
                     p: 0,
-                    m: 0,
+                    my: 1,
+                    ml: 1,
+                    mr: 0.25,
                     transition: isResizing ? "none" : "width 0.1s ease",
                     "&::-webkit-scrollbar": {
                       width: "8px",
@@ -1761,6 +1826,128 @@ const CohortProblem = () => {
                     },
                   }}
                 >
+                  {/* Collapsed strip — just an unfold button */}
+                  {descCollapsed && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        pt: 1,
+                      }}
+                    >
+                      <Button
+                        onClick={() => setDescCollapsed(false)}
+                        aria-label="Unfold description"
+                        sx={{
+                          minWidth: "auto",
+                          p: 0.5,
+                          color: darkMode ? "#aaa" : "#555",
+                          "&:hover": {
+                            bgcolor: "transparent",
+                            color: darkMode ? "#fff" : "#000",
+                          },
+                        }}
+                      >
+                        <KeyboardArrowDownIcon
+                          sx={{ fontSize: "1.3rem", transform: "rotate(-90deg)" }}
+                        />
+                      </Button>
+                    </Box>
+                  )}
+
+                  {!descCollapsed && (
+                    <>
+                  {/* Section switcher — buttons separated by | */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      px: 2,
+                      py: 1,
+                      borderBottom: "1px solid",
+                      borderColor: darkMode
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(0,0,0,0.1)",
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 5,
+                      bgcolor: darkMode ? "#0A0A0A" : "#FFFFFF",
+                    }}
+                  >
+                    {[
+                      { label: "Problem" },
+                      { label: "Editorial" },
+                      { label: "Submissions" },
+                      { label: "Report" },
+                      { label: "Notes" },
+                    ].map((t, i) => (
+                      <React.Fragment key={t.label}>
+                        {i > 0 && (
+                          <Box
+                            component="span"
+                            sx={{
+                              mx: 0.5,
+                              color: darkMode
+                                ? "rgba(255,255,255,0.25)"
+                                : "rgba(0,0,0,0.25)",
+                              userSelect: "none",
+                            }}
+                          >
+                            |
+                          </Box>
+                        )}
+                        <Button
+                          onClick={() => handleTabChange(null, i)}
+                          startIcon={t.icon || null}
+                          disableRipple
+                          sx={{
+                            minWidth: "auto",
+                            textTransform: "none",
+                            fontSize: "0.875rem",
+                            fontWeight: activeTab === i ? 700 : 500,
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: "4px",
+                            color:
+                              activeTab === i
+                                ? darkMode
+                                  ? "#fff"
+                                  : theme.palette.primary.main
+                                : darkMode
+                                ? "rgba(255,255,255,0.6)"
+                                : "rgba(0,0,0,0.6)",
+                            "& .MuiButton-startIcon": { mr: 0.5 },
+                            "&:hover": {
+                              bgcolor: "transparent",
+                              color: darkMode ? "#fff" : theme.palette.primary.main,
+                            },
+                          }}
+                        >
+                          {t.label}
+                        </Button>
+                      </React.Fragment>
+                    ))}
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Button
+                      onClick={() => setDescCollapsed(true)}
+                      aria-label="Fold description"
+                      sx={{
+                        minWidth: "auto",
+                        p: 0.5,
+                        color: darkMode ? "#aaa" : "#555",
+                        "&:hover": {
+                          bgcolor: "transparent",
+                          color: darkMode ? "#fff" : "#000",
+                        },
+                      }}
+                    >
+                      <KeyboardArrowDownIcon
+                        sx={{ fontSize: "1.3rem", transform: "rotate(90deg)" }}
+                      />
+                    </Button>
+                  </Box>
+
                   {/* Problem Title and Difficulty */}
                   <Box
                     sx={{
@@ -2500,27 +2687,25 @@ const CohortProblem = () => {
                       </Accordion>
                     </Box>
                   </Box>
+                    </>
+                  )}
                 </Box>
 
-                {/* Resizer */}
+                {/* Resizer (invisible but still draggable) */}
                 <Box
                   ref={resizerRef}
                   sx={{
-                    width: "6px",
+                    width: "4px",
                     height: "100%",
-                    bgcolor: darkMode ? "#1A1A1A" : "#f0f2f5",
+                    bgcolor: "transparent",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
                     cursor: "col-resize",
-                    borderLeft: "none",
-                    borderRight: "none",
-                    borderColor: darkMode
-                      ? "rgba(255,255,255,0.1)"
-                      : "rgba(0,0,0,0.1)",
+                    border: "none",
                     zIndex: 10,
                     "&:hover": {
-                      bgcolor: darkMode ? "#252525" : "#e0e0e0",
+                      bgcolor: "transparent",
                     },
                   }}
                   onMouseDown={startResize}
@@ -2532,12 +2717,14 @@ const CohortProblem = () => {
                   sx={{
                     flexGrow: 1,
                     width: `${100 - leftPanelWidth}%`,
-                    height: "100%",
+                    height: "calc(100% - 16px)",
                     display: "flex",
                     flexDirection: "column",
-                    bgcolor: darkMode ? "#0a0c10" : "#FAFAFA",
+                    bgcolor: "transparent",
                     overflow: "hidden",
-                    m: 0,
+                    my: 1,
+                    ml: 0.25,
+                    mr: 1,
                     p: 0,
                     transition: isResizing ? "none" : "width 0.1s ease",
                   }}
@@ -2556,7 +2743,7 @@ const CohortProblem = () => {
                         overflow: "hidden",
                         m: 0,
                         p: 0,
-                        "& > *": { mb: 0 }, // Ensure no margin between child components
+                        gap: 1, // consistent gap between editor and test panels (incl. folded state)
                       }}
                     >
                       {question?.type === "mcq" ? (
@@ -2565,6 +2752,21 @@ const CohortProblem = () => {
                       ) : (
                         // Render programming editor
                         <>
+                          {/* Editor wrapper — flex height driven by fold state */}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              minHeight: 0,
+                              overflow: "hidden",
+                              flex:
+                                collapsedPanel === "editor"
+                                  ? "0 0 auto"
+                                  : collapsedPanel === "test"
+                                  ? "1 1 auto"
+                                  : `${100 - testCasesPanelHeight} 1 0`,
+                            }}
+                          >
                           <CodeEditorPanel
                             ref={codeEditorRef}
                             code={code}
@@ -2583,11 +2785,29 @@ const CohortProblem = () => {
                             fillInTheBlankEnabled={
                               question?.fillInTheBlank || false
                             }
+                            fillHeight
+                            collapsed={collapsedPanel === "editor"}
+                            onToggleCollapse={toggleEditorCollapse}
                           />
+                          </Box>
 
                           {question &&
                             question.testCases &&
                             question.testCases.length > 0 && (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  minHeight: 0,
+                                  overflow: "hidden",
+                                  flex:
+                                    collapsedPanel === "test"
+                                      ? "0 0 auto"
+                                      : collapsedPanel === "editor"
+                                      ? "1 1 auto"
+                                      : `${testCasesPanelHeight} 1 0`,
+                                }}
+                              >
                               <TestCasesPanel
                                 question={question}
                                 testResults={testResults}
@@ -2610,7 +2830,12 @@ const CohortProblem = () => {
                                 running={running}
                                 panelMode={panelMode}
                                 onPanelModeChange={handlePanelModeChange}
+                                fillHeight
+                                collapsed={collapsedPanel === "test"}
+                                onToggleCollapse={toggleTestCollapse}
+                                showResizer={collapsedPanel === null}
                               />
+                              </Box>
                             )}
                         </>
                       )}

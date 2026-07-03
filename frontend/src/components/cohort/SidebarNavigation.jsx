@@ -2,25 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
-  Drawer,
   List,
   ListItem,
+  ListItemButton,
   IconButton,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  Typography,
+  Chip,
 } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import { apiUrl } from '../../config/apiConfig';
 import { toast } from 'react-toastify';
 
-const SidebarNavigation = ({ darkMode }) => {
+const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemList }) => {
   const navigate = useNavigate();
   const { cohortId, moduleId, questionId } = useParams();
   const { toggleTheme } = useTheme();
@@ -103,30 +108,81 @@ const SidebarNavigation = ({ darkMode }) => {
   const isPrevDisabled = loading || currentQuestionIndex <= 0;
   const isNextDisabled = loading || currentQuestionIndex === -1 || currentQuestionIndex >= moduleQuestions.length - 1;
 
+  // Platform-aware modifier label for shortcut hints
+  const isMac =
+    typeof navigator !== 'undefined' &&
+    /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const modKey = isMac ? '⌘' : 'Ctrl';
+
+  // Keyboard shortcuts for navigating problems:
+  //   Previous = Ctrl/Cmd + Shift + ,   Next = Ctrl/Cmd + Shift + .
+  useEffect(() => {
+    const handleKey = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod || !e.shiftKey) return;
+      if (e.code === 'Comma') {
+        e.preventDefault();
+        handleNavigateToPreviousQuestion();
+      } else if (e.code === 'Period') {
+        e.preventDefault();
+        handleNavigateToNextQuestion();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [currentQuestionIndex, moduleQuestions, loading]);
+
   // Reduced width from 80px to 60px
   const sidebarWidth = 60;
 
+  // Difficulty color helper for the problem list
+  const getDifficultyColor = (q) => {
+    const d = (q.difficultyLevel || q.difficulty || 'medium').toLowerCase();
+    if (d === 'easy') return '#7CFF9B';
+    if (d === 'hard') return '#FF8A80';
+    return '#FFD54F';
+  };
+
+  const isQuestionSolved = (q) =>
+    q.isSolved || q.solved || q.status === 'accepted' || q.userStatus === 'accepted';
+
+  const handleSelectQuestion = (q) => {
+    if (onCloseProblemList) onCloseProblemList();
+    if (q._id !== questionId) {
+      navigate(`/cohorts/${cohortId}/modules/${moduleId}/questions/${q._id}`);
+    }
+  };
+
   return (
-    <Drawer
-      variant="permanent"
+    <>
+    <Box
       sx={{
-        width: sidebarWidth,
-        flexShrink: 0,
         position: 'fixed',
+        top: 0,
+        left: 0,
         height: '100%',
-        [`& .MuiDrawer-paper`]: { 
-          width: sidebarWidth, 
-          boxSizing: 'border-box',
-          bgcolor: navBgColor, // Apply themed background color
-          color: darkMode ? '#fff' : '#fff', // Text is white in both themes
-          borderRight: 'none', // Remove border to avoid gap
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        },
+        width: problemListOpen ? 400 : sidebarWidth,
+        boxSizing: 'border-box',
+        bgcolor: navBgColor, // Themed blue background
+        color: '#fff',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'row',
+        zIndex: problemListOpen ? 1360 : 1250,
+        transition: 'width 0.34s cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
+      {/* Narrow icon column (always visible) */}
+      <Box
+        sx={{
+          width: sidebarWidth,
+          flexShrink: 0,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+        }}
+      >
       <Box>
         {/* Logo in rounded container with better sizing */}
         <Box 
@@ -184,7 +240,7 @@ const SidebarNavigation = ({ darkMode }) => {
       {/* Bottom Navigation - Theme toggle and navigation arrows */}
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-          <Tooltip title={isPrevDisabled ? "No previous question" : "Previous Question"} placement="right">
+          <Tooltip title={isPrevDisabled ? "No previous question" : `Previous Question (${modKey} + Shift + ,)`} placement="right">
             <span> {/* Wrap in span to allow tooltip on disabled button */}
               <IconButton
                 onClick={handleNavigateToPreviousQuestion}
@@ -215,7 +271,7 @@ const SidebarNavigation = ({ darkMode }) => {
             </span>
           </Tooltip>
           
-          <Tooltip title={isNextDisabled ? "No next question" : "Next Question"} placement="right">
+          <Tooltip title={isNextDisabled ? "No next question" : `Next Question (${modKey} + Shift + .)`} placement="right">
             <span> {/* Wrap in span to allow tooltip on disabled button */}
               <IconButton
                 onClick={handleNavigateToNextQuestion}
@@ -267,7 +323,167 @@ const SidebarNavigation = ({ darkMode }) => {
           </Tooltip>
         </Box>
       </Box>
-    </Drawer>
+      </Box>
+      {/* End narrow icon column */}
+
+      {/* List column — visible only when the sidebar is expanded */}
+      {problemListOpen && (
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          borderLeft: '1px solid rgba(255,255,255,0.22)',
+        }}
+      >
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2.5,
+          py: 2,
+          borderBottom: '1px solid rgba(255,255,255,0.22)',
+        }}
+      >
+        <Box>
+          <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1rem', lineHeight: 1.2 }}>
+            Problem List
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.72rem' }}>
+            {moduleQuestions.length} problem{moduleQuestions.length === 1 ? '' : 's'} in this module
+          </Typography>
+        </Box>
+        <IconButton onClick={onCloseProblemList} size="small" sx={{ color: '#fff' }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Question list */}
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 1.25,
+          '&::-webkit-scrollbar': { width: '8px' },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            borderRadius: '4px',
+          },
+        }}
+      >
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress size={26} sx={{ color: '#fff' }} />
+          </Box>
+        ) : moduleQuestions.length === 0 ? (
+          <Typography sx={{ color: 'rgba(255,255,255,0.85)', textAlign: 'center', py: 6, fontSize: '0.9rem' }}>
+            No problems found in this module.
+          </Typography>
+        ) : (
+          <List sx={{ p: 0 }}>
+            {moduleQuestions.map((q, index) => {
+              const isCurrent = q._id === questionId;
+              const solved = isQuestionSolved(q);
+              return (
+                <ListItemButton
+                  key={q._id}
+                  onClick={() => handleSelectQuestion(q)}
+                  sx={{
+                    borderRadius: '10px',
+                    mb: 0.75,
+                    px: 1.25,
+                    py: 1,
+                    gap: 1.25,
+                    alignItems: 'flex-start',
+                    bgcolor: isCurrent ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+                    border: '1px solid',
+                    borderColor: isCurrent ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.12)',
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.18)',
+                    },
+                  }}
+                >
+                  <Box sx={{ pt: '2px', flexShrink: 0 }}>
+                    {solved ? (
+                      <CheckCircleIcon sx={{ fontSize: 20, color: '#7CFF9B' }} />
+                    ) : (
+                      <RadioButtonUncheckedIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.6)' }} />
+                    )}
+                  </Box>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                      sx={{
+                        color: '#fff',
+                        fontWeight: isCurrent ? 700 : 500,
+                        fontSize: '0.9rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {index + 1}. {q.title}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.25 }}>
+                      <Typography
+                        sx={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: getDifficultyColor(q),
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {(q.difficultyLevel || q.difficulty || 'medium')}
+                      </Typography>
+                      {typeof q.marks === 'number' && (
+                        <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.7)' }}>
+                          • {q.marks} pts
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                  {isCurrent && (
+                    <Chip
+                      label="Current"
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        bgcolor: 'rgba(255,255,255,0.9)',
+                        color: navBgColor,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              );
+            })}
+          </List>
+        )}
+      </Box>
+      </Box>
+      )}
+    </Box>
+
+    {/* Blurred backdrop behind the expanded sidebar */}
+    <Box
+      onClick={onCloseProblemList}
+      sx={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1350,
+        bgcolor: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        opacity: problemListOpen ? 1 : 0,
+        visibility: problemListOpen ? 'visible' : 'hidden',
+        transition: 'opacity 0.3s ease, visibility 0.3s ease',
+      }}
+    />
+    </>
   );
 };
 

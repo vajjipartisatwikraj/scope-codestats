@@ -1,11 +1,10 @@
 import React from "react";
-import { Box, Typography, Chip, Grid, Divider, Tab, Tabs, TextField, Button } from "@mui/material";
-import LockIcon from "@mui/icons-material/Lock";
+import { Box, Typography, Chip, Grid, Divider, TextField, Button } from "@mui/material";
 import SpeedIcon from "@mui/icons-material/Speed";
 import DeveloperBoardIcon from "@mui/icons-material/DeveloperBoard";
 import ScoreIcon from "@mui/icons-material/Score";
-import TerminalIcon from "@mui/icons-material/Terminal";
 import BugReportIcon from "@mui/icons-material/BugReport";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import RocketAnimation from "../RocketAnimation";
 
 const TestCasesPanel = ({
@@ -29,6 +28,10 @@ const TestCasesPanel = ({
   running = false, // Whether code is currently running
   panelMode = "testrun", // "debug" | "testrun" — controls tabs, raw vs parsed test cases, and submit availability
   onPanelModeChange, // Callback to toggle the panel mode
+  fillHeight = false, // When true, the panel fills its parent instead of using testCasesPanelHeight
+  collapsed = false, // When true, only the header is shown (folded)
+  onToggleCollapse = null, // Callback for the fold/unfold button
+  showResizer = true, // Whether to render the drag-to-resize bar
 }) => {
   // State to track if animation has completed
   const [animationCompleted, setAnimationCompleted] = React.useState(false);
@@ -819,24 +822,25 @@ const TestCasesPanel = ({
   return (
     <>
       {/* Test panel resizer */}
+      {showResizer && (
       <Box
         ref={testPanelResizerRef}
         sx={{
           height: "4px",
           width: "100%",
-          bgcolor: darkMode ? "#0A0A0A" : "#f0f2f5",
+          bgcolor: "transparent",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           cursor: "row-resize",
-          borderColor: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
           zIndex: 20,
-          m: 0,
+          mx: 0,
+          my: 0,
           p: 0,
           position: "relative",
-          top: "-10px",
+          top: 0,
           "&:hover": {
-            bgcolor: darkMode ? "#1A1A1A" : "#e0e0e0",
+            bgcolor: "transparent",
           },
         }}
         onMouseDown={startTestPanelResize}
@@ -853,18 +857,23 @@ const TestCasesPanel = ({
           }}
         />
       </Box>
+      )}
 
       {/* Test Cases Panel */}
       <Box
         sx={{
-          borderTop: "1px solid",
+          border: "1px solid",
           borderColor: darkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+          borderRadius: "12px",
+          overflow: "hidden",
           bgcolor: darkMode ? "#0A0A0A" : "#F5F7FA",
-          height: `${testCasesPanelHeight}%`,
+          height: fillHeight ? "auto" : `${testCasesPanelHeight}%`,
+          flexGrow: fillHeight ? 1 : 0,
+          minHeight: fillHeight ? 0 : "auto",
           display: "flex",
           flexDirection: "column",
           m: 0,
-          mt: -1,
+          mt: 0,
           p: 0,
           position: "relative",
           transition: isResizingTestPanel ? "none" : "height 0.1s ease",
@@ -880,7 +889,7 @@ const TestCasesPanel = ({
             top: 0,
             left: 0,
             right: 0,
-            bgcolor: darkMode ? "#0A0C10" : "#FFFFFF",
+            bgcolor: darkMode ? "#0A0A0A" : "#FFFFFF",
             zIndex: 50,
             width: "100%",
             flexShrink: 0,
@@ -903,54 +912,71 @@ const TestCasesPanel = ({
                 : "flex",
           }}
         >
-          <Tabs
-            value={activeInputTab}
-            onChange={(e, newVal) => onInputTabChange && onInputTabChange(newVal)}
+          {/* Section switcher — buttons separated by |, styled like the
+              question-description tabs. Test Cases is always shown (left); in
+              Debug mode the Custom Input button appears to its right. */}
+          <Box
             sx={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              px: 2,
               minHeight: "40px",
-              "& .MuiTabs-indicator": {
-                bgcolor: darkMode ? "#fff" : "#1976d2",
-                height: "2px",
-              },
-              "& .MuiTab-root": {
-                minHeight: "40px",
-                py: 0,
-                px: 2,
-                textTransform: "uppercase",
-                fontWeight: 600,
-                fontSize: "0.72rem",
-                letterSpacing: "0.5px",
-                color: darkMode ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)",
-                "&.Mui-selected": {
-                  color: darkMode ? "#fff" : "#1976d2",
-                },
-              },
             }}
           >
-            {/* Test Cases tab is always shown (left). In Debug mode the Custom
-                Input tab appears to its right. */}
-            <Tab
-              value={0}
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  {isSubmission && <LockIcon sx={{ fontSize: "0.85rem" }} />}
-                  {isSubmission ? "Hidden Test Cases" : "Test Cases"}
-                </Box>
-              }
-            />
-            {panelMode === "debug" && (
-              <Tab
-                value={1}
-                label={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <TerminalIcon sx={{ fontSize: "0.85rem" }} />
-                    Custom Input
+            {[
+              { value: 0, label: isSubmission ? "Hidden Test Cases" : "Test Cases" },
+              ...(panelMode === "debug"
+                ? [{ value: 1, label: "Custom Input" }]
+                : []),
+            ].map((t, i) => (
+              <React.Fragment key={t.value}>
+                {i > 0 && (
+                  <Box
+                    component="span"
+                    sx={{
+                      mx: 0.5,
+                      color: darkMode
+                        ? "rgba(255,255,255,0.25)"
+                        : "rgba(0,0,0,0.25)",
+                      userSelect: "none",
+                    }}
+                  >
+                    |
                   </Box>
-                }
-              />
-            )}
-          </Tabs>
+                )}
+                <Button
+                  onClick={() => onInputTabChange && onInputTabChange(t.value)}
+                  disableRipple
+                  sx={{
+                    minWidth: "auto",
+                    textTransform: "none",
+                    fontSize: "0.875rem",
+                    fontWeight: activeInputTab === t.value ? 700 : 500,
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: "4px",
+                    color:
+                      activeInputTab === t.value
+                        ? darkMode
+                          ? "#fff"
+                          : "#1976d2"
+                        : darkMode
+                        ? "rgba(255,255,255,0.6)"
+                        : "rgba(0,0,0,0.6)",
+                    "&:hover": {
+                      bgcolor: "transparent",
+                      color: darkMode ? "#fff" : "#1976d2",
+                    },
+                  }}
+                >
+                  {t.label}
+                </Button>
+              </React.Fragment>
+            ))}
+          </Box>
 
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, pr: onToggleCollapse ? 0.5 : 0 }}>
           {/* Debug / Test Run mode toggle */}
           <Button
             size="small"
@@ -989,11 +1015,40 @@ const TestCasesPanel = ({
           >
             {panelMode === "debug" ? "Test Run" : "Debug"}
           </Button>
+
+          {onToggleCollapse && (
+            <Button
+              size="small"
+              aria-label={collapsed ? "Unfold test cases" : "Fold test cases"}
+              onClick={onToggleCollapse}
+              sx={{
+                minWidth: "auto",
+                p: 0.5,
+                bgcolor: "transparent",
+                color: darkMode ? "#aaa" : "#555",
+                border: "none",
+                "&:hover": {
+                  bgcolor: "transparent",
+                  color: darkMode ? "#fff" : "#000",
+                },
+              }}
+            >
+              <KeyboardArrowDownIcon
+                sx={{
+                  fontSize: "1.3rem",
+                  transition: "transform 0.2s ease",
+                  transform: collapsed ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
+            </Button>
+          )}
+          </Box>
         </Box>
 
         {/* Content */}
         <Box
           sx={{
+            display: collapsed ? "none" : "block",
             height: "calc(100% - 40px)",
             overflow: "auto",
             "&::-webkit-scrollbar": {
