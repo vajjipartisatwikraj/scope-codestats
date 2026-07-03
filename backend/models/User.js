@@ -484,6 +484,9 @@ userSchema.pre(
         // Daily stats data - comprehensive daily statistics and analytics
         mongoose.model("DailyStats").deleteMany({ userId: userId }),
 
+        // Activity heatmap data - sparse per-day problem-solved counts
+        mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+
         // Submission data - cohort programming submissions
         mongoose.model("Submission").deleteMany({ user: userId }),
 
@@ -553,6 +556,9 @@ userSchema.pre("findOneAndDelete", async function () {
       // Daily stats data - comprehensive daily statistics and analytics
       mongoose.model("DailyStats").deleteMany({ userId: userId }),
 
+      // Activity heatmap data - sparse per-day problem-solved counts
+      mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+
       // Submission data - cohort programming submissions
       mongoose.model("Submission").deleteMany({ user: userId }),
 
@@ -615,6 +621,9 @@ userSchema.pre("findByIdAndDelete", async function () {
 
       // Daily stats data - comprehensive daily statistics and analytics
       mongoose.model("DailyStats").deleteMany({ userId: userId }),
+
+      // Activity heatmap data - sparse per-day problem-solved counts
+      mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
 
       // Submission data - cohort programming submissions
       mongoose.model("Submission").deleteMany({ user: userId }),
@@ -683,6 +692,9 @@ userSchema.pre("deleteMany", async function () {
 
       // Daily stats data - comprehensive daily statistics and analytics
       mongoose.model("DailyStats").deleteMany({ userId: { $in: userIds } }),
+
+      // Activity heatmap data - sparse per-day problem-solved counts
+      mongoose.model("ActivityHeatmap").deleteMany({ userId: { $in: userIds } }),
 
       // Submission data - cohort programming submissions
       mongoose.model("Submission").deleteMany({ user: { $in: userIds } }),

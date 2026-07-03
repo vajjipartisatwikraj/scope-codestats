@@ -5,7 +5,7 @@ const path = require("path");
 // Import models
 const User = require("../models/User");
 const DailyStats = require("../models/DailyStats");
-const DailyActivityHeatmap = require("../models/DailyActivityHeatmap");
+const ActivityHeatmap = require("../models/ActivityHeatmap");
 const PlatformAnalytics = require("../models/PlatformAnalytics");
 const PlatformPerformance = require("../models/PlatformPerformance");
 const PerformanceOverview = require("../models/PerformanceOverview");
@@ -1483,21 +1483,11 @@ async function regenerateUserAnalytics(user) {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 2. REGENERATE DAILY ACTIVITY HEATMAP (from DailyStats ONLY)
+    // NOTE: The activity heatmap (ActivityHeatmap) is now event-driven — it is
+    // maintained incrementally by submission triggers and the profile-sync
+    // external-delta trigger. It must NOT be regenerated here, as a daily
+    // rebuild would wipe the counts accumulated live during the day.
     // ═══════════════════════════════════════════════════════════════════════════
-    try {
-      log(`    🔄 Regenerating DailyActivityHeatmap from DailyStats...`);
-      await DailyActivityHeatmap.deleteMany({ userId: user._id });
-      const currentYear = new Date().getFullYear();
-      await DailyActivityHeatmap.createFromDailyStats(
-        user._id,
-        userEmail,
-        currentYear,
-      );
-      log(`    ✅ DailyActivityHeatmap regenerated`);
-    } catch (error) {
-      logError(`    ❌ Failed to regenerate DailyActivityHeatmap:`, error);
-    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 3. REGENERATE PLATFORM ANALYTICS (from DailyStats ONLY)
@@ -2497,7 +2487,7 @@ async function processDailyMaintenance(
     failedUsers: 0,
     documentCounts: {
       dailyStats: 0,
-      dailyActivityHeatmaps: 0,
+      activityHeatmaps: 0,
       performanceOverviews: 0,
       platformAnalytics: 0,
       platformPerformances: 0,
@@ -2779,7 +2769,7 @@ async function processDailyMaintenance(
         rankTrendCount,
       ] = await Promise.all([
         DailyStats.countDocuments(),
-        DailyActivityHeatmap.countDocuments(),
+        ActivityHeatmap.countDocuments(),
         PerformanceOverview.countDocuments(),
         PlatformAnalytics.countDocuments(),
         PlatformPerformance.countDocuments(),
@@ -2787,14 +2777,14 @@ async function processDailyMaintenance(
       ]);
 
       statusRecord.documentCounts.dailyStats = dailyStatsCount;
-      statusRecord.documentCounts.dailyActivityHeatmaps = heatmapCount;
+      statusRecord.documentCounts.activityHeatmaps = heatmapCount;
       statusRecord.documentCounts.performanceOverviews = perfOverviewCount;
       statusRecord.documentCounts.platformAnalytics = platformAnalyticsCount;
       statusRecord.documentCounts.platformPerformances = platformPerfCount;
       statusRecord.documentCounts.rankTrends = rankTrendCount;
 
       log(`   DailyStats: ${dailyStatsCount}`);
-      log(`   DailyActivityHeatmaps: ${heatmapCount}`);
+      log(`   ActivityHeatmaps: ${heatmapCount}`);
       log(`   PerformanceOverviews: ${perfOverviewCount}`);
       log(`   PlatformAnalytics: ${platformAnalyticsCount}`);
       log(`   PlatformPerformances: ${platformPerfCount}`);

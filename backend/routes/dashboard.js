@@ -5,7 +5,7 @@ const auth = require("../middleware/auth");
 const User = require("../models/User");
 const DailyStats = require("../models/DailyStats");
 const PerformanceOverview = require("../models/PerformanceOverview");
-const DailyActivityHeatmap = require("../models/DailyActivityHeatmap");
+const ActivityHeatmap = require("../models/ActivityHeatmap");
 const RankTrend = require("../models/RankTrend");
 const PlatformAnalytics = require("../models/PlatformAnalytics");
 const PlatformPerformance = require("../models/PlatformPerformance");
@@ -143,7 +143,7 @@ router.get("/performance-overview/:userId", auth, async (req, res) => {
 
     // Parallel fetch: heatmap active days + user rank/email
     const [heatmapData, userDoc] = await Promise.all([
-      DailyActivityHeatmap.getFormattedHeatmap(userId),
+      ActivityHeatmap.getHeatmap(userId, 365),
       User.findById(userId).select("rankingInfo email").lean(),
     ]);
 
@@ -205,11 +205,24 @@ router.get("/performance-overview/:userId", auth, async (req, res) => {
 });
 
 // ─── 2. Daily Activity Heatmap ───────────────────────────────────────────────
+// Problem-count based, sparse ActivityHeatmap model. Returns a rolling window
+// of daily solved-problem counts plus intensity buckets for rendering.
 router.get("/heatmap/:userId", auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
-    res.json(await DailyActivityHeatmap.getFormattedHeatmap(userId, year));
+    const days = Math.min(parseInt(req.query.days) || 365, 366);
+
+    // Bootstrap-on-read: if the user has no heatmap yet (e.g. pre-existing
+    // account before this feature shipped), seed it once from historical
+    // DailyStats. Live triggers keep it current from then on.
+    const existing = await ActivityHeatmap.countDocuments({ userId });
+    if (existing === 0) {
+      await ActivityHeatmap.rebuildFromEvents(userId, days).catch((err) =>
+        console.error("[Dashboard] heatmap bootstrap failed:", err.message),
+      );
+    }
+
+    res.json(await ActivityHeatmap.getHeatmap(userId, days));
   } catch (error) {
     console.error(
       `[Dashboard] heatmap FAILED | user=${req.params.userId}`,
@@ -221,26 +234,25 @@ router.get("/heatmap/:userId", auth, async (req, res) => {
   }
 });
 
-// Regenerate heatmap from DailyStats
+// Backfill / regenerate heatmap from historical DailyStats snapshots.
+// Seeds the sparse model so existing users see history immediately; live
+// triggers (submissions + profile sync) take over from there.
 router.post("/heatmap/generate/:userId", auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    const year = parseInt(req.body.year) || new Date().getFullYear();
-    const user = await User.findById(userId).select("email").lean();
+    const days = Math.min(parseInt(req.body.days) || 365, 366);
+    const user = await User.findById(userId).select("_id").lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    await DailyActivityHeatmap.createFromDailyStats(userId, user.email, year);
-    const formattedData = await DailyActivityHeatmap.getFormattedHeatmap(
-      userId,
-      year,
-    );
+    const result = await ActivityHeatmap.rebuildFromEvents(userId, days);
+    const formattedData = await ActivityHeatmap.getHeatmap(userId, days);
 
     console.log(
-      `[Dashboard] heatmap regenerated | user=${userId} year=${year} activeDays=${formattedData.activeDays}`,
+      `[Dashboard] heatmap rebuilt | user=${userId} inserted=${result.inserted} activeDays=${formattedData.activeDays}`,
     );
     res.json({
       success: true,
-      message: `Heatmap generated for ${year}`,
+      message: `Heatmap rebuilt from ${result.inserted} historical days`,
       data: formattedData,
     });
   } catch (error) {

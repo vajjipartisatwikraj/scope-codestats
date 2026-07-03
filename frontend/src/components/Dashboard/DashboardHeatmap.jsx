@@ -7,12 +7,20 @@ import { getLiquidGlassStyle } from './dashboardUtils';
  * Displays 365-day activity heatmap showing user's daily coding activity
  * 
  * Props:
- * - analyticsData: Object containing dailyActivity array with intensity, scoreChange, rank per date
+ * - analyticsData: Object containing dailyActivity array with { date, count, level } per day
  * - loading: Boolean indicating if data is being fetched
  * - darkMode: Boolean for theme styling
  */
 const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
-  if (loading || !analyticsData || analyticsData.error || analyticsData.empty) {
+  if (loading || !analyticsData || analyticsData.error) {
+    return null;
+  }
+  // Render whenever we have activity data — even if platform analytics is
+  // empty (e.g. a user who only solves in-app cohort/practice problems).
+  const hasActivity =
+    Array.isArray(analyticsData.dailyActivity) &&
+    analyticsData.dailyActivity.length > 0;
+  if (analyticsData.empty && !hasActivity) {
     return null;
   }
   
@@ -75,17 +83,20 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
         const allDays = [];
         const currentDate = new Date(startDate);
         
+        // Format a date as a YYYY-MM-DD key in IST to align with backend dateKeys
+        const toISTKey = (d) =>
+          d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
         for (let i = 0; i < 365; i++) {
-          const dateString = currentDate.toISOString().split('T')[0];
+          const dateString = toISTKey(currentDate);
           
           // Find matching data for this date
           const dayData = analyticsData?.dailyActivity ? 
             analyticsData.dailyActivity.find(d => d.date === dateString) : null;
           
-          // Use 0 intensity if no data exists
-          const intensity = dayData ? dayData.intensity : 0;
-          const scoreChange = dayData ? dayData.scoreChange : 0;
-          const rank = dayData ? dayData.rank : 'N/A';
+          // Problems solved that day + precomputed intensity bucket (0-4)
+          const count = dayData ? dayData.count : 0;
+          const level = dayData ? dayData.level : 0;
           
           allDays.push({
             date: dateString,
@@ -93,15 +104,17 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
             month: currentDate.getMonth(),
             year: currentDate.getFullYear(),
             monthName: currentDate.toLocaleDateString('en-US', { month: 'short' }),
-            intensity,
-            scoreChange,
-            rank,
+            count,
+            level,
             dayOfWeek: currentDate.getDay() // 0 = Sunday, 1 = Monday, etc.
           });
           
           // Move to next day
           currentDate.setDate(currentDate.getDate() + 1);
         }
+
+        // Level (0-4) → opacity for the blue activity color
+        const LEVEL_OPACITY = [0, 0.25, 0.45, 0.7, 1];
         
         // Group days by months for display
         const monthsMap = new Map();
@@ -256,7 +269,7 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
                                       </Typography>
                                     </Box>
                                     
-                                    {/* Content Section - Score Only */}
+                                    {/* Content Section - Problems Solved */}
                                     <Box sx={{ px: 2, py: 1.5 }}>
                                       <Box sx={{ 
                                         display: 'flex', 
@@ -270,27 +283,27 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
                                           fontWeight: 500,
                                           textShadow: '0 1px 4px rgba(0,0,0,0.2)'
                                         }}>
-                                          Score Change
+                                          Problems Solved
                                         </Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                                           <Box sx={{
                                             width: '6px',
                                             height: '6px',
                                             borderRadius: '50%',
-                                            bgcolor: dayData.scoreChange > 0 ? '#4CAF50' : (dayData.scoreChange < 0 ? '#f44336' : '#9E9E9E'),
-                                            boxShadow: dayData.scoreChange > 0 
-                                              ? '0 0 8px rgba(76,175,80,0.8)' 
-                                              : (dayData.scoreChange < 0 ? '0 0 8px rgba(244,67,54,0.8)' : 'none')
+                                            bgcolor: dayData.count > 0 ? '#0585E0' : '#9E9E9E',
+                                            boxShadow: dayData.count > 0 
+                                              ? '0 0 8px rgba(5,133,224,0.8)' 
+                                              : 'none'
                                           }} />
                                           <Typography sx={{ 
                                             fontSize: '0.85rem',
-                                            color: dayData.scoreChange > 0 ? '#4CAF50' : (dayData.scoreChange < 0 ? '#f44336' : 'rgba(255,255,255,0.8)'),
+                                            color: dayData.count > 0 ? '#0585E0' : 'rgba(255,255,255,0.8)',
                                             fontFamily: 'nekst, monospace',
                                             fontWeight: 700,
                                             textShadow: '0 1px 4px rgba(0,0,0,0.3)',
                                             filter: 'brightness(1.2)'
                                           }}>
-                                            {dayData.scoreChange > 0 ? '+' : ''}{dayData.scoreChange} pts
+                                            {dayData.count} {dayData.count === 1 ? 'problem' : 'problems'}
                                           </Typography>
                                         </Box>
                                       </Box>
@@ -353,8 +366,8 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
                                     width: '12px',
                                     height: '12px',
                                     borderRadius: '2px',
-                                    bgcolor: dayData.intensity > 0 
-                                      ? `rgba(5, 133, 224, ${Math.min(dayData.intensity / 100, 1)})`
+                                    bgcolor: dayData.level > 0 
+                                      ? `rgba(5, 133, 224, ${LEVEL_OPACITY[dayData.level] || 1})`
                                       : darkMode ? 'rgba(70, 70, 70, 0.3)' : 'rgba(200, 200, 200, 0.4)',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
@@ -364,7 +377,7 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
                                     '&:hover': {
                                       transform: 'scale(1.3)',
                                       zIndex: 10,
-                                      boxShadow: dayData.intensity > 0 
+                                      boxShadow: dayData.level > 0 
                                         ? '0 0 8px rgba(5, 133, 224, 0.8)'
                                         : `0 0 8px ${darkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}`
                                     },
@@ -465,7 +478,7 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
           Less
         </Typography>
         <Box sx={{ display: 'flex', gap: '3px' }}>
-          {[0, 0.2, 0.4, 0.6, 0.8, 1].map((opacity, i) => (
+          {[0, 0.25, 0.45, 0.7, 1].map((opacity, i) => (
             <Box
               key={i}
               sx={{
@@ -482,12 +495,11 @@ const DashboardHeatmap = ({ analyticsData, loading, darkMode }) => {
                 }
               }}
               title={
-                i === 0 ? 'No activity' :
-                i === 1 ? 'Low activity' :
-                i === 2 ? 'Moderate activity' :
-                i === 3 ? 'Good activity' :
-                i === 4 ? 'High activity' :
-                'Maximum activity'
+                i === 0 ? 'No problems solved' :
+                i === 1 ? '1-2 problems' :
+                i === 2 ? '3-5 problems' :
+                i === 3 ? '6-9 problems' :
+                '10+ problems'
               }
             />
           ))}

@@ -46,7 +46,7 @@ const dailyStatsStatusSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    dailyActivityHeatmaps: {
+    activityHeatmaps: {
       type: Number,
       default: 0
     },

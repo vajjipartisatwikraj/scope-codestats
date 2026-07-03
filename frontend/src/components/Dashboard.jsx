@@ -454,21 +454,17 @@ const Dashboard = () => {
       const heatmapData = heatmapResponse.data;
       const platformData = platformResponse.data;
 
-      // Convert cells to daily activity array for heatmap
-      const dailyActivity = [];
-      if (heatmapData.cells) {
-        Object.entries(heatmapData.cells).forEach(([cellKey, cell]) => {
-          dailyActivity.push({
-            date: new Date(cell.date).toISOString().split("T")[0],
-            intensity:
-              cell.score > 0 ? Math.min(95, Math.max(10, cell.score)) : 0,
-            scoreChange: cell.score || 0,
-            rank: "N/A",
-            problems: 0, // Not tracked in new structure
-            wasActive: cell.score > 0,
-          });
-        });
-      }
+      // New sparse heatmap: endpoint returns dailyActivity with per-day
+      // problem counts and precomputed intensity buckets (level 0-4).
+      const dailyActivity = Array.isArray(heatmapData.dailyActivity)
+        ? heatmapData.dailyActivity.map((d) => ({
+            date: d.date,
+            count: d.count || 0,
+            level: d.level || 0,
+            sources: d.sources || {},
+            wasActive: (d.count || 0) > 0,
+          }))
+        : [];
 
       // Calculate platform problems distribution from platform analytics
       const platformProblems = {
@@ -612,8 +608,9 @@ const Dashboard = () => {
         problemsSolvedByPlatform: platformProblems,
         platformTrends: platformTrends,
         summary: {
-          totalDays: Object.keys(heatmapData.cells || {}).length,
+          totalDays: dailyActivity.length,
           activeDays: heatmapData.activeDays || 0,
+          totalProblemsSolved: heatmapData.totalCount || 0,
           totalScore: platformData.totalScore || 0,
           totalProblems: platformData.totalProblems || 0,
         },

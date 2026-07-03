@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const DailyStats = require("../models/DailyStats");
 const PerformanceOverview = require("../models/PerformanceOverview");
-const DailyActivityHeatmap = require("../models/DailyActivityHeatmap");
+const ActivityHeatmap = require("../models/ActivityHeatmap");
 const PlatformAnalytics = require("../models/PlatformAnalytics");
 const RankTrend = require("../models/RankTrend");
 const PlatformPerformance = require("../models/PlatformPerformance");
@@ -44,10 +44,8 @@ router.post(
         },
       }).sort({ date: 1 });
 
-      // Count total active days from heatmap (cells with score > 0)
-      const DailyActivityHeatmap = require("../models/DailyActivityHeatmap");
-      const heatmapData =
-        await DailyActivityHeatmap.getFormattedHeatmap(userId);
+      // Count total active days from the activity heatmap
+      const heatmapData = await ActivityHeatmap.getHeatmap(userId, 365);
       const totalActiveDays = heatmapData.activeDays;
 
       // Prepare current metrics
@@ -108,7 +106,6 @@ router.post(
 router.post("/generate-heatmap/:userId", auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    const year = parseInt(req.body.year) || new Date().getFullYear();
 
     // Get user details
     const user = await User.findById(userId).select("email");
@@ -117,26 +114,18 @@ router.post("/generate-heatmap/:userId", auth, async (req, res) => {
     }
 
     console.log(
-      `UserStatisticsGenerator: Generating heatmap for user ${user.email} for year ${year}`,
+      `UserStatisticsGenerator: Generating heatmap for user ${user.email}`,
     );
 
-    // Use the corrected model method that calculates daily score changes
-    const heatmap = await DailyActivityHeatmap.createFromDailyStats(
-      userId,
-      user.email,
-      year,
-    );
+    // Rebuild the sparse activity heatmap from durable in-app solve events
+    await ActivityHeatmap.rebuildFromEvents(userId, 365);
 
     // Get formatted data to return
-    const formattedData = await DailyActivityHeatmap.getFormattedHeatmap(
-      userId,
-      year,
-    );
+    const formattedData = await ActivityHeatmap.getHeatmap(userId, 365);
 
     res.json({
       success: true,
-      message:
-        "Daily activity heatmap generated successfully with score changes",
+      message: "Daily activity heatmap generated successfully",
       data: formattedData,
     });
   } catch (error) {
@@ -1135,10 +1124,8 @@ router.get("/performance-overview/:userId", auth, async (req, res) => {
         },
       }).sort({ date: 1 });
 
-      // Count total active days from heatmap (cells with score > 0)
-      const DailyActivityHeatmap = require("../models/DailyActivityHeatmap");
-      const heatmapData =
-        await DailyActivityHeatmap.getFormattedHeatmap(userId);
+      // Count total active days from the activity heatmap
+      const heatmapData = await ActivityHeatmap.getHeatmap(userId, 365);
       const totalActiveDays = heatmapData.activeDays;
 
       const currentScore = latestStats.scopeMetrics.totalScore || 0;
@@ -1185,30 +1172,17 @@ router.get("/performance-overview/:userId", auth, async (req, res) => {
 router.get("/heatmap/:userId", auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const days = Math.min(parseInt(req.query.days) || 365, 366);
 
-    // Check if heatmap exists, if not generate it
-    let heatmapData = await DailyActivityHeatmap.getFormattedHeatmap(
-      userId,
-      year,
-    );
-
-    if (!heatmapData || Object.keys(heatmapData.cells || {}).length === 0) {
-      // Generate heatmap from DailyStats
-      const user = await User.findById(userId).select("email");
-      if (user) {
-        await DailyActivityHeatmap.createFromDailyStats(
-          userId,
-          user.email,
-          year,
-        );
-        heatmapData = await DailyActivityHeatmap.getFormattedHeatmap(
-          userId,
-          year,
-        );
-      }
+    // Bootstrap-on-read: seed the sparse heatmap from DailyStats when empty.
+    const existing = await ActivityHeatmap.countDocuments({ userId });
+    if (existing === 0) {
+      await ActivityHeatmap.rebuildFromEvents(userId, days).catch((err) =>
+        console.error("Heatmap bootstrap failed:", err.message),
+      );
     }
 
+    const heatmapData = await ActivityHeatmap.getHeatmap(userId, days);
     res.json(heatmapData);
   } catch (error) {
     console.error("Error fetching heatmap:", error);

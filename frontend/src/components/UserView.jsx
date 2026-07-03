@@ -1474,29 +1474,34 @@ const UserView = () => {
         },
       );
 
+      const heatmapData = heatmapResponse.data;
+
+      // New sparse heatmap: endpoint returns dailyActivity with per-day
+      // problem counts and precomputed intensity buckets (level 0-4).
+      // Built BEFORE the platform-analytics gate so the heatmap still renders
+      // for users who solve only in-app (cohort/practice) problems and have no
+      // external platform analytics yet.
+      const dailyActivity = Array.isArray(heatmapData.dailyActivity)
+        ? heatmapData.dailyActivity.map((d) => ({
+            date: d.date,
+            count: d.count || 0,
+            level: d.level || 0,
+            sources: d.sources || {},
+            wasActive: (d.count || 0) > 0,
+          }))
+        : [];
+
       if (platformResponse.data.error || platformResponse.data.empty) {
-        setAnalyticsData({ error: true, empty: platformResponse.data.empty });
+        // Keep the heatmap; only the platform-dependent sections are empty.
+        setAnalyticsData({
+          dailyActivity,
+          error: false,
+          empty: true,
+        });
         return;
       }
 
-      const heatmapData = heatmapResponse.data;
       const platformData = platformResponse.data;
-
-      // Convert heatmap cells to daily activity array
-      const dailyActivity = [];
-      if (heatmapData.cells) {
-        Object.entries(heatmapData.cells).forEach(([cellKey, cell]) => {
-          dailyActivity.push({
-            date: new Date(cell.date).toISOString().split("T")[0],
-            intensity:
-              cell.score > 0 ? Math.min(95, Math.max(10, cell.score)) : 0,
-            scoreChange: cell.score || 0,
-            rank: "N/A",
-            problems: 0,
-            wasActive: cell.score > 0,
-          });
-        });
-      }
 
       // Calculate platform problems distribution
       const problemsSolvedByPlatform = {
@@ -3229,6 +3234,15 @@ const UserView = () => {
                   })}
                 </Box>
               </Paper>
+
+              {/* Daily Activity Heatmap — shown before the analytics/progress container */}
+              <Box sx={{ mb: 3 }}>
+                <DashboardHeatmap
+                  analyticsData={analyticsData}
+                  loading={analyticsLoading}
+                  darkMode={darkMode}
+                />
+              </Box>
 
               {/* Profile Section */}
               <Paper
@@ -5051,7 +5065,7 @@ const UserView = () => {
             {/* Daily Activity Heatmap */}
             <Box sx={{ mb: 3 }}>
               <DashboardHeatmap
-                heatmapData={analyticsData}
+                analyticsData={analyticsData}
                 loading={analyticsLoading}
                 darkMode={darkMode}
               />

@@ -13,6 +13,7 @@ const { isAdminOrTeacher } = require("../utils/userHelpers");
 const Note = require("../models/Note");
 const QuestionReport = require("../models/QuestionReport");
 const Notification = require("../models/Notification");
+const ActivityHeatmap = require("../models/ActivityHeatmap");
 
 // Import Cascade Service
 const cascadeService = require("../services/cohortCascadeService");
@@ -2868,6 +2869,11 @@ router.post(
         const userCohort = enrollmentCheck;
 
         if (userCohort) {
+          // Tracks whether THIS submission solved the problem for the first
+          // time — used to increment the activity heatmap exactly once per
+          // problem (re-solving an already-solved problem does not re-count).
+          let newlySolvedProblem = false;
+
           const questionProgressIndex = userCohort.questionProgress.findIndex(
             (qp) => qp.question.toString() === questionId
           );
@@ -2878,6 +2884,8 @@ router.post(
 
             // ✅ MAX SCORE OVERRIDE: Only update best score if new score is higher
             if (submissionIsCorrect) {
+              const wasSolvedBefore = qp.solved === true;
+              if (!wasSolvedBefore) newlySolvedProblem = true;
               qp.solved = true;
 
               // CRITICAL: Use max score logic - only update if new score is better
@@ -2900,6 +2908,7 @@ router.post(
             }
           } else {
             // Add new question progress entry
+            if (submissionIsCorrect) newlySolvedProblem = true;
             userCohort.questionProgress.push({
               question: questionId,
               attempts: 1,
@@ -3096,6 +3105,14 @@ router.post(
           updateCohortLeaderboard(cohortId).catch((err) =>
             console.error("Background leaderboard update failed:", err)
           );
+
+          // Fire-and-forget: record activity heatmap increment when a problem
+          // is solved for the first time (Trigger 1 — in-app submissions).
+          if (newlySolvedProblem) {
+            ActivityHeatmap.incrementActivity(userId, "cohort", 1).catch((err) =>
+              console.error("Heatmap increment (cohort) failed:", err.message)
+            );
+          }
 
           console.log(
             `✅ Submission saved - User: ${userId}, Question: ${questionId}, Score: ${submission.score}`

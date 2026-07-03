@@ -5,6 +5,7 @@ const PAQuestion = require("../models/PAQuestion");
 const PATest = require("../models/PATest");
 const PASubmission = require("../models/PASubmission");
 const QuestionBank = require("../models/QuestionBank");
+const ActivityHeatmap = require("../models/ActivityHeatmap");
 const auth = require("../middleware/auth");
 const adminAuth = require("../middleware/adminAuth");
 const {
@@ -780,6 +781,10 @@ router.post("/tests/:id/submit", auth, async (req, res) => {
       user: req.user.id,
     });
 
+    // Track first-time solve for the activity heatmap (Trigger 1 — PA submissions).
+    // Captured BEFORE the submission is mutated below.
+    const priorCorrect = submission ? submission.isCorrect === true : false;
+
     if (submission) {
       // ✅ MAX SCORE OVERRIDE: Update existing submission only if new score is better
       submission.submissionType = submissionType;
@@ -837,6 +842,15 @@ router.post("/tests/:id/submit", auth, async (req, res) => {
     }
 
     await submission.save();
+
+    // Fire-and-forget: increment the activity heatmap when a programming
+    // problem is solved for the first time in Practice Arena.
+    if (submissionType === "programming" && isCorrect && !priorCorrect) {
+      ActivityHeatmap.incrementActivity(req.user.id, "practice", 1).catch(
+        (err) =>
+          console.error("Heatmap increment (practice) failed:", err.message)
+      );
+    }
 
     // Update stats for the question (use updateOne to avoid triggering validation on entire document)
     await PAQuestion.updateOne(

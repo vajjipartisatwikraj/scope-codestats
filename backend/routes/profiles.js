@@ -6,6 +6,7 @@ const auth = require("../middleware/auth");
 const Profile = require("../models/Profile");
 const User = require("../models/User");
 const RankHistory = require("../models/RankHistory");
+const ActivityHeatmap = require("../models/ActivityHeatmap");
 const platformAPI = require("../services/platformAPIs");
 const { checkProfileUpdateRateLimit } = require("../services/rateLimiter");
 const mongoose = require("mongoose");
@@ -843,6 +844,28 @@ router.put("/update-user/:userId", async (req, res) => {
     const updatedProfiles = [];
     const userProfilesData = {};
 
+    // ── Heatmap Trigger 2 (external platforms) ──────────────────────────────
+    // Snapshot the user's per-platform solved counts + usernames BEFORE the
+    // sync. After the sync we diff against the fresh counts and record only
+    // positive growth for unchanged usernames (see computeExternalDeltas).
+    const readStoredPlatform = (p) =>
+      user.platformScores instanceof Map
+        ? user.platformScores.get(p)
+        : user.platformScores
+          ? user.platformScores[p]
+          : null;
+    const prevExternalSnapshot = {};
+    for (const p of ActivityHeatmap.EXTERNAL_SOURCES) {
+      const stored = readStoredPlatform(p) || {};
+      prevExternalSnapshot[p] = {
+        username: stored.username != null ? stored.username : null,
+        count:
+          p === "github"
+            ? stored.totalCommits || 0
+            : stored.problemsSolved || 0,
+      };
+    }
+
     // Track timing statistics
     const startTime = Date.now();
     const platformTimings = {};
@@ -1280,6 +1303,39 @@ router.put("/update-user/:userId", async (req, res) => {
     const scoreAggregator = require("../services/scoreAggregator");
     const finalTotalScore = await scoreAggregator.updateUserTotalScore(userId);
     console.log(`Final total score after aggregation: ${finalTotalScore}`);
+
+    // ── Heatmap Trigger 2 (external platforms) ──────────────────────────────
+    // Diff the fresh counts against the pre-sync snapshot and record positive
+    // growth. computeExternalDeltas clamps negatives (fake→real downgrade) and
+    // skips platforms whose username changed (baseline reset, avoids spikes).
+    try {
+      const nextExternalSnapshot = {};
+      for (const p of ActivityHeatmap.EXTERNAL_SOURCES) {
+        const data = userProfilesData[p];
+        if (!data) continue;
+        nextExternalSnapshot[p] = {
+          username: data.username != null ? data.username : null,
+          count:
+            p === "github"
+              ? data.totalCommits || 0
+              : data.problemsSolved || 0,
+        };
+      }
+      const heatmapDeltas = ActivityHeatmap.computeExternalDeltas(
+        prevExternalSnapshot,
+        nextExternalSnapshot,
+      );
+      if (Object.keys(heatmapDeltas).length > 0) {
+        ActivityHeatmap.recordActivity(userId, heatmapDeltas).catch((err) =>
+          console.error("Heatmap increment (external) failed:", err.message),
+        );
+      }
+    } catch (heatmapError) {
+      console.error(
+        "Heatmap external-delta computation failed:",
+        heatmapError.message,
+      );
+    }
 
     // Calculate total elapsed time
     const totalElapsedTime = Date.now() - startTime;
