@@ -254,6 +254,24 @@ const CohortProblem = () => {
   // module's question list (rendered inside SidebarNavigation).
   const [problemListOpen, setProblemListOpen] = useState(false);
 
+  // Cooldown to prevent rapid repeated Run/Submit (shared across run & submit)
+  const lastExecRef = useRef(0);
+  const EXEC_COOLDOWN_MS = 3000;
+  const canExecuteNow = () => {
+    const now = Date.now();
+    if (now - lastExecRef.current < EXEC_COOLDOWN_MS) {
+      toast.warn("Please wait before your next run/submit", {
+        position: "top-center",
+        autoClose: 1800,
+        hideProgressBar: true,
+        toastId: "exec-cooldown", // reuse one toast so spamming shows only one
+      });
+      return false;
+    }
+    lastExecRef.current = now;
+    return true;
+  };
+
   // Keyboard shortcuts — refs hold the latest handlers/state so the listener
   // can be registered once. Run = Ctrl/Cmd + '   Submit = Ctrl/Cmd + Enter
   const runCodeRef = useRef(null);
@@ -679,14 +697,6 @@ const CohortProblem = () => {
             .toLowerCase()
             .includes("runtime");
 
-          if (isCompilationError) {
-            toast.error("Compilation Error");
-          } else if (isRuntimeError) {
-            toast.error("Runtime Error");
-          } else {
-            toast.error("Hidden test cases failed");
-          }
-
           // Create error results based on what backend returned
           // Backend will return results with hidden flag set properly
           const errorResults =
@@ -744,13 +754,6 @@ const CohortProblem = () => {
           setTestResultsSummary(result.summary);
         }
 
-        const allPassed = processedResults.length > 0 && processedResults.every(r => r.passed === true);
-        if (allPassed) {
-          toast.success("All hidden test cases passed!");
-        } else {
-          toast.error("Hidden test cases failed");
-        }
-
         setRunning(false);
         return processedResults;
       } else {
@@ -776,13 +779,6 @@ const CohortProblem = () => {
         if (hasRunCompilationError || hasRunRuntimeError) {
           const errorMsg =
             result.error || result.execution?.status || "Execution failed";
-          const isCompileError = errorMsg.toLowerCase().includes("compilation");
-
-          if (isCompileError) {
-            toast.error("Compilation Error");
-          } else {
-            toast.error("Runtime Error");
-          }
 
           // Create error results from backend response
           const errorResults =
@@ -832,13 +828,6 @@ const CohortProblem = () => {
         // Set test results for display in TestCasesPanel
         setTestResults(processedResults);
 
-        const allPassed = processedResults.length > 0 && processedResults.every(r => r.passed === true);
-        if (allPassed) {
-          toast.success("All visible test cases passed!");
-        } else if (processedResults.length > 0) {
-          toast.error("Visible test cases failed");
-        }
-
         setRunning(false);
         return processedResults;
       }
@@ -856,7 +845,6 @@ const CohortProblem = () => {
         return null;
       }
 
-      toast.error("Execution failed");
       setRunning(false);
       return null;
     }
@@ -947,6 +935,7 @@ const CohortProblem = () => {
 
   // Handle running code - executes only unhidden test cases
   const handleRunCode = async () => {
+    if (!canExecuteNow()) return;
     // If Custom Input tab is active, run with custom input instead
     if (activeInputTab === 1) {
       await handleRunCustomInput();
@@ -997,12 +986,6 @@ const CohortProblem = () => {
           memory: result.result?.memory,
           status: result.result?.status || "Error",
         });
-
-        if (errorMsg.toLowerCase().includes("compilation")) {
-          toast.error("Compilation Error");
-        } else {
-          toast.error("Runtime Error");
-        }
       }
     } catch (error) {
       console.error("Custom input execution error:", error);
@@ -1013,7 +996,6 @@ const CohortProblem = () => {
         memory: null,
         status: "Error",
       });
-      toast.error("Execution failed");
     } finally {
       setRunning(false);
     }
@@ -1024,6 +1006,7 @@ const CohortProblem = () => {
     if (question.type === "mcq") {
       await handleSubmitMcqAnswer();
     } else if (question.type === "programming") {
+      if (!canExecuteNow()) return;
       // Always open the submission view in the test-case panel: force Test Run
       // mode and the Test Cases tab so the submit animation and performance
       // summary are shown (even if the user submitted from Debug mode).
