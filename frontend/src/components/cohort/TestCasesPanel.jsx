@@ -40,10 +40,21 @@ const TestCasesPanel = ({
   // Determine rocket animation state
   // Check testResults FIRST so rocket transitions to success/failure as soon as
   // code execution finishes, without waiting for the backend submission to complete.
+  // Determine failure using the AUTHORITATIVE backend summary in submission
+  // mode (visible-only testResults would miss failing HIDDEN test cases).
+  const computeHasFailures = () => {
+    if (isSubmission && testResultsSummary) {
+      return (
+        (testResultsSummary.failed || 0) > 0 ||
+        (testResultsSummary.passed || 0) !== (testResultsSummary.total || 0)
+      );
+    }
+    return testResults.some((r) => !r.passed || r.error);
+  };
+
   const getRocketAnimationState = () => {
     if (testResults && testResults.length > 0) {
-      const hasFailures = testResults.some((r) => !r.passed || r.error);
-      return hasFailures ? "failure" : "success";
+      return computeHasFailures() ? "failure" : "success";
     }
     if (submitting) return "submitting";
     return "idle";
@@ -66,7 +77,7 @@ const TestCasesPanel = ({
   // Fallback: if onAnimationComplete never fires, force-show results after a safe timeout
   React.useEffect(() => {
     if (testResults && testResults.length > 0 && !animationCompleted) {
-      const hasFailures = testResults.some((r) => !r.passed || r.error);
+      const hasFailures = computeHasFailures();
       // Success flyaway = 2s + 300ms buffer + 500ms extra safety = 2.8s
       // Failure tumble  = 1.5s + 600ms buffer + 500ms extra safety = 2.6s
       const fallbackDelay = hasFailures ? 2600 : 2800;
@@ -821,42 +832,22 @@ const TestCasesPanel = ({
 
   return (
     <>
-      {/* Test panel resizer */}
+      {/* Test panel resizer — fills the full gap between editor and test panel */}
       {showResizer && (
       <Box
         ref={testPanelResizerRef}
         sx={{
-          height: "4px",
+          height: "8px",
           width: "100%",
+          flexShrink: 0,
           bgcolor: "transparent",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
           cursor: "row-resize",
           zIndex: 20,
-          mx: 0,
-          my: 0,
+          m: 0,
           p: 0,
-          position: "relative",
-          top: 0,
-          "&:hover": {
-            bgcolor: "transparent",
-          },
         }}
         onMouseDown={startTestPanelResize}
-      >
-        <Box
-          sx={{
-            width: "50px",
-            height: "2px",
-            borderRadius: "2px",
-            bgcolor: darkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)",
-            "&:hover": {
-              bgcolor: darkMode ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)",
-            },
-          }}
-        />
-      </Box>
+      />
       )}
 
       {/* Test Cases Panel */}

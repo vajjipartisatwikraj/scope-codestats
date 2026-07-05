@@ -1028,10 +1028,6 @@ const CohortProblem = () => {
         // The backend save below is just bookkeeping.
         setSubmitting(false);
 
-        // Check if all tests passed
-        const allPassed =
-          testResults.length > 0 && testResults.every((r) => r.passed === true);
-
         // Calculate overall execution time and memory usage
         const maxExecutionTime =
           testResults.length > 0
@@ -1050,22 +1046,23 @@ const CohortProblem = () => {
               )
             : 0;
 
-        // Prepare submission data for backend
+        // Code to submit — strip fill-in-the-blank markers so the server
+        // executes the actual solution (the backend re-grades authoritatively).
+        let codeToSubmit = code;
+        if (
+          question?.fillInTheBlank &&
+          codeEditorRef.current?.getCodeForSubmission
+        ) {
+          codeToSubmit = codeEditorRef.current.getCodeForSubmission();
+        }
+
+        // Prepare submission data for backend.
+        // NOTE: correctness/score are decided by the SERVER (it re-runs all
+        // test cases). The fields below are informational only.
         const submission = {
-          code,
+          code: codeToSubmit,
           language,
           submissionType: "programming",
-          testCaseResults: testResults.map((r) => ({
-            // Don't send testCaseId - it's not needed and causes validation errors
-            passed: !!r.passed,
-            executionTime:
-              typeof r.executionTime === "number" ? r.executionTime : 0,
-            memoryUsed: typeof r.memoryUsed === "number" ? r.memoryUsed : 0,
-            output: typeof r.actualOutput === "string" ? r.actualOutput : "",
-            error: typeof r.error === "string" ? r.error : "",
-          })),
-          status: allPassed ? "accepted" : "wrong_answer",
-          isCorrect: allPassed,
           executionTime: maxExecutionTime,
           memoryUsed: maxMemoryUsed,
         };
@@ -1624,7 +1621,7 @@ const CohortProblem = () => {
         zIndex: 1200,
         m: 0,
         p: 0,
-        bgcolor: darkMode ? "#0e1117" : "#f5f7fa",
+        bgcolor: darkMode ? "#232323" : "#f5f7fa",
         display: "flex",
       }}
     >
@@ -1651,7 +1648,7 @@ const CohortProblem = () => {
         <Box
           sx={{
             borderBottom: "1px solid #232528",
-            bgcolor: darkMode ? "#0A0C10" : "#FFFFFF",
+            bgcolor: darkMode ? "#0A0A0A" : "#FFFFFF",
             minHeight: "48px",
             display: "flex",
             alignItems: "center",
@@ -2726,7 +2723,11 @@ const CohortProblem = () => {
                         overflow: "hidden",
                         m: 0,
                         p: 0,
-                        gap: 1, // consistent gap between editor and test panels (incl. folded state)
+                        // When both panels are expanded, the (now full-height)
+                        // resizer bar provides the spacing and is fully draggable.
+                        // When a panel is folded the resizer is hidden, so keep a
+                        // small gap between the folded panels.
+                        gap: collapsedPanel === null ? 0 : 1,
                       }}
                     >
                       {question?.type === "mcq" ? (

@@ -14,6 +14,9 @@ const Note = require("../models/Note");
 const QuestionReport = require("../models/QuestionReport");
 const Notification = require("../models/Notification");
 const ActivityHeatmap = require("../models/ActivityHeatmap");
+const {
+  submitCodeCombined,
+} = require("../services/simpleCodeExecutionService");
 
 // Import Cascade Service
 const cascadeService = require("../services/cohortCascadeService");
@@ -2727,6 +2730,7 @@ router.post(
       // Create a submission based on question type
       let submission;
       let submissionIsCorrect = false;
+      let programmingSummary = null; // authoritative pass/total for programming
 
       if (submissionType === "mcq") {
         console.log("Processing MCQ submission");
@@ -2768,37 +2772,110 @@ router.post(
         });
       } else if (submissionType === "programming") {
         // Handle programming submission
-        if (!code || !language || !testCaseResults) {
+        if (!code || !language) {
           return res.status(400).json({
             message: "Missing required fields",
-            required: ["code", "language", "testCaseResults"],
+            required: ["code", "language"],
           });
         }
 
+        if (!question.testCases || question.testCases.length === 0) {
+          return res
+            .status(400)
+            .json({ message: "Question has no test cases" });
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // AUTHORITATIVE GRADING (SECURITY-CRITICAL)
+        // Never trust client-sent `isCorrect` / `status` / `testCaseResults`.
+        // Re-execute the submitted code against ALL test cases (including
+        // hidden ones) on the server and decide correctness here. This is the
+        // single source of truth for whether a problem is solved and scored.
+        // ─────────────────────────────────────────────────────────────────
+        const timeLimitMs = question.constraints?.timeLimit || 2000;
+        const memoryLimitKB = question.constraints?.memoryLimit
+          ? question.constraints.memoryLimit * 1024
+          : 128000;
+
+        const formattedTestCases = question.testCases.map((tc) => ({
+          input: tc.input || "",
+          output: tc.output || "",
+          expectedOutput: tc.output || "",
+          hidden: tc.hidden || false,
+        }));
+
+        const execResult = await submitCodeCombined(
+          language,
+          code,
+          formattedTestCases,
+          { time_limit: timeLimitMs / 1000, memory_limit: memoryLimitKB },
+          "submit"
+        );
+
+        const totalCases = execResult?.summary?.total || 0;
+        const passedCases = execResult?.summary?.passed || 0;
+        // Correct ONLY if execution succeeded and EVERY test case passed.
+        const serverIsCorrect =
+          execResult?.success === true &&
+          totalCases > 0 &&
+          passedCases === totalCases;
+
+        const serverExecutionTime = execResult?.execution?.time
+          ? Math.round(parseFloat(execResult.execution.time) * 1000)
+          : 0;
+        const serverMemoryUsed = execResult?.execution?.memory || 0;
+
+        // Derive a valid status enum value from the execution outcome.
+        let serverStatus = "wrong_answer";
+        if (!execResult?.success) {
+          const errText = (execResult?.error || "").toLowerCase();
+          if (errText.includes("compilation")) {
+            serverStatus = "compilation_error";
+          } else if (errText.includes("time limit")) {
+            serverStatus = "time_limit_exceeded";
+          } else if (errText.includes("memory")) {
+            serverStatus = "memory_limit_exceeded";
+          } else {
+            serverStatus = "runtime_error";
+          }
+        } else {
+          serverStatus = serverIsCorrect ? "accepted" : "wrong_answer";
+        }
+
+        // Store per-test-case results (server truth). Do not leak hidden
+        // inputs/expected outputs into stored student-visible fields.
+        const storedResults = Array.isArray(execResult?.results)
+          ? execResult.results.map((r) => ({
+              passed: r.status === "passed",
+              executionTime: serverExecutionTime,
+              memoryUsed: serverMemoryUsed,
+              output: "",
+              error: r.status === "passed" ? "" : "Test case failed",
+            }))
+          : [];
+
         console.log(
-          `📝 Programming submission - User: ${userId}, Question: ${questionId}, Language: ${language}, Result: ${
-            isCorrect ? "Accepted" : "Wrong Answer"
+          `📝 Programming submission (server-graded) - User: ${userId}, Question: ${questionId}, Language: ${language}, ${passedCases}/${totalCases} passed → ${
+            serverIsCorrect ? "Accepted" : serverStatus
           }`
         );
 
-        // ✅ SCORING TIERS: Calculate points based on execution time
+        // ✅ SCORING TIERS: only award points when the server confirms correct.
         let pointsEarned = 0;
         let tierAchieved = -1;
 
-        if (isCorrect) {
-          // Only try tier-based scoring if we have valid execution time
-          if (executionTime && executionTime > 0) {
+        if (serverIsCorrect) {
+          if (serverExecutionTime > 0) {
             try {
-              // Use Question model's calculatePoints method to get tier-based scoring
               const scoringResult = question.calculatePoints(
                 language,
-                executionTime
+                serverExecutionTime
               );
               pointsEarned = scoringResult.points;
               tierAchieved = scoringResult.tierIndex;
 
               console.log(
-                `🏆 Scoring Tiers - Execution: ${executionTime}ms, Points: ${pointsEarned}, Tier: ${
+                `🏆 Scoring Tiers - Execution: ${serverExecutionTime}ms, Points: ${pointsEarned}, Tier: ${
                   tierAchieved >= 0 ? tierAchieved + 1 : "Minimum"
                 }`
               );
@@ -2806,25 +2883,23 @@ router.post(
               console.warn(
                 `⚠️ Error calculating tier-based points: ${error.message}, using default full marks`
               );
-              // Fallback to full marks if scoring tiers not configured or error
               pointsEarned = question.marks;
               tierAchieved = -1;
             }
           } else {
-            // No execution time provided - use full marks
-            console.log(
-              `⚠️ No execution time provided, using full marks: ${question.marks}`
-            );
             pointsEarned = question.marks;
             tierAchieved = -1;
           }
-        } else {
-          // Wrong answer - 0 points
-          pointsEarned = 0;
-          tierAchieved = -1;
         }
 
-        // Create submission with the execution results from frontend
+        // Expose authoritative summary in the response for the frontend.
+        programmingSummary = {
+          total: totalCases,
+          passed: passedCases,
+          failed: totalCases - passedCases,
+        };
+
+        // Create submission with SERVER-COMPUTED results (client values ignored)
         submission = new Submission({
           user: userId,
           question: questionId,
@@ -2833,18 +2908,17 @@ router.post(
           submissionType: "programming",
           code,
           language,
-          status:
-            status || (isCorrect ? "accepted" : "wrong_answer") || "unknown",
-          testCaseResults: testCaseResults || [],
-          executionTime: executionTime || 0,
-          memoryUsed: memoryUsed || 0,
-          isCorrect: !!isCorrect,
-          score: pointsEarned, // Use tier-based points instead of full marks
+          status: serverStatus,
+          testCaseResults: storedResults,
+          executionTime: serverExecutionTime,
+          memoryUsed: serverMemoryUsed,
+          isCorrect: serverIsCorrect,
+          score: pointsEarned,
           pointsEarned: pointsEarned,
           tierAchieved: tierAchieved,
         });
 
-        submissionIsCorrect = !!isCorrect;
+        submissionIsCorrect = serverIsCorrect;
       } else {
         return res.status(400).json({ message: "Invalid submission type" });
       }
@@ -3122,6 +3196,7 @@ router.post(
           res.json({
             submission,
             isCorrect: submissionIsCorrect,
+            summary: programmingSummary,
             userProgress: {
               questionProgress: userCohort.questionProgress.find(
                 (qp) => qp.question.toString() === questionId
@@ -3146,6 +3221,7 @@ router.post(
         res.json({
           submission,
           isCorrect: submissionIsCorrect,
+          summary: programmingSummary,
           message: "Submission saved (admin/teacher - no progress tracking)",
         });
       }
