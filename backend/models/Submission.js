@@ -51,7 +51,7 @@ const submissionSchema = new mongoose.Schema({
   },
   submissionType: {
     type: String,
-    enum: ['mcq', 'programming'],
+    enum: ['mcq', 'programming', 'sql'],
     required: true
   },
   // For MCQ questions
@@ -64,12 +64,34 @@ const submissionSchema = new mongoose.Schema({
   },
   language: {
     type: String,
-    enum: ['c', 'cpp', 'java', 'python', 'javascript']
+    enum: ['c', 'cpp', 'java', 'python', 'javascript', 'sql']
   },
   status: {
     type: String,
-    enum: ['accepted', 'wrong_answer', 'time_limit_exceeded', 'memory_limit_exceeded', 'runtime_error', 'compilation_error', 'pending'],
+    enum: ['accepted', 'wrong_answer', 'time_limit_exceeded', 'memory_limit_exceeded', 'runtime_error', 'compilation_error', 'sql_error', 'pending'],
     default: 'wrong_answer'
+  },
+
+  /**
+   * SQL-specific result, recorded from the SQLJudge verdict.
+   *
+   * On SUBMIT the engine deliberately returns an aggregate only (status, passed,
+   * total) so hidden testcase data cannot leak, which is why there are no
+   * per-testcase rows here for a submit. `testCasesPassed` / `testCasesTotal`
+   * are the authoritative counts used for scoring.
+   */
+  sqlResult: {
+    judgeQuestionId: { type: String },
+    judgeVersion: { type: Number },
+    judgeSubmissionId: { type: String },
+    judgeStatus: {
+      type: String,
+      enum: ['PASSED', 'FAILED', 'ERROR', 'TIMEOUT', 'CANCELLED']
+    },
+    testCasesPassed: { type: Number, default: 0 },
+    testCasesTotal: { type: Number, default: 0 },
+    failedAt: { type: String },
+    errorMessage: { type: String }
   },
   testCaseResults: [testCaseResultSchema],
   executionTime: {

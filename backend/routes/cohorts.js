@@ -21,6 +21,8 @@ const {
 // Import Cascade Service
 const cascadeService = require("../services/cohortCascadeService");
 const { runWithOptionalTransaction } = require("../utils/mongoTransaction");
+const sqlJudge = require("../services/sqlJudgeClient");
+const sqlQuestionService = require("../services/sqlQuestionService");
 const {
   BulkQuestionUploadError,
   TransactionsUnavailableError,
@@ -2065,6 +2067,428 @@ router.post(
   }
 );
 
+// ============================================================================
+// SQL QUESTIONS (external SQLJudge execution engine)
+// ============================================================================
+/**
+ * SQL questions differ from programming questions in one important way: their
+ * testcases (seed data and expected rows) live in the SQLJudge private S3
+ * bucket, not in MongoDB. We store the engine identifiers, the S3 object keys
+ * and the display-safe assets, and every execution is proxied through these
+ * routes so cohort authorisation is always applied first.
+ */
+
+/** Shared cohort/module resolution used by the SQL routes. */
+async function resolveModuleContext(req) {
+  const cohort = await Cohort.findById(req.params.cohortId);
+  if (!cohort) {
+    return { error: { status: 404, body: { message: "Cohort not found" } } };
+  }
+
+  const moduleIsInCohort = cohort.modules.some(
+    (modId) => modId.toString() === req.params.moduleId
+  );
+  if (!moduleIsInCohort) {
+    return {
+      error: {
+        status: 404,
+        body: {
+          message: "Module not found in this cohort",
+          reason: "module_not_in_cohort",
+        },
+      },
+    };
+  }
+
+  const module = await Module.findById(req.params.moduleId);
+  if (!module) {
+    return { error: { status: 404, body: { message: "Module not found" } } };
+  }
+
+  return { cohort, module };
+}
+
+/** Uniform error mapping for SQL engine and validation failures. */
+function respondSqlError(res, err, fallbackMessage) {
+  if (
+    err instanceof sqlQuestionService.SqlQuestionError ||
+    err instanceof sqlJudge.SqlJudgeError
+  ) {
+    return res.status(err.status || 400).json({
+      message: err.message,
+      code: err.code,
+      ...(err.details ? { details: err.details } : {}),
+    });
+  }
+  console.error(`❌ ${fallbackMessage}:`, err);
+  return res.status(500).json({ message: fallbackMessage, error: err.message });
+}
+
+/** Engine reachability probe for the admin UI. */
+router.get("/sql-engine/health", [auth, adminAuth], async (_req, res) => {
+  try {
+    const health = await sqlJudge.health();
+    res.json({
+      engine: sqlJudge.BASE_URL,
+      adminConfigured: sqlJudge.isAdminConfigured(),
+      health,
+    });
+  } catch (err) {
+    respondSqlError(res, err, "Could not reach the SQL execution engine");
+  }
+});
+
+/**
+ * ADMIN — Generate Outputs.
+ * Executes the reference solution against every seed and returns the generated
+ * expected output per testcase. Nothing is written to S3.
+ */
+router.post(
+  "/:cohortId/modules/:moduleId/sql-questions/generate-outputs",
+  [auth, adminAuth],
+  async (req, res) => {
+    try {
+      const context = await resolveModuleContext(req);
+      if (context.error) {
+        return res.status(context.error.status).json(context.error.body);
+      }
+
+      const input = sqlQuestionService.parseSqlQuestionPayload(req.body);
+      const generated = await sqlQuestionService.generateOutputs(input);
+
+      res.json({
+        message: `Generated expected output for ${generated.testcases.length} testcase(s)`,
+        judgeQuestionId: input.judgeQuestionId,
+        judgeVersion: input.judgeVersion,
+        ...generated,
+      });
+    } catch (err) {
+      respondSqlError(res, err, "Failed to generate expected outputs");
+    }
+  }
+);
+
+/**
+ * ADMIN — Validate testcases.
+ * Optional for SQL questions: publishing regenerates expected output from the
+ * solution anyway. Useful to check hand-written expected rows before publishing.
+ */
+router.post(
+  "/:cohortId/modules/:moduleId/sql-questions/validate",
+  [auth, adminAuth],
+  async (req, res) => {
+    try {
+      const context = await resolveModuleContext(req);
+      if (context.error) {
+        return res.status(context.error.status).json(context.error.body);
+      }
+
+      const input = sqlQuestionService.parseSqlQuestionPayload(req.body);
+      const validation = await sqlQuestionService.validateTestcases(input);
+
+      res.json({
+        message: validation.valid
+          ? "All testcases match the reference solution output"
+          : "One or more testcases do not match the reference solution output",
+        judgeQuestionId: input.judgeQuestionId,
+        judgeVersion: input.judgeVersion,
+        ...validation,
+      });
+    } catch (err) {
+      respondSqlError(res, err, "Failed to validate testcases");
+    }
+  }
+);
+
+/**
+ * ADMIN — Submit (publish).
+ *
+ * Publishes the question to S3 through the engine, then creates the Question in
+ * MongoDB and wires it into every related cohort exactly like the single-create
+ * route does.
+ *
+ * Ordering note: S3 is written first because the engine has no delete endpoint,
+ * so a local failure afterwards leaves a reusable published version rather than
+ * a Question row pointing at assets that do not exist. The republish path is an
+ * explicit `overwrite` flag.
+ */
+router.post(
+  "/:cohortId/modules/:moduleId/sql-questions",
+  [auth, adminAuth],
+  async (req, res) => {
+    try {
+      const context = await resolveModuleContext(req);
+      if (context.error) {
+        return res.status(context.error.status).json(context.error.body);
+      }
+      const { module } = context;
+
+      const input = sqlQuestionService.parseSqlQuestionPayload(req.body);
+      const relatedCohorts = await getRelatedCohorts(req.params.cohortId);
+
+      if (req.query.preview === "true") {
+        return res.json({
+          action: "create_sql_question",
+          affectedCohorts: relatedCohorts,
+          module: { _id: module._id, title: module.title },
+          questionData: {
+            title: input.title,
+            type: "sql",
+            difficultyLevel: input.difficultyLevel,
+            marks: input.marks,
+            judgeQuestionId: input.judgeQuestionId,
+            judgeVersion: input.judgeVersion,
+            visibleTestcases: input.testcases.filter((tc) => tc.visible).length,
+            hiddenTestcases: input.testcases.filter((tc) => !tc.visible).length,
+          },
+        });
+      }
+
+      // 1) Publish to S3. The engine regenerates expected output itself.
+      const published = await sqlQuestionService.publishToJudge(input);
+
+      // 2) Read back the published question so stored columns match the engine.
+      let expectedColumns = published?.outputColumns || [];
+      if (expectedColumns.length === 0) {
+        try {
+          const fetched = await sqlJudge.getQuestion(
+            input.judgeQuestionId,
+            input.judgeVersion
+          );
+          expectedColumns = fetched?.question?.outputFormat?.columns || [];
+        } catch (readError) {
+          console.warn(
+            "⚠️ Published SQL question could not be read back for output columns:",
+            readError.message
+          );
+        }
+      }
+
+      // 3) Persist locally using the same shape as other question types.
+      const questionData = sqlQuestionService.buildQuestionDocument(input, published, {
+        moduleId: module._id,
+        createdBy: req.user.id,
+        expectedColumns,
+      });
+
+      let question;
+      try {
+        question = new Question(questionData);
+        await question.save();
+
+        module.questions.push(question._id);
+        await module.save();
+      } catch (persistError) {
+        console.error(
+          `❌ SQL question published to S3 but could not be saved locally. ` +
+            `Republish with overwrite:true after fixing the cause. ` +
+            `questionId=${input.judgeQuestionId} version=${input.judgeVersion}`,
+          persistError
+        );
+        return res.status(500).json({
+          message:
+            "The question was published to S3 but could not be saved. Retry with overwrite enabled.",
+          code: "SQL_QUESTION_PERSIST_FAILED",
+          judgeQuestionId: input.judgeQuestionId,
+          judgeVersion: input.judgeVersion,
+          error: persistError.message,
+        });
+      }
+
+      // 4) Mirror progress bookkeeping for every related cohort.
+      const relatedCohortIds = relatedCohorts.map((c) => c._id);
+      const userCohorts = await UserCohort.find({
+        cohort: { $in: relatedCohortIds },
+      });
+
+      for (const userCohort of userCohorts) {
+        const moduleProgressIndex = userCohort.moduleProgress.findIndex(
+          (mp) => mp.module.toString() === module._id.toString()
+        );
+        if (moduleProgressIndex !== -1) {
+          userCohort.moduleProgress[moduleProgressIndex].totalQuestions += 1;
+          userCohort.questionProgress.push({
+            question: question._id,
+            attempts: 0,
+            solved: false,
+            bestScore: 0,
+          });
+          await userCohort.save();
+        }
+      }
+
+      console.log(
+        `✅ SQL question "${input.title}" published (${input.judgeQuestionId} v${input.judgeVersion}) ` +
+          `and added to ${relatedCohorts.length} cohort(s)`
+      );
+
+      res.status(201).json({
+        message: `SQL question created and added to ${relatedCohorts.length} cohort(s)`,
+        question,
+        affectedCohorts: relatedCohorts,
+        publish: {
+          judgeQuestionId: input.judgeQuestionId,
+          judgeVersion: input.judgeVersion,
+          objects: published?.objects ?? null,
+          visible: input.testcases.filter((tc) => tc.visible).length,
+          hidden: input.testcases.filter((tc) => !tc.visible).length,
+          outputColumns: expectedColumns,
+        },
+      });
+    } catch (err) {
+      respondSqlError(res, err, "Failed to create the SQL question");
+    }
+  }
+);
+
+/**
+ * USER — SQL question context.
+ *
+ * Returns the schema, the starting query and the visible testcases (seed plus
+ * expected rows) so the solving screen can render real tables. Hidden testcases
+ * are never included.
+ */
+router.get(
+  "/:cohortId/modules/:moduleId/questions/:questionId/sql/context",
+  auth,
+  async (req, res) => {
+    try {
+      const { cohortId, moduleId, questionId } = req.params;
+      const isPrivileged = isAdminOrTeacher(req.user);
+
+      const [cohort, question, enrollment] = await Promise.all([
+        Cohort.findById(cohortId),
+        Question.findOne({ _id: questionId, module: moduleId }),
+        isPrivileged
+          ? Promise.resolve(null)
+          : UserCohort.findOne({ user: req.user.id, cohort: cohortId }),
+      ]);
+
+      if (!cohort) return res.status(404).json({ message: "Cohort not found" });
+      if (!isPrivileged && cohort.isDraft) {
+        return res.status(403).json({
+          message: "This cohort is not published yet",
+          error: "COHORT_UNPUBLISHED",
+        });
+      }
+      if (!isPrivileged && !enrollment) {
+        return res.status(403).json({ message: "Not enrolled in this cohort" });
+      }
+      if (!question) return res.status(404).json({ message: "Question not found" });
+      if (question.type !== "sql") {
+        return res.status(400).json({ message: "This question is not a SQL question" });
+      }
+
+      const meta = question.sqlMeta || {};
+      let engineQuestion = null;
+      let visibleTestcases = [];
+
+      try {
+        const fetched = await sqlJudge.getQuestion(
+          meta.judgeQuestionId,
+          meta.judgeVersion || 1
+        );
+        engineQuestion = fetched?.question || null;
+        visibleTestcases = (fetched?.testcases || []).map((tc) => ({
+          id: tc.id,
+          seedSql: tc.seedSql || "",
+          expected: tc.expected || null,
+        }));
+      } catch (err) {
+        // The question is still solvable without the sample tables, so degrade
+        // instead of failing the whole screen.
+        console.warn(
+          `⚠️ Could not load SQL context for ${meta.judgeQuestionId}: ${err.message}`
+        );
+      }
+
+      res.json({
+        questionId: question._id,
+        judgeQuestionId: meta.judgeQuestionId,
+        judgeVersion: meta.judgeVersion,
+        database: meta.database || { type: "MYSQL", version: "8.4" },
+        schemaSql: meta.schemaSql || "",
+        boilerplateSql: meta.boilerplateSql || sqlQuestionService.DEFAULT_BOILERPLATE_SQL,
+        expectedColumns: meta.expectedColumns || [],
+        constraints: engineQuestion?.constraints || [],
+        outputFormat: engineQuestion?.outputFormat || null,
+        visibleTestcaseCount: meta.visibleTestcaseCount || visibleTestcases.length,
+        hiddenTestcaseCount: meta.hiddenTestcaseCount || 0,
+        totalTestcaseCount: meta.totalTestcaseCount || 0,
+        testcases: visibleTestcases,
+      });
+    } catch (err) {
+      respondSqlError(res, err, "Failed to load SQL question context");
+    }
+  }
+);
+
+/**
+ * USER — Run.
+ *
+ * Grades against the visible testcases only and returns per-testcase detail:
+ * actual rows, expected rows and the mismatch explanation. A run is practice,
+ * so it is never recorded as a submission and never affects progress.
+ */
+router.post(
+  "/:cohortId/modules/:moduleId/questions/:questionId/sql/run",
+  auth,
+  async (req, res) => {
+    try {
+      const { cohortId, moduleId, questionId } = req.params;
+      const { sql } = req.body || {};
+      const isPrivileged = isAdminOrTeacher(req.user);
+
+      if (typeof sql !== "string" || sql.trim() === "") {
+        return res.status(400).json({ message: "SQL query is required" });
+      }
+
+      const [cohort, question, enrollment] = await Promise.all([
+        Cohort.findById(cohortId),
+        Question.findOne({ _id: questionId, module: moduleId }),
+        isPrivileged
+          ? Promise.resolve(null)
+          : UserCohort.findOne({ user: req.user.id, cohort: cohortId }),
+      ]);
+
+      if (!cohort) return res.status(404).json({ message: "Cohort not found" });
+      if (!isPrivileged && cohort.isDraft) {
+        return res.status(403).json({
+          message: "This cohort is not published yet",
+          error: "COHORT_UNPUBLISHED",
+        });
+      }
+      if (!isPrivileged && !enrollment) {
+        return res.status(403).json({ message: "Not enrolled in this cohort" });
+      }
+      if (!question) return res.status(404).json({ message: "Question not found" });
+      if (question.type !== "sql") {
+        return res.status(400).json({ message: "This question is not a SQL question" });
+      }
+
+      const meta = question.sqlMeta || {};
+      const verdict = await sqlJudge.run({
+        questionId: meta.judgeQuestionId,
+        version: meta.judgeVersion || 1,
+        sql,
+      });
+
+      res.json({
+        mode: "RUN",
+        status: verdict.status,
+        passed: verdict.passed ?? 0,
+        total: verdict.total ?? 0,
+        executionTimeMs: verdict.executionTimeMs ?? 0,
+        ...(verdict.error ? { error: verdict.error } : {}),
+        ...(verdict.failedAt ? { failedAt: verdict.failedAt } : {}),
+        testcases: verdict.testcases || [],
+      });
+    } catch (err) {
+      respondSqlError(res, err, "Failed to run the SQL query");
+    }
+  }
+);
+
 // ✅ BULK UPLOAD: Atomically create questions from one or more JSON files
 router.post(
   "/:cohortId/modules/:moduleId/questions/bulk",
@@ -2845,6 +3269,91 @@ router.post(
         });
 
         submissionIsCorrect = serverIsCorrect;
+      } else if (submissionType === "sql") {
+        // ─────────────────────────────────────────────────────────────────
+        // AUTHORITATIVE SQL GRADING (SECURITY-CRITICAL)
+        // The verdict comes from the SQLJudge engine, which runs every
+        // testcase (visible + hidden) against its own S3-stored expected
+        // output. Client-reported correctness and score are ignored.
+        //
+        // On submit the engine returns an aggregate only (status, passed,
+        // total) so hidden testcase data cannot leak, which is why no
+        // per-testcase rows are stored for a submission.
+        // ─────────────────────────────────────────────────────────────────
+        if (!code || typeof code !== "string" || code.trim() === "") {
+          return res.status(400).json({
+            message: "Missing required fields",
+            required: ["code"],
+          });
+        }
+
+        if (question.type !== "sql" || !question.sqlMeta?.judgeQuestionId) {
+          return res
+            .status(400)
+            .json({ message: "This question is not a published SQL question" });
+        }
+
+        let verdict;
+        try {
+          verdict = await sqlJudge.submit({
+            questionId: question.sqlMeta.judgeQuestionId,
+            version: question.sqlMeta.judgeVersion || 1,
+            sql: code,
+          });
+        } catch (engineError) {
+          return respondSqlError(
+            res,
+            engineError,
+            "Failed to grade the SQL submission"
+          );
+        }
+
+        const graded = sqlQuestionService.gradeSubmitVerdict(verdict, question);
+
+        console.log(
+          `📝 SQL submission (server-graded) - User: ${userId}, Question: ${questionId}, ` +
+            `${graded.passed}/${graded.total} passed → ${
+              graded.isCorrect ? "Accepted" : graded.status
+            }`
+        );
+
+        programmingSummary = {
+          total: graded.total,
+          passed: graded.passed,
+          failed: Math.max(graded.total - graded.passed, 0),
+        };
+
+        submission = new Submission({
+          user: userId,
+          question: questionId,
+          module: moduleId,
+          cohort: cohortId,
+          submissionType: "sql",
+          code,
+          language: "sql",
+          status: graded.status,
+          // Per-testcase detail is intentionally withheld by the engine on
+          // submit, so only the aggregate is recorded.
+          testCaseResults: [],
+          executionTime: graded.executionTimeMs,
+          memoryUsed: 0,
+          isCorrect: graded.isCorrect,
+          score: graded.score,
+          pointsEarned: graded.score,
+          tierAchieved: -1,
+          sqlResult: {
+            judgeQuestionId: question.sqlMeta.judgeQuestionId,
+            judgeVersion: question.sqlMeta.judgeVersion || 1,
+            judgeSubmissionId: verdict?.submissionId || null,
+            judgeStatus: graded.judgeStatus,
+            testCasesPassed: graded.passed,
+            testCasesTotal: graded.total,
+            failedAt: graded.failedAt,
+            errorMessage: graded.errorMessage,
+          },
+        });
+
+        submissionIsCorrect = graded.isCorrect;
       } else {
         return res.status(400).json({ message: "Invalid submission type" });
       }

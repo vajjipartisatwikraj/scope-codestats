@@ -46,6 +46,63 @@ const testCaseSchema = new mongoose.Schema({
   },
 });
 
+/**
+ * SQL question testcase reference.
+ *
+ * Unlike programming questions, SQL testcase data (seed + expected rows) is not
+ * stored here. It lives in the SQLJudge private S3 bucket, and only the
+ * identifier and object keys are kept for provenance and auditing.
+ */
+const sqlTestcaseRefSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    hidden: { type: Boolean, default: false },
+    seedKey: { type: String },
+    expectedKey: { type: String },
+  },
+  { _id: false }
+);
+
+/**
+ * Everything needed to grade and render a SQL question, without duplicating the
+ * testcase data that SQLJudge owns.
+ *
+ * `judgeQuestionId` + `judgeVersion` are the engine's own identifiers; they are
+ * a different namespace from this document's `_id`. Question paths in S3 are
+ * version pinned and therefore immutable.
+ */
+const sqlMetaSchema = new mongoose.Schema(
+  {
+    judgeQuestionId: { type: String, required: true },
+    judgeVersion: { type: Number, required: true, default: 1, min: 1 },
+    database: {
+      type: { type: String, default: "MYSQL" },
+      version: { type: String, default: "8.4" },
+    },
+    // Kept locally for display: students need to see the table definitions.
+    schemaSql: { type: String, default: "" },
+    // Starting query shown in the editor.
+    boilerplateSql: { type: String, default: "" },
+    // Reference solution is authoring-only and never served to students.
+    solutionSql: { type: String, default: "", select: false },
+    expectedColumns: [String],
+    testcases: [sqlTestcaseRefSchema],
+    visibleTestcaseCount: { type: Number, default: 0 },
+    hiddenTestcaseCount: { type: Number, default: 0 },
+    totalTestcaseCount: { type: Number, default: 0 },
+    // S3 object keys written by the engine when the question was published.
+    s3Keys: {
+      question: { type: String },
+      config: { type: String },
+      schema: { type: String },
+      solution: { type: String },
+    },
+    publishedAt: { type: Date },
+    publishedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false }
+);
+
 // Define options schema for MCQ
 const optionSchema = new mongoose.Schema({
   text: {
@@ -70,7 +127,7 @@ const questionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["mcq", "programming"],
+    enum: ["mcq", "programming", "sql"],
     required: true,
   },
   difficultyLevel: {
@@ -164,6 +221,13 @@ const questionSchema = new mongoose.Schema({
     },
   },
   testCases: [testCaseSchema],
+
+  // Fields for SQL type. Present only when type === "sql".
+  sqlMeta: {
+    type: sqlMetaSchema,
+    default: undefined,
+  },
+
   constraints: {
     timeLimit: {
       type: Number,
@@ -237,6 +301,27 @@ const questionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+});
+
+// ✅ SQL VALIDATION: a SQL question is only usable if it points at a published
+// SQLJudge question, since that is where its testcases and expected output live.
+questionSchema.pre("validate", function (next) {
+  if (this.type !== "sql") return next();
+
+  if (!this.sqlMeta || !this.sqlMeta.judgeQuestionId) {
+    return next(
+      new Error(
+        "SQL questions require sqlMeta.judgeQuestionId referencing a published SQLJudge question"
+      )
+    );
+  }
+  if (!this.sqlMeta.judgeVersion || this.sqlMeta.judgeVersion < 1) {
+    return next(new Error("SQL questions require a positive sqlMeta.judgeVersion"));
+  }
+  if (!Array.isArray(this.sqlMeta.testcases) || this.sqlMeta.testcases.length === 0) {
+    return next(new Error("SQL questions require at least one testcase reference"));
+  }
+  next();
 });
 
 // ✅ CRITICAL VALIDATION: Ensure scoring tier points don't exceed question marks

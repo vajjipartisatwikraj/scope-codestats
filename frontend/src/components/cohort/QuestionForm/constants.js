@@ -36,6 +36,58 @@ export const LANGUAGES = [
   },
 ];
 
+/**
+ * SQL question defaults.
+ *
+ * SQL questions are graded by the external SQLJudge engine, which owns the
+ * seed data and expected output in its own private storage. The form therefore
+ * captures the schema, the reference solution and one seed per testcase, and
+ * the engine generates the expected rows.
+ */
+export const DEFAULT_SQL_SCHEMA = `CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    salary DECIMAL(10,2) NOT NULL
+);`;
+
+export const DEFAULT_SQL_SOLUTION = `SELECT department, ROUND(AVG(salary), 2) AS avg_salary
+FROM employees
+GROUP BY department
+ORDER BY department;`;
+
+export const DEFAULT_SQL_SEED = `INSERT INTO employees (id, name, department, salary)
+VALUES
+    (1, 'Rahul', 'IT', 60000),
+    (2, 'Priya', 'IT', 70000),
+    (3, 'Arjun', 'HR', 50000);`;
+
+export const DEFAULT_SQL_BOILERPLATE = `-- Write your query below.
+SELECT
+FROM employees;`;
+
+/** A fresh, empty SQL testcase. Ids follow the engine's tc-NN convention. */
+export const makeSqlTestcase = (index, { visible = true } = {}) => ({
+  id: `tc-${String(index + 1).padStart(2, "0")}`,
+  seedSql: index === 0 ? DEFAULT_SQL_SEED : "",
+  visible,
+});
+
+export const getDefaultSqlMeta = () => ({
+  judgeQuestionId: "",
+  judgeVersion: 1,
+  schemaSql: DEFAULT_SQL_SCHEMA,
+  solutionSql: DEFAULT_SQL_SOLUTION,
+  boilerplateSql: DEFAULT_SQL_BOILERPLATE,
+  constraints: [],
+  testcases: [
+    makeSqlTestcase(0, { visible: true }),
+    makeSqlTestcase(1, { visible: true }),
+    makeSqlTestcase(2, { visible: false }),
+  ],
+  overwrite: false,
+});
+
 // Default form data structure
 export const getDefaultFormData = (moduleId) => ({
   title: "",
@@ -74,6 +126,8 @@ export const getDefaultFormData = (moduleId) => ({
   },
   fillInTheBlank: false, // New: Fill in the Blank mode
   scoringTiers: [], // Language-specific time-based scoring tiers
+  // SQL authoring state. Only sent when type === "sql".
+  sqlMeta: getDefaultSqlMeta(),
 });
 
 // Markers for Fill in the Blank feature

@@ -122,7 +122,19 @@ function validateCommonFields(question) {
   }
   if (!isNonEmptyString(question.title)) issues.push(issue("title", "Title must be a non-empty string"));
   if (!isNonEmptyString(question.description)) issues.push(issue("description", "Description must be a non-empty string"));
-  if (!["mcq", "programming"].includes(question.type)) issues.push(issue("type", "Type must be 'mcq' or 'programming'"));
+  if (question.type === "sql") {
+    // SQL questions cannot be bulk created: publishing each one executes its
+    // reference solution against every seed and writes assets to S3, which is
+    // driven by the dedicated SQL authoring flow instead.
+    issues.push(
+      issue(
+        "type",
+        "SQL questions must be created through the SQL question form, not bulk upload"
+      )
+    );
+  } else if (!["mcq", "programming"].includes(question.type)) {
+    issues.push(issue("type", "Type must be 'mcq' or 'programming'"));
+  }
   if (hasOwn(question, "difficultyLevel") && !DIFFICULTIES.includes(question.difficultyLevel)) {
     issues.push(issue("difficultyLevel", "Difficulty must be 'easy', 'medium', or 'hard'"));
   }

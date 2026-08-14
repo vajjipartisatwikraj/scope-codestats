@@ -43,6 +43,7 @@ const CodeEditorPanel = (
     LANGUAGES,
     onLanguageChange,
     availableLanguages = [],
+    singleLanguage = false, // SQL questions expose exactly one language
     encryptedEditorEnabled = false, // NEW: Enable encryption feature
     questionId = null, // NEW: Question ID for generating unique keys
     encryptionSettings = {}, // NEW: Encryption settings from question
@@ -112,13 +113,19 @@ const CodeEditorPanel = (
     }
   }, [code, fillInTheBlankEnabled]);
 
-  // When the language changes, store it in localStorage as a backup
+  // When the language changes, store it in localStorage as a backup.
+  // SQL is never remembered: it is not a choice the student made, and restoring
+  // it on a programming question would load the wrong editor mode.
   useEffect(() => {
+    if (singleLanguage || language === "sql") return;
     localStorage.setItem(BACKUP_LANGUAGE_KEY, language);
-  }, [language]);
+  }, [language, singleLanguage]);
 
   // Simplified state restoration - only restore language preference
   useEffect(() => {
+    // A single-language question (SQL) must never be switched to a remembered
+    // language from a previous programming question.
+    if (singleLanguage) return;
     // Only restore language preference on mount
     const savedLanguage = localStorage.getItem(BACKUP_LANGUAGE_KEY);
     if (
@@ -555,6 +562,7 @@ const CodeEditorPanel = (
   // Get Monaco editor language
   const getMonacoLanguage = (lang) => {
     const languageMap = {
+      sql: "sql",
       c: "c",
       cpp: "cpp",
       java: "java",
@@ -725,7 +733,10 @@ const CodeEditorPanel = (
           <Button
             variant="outlined"
             size="small"
-            endIcon={<KeyboardArrowDownIcon />}
+            // A single-language question has nothing to choose, so the dropdown
+            // affordance is removed rather than left as a dead control.
+            endIcon={singleLanguage ? null : <KeyboardArrowDownIcon />}
+            disabled={singleLanguage}
             sx={{
               height: "24px",
               borderRadius: "4px",
@@ -746,7 +757,7 @@ const CodeEditorPanel = (
               fontSize: "0.75rem",
               fontWeight: 500,
             }}
-            onClick={handleLanguageClick}
+            onClick={singleLanguage ? undefined : handleLanguageClick}
           >
             {LANGUAGES && LANGUAGES[language]
               ? LANGUAGES[language].name

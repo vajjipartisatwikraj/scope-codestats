@@ -3,7 +3,7 @@ name: Deploy CodeStats
 on:
   push:
     branches:
-      - version-2.0.0
+      - version-3.0.0
 
 jobs:
   deploy:
@@ -56,9 +56,9 @@ jobs:
 
             git fetch origin
 
-            git checkout version-2.0.0
+            git checkout version-3.0.0
 
-            git reset --hard origin/version-2.0.0
+            git reset --hard origin/version-3.0.0
 
             sudo rm -rf /var/www/codestats/*
 

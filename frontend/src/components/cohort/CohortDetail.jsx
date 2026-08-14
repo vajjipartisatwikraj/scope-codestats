@@ -29,6 +29,10 @@ import { apiUrl } from "../../config/apiConfig";
 import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
 import QuestionForm from "./QuestionForm";
+import {
+  publishSqlQuestion,
+  toSqlErrorMessage,
+} from "../../services/sqlQuestionApi";
 import CohortStats from "./CohortStats";
 import CohortDetailLeft from "./CohortDetailLeft";
 import CohortDetailRight from "./CohortDetailRight";
@@ -1145,6 +1149,33 @@ const CohortDetail = () => {
         module: selectedModule._id,
       };
 
+      // SQL questions go through their own endpoint: the execution engine
+      // publishes the schema, seeds and regenerated expected output to its own
+      // storage, and only then is the question created locally.
+      if (questionData.type === "sql") {
+        try {
+          const created = await publishSqlQuestion(
+            id,
+            selectedModule._id,
+            payload
+          );
+          toast.success(
+            created.message ||
+              `SQL question published (${created.judgeQuestionId} v${created.judgeVersion})`
+          );
+          handleCloseQuestionDialog();
+          await fetchModules();
+        } catch (error) {
+          console.error("Error publishing SQL question:", error);
+          toast.error(
+            toSqlErrorMessage(error, "Failed to publish the SQL question")
+          );
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       let endpoint;
 
       if (isEditingQuestion) {
@@ -2094,6 +2125,7 @@ const CohortDetail = () => {
               onSave={handleSaveQuestion}
               onCancel={handleCloseQuestionDialog}
               moduleId={selectedModule?._id}
+              cohortId={id}
               isEdit={isEditingQuestion}
               onBulkUpload={(payload) =>
                 handleBulkQuestionUpload(

@@ -69,6 +69,16 @@ import SubmissionsPanel from "./SubmissionsPanel";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import QuestionReport from "./QuestionReport";
 import LockIcon from "@mui/icons-material/Lock";
+import SqlResultPanel from "./SqlResultPanel";
+import {
+  fetchSqlQuestionContext,
+  runSqlQuery,
+  submitSqlQuery,
+  toSqlErrorMessage,
+} from "../../services/sqlQuestionApi";
+
+/** Fallback starting query when a SQL question has no stored boilerplate. */
+const DEFAULT_SQL_EDITOR_CODE = "-- Write your query below.\nSELECT\nFROM employees;";
 
 // Platform-aware modifier label for keyboard-shortcut hints
 const IS_MAC =
@@ -195,6 +205,13 @@ const LANGUAGES = {
     defaultCode: "// Your code here",
     version: "18.15.0",
   },
+  // SQL questions are graded by the external SQL engine (MySQL 8.4).
+  sql: {
+    extension: "sql",
+    name: "MySQL",
+    defaultCode: DEFAULT_SQL_EDITOR_CODE,
+    version: "8.4",
+  },
 };
 
 const CohortProblem = () => {
@@ -211,6 +228,12 @@ const CohortProblem = () => {
   const [question, setQuestion] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [language, setLanguage] = useState("cpp");
+
+  // SQL question state. `sqlContext` holds the schema and sample testcases,
+  // `sqlResult` the latest run or submit verdict.
+  const [sqlContext, setSqlContext] = useState(null);
+  const [sqlResult, setSqlResult] = useState(null);
+  const [sqlBusy, setSqlBusy] = useState(null); // "RUN" | "SUBMIT" | null
   const [code, setCode] = useState("");
   const [lastSubmittedCode, setLastSubmittedCode] = useState(""); // Track last submitted code
   const [isQuestionSolved, setIsQuestionSolved] = useState(false); // Track if question is already solved
@@ -284,12 +307,15 @@ const CohortProblem = () => {
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
       const s = shortcutStateRef.current;
-      if (s.questionType !== "programming") return;
+      const isSql = s.questionType === "sql";
+      if (s.questionType !== "programming" && !isSql) return;
+      // SQL has no custom-input tab, so the tab guard does not apply to it.
+      const busy = s.running || s.submitting || Boolean(s.sqlBusy);
 
       // Submit: Ctrl/Cmd + Enter
       if (e.key === "Enter") {
         e.preventDefault();
-        if (!s.running && !s.submitting && s.activeInputTab !== 1) {
+        if (!busy && (isSql || s.activeInputTab !== 1)) {
           submitSolutionRef.current && submitSolutionRef.current();
         }
         return;
@@ -297,7 +323,7 @@ const CohortProblem = () => {
       // Run: Ctrl/Cmd + '
       if (e.key === "'") {
         e.preventDefault();
-        if (!s.running && !s.submitting) {
+        if (!busy) {
           runCodeRef.current && runCodeRef.current();
         }
       }
@@ -451,18 +477,46 @@ const CohortProblem = () => {
         }
       }
 
-      // Always load based on default language and submissions
-      const defaultLang = questionData.defaultLanguage || 'cpp';
-      setLanguage(defaultLang);
+      // SQL questions have a single language and load their schema, starting
+      // query and sample testcases from the SQL engine through our backend.
+      if (questionData.type === "sql") {
+        setLanguage("sql");
+        const previousSqlSubmission = allSubmissions.find((s) => s.code);
 
-      // Find submission for default language
-      const submissionForLang = allSubmissions.find(s => s.language === defaultLang);
+        let sqlContext = null;
+        try {
+          sqlContext = await fetchSqlQuestionContext(
+            cohortId,
+            moduleId,
+            questionId
+          );
+          setSqlContext(sqlContext);
+        } catch (contextError) {
+          console.warn(
+            "⚠️ Could not load SQL question context:",
+            contextError?.message
+          );
+        }
 
-      if (submissionForLang && submissionForLang.code) {
-        setCode(submissionForLang.code);
+        setCode(
+          previousSqlSubmission?.code ||
+            sqlContext?.boilerplateSql ||
+            DEFAULT_SQL_EDITOR_CODE
+        );
       } else {
-        const langInfo = questionData.languages?.find(l => l.name === defaultLang);
-        setCode(langInfo?.boilerplateCode || LANGUAGES[defaultLang]?.defaultCode || '');
+        // Always load based on default language and submissions
+        const defaultLang = questionData.defaultLanguage || 'cpp';
+        setLanguage(defaultLang);
+
+        // Find submission for default language
+        const submissionForLang = allSubmissions.find(s => s.language === defaultLang);
+
+        if (submissionForLang && submissionForLang.code) {
+          setCode(submissionForLang.code);
+        } else {
+          const langInfo = questionData.languages?.find(l => l.name === defaultLang);
+          setCode(langInfo?.boilerplateCode || LANGUAGES[defaultLang]?.defaultCode || '');
+        }
       }
     } catch (error) {
       console.error("❌ Error fetching question details:", error);
@@ -934,9 +988,88 @@ const CohortProblem = () => {
     }
   };
 
+  /**
+   * SQL run — graded against the visible testcases only. A run is practice: it
+   * is never recorded as a submission and never affects progress.
+   */
+  const handleSqlRun = async () => {
+    if (!code.trim()) {
+      toast.error("Write a query before running");
+      return;
+    }
+    setSqlBusy("RUN");
+    setSqlResult(null);
+    try {
+      // The verdict is reported by the results panel alone; no toasts, so the
+      // outcome is read in one place.
+      const verdict = await runSqlQuery(cohortId, moduleId, questionId, code);
+      setSqlResult(verdict);
+    } catch (error) {
+      const message = toSqlErrorMessage(error, "Failed to run the query");
+      setSqlResult({ mode: "RUN", status: "ERROR", error: message, passed: 0, total: 0 });
+    } finally {
+      setSqlBusy(null);
+    }
+  };
+
+  /**
+   * SQL submit — graded against visible and hidden testcases by the engine and
+   * recorded as a submission. The response is an aggregate: hidden testcase
+   * rows are never returned to the client.
+   */
+  const handleSqlSubmit = async () => {
+    if (!code.trim()) {
+      toast.error("Write a query before submitting");
+      return;
+    }
+    setSqlBusy("SUBMIT");
+    setSqlResult(null);
+    try {
+      const response = await submitSqlQuery(cohortId, moduleId, questionId, code);
+
+      // The submit route answers with `{ submission, isCorrect, summary }`, the
+      // same envelope as the programming flow. The authoritative pass counts
+      // live on `summary`, the timing and score on the saved submission, and
+      // the engine verdict details under `submission.sqlResult`.
+      const submissionDoc = response.submission || {};
+      const judgeResult = submissionDoc.sqlResult || {};
+      const summary = response.summary || {};
+
+      const verdict = {
+        mode: "SUBMIT",
+        status: judgeResult.judgeStatus || (response.isCorrect ? "PASSED" : "FAILED"),
+        passed: summary.passed ?? judgeResult.testCasesPassed ?? 0,
+        total: summary.total ?? judgeResult.testCasesTotal ?? 0,
+        executionTimeMs: submissionDoc.executionTime ?? 0,
+        score: submissionDoc.score ?? 0,
+        isCorrect: Boolean(response.isCorrect),
+        ...(judgeResult.errorMessage ? { error: judgeResult.errorMessage } : {}),
+      };
+      setSqlResult(verdict);
+      setLastSubmittedCode(code);
+
+      // The performance summary carries the verdict, so nothing is toasted.
+      if (verdict.isCorrect) {
+        setIsQuestionSolved(true);
+      }
+
+      // Refresh history and progress exactly like the programming flow.
+      fetchMySubmissions();
+    } catch (error) {
+      const message = toSqlErrorMessage(error, "Failed to submit the query");
+      setSqlResult({ mode: "SUBMIT", status: "ERROR", error: message, passed: 0, total: 0 });
+    } finally {
+      setSqlBusy(null);
+    }
+  };
+
   // Handle running code - executes only unhidden test cases
   const handleRunCode = async () => {
     if (!canExecuteNow()) return;
+    if (question?.type === "sql") {
+      await handleSqlRun();
+      return;
+    }
     // If Custom Input tab is active, run with custom input instead
     if (activeInputTab === 1) {
       await handleRunCustomInput();
@@ -1006,6 +1139,9 @@ const CohortProblem = () => {
   const handleSubmitSolution = async () => {
     if (question.type === "mcq") {
       await handleSubmitMcqAnswer();
+    } else if (question.type === "sql") {
+      if (!canExecuteNow()) return;
+      await handleSqlSubmit();
     } else if (question.type === "programming") {
       if (!canExecuteNow()) return;
       // Always open the submission view in the test-case panel: force Test Run
@@ -1605,6 +1741,7 @@ const CohortProblem = () => {
     running,
     submitting,
     activeInputTab,
+    sqlBusy,
     questionType: question?.type,
   };
 
@@ -1691,8 +1828,9 @@ const CohortProblem = () => {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {/* Removed language selector */}
 
-            {/* Add Run and Submit buttons to top navigation - only for programming questions */}
-            {question?.type === "programming" && (
+            {/* Run and Submit are shown for the code-based question types.
+                MCQ has its own submit control beside the options. */}
+            {(question?.type === "programming" || question?.type === "sql") && (
               <>
                 <Tooltip title={`Run Code (${MOD_KEY} + ')`} arrow>
                   <span>
@@ -1701,7 +1839,16 @@ const CohortProblem = () => {
                       color="primary"
                       size="small"
                       onClick={handleRunCode}
-                      disabled={running || submitting || (activeInputTab === 1 && !customInput.trim())}
+                      disabled={
+                        running ||
+                        submitting ||
+                        Boolean(sqlBusy) ||
+                        // The custom-input guard only applies to programming
+                        // questions; SQL has no custom-input tab.
+                        (question?.type !== "sql" &&
+                          activeInputTab === 1 &&
+                          !customInput.trim())
+                      }
                       startIcon={<PlayArrowIcon />}
                       sx={{
                         height: 36,
@@ -1713,7 +1860,7 @@ const CohortProblem = () => {
                           : "rgba(0, 136, 204, 0.02)",
                       }}
                     >
-                      {running ? "Running..." : "Run Code"}
+                      {running || sqlBusy === "RUN" ? "Running..." : "Run Code"}
                     </Button>
                   </span>
                 </Tooltip>
@@ -1724,19 +1871,36 @@ const CohortProblem = () => {
                       variant="contained"
                       size="small"
                       onClick={handleSubmitSolution}
-                      disabled={running || submitting || activeInputTab === 1}
+                      disabled={
+                        running ||
+                        submitting ||
+                        Boolean(sqlBusy) ||
+                        (question?.type !== "sql" && activeInputTab === 1)
+                      }
                       sx={{
                         height: 36,
                         textTransform: "none",
                         borderRadius: "4px",
                         px: 2,
-                        backgroundColor: activeInputTab === 1 ? (darkMode ? "#333" : "#ccc") : "#01780F",
+                        backgroundColor:
+                          question?.type !== "sql" && activeInputTab === 1
+                            ? darkMode
+                              ? "#333"
+                              : "#ccc"
+                            : "#01780F",
                         "&:hover": {
-                          backgroundColor: activeInputTab === 1 ? (darkMode ? "#333" : "#ccc") : "#015c0c",
+                          backgroundColor:
+                            question?.type !== "sql" && activeInputTab === 1
+                              ? darkMode
+                                ? "#333"
+                                : "#ccc"
+                              : "#015c0c",
                         },
                       }}
                     >
-                      {submitting ? "Submitting..." : "Submit"}
+                      {submitting || sqlBusy === "SUBMIT"
+                        ? "Submitting..."
+                        : "Submit"}
                     </Button>
                   </span>
                 </Tooltip>
@@ -2762,7 +2926,14 @@ const CohortProblem = () => {
                             testCasesPanelHeight={testCasesPanelHeight}
                             LANGUAGES={LANGUAGES}
                             onLanguageChange={selectLanguage}
-                            availableLanguages={question.languages || []}
+                            // SQL questions have exactly one language, so the
+                            // selector is locked to it.
+                            availableLanguages={
+                              question?.type === "sql"
+                                ? [{ name: "sql" }]
+                                : question.languages || []
+                            }
+                            singleLanguage={question?.type === "sql"}
                             encryptedEditorEnabled={question?.encryptedEditor || false} // Enable encryption only if question has it enabled
                             questionId={question?._id}
                             encryptionSettings={
@@ -2777,7 +2948,42 @@ const CohortProblem = () => {
                           />
                           </Box>
 
-                          {question &&
+                          {/* SQL results: tables rather than stdout diffs, and
+                              no Debug/custom-input mode, which has no meaning
+                              for a query returning a result set. */}
+                          {question?.type === "sql" && (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                minHeight: 0,
+                                overflow: "hidden",
+                                flex:
+                                  collapsedPanel === "test"
+                                    ? "0 0 auto"
+                                    : collapsedPanel === "editor"
+                                    ? "1 1 auto"
+                                    : `${testCasesPanelHeight} 1 0`,
+                              }}
+                            >
+                              <SqlResultPanel
+                                darkMode={darkMode}
+                                running={Boolean(sqlBusy)}
+                                mode={sqlBusy}
+                                result={sqlResult}
+                                context={sqlContext}
+                                testPanelResizerRef={testPanelResizerRef}
+                                startTestPanelResize={startTestPanelResize}
+                                isResizingTestPanel={isResizingTestPanel}
+                                showResizer={collapsedPanel === null}
+                                collapsed={collapsedPanel === "test"}
+                                onToggleCollapse={toggleTestCollapse}
+                              />
+                            </Box>
+                          )}
+
+                          {question?.type !== "sql" &&
+                            question &&
                             question.testCases &&
                             question.testCases.length > 0 && (
                               <Box

@@ -17,6 +17,7 @@ import {
 import {
   Code as CodeIcon,
   QuizOutlined as QuizIcon,
+  Storage as StorageIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   AddCircle as AddIcon,
@@ -84,6 +85,10 @@ const QuestionList = ({
                     {question.type === 'mcq' ? (
                       <Tooltip title="Multiple Choice Question">
                         <QuizIcon color="primary" />
+                      </Tooltip>
+                    ) : question.type === 'sql' ? (
+                      <Tooltip title="SQL Question">
+                        <StorageIcon color="info" />
                       </Tooltip>
                     ) : (
                       <Tooltip title="Programming Question">

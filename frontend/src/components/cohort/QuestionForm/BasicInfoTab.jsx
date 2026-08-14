@@ -69,6 +69,7 @@ const BasicInfoTab = ({
             >
               <MenuItem value="programming">Programming</MenuItem>
               <MenuItem value="mcq">Multiple Choice</MenuItem>
+              <MenuItem value="sql">SQL</MenuItem>
             </Select>
           </FormControl>
         </Grid>

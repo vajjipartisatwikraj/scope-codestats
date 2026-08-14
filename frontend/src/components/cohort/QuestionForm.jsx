@@ -15,19 +15,31 @@ import SearchTab from "./QuestionForm/SearchTab";
 import EditorialTab from "./tabs/EditorialTab";
 import TabPanel from "./QuestionForm/TabPanel";
 import BulkQuestionUpload from "./BulkQuestionUpload";
+import SqlQuestionTab from "./QuestionForm/SqlQuestionTab";
 
 // Import utilities and constants
-import { LANGUAGES, getDefaultFormData } from "./QuestionForm/constants";
 import {
+  LANGUAGES,
+  getDefaultFormData,
+  getDefaultSqlMeta,
+} from "./QuestionForm/constants";
+import {
+  buildFormDataFromQuestionJson,
   codeExecutionApi,
   simpleValidateAllTestCases,
 } from "./QuestionForm/utils";
+import {
+  generateSqlOutputs,
+  validateSqlTestcases,
+  toSqlErrorMessage,
+} from "../../services/sqlQuestionApi";
 
 const QuestionForm = ({
   initialData,
   onSave,
   onCancel,
   moduleId,
+  cohortId,
   isEdit = false,
   onBulkUpload,
   bulkUploading = false,
@@ -58,6 +70,14 @@ const QuestionForm = ({
   const fileInputRef = useRef(null);
   const testCaseFileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // SQL authoring states. `sqlGenerated` gates publishing: an author may only
+  // publish output they have actually seen.
+  const [sqlGenerating, setSqlGenerating] = useState(false);
+  const [sqlValidating, setSqlValidating] = useState(false);
+  const [sqlGenerated, setSqlGenerated] = useState(null);
+  const [sqlValidation, setSqlValidation] = useState(null);
+  const [sqlEngineError, setSqlEngineError] = useState(null);
   const [isUploadingTestCases, setIsUploadingTestCases] = useState(false);
 
   // Search states
@@ -151,14 +171,111 @@ const QuestionForm = ({
   // Tab management
   const handleTabChange = useCallback(
     (event, newValue) => {
+      // SQL and MCQ share the same tab count: they have no Test Cases tab and
+      // no bulk upload, so their last index is 5.
       const maxTabIndex =
-        formData.type === "mcq" ? 5 : !isEdit && onBulkUpload ? 7 : 6;
+        formData.type === "programming"
+          ? !isEdit && onBulkUpload
+            ? 7
+            : 6
+          : 5;
       if (newValue <= maxTabIndex) {
         setActiveTab(newValue);
       }
     },
     [formData.type, isEdit, onBulkUpload]
   );
+
+  /** Keeps the SQL authoring block in form state and invalidates stale results. */
+  const handleSqlMetaChange = useCallback((nextSqlMeta) => {
+    setFormData((prev) => ({ ...prev, sqlMeta: nextSqlMeta }));
+    // Any edit to schema, solution or seeds makes previously generated output
+    // stale, so it must be regenerated before publishing.
+    setSqlGenerated(null);
+    setSqlValidation(null);
+  }, []);
+
+  /** Builds the payload shared by generate, validate and publish. */
+  const buildSqlPayload = useCallback(() => {
+    const sqlMeta = formData.sqlMeta || getDefaultSqlMeta();
+    return {
+      judgeQuestionId: sqlMeta.judgeQuestionId,
+      judgeVersion: sqlMeta.judgeVersion || 1,
+      title: formData.title,
+      description: formData.description,
+      difficultyLevel: formData.difficultyLevel,
+      marks: formData.marks,
+      schemaSql: sqlMeta.schemaSql,
+      solutionSql: sqlMeta.solutionSql,
+      boilerplateSql: sqlMeta.boilerplateSql,
+      constraints: sqlMeta.constraints || [],
+      testcases: (sqlMeta.testcases || []).map((tc) => ({
+        id: tc.id,
+        seedSql: tc.seedSql,
+        visible: Boolean(tc.visible),
+        ...(tc.expected ? { expected: tc.expected } : {}),
+      })),
+      hints: formData.hints || [],
+      tags: formData.tags || [],
+      companies: formData.companies || [],
+      editorial: formData.editorial || "",
+      overwrite: Boolean(sqlMeta.overwrite),
+    };
+  }, [formData]);
+
+  const handleGenerateSqlOutputs = useCallback(async () => {
+    if (!cohortId || !moduleId) {
+      toast.error("Cohort or module is missing; cannot reach the SQL engine.");
+      return;
+    }
+    setSqlGenerating(true);
+    setSqlEngineError(null);
+    setSqlValidation(null);
+    try {
+      const result = await generateSqlOutputs(cohortId, moduleId, buildSqlPayload());
+      setSqlGenerated(result);
+      // Store the generated rows so validation and publishing use the reviewed
+      // output rather than re-deriving it.
+      setFormData((prev) => ({
+        ...prev,
+        sqlMeta: {
+          ...(prev.sqlMeta || {}),
+          testcases: (prev.sqlMeta?.testcases || []).map((tc) => {
+            const generated = (result.testcases || []).find((g) => g.id === tc.id);
+            return generated ? { ...tc, expected: generated.expected } : tc;
+          }),
+        },
+      }));
+      toast.success(result.message || "Expected output generated");
+    } catch (error) {
+      const message = toSqlErrorMessage(error, "Failed to generate expected outputs");
+      setSqlEngineError(message);
+      toast.error(message);
+    } finally {
+      setSqlGenerating(false);
+    }
+  }, [buildSqlPayload, cohortId, moduleId]);
+
+  const handleValidateSqlTestcases = useCallback(async () => {
+    if (!cohortId || !moduleId) {
+      toast.error("Cohort or module is missing; cannot reach the SQL engine.");
+      return;
+    }
+    setSqlValidating(true);
+    setSqlEngineError(null);
+    try {
+      const result = await validateSqlTestcases(cohortId, moduleId, buildSqlPayload());
+      setSqlValidation(result);
+      if (result.valid) toast.success(result.message || "Testcases validated");
+      else toast.warning(result.message || "Some testcases do not match");
+    } catch (error) {
+      const message = toSqlErrorMessage(error, "Failed to validate testcases");
+      setSqlEngineError(message);
+      toast.error(message);
+    } finally {
+      setSqlValidating(false);
+    }
+  }, [buildSqlPayload, cohortId, moduleId]);
 
   // Language management
   const handleLanguageSelect = useCallback(
@@ -377,98 +494,13 @@ const QuestionForm = ({
           const content = e.target.result;
           const questionData = JSON.parse(content);
 
-          if (
-            !questionData.title ||
-            !questionData.description ||
-            !questionData.type
-          ) {
-            toast.error(
-              "Invalid question format. JSON must include title, description, and type."
-            );
+          const { formData: updatedFormData, error } =
+            buildFormDataFromQuestionJson(questionData, moduleId);
+
+          if (error) {
+            toast.error(`Invalid question format. ${error}.`);
             setIsUploading(false);
             return;
-          }
-
-          // Build the complete form data from JSON
-          const updatedFormData = {
-            ...getDefaultFormData(moduleId),
-            title: questionData.title || "",
-            description: questionData.description || "",
-            type: questionData.type || "programming",
-            difficulty: questionData.difficulty || "Medium",
-            marks: questionData.marks ? Number(questionData.marks) : 10,
-            questionBank: questionData.questionBank || "",
-            tags: Array.isArray(questionData.tags) ? questionData.tags : [],
-            companies: Array.isArray(questionData.companies)
-              ? questionData.companies
-              : [],
-            hints: Array.isArray(questionData.hints) ? questionData.hints : [],
-            videoUrl: questionData.videoUrl || "",
-            articleUrl: questionData.articleUrl || "",
-            referenceUrl: questionData.referenceUrl || "",
-            editorial: questionData.editorial || "",
-            module: moduleId,
-            encryptedEditor: questionData.encryptedEditor ?? false,
-            encryptionSettings: {
-              allowPlainTextPaste:
-                questionData.encryptionSettings?.allowPlainTextPaste ?? false,
-            },
-          };
-
-          // Add type-specific fields
-          if (questionData.type === "programming") {
-            updatedFormData.languages = Array.isArray(questionData.languages)
-              ? questionData.languages.map((lang) => ({
-                  name: lang.name || "",
-                  version: lang.version || "",
-                  boilerplateCode: lang.boilerplateCode || "",
-                  solutionCode: lang.solutionCode || "",
-                  scoringTiers: Array.isArray(lang.scoringTiers)
-                    ? lang.scoringTiers.map((tier) => ({
-                        maxTime: tier.maxTime ? Number(tier.maxTime) : 0,
-                        points: tier.points ? Number(tier.points) : 0,
-                      }))
-                    : [],
-                  minimumPoints: lang.minimumPoints !== undefined
-                    ? Number(lang.minimumPoints)
-                    : 1,
-                }))
-              : [];
-
-            updatedFormData.defaultLanguage =
-              questionData.defaultLanguage ||
-              (updatedFormData.languages.length > 0
-                ? updatedFormData.languages[0].name
-                : "");
-
-            updatedFormData.testCases = Array.isArray(questionData.testCases)
-              ? questionData.testCases.map((tc) => ({
-                  input: tc.input || "",
-                  output: tc.output || "",
-                  hidden: tc.hidden || false,
-                  explanation: tc.explanation || "",
-                }))
-              : [];
-
-            updatedFormData.examples = Array.isArray(questionData.examples)
-              ? questionData.examples
-              : [];
-
-            updatedFormData.constraints = {
-              timeLimit: questionData.constraints?.timeLimit
-                ? Number(questionData.constraints.timeLimit)
-                : 1000,
-              memoryLimit: questionData.constraints?.memoryLimit
-                ? Number(questionData.constraints.memoryLimit)
-                : 256,
-            };
-          } else if (questionData.type === "mcq") {
-            updatedFormData.options = Array.isArray(questionData.options)
-              ? questionData.options.map((opt) => ({
-                  text: opt.text || "",
-                  isCorrect: opt.isCorrect || false,
-                }))
-              : [{ text: "", isCorrect: false }];
           }
 
           setFormData(updatedFormData);
@@ -505,86 +537,13 @@ const QuestionForm = ({
   const handlePasteJSON = useCallback(
     (questionData) => {
       try {
-        // Build the complete form data from JSON
-        const updatedFormData = {
-          ...getDefaultFormData(moduleId),
-          title: questionData.title || "",
-          description: questionData.description || "",
-          type: questionData.type || "programming",
-          difficulty: questionData.difficulty || "Medium",
-          marks: questionData.marks ? Number(questionData.marks) : 10,
-          questionBank: questionData.questionBank || "",
-          tags: Array.isArray(questionData.tags) ? questionData.tags : [],
-          companies: Array.isArray(questionData.companies)
-            ? questionData.companies
-            : [],
-          hints: Array.isArray(questionData.hints) ? questionData.hints : [],
-          videoUrl: questionData.videoUrl || "",
-          articleUrl: questionData.articleUrl || "",
-          referenceUrl: questionData.referenceUrl || "",
-          editorial: questionData.editorial || "",
-          module: moduleId,
-          encryptedEditor: questionData.encryptedEditor ?? false,
-          encryptionSettings: {
-            allowPlainTextPaste:
-              questionData.encryptionSettings?.allowPlainTextPaste ?? false,
-          },
-        };
+        // Same mapper as the file upload path, so both imports behave alike.
+        const { formData: updatedFormData, error } =
+          buildFormDataFromQuestionJson(questionData, moduleId);
 
-        // Add type-specific fields
-        if (questionData.type === "programming") {
-          updatedFormData.languages = Array.isArray(questionData.languages)
-            ? questionData.languages.map((lang) => ({
-                name: lang.name || "",
-                version: lang.version || "",
-                boilerplateCode: lang.boilerplateCode || "",
-                solutionCode: lang.solutionCode || "",
-                scoringTiers: Array.isArray(lang.scoringTiers)
-                  ? lang.scoringTiers.map((tier) => ({
-                      maxTime: tier.maxTime ? Number(tier.maxTime) : 0,
-                      points: tier.points ? Number(tier.points) : 0,
-                    }))
-                  : [],
-                minimumPoints: lang.minimumPoints !== undefined
-                  ? Number(lang.minimumPoints)
-                  : 1,
-              }))
-            : [];
-
-          updatedFormData.defaultLanguage =
-            questionData.defaultLanguage ||
-            (updatedFormData.languages.length > 0
-              ? updatedFormData.languages[0].name
-              : "");
-
-          updatedFormData.testCases = Array.isArray(questionData.testCases)
-            ? questionData.testCases.map((tc) => ({
-                input: tc.input || "",
-                output: tc.output || "",
-                hidden: tc.hidden || false,
-                explanation: tc.explanation || "",
-              }))
-            : [];
-
-          updatedFormData.examples = Array.isArray(questionData.examples)
-            ? questionData.examples
-            : [];
-
-          updatedFormData.constraints = {
-            timeLimit: questionData.constraints?.timeLimit
-              ? Number(questionData.constraints.timeLimit)
-              : 1000,
-            memoryLimit: questionData.constraints?.memoryLimit
-              ? Number(questionData.constraints.memoryLimit)
-              : 256,
-          };
-        } else if (questionData.type === "mcq") {
-          updatedFormData.options = Array.isArray(questionData.options)
-            ? questionData.options.map((opt) => ({
-                text: opt.text || "",
-                isCorrect: opt.isCorrect || false,
-              }))
-            : [{ text: "", isCorrect: false }];
+        if (error) {
+          toast.error(`Invalid question format. ${error}.`);
+          return;
         }
 
         setFormData(updatedFormData);
@@ -860,11 +819,45 @@ const QuestionForm = ({
       if (formData.testCases.length === 0) {
         newErrors.testCases = "At least one test case is required";
       }
+    } else if (formData.type === "sql") {
+      const sqlMeta = formData.sqlMeta || {};
+      const testcases = sqlMeta.testcases || [];
+
+      if (!String(sqlMeta.judgeQuestionId || "").trim()) {
+        newErrors.judgeQuestionId = "A SQL engine question id is required";
+      }
+      if (!String(sqlMeta.schemaSql || "").trim()) {
+        newErrors.schemaSql = "schema.sql is required";
+      }
+      if (!String(sqlMeta.solutionSql || "").trim()) {
+        newErrors.solutionSql = "solution.sql is required";
+      }
+      if (testcases.length === 0) {
+        newErrors.sqlTestcases = "At least one testcase is required";
+      }
+      if (testcases.some((tc) => !String(tc.seedSql || "").trim())) {
+        newErrors.sqlSeeds = "Every testcase needs seed SQL";
+      }
+      if (!testcases.some((tc) => tc.visible)) {
+        newErrors.sqlVisible = "At least one testcase must be visible";
+      }
+      const ids = testcases.map((tc) => String(tc.id || "").trim());
+      if (ids.some((id) => !id)) {
+        newErrors.sqlTestcaseIds = "Every testcase needs an id";
+      } else if (new Set(ids).size !== ids.length) {
+        newErrors.sqlTestcaseIds = "Testcase ids must be unique";
+      }
+      // Publishing writes to shared storage and executes the solution, so it is
+      // only allowed once the author has reviewed the generated output.
+      if (!sqlGenerated) {
+        newErrors.sqlGenerated =
+          "Run Generate Outputs and review the results before submitting";
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, sqlGenerated]);
 
   // Form submission
   const handleSubmit = useCallback(
@@ -872,7 +865,21 @@ const QuestionForm = ({
       e.preventDefault();
 
       if (!validateForm()) {
-        toast.error("Please fix the form errors before submitting");
+        const firstError = Object.values(errors)[0];
+        toast.error(firstError || "Please fix the form errors before submitting");
+        return;
+      }
+
+      // SQL questions are published through a dedicated endpoint: the engine
+      // writes the assets to its own storage and regenerates the expected
+      // output, then the question row is created locally.
+      if (formData.type === "sql") {
+        onSave({
+          ...buildSqlPayload(),
+          type: "sql",
+          // Kept so the parent can display what was reviewed before publishing.
+          generatedOutputColumns: sqlGenerated?.outputColumns || [],
+        });
         return;
       }
 
@@ -929,7 +936,15 @@ const QuestionForm = ({
         onSave(finalFormData);
       }
     },
-    [formData, validateForm, validateAllTestCases, onSave]
+    [
+      formData,
+      validateForm,
+      validateAllTestCases,
+      onSave,
+      buildSqlPayload,
+      sqlGenerated,
+      errors,
+    ]
   );
 
   // Export to JSON functionality
@@ -1012,7 +1027,15 @@ const QuestionForm = ({
         sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
       >
         <Tab label="Basic Info" />
-        <Tab label={formData.type === "mcq" ? "Options" : "Languages"} />
+        <Tab
+          label={
+            formData.type === "mcq"
+              ? "Options"
+              : formData.type === "sql"
+              ? "SQL Setup"
+              : "Languages"
+          }
+        />
         {formData.type === "programming" && <Tab label="Test Cases" />}
         <Tab label="Additional Details" />
         <Tab label="Editorial" />
@@ -1034,7 +1057,20 @@ const QuestionForm = ({
       </TabPanel>
 
       <TabPanel value={activeTab} index={1}>
-        {formData.type === "mcq" ? (
+        {formData.type === "sql" ? (
+          <SqlQuestionTab
+            formData={formData}
+            errors={errors}
+            onSqlMetaChange={handleSqlMetaChange}
+            onGenerateOutputs={handleGenerateSqlOutputs}
+            onValidateTestcases={handleValidateSqlTestcases}
+            generating={sqlGenerating}
+            validating={sqlValidating}
+            generated={sqlGenerated}
+            validation={sqlValidation}
+            engineError={sqlEngineError}
+          />
+        ) : formData.type === "mcq" ? (
           <MCQOptionsTab
             formData={formData}
             errors={errors}
