@@ -14,6 +14,7 @@ import UploadJsonTab from "./QuestionForm/UploadJsonTab";
 import SearchTab from "./QuestionForm/SearchTab";
 import EditorialTab from "./tabs/EditorialTab";
 import TabPanel from "./QuestionForm/TabPanel";
+import BulkQuestionUpload from "./BulkQuestionUpload";
 
 // Import utilities and constants
 import { LANGUAGES, getDefaultFormData } from "./QuestionForm/constants";
@@ -28,6 +29,8 @@ const QuestionForm = ({
   onCancel,
   moduleId,
   isEdit = false,
+  onBulkUpload,
+  bulkUploading = false,
 }) => {
   // Main state
   const [activeTab, setActiveTab] = useState(0);
@@ -148,12 +151,13 @@ const QuestionForm = ({
   // Tab management
   const handleTabChange = useCallback(
     (event, newValue) => {
-      const maxTabIndex = formData.type === "mcq" ? 5 : 6; // Adjusted for new tab structure with Editorial
+      const maxTabIndex =
+        formData.type === "mcq" ? 5 : !isEdit && onBulkUpload ? 7 : 6;
       if (newValue <= maxTabIndex) {
         setActiveTab(newValue);
       }
     },
-    [formData.type]
+    [formData.type, isEdit, onBulkUpload]
   );
 
   // Language management
@@ -990,10 +994,9 @@ const QuestionForm = ({
     }
   }, [formData]);
 
-  // Get tab count based on question type
-  const getTabCount = () => {
-    return formData.type === "mcq" ? 6 : 7; // Basic, Options/Languages, TestCases(prog only), Additional, Editorial, Upload, Search
-  };
+  const bulkUploadTabIndex =
+    formData.type === "programming" && !isEdit && onBulkUpload ? 7 : -1;
+  const isBulkUploadActive = activeTab === bulkUploadTabIndex;
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%" }}>
@@ -1015,6 +1018,9 @@ const QuestionForm = ({
         <Tab label="Editorial" />
         <Tab label="Upload JSON" />
         <Tab label="Search Questions" />
+        {formData.type === "programming" && !isEdit && onBulkUpload && (
+          <Tab label="Bulk Upload" />
+        )}
       </Tabs>
 
       {/* Tab Content */}
@@ -1128,7 +1134,18 @@ const QuestionForm = ({
         />
       </TabPanel>
 
+      {bulkUploadTabIndex >= 0 && (
+        <TabPanel value={activeTab} index={bulkUploadTabIndex}>
+          <BulkQuestionUpload
+            onUpload={onBulkUpload}
+            onCancel={onCancel}
+            loading={bulkUploading}
+          />
+        </TabPanel>
+      )}
+
       {/* Form Actions */}
+      {!isBulkUploadActive && (
       <Box sx={{ display: "flex", gap: 2, mt: 4, justifyContent: "space-between" }}>
         <Button 
           variant="outlined" 
@@ -1166,6 +1183,7 @@ const QuestionForm = ({
           </Button>
         </Box>
       </Box>
+      )}
     </Box>
   );
 };

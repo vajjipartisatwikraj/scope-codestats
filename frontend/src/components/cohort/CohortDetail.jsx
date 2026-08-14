@@ -508,71 +508,131 @@ const CohortDetail = () => {
     setModuleDialogMode("form"); // Reset dialog mode
   };
 
-  // Handle bulk question upload for an existing module
-  const handleBulkQuestionUpload = async (questions, targetModuleId) => {
+  const reportBulkUploadError = (error) => {
+    const data = error.response?.data || {};
+    const nestedErrors = data.validationErrors || data.errors || [];
+    const rawErrors =
+      data.code === "BULK_VALIDATION_FAILED" &&
+      (data.file || data.questionIndex || data.issues)
+        ? [data]
+        : nestedErrors;
+    const formatIssue = (issue) => {
+      if (typeof issue === "string") return issue;
+      if (issue?.path && issue?.message) {
+        return `${issue.path}: ${issue.message}`;
+      }
+      return issue?.message || issue?.reason || JSON.stringify(issue);
+    };
+    const formatEntry = (entry, inheritedFile) => {
+      if (typeof entry === "string") return [entry];
+      if (!entry || typeof entry !== "object") return [String(entry)];
+
+      const file =
+        entry.file || entry.fileName || entry.source || entry.name || inheritedFile;
+      if (Array.isArray(entry.questions)) {
+        return entry.questions.flatMap((question) =>
+          formatEntry(question, file)
+        );
+      }
+
+      const questionNumber =
+        entry.questionIndex ??
+        entry.questionNumber ??
+        entry.question ??
+        (Number.isInteger(entry.index) ? entry.index + 1 : null);
+      const issues = entry.issues || entry.errors || entry.issue || entry.reason || entry.error;
+      const issueText = Array.isArray(issues)
+        ? issues.map(formatIssue).join(", ")
+        : issues
+        ? formatIssue(issues)
+        : "Validation failed";
+      return [
+        [
+          file && `File: ${file}`,
+          questionNumber != null && `Question: ${questionNumber}`,
+          entry.title && `Title: ${entry.title}`,
+          `Issues: ${issueText}`,
+        ]
+          .filter(Boolean)
+          .join(" | "),
+      ];
+    };
+
+    const details = Array.isArray(rawErrors)
+      ? rawErrors.flatMap((entry) => formatEntry(entry)).join("\n")
+      : "";
+    toast.error(
+      [data.message || error.message || "Failed to upload questions", details]
+        .filter(Boolean)
+        .join("\n"),
+      { style: { whiteSpace: "pre-line" } }
+    );
+  };
+
+  // Handle an atomic bulk question upload for either upload dialog.
+  const handleBulkQuestionUpload = async (
+    payload,
+    targetModuleId,
+    dialogSource = "module"
+  ) => {
+    const files = payload?.files;
+    const totalCount = Array.isArray(files)
+      ? files.reduce(
+          (total, file) =>
+            total + (Array.isArray(file.questions) ? file.questions.length : 0),
+          0
+        )
+      : 0;
+
+    if (!targetModuleId || !Array.isArray(files) || totalCount === 0) {
+      toast.error("No valid bulk upload batch or target module was provided");
+      return;
+    }
+
     setBulkUploading(true);
     try {
       const endpoint = `${apiUrl}/cohorts/${id}/modules/${targetModuleId}/questions/bulk`;
+      const requestConfig = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      };
 
-      // First, preview to show shared content warning
       const previewResponse = await axios.post(
         `${endpoint}?preview=true`,
-        { questions },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        payload,
+        requestConfig
       );
 
-      // Show warning dialog and wait for confirmation
       const userConfirmed = await new Promise((resolve) => {
         setWarningDialog({
           open: true,
           action: "bulk_create_questions",
           affectedCohorts: previewResponse.data.affectedCohorts,
           details: {
-            questionCount: questions.length,
+            questionCount: totalCount,
             moduleName: previewResponse.data.module?.title || "Module",
           },
           loading: false,
           onConfirm: async () => {
             setWarningDialog((prev) => ({ ...prev, loading: true }));
             try {
-              const response = await axios.post(
-                endpoint,
-                { questions },
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
-              setWarningDialog({
-                open: false,
-                action: null,
-                affectedCohorts: [],
-                details: {},
-                onConfirm: null,
-                onCancel: null,
-                loading: false,
-              });
-
-              if (response.data.failed > 0) {
-                toast.warning(
-                  `${response.data.created} question(s) created, ${response.data.failed} failed`
+              const response = await axios.post(endpoint, payload, requestConfig);
+              const created = response.data.created;
+              const failed = response.data.failed || 0;
+              if (
+                response.data.success === false ||
+                failed > 0 ||
+                (Number.isFinite(created) && created !== totalCount)
+              ) {
+                const atomicError = new Error(
+                  "Atomic bulk upload did not create the complete batch"
                 );
-              } else {
-                toast.success(
-                  `${response.data.created} question(s) uploaded successfully across ${
-                    response.data.affectedCohorts?.length || 0
-                  } cohort(s)`
-                );
+                atomicError.response = { data: response.data };
+                throw atomicError;
               }
-              resolve(true);
-            } catch (err) {
+
               setWarningDialog({
                 open: false,
                 action: null,
@@ -582,15 +642,27 @@ const CohortDetail = () => {
                 onCancel: null,
                 loading: false,
               });
-              toast.error(
-                err.response?.data?.message || "Failed to upload questions"
+              toast.success(
+                `${totalCount} question(s) uploaded successfully across ${
+                  response.data.affectedCohorts?.length || 0
+                } cohort(s)`
               );
+              resolve(true);
+            } catch (error) {
+              setWarningDialog({
+                open: false,
+                action: null,
+                affectedCohorts: [],
+                details: {},
+                onConfirm: null,
+                onCancel: null,
+                loading: false,
+              });
+              reportBulkUploadError(error);
               resolve(false);
             }
           },
-          onCancel: () => {
-            resolve(false);
-          },
+          onCancel: () => resolve(false),
         });
       });
 
@@ -604,18 +676,16 @@ const CohortDetail = () => {
           onCancel: null,
           loading: false,
         });
-        setBulkUploading(false);
         return;
       }
 
-      // Refresh cohort details
       await fetchCohortDetails();
-      handleCloseModuleDialog();
+      setQuestionsVersion((version) => version + 1);
+      if (dialogSource === "question") handleCloseQuestionDialog();
+      else handleCloseModuleDialog();
     } catch (error) {
       console.error("Error in bulk question upload:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to upload questions"
-      );
+      reportBulkUploadError(error);
     } finally {
       setBulkUploading(false);
     }
@@ -1742,8 +1812,8 @@ const CohortDetail = () => {
                     <Divider sx={{ mb: 3 }} />
                     {currentModuleId ? (
                       <BulkQuestionUpload
-                        onUpload={(questions) =>
-                          handleBulkQuestionUpload(questions, currentModuleId)
+                        onUpload={(payload) =>
+                          handleBulkQuestionUpload(payload, currentModuleId)
                         }
                         onCancel={handleCloseModuleDialog}
                         loading={bulkUploading}
@@ -2025,6 +2095,14 @@ const CohortDetail = () => {
               onCancel={handleCloseQuestionDialog}
               moduleId={selectedModule?._id}
               isEdit={isEditingQuestion}
+              onBulkUpload={(payload) =>
+                handleBulkQuestionUpload(
+                  payload,
+                  selectedModule?._id,
+                  "question"
+                )
+              }
+              bulkUploading={bulkUploading}
             />
           )}
         </DialogContent>

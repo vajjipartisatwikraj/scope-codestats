@@ -6,6 +6,7 @@ node_modules/
 # History folder
 .history/
 history/
+testing/
 
 # Environment variables
 .env

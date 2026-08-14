@@ -58,6 +58,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme as useAppTheme } from "../../contexts/ThemeContext";
 import { formatTime, formatMemory } from "../../utils/formatting";
+import { mathContentStyles } from "../../utils/mathContentStyles";
 import Notes from "./Notes";
 import BusinessIcon from "@mui/icons-material/Business";
 import CategoryIcon from "@mui/icons-material/Category";
@@ -2097,6 +2098,7 @@ const CohortProblem = () => {
                         lineHeight: 1.6,
                         fontSize: "15px",
                         mb: 3,
+                        ...mathContentStyles(darkMode),
                         "& code": {
                           backgroundColor: darkMode
                             ? "rgba(0, 136, 204, 0.1)"
@@ -3212,6 +3214,7 @@ const CohortProblem = () => {
                             "& p:has(+ .example)": {
                               marginBottom: "32px",
                             },
+                            ...mathContentStyles(darkMode),
                           }}
                           dangerouslySetInnerHTML={{
                             __html: question.editorial,

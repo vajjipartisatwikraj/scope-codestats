@@ -16,7 +16,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
   Tooltip,
   useTheme,
 } from "@mui/material";
@@ -25,8 +24,6 @@ import {
   ContentPaste as ContentPasteIcon,
   ContentCopy as ContentCopyIcon,
   CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-  Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Download as DownloadIcon,
@@ -47,13 +44,14 @@ const SAMPLE_JSON = {
           version: "15.0.2",
           boilerplateCode:
             'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // Your code here\n    }\n}',
-          solutionCode: "",
+          solutionCode:
+            'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // Complete reference solution\n    }\n}',
         },
         {
           name: "python",
           version: "3.10.0",
           boilerplateCode: "# Your code here\n",
-          solutionCode: "",
+          solutionCode: "# Complete reference solution\n", 
         },
       ],
       defaultLanguage: "java",
@@ -93,10 +91,14 @@ const SAMPLE_JSON = {
   ],
 };
 
+// Keep these in sync with the backend limits in bulkQuestionUploadService.js.
+const MAX_FILES = 25;
+const MAX_QUESTIONS = 100;
+
 const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
   const theme = useTheme();
   const fileInputRef = useRef(null);
-  const [questions, setQuestions] = useState([]);
+  const [files, setFiles] = useState([]);
   const [parseError, setParseError] = useState("");
   const [showPaste, setShowPaste] = useState(false);
   const [pasteText, setPasteText] = useState("");
@@ -104,97 +106,238 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
   const [copied, setCopied] = useState(false);
 
   const isDark = theme.palette.mode === "dark";
+  const questions = files.flatMap((file) =>
+    file.questions.map((question, index) => ({
+      ...question,
+      sourceName: file.name,
+      sourceIndex: index,
+    }))
+  );
 
-  // Parse and validate the JSON
-  const parseJSON = (text) => {
-    setParseError("");
-    try {
-      const parsed = JSON.parse(text);
+  const isNonEmptyString = (value) =>
+    typeof value === "string" && value.trim().length > 0;
 
-      // Support both { questions: [...] } and direct array [...]
-      let questionsArray;
-      if (Array.isArray(parsed)) {
-        questionsArray = parsed;
-      } else if (parsed.questions && Array.isArray(parsed.questions)) {
-        questionsArray = parsed.questions;
-      } else if (parsed.title && parsed.type) {
-        // Single question object
-        questionsArray = [parsed];
+  const validateQuestion = (question) => {
+    const issues = [];
+
+    if (!question || typeof question !== "object" || Array.isArray(question)) {
+      return ["must be a question object"];
+    }
+    if (!isNonEmptyString(question.title)) issues.push("missing 'title'");
+    if (!isNonEmptyString(question.description))
+      issues.push("missing 'description'");
+    if (!isNonEmptyString(question.type)) issues.push("missing 'type'");
+    else if (!["mcq", "programming"].includes(question.type))
+      issues.push("'type' must be 'mcq' or 'programming'");
+
+    if (
+      question.marks !== undefined &&
+      (typeof question.marks !== "number" ||
+        !Number.isFinite(question.marks) ||
+        question.marks <= 0)
+    ) {
+      issues.push("'marks' must be a positive number");
+    }
+
+    if (question.difficultyLevel !== undefined &&
+        !["easy", "medium", "hard"].includes(question.difficultyLevel)) {
+      issues.push("'difficultyLevel' must be 'easy', 'medium', or 'hard'");
+    }
+
+    if (question.type === "mcq") {
+      if (!Array.isArray(question.options) || question.options.length < 2) {
+        issues.push("MCQ needs at least 2 options");
       } else {
-        setParseError(
-          'Invalid format: JSON must be an array of questions, or an object with a "questions" array'
-        );
-        return;
-      }
-
-      if (questionsArray.length === 0) {
-        setParseError("No questions found in the JSON");
-        return;
-      }
-
-      // Validate each question
-      const errors = [];
-      questionsArray.forEach((q, i) => {
-        const qNum = i + 1;
-        if (!q.title)
-          errors.push(`Q${qNum}: missing 'title'`);
-        if (!q.description)
-          errors.push(`Q${qNum}: missing 'description'`);
-        if (!q.type || !["mcq", "programming"].includes(q.type))
-          errors.push(`Q${qNum}: 'type' must be 'mcq' or 'programming'`);
-        if (q.type === "mcq") {
-          if (!q.options || q.options.length < 2)
-            errors.push(`Q${qNum}: MCQ needs at least 2 options`);
-          else if (!q.options.some((opt) => opt.isCorrect))
-            errors.push(`Q${qNum}: MCQ needs at least one correct option`);
+        question.options.forEach((option, optionIndex) => {
+          if (!option || !isNonEmptyString(option.text)) {
+            issues.push(`option ${optionIndex + 1} is missing 'text'`);
+          }
+        });
+        if (!question.options.some((option) => option?.isCorrect === true)) {
+          issues.push("MCQ needs at least one correct option");
         }
-        if (
-          q.type === "programming" &&
-          (!q.testCases || q.testCases.length === 0)
+      }
+    }
+
+    if (question.type === "programming") {
+      if (!Array.isArray(question.languages) || question.languages.length === 0) {
+        issues.push("programming question needs at least 1 language");
+      } else {
+        question.languages.forEach((language, languageIndex) => {
+          const languageLabel = `language ${languageIndex + 1}`;
+          if (!language || !isNonEmptyString(language.name)) {
+            issues.push(`${languageLabel} is missing 'name'`);
+            return;
+          }
+          if (![
+            "c",
+            "cpp",
+            "java",
+            "python",
+            "javascript",
+          ].includes(language.name)) {
+            issues.push(`${languageLabel} has an unsupported 'name'`);
+          }
+          if (!isNonEmptyString(language.boilerplateCode)) {
+            issues.push(`${languageLabel} is missing 'boilerplateCode'`);
+          }
+          if (!isNonEmptyString(language.solutionCode)) {
+            issues.push(`${languageLabel} is missing 'solutionCode'`);
+          }
+        });
+      }
+
+      if (!isNonEmptyString(question.defaultLanguage)) {
+        issues.push("programming question is missing 'defaultLanguage'");
+      } else if (
+        Array.isArray(question.languages) &&
+        !question.languages.some(
+          (language) => language?.name === question.defaultLanguage
         )
-          errors.push(`Q${qNum}: Programming question needs at least 1 test case`);
+      ) {
+        issues.push("'defaultLanguage' must match one of the languages");
+      }
+
+      if (!Array.isArray(question.testCases) || question.testCases.length === 0) {
+        issues.push("programming question needs at least 1 test case");
+      } else {
+        question.testCases.forEach((testCase, testCaseIndex) => {
+          if (!testCase || typeof testCase !== "object") {
+            issues.push(`test case ${testCaseIndex + 1} must be an object`);
+            return;
+          }
+          if (typeof testCase.input !== "string")
+            issues.push(`test case ${testCaseIndex + 1} needs a string 'input'`);
+          if (typeof testCase.output !== "string")
+            issues.push(`test case ${testCaseIndex + 1} needs a string 'output'`);
+        });
+      }
+
+      ["timeLimit", "memoryLimit"].forEach((field) => {
+        const value = question.constraints?.[field];
+        if (
+          value !== undefined &&
+          (typeof value !== "number" ||
+            !Number.isFinite(value) ||
+            value <= 0)
+        ) {
+          issues.push(`'constraints.${field}' must be a positive number`);
+        }
+      });
+    }
+
+    return issues;
+  };
+
+  const parseSource = ({ name, text }) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      throw new Error(`${name}: invalid JSON (${error.message})`);
+    }
+
+    const sourceName = name;
+    let sourceQuestions;
+    if (Array.isArray(parsed)) {
+      sourceQuestions = parsed;
+    } else if (parsed && Array.isArray(parsed.questions)) {
+      sourceQuestions = parsed.questions;
+    } else if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      sourceQuestions = [parsed];
+    } else {
+      throw new Error(
+        `${name}: JSON must be one question object, an array, or an object with a 'questions' array`
+      );
+    }
+
+    if (sourceQuestions.length === 0) {
+      throw new Error(`${sourceName}: no questions found`);
+    }
+
+    return { name: sourceName, questions: sourceQuestions };
+  };
+
+  const loadBatch = (rawFiles) => {
+    try {
+      const nextFiles = rawFiles.map(parseSource);
+      const totalQuestions = nextFiles.reduce(
+        (total, file) => total + file.questions.length,
+        0
+      );
+
+      if (totalQuestions > MAX_QUESTIONS) {
+        throw new Error(
+          `Batch contains ${totalQuestions} questions; the maximum is ${MAX_QUESTIONS}`
+        );
+      }
+
+      const errors = [];
+      nextFiles.forEach((file) => {
+        file.questions.forEach((question, questionIndex) => {
+          validateQuestion(question).forEach((reason) => {
+            errors.push(
+              `${file.name} — Question ${questionIndex + 1}: ${reason}`
+            );
+          });
+        });
       });
 
-      if (errors.length > 0) {
-        setParseError(errors.join("\n"));
-        return;
-      }
+      if (errors.length > 0) throw new Error(errors.join("\n"));
 
-      setQuestions(questionsArray);
+      setFiles(nextFiles);
+      setParseError("");
       setShowPaste(false);
       setPasteText("");
-    } catch (err) {
-      setParseError("Invalid JSON: " + err.message);
+    } catch (error) {
+      setFiles([]);
+      setParseError(error.message);
     }
   };
 
-  // Handle file upload
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const readFile = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) =>
+        resolve({ name: file.name, text: event.target.result });
+      reader.onerror = () => reject(new Error(`${file.name}: failed to read file`));
+      reader.readAsText(file);
+    });
 
-    if (!file.name.endsWith(".json")) {
-      setParseError("Only .json files are accepted");
+  const handleFileUpload = async (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (selectedFiles.length === 0) return;
+
+    if (selectedFiles.length > MAX_FILES) {
+      setFiles([]);
+      setParseError(
+        `Selected ${selectedFiles.length} files; the maximum is ${MAX_FILES} files per batch`
+      );
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      parseJSON(event.target.result);
-    };
-    reader.onerror = () => {
-      setParseError("Failed to read the file");
-    };
-    reader.readAsText(file);
+    const invalidFile = selectedFiles.find(
+      (file) => !file.name.toLowerCase().endsWith(".json")
+    );
+    if (invalidFile) {
+      setFiles([]);
+      setParseError(`${invalidFile.name}: only .json files are accepted`);
+      return;
+    }
 
-    // Reset file input so same file can be re-selected
-    e.target.value = "";
+    try {
+      const rawFiles = await Promise.all(selectedFiles.map(readFile));
+      loadBatch(rawFiles);
+    } catch (error) {
+      setFiles([]);
+      setParseError(error.message);
+    }
   };
 
-  // Handle paste submit
   const handlePasteSubmit = () => {
     if (!pasteText.trim()) return;
-    parseJSON(pasteText);
+    loadBatch([{ name: "Pasted JSON", text: pasteText }]);
   };
 
   // Copy sample JSON to clipboard
@@ -231,15 +374,10 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
     URL.revokeObjectURL(url);
   };
 
-  // Remove a question from the list
-  const handleRemoveQuestion = (index) => {
-    setQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Submit the upload
+  // Submit the fully validated atomic batch
   const handleUpload = () => {
     if (questions.length === 0) return;
-    onUpload(questions);
+    onUpload({ files });
   };
 
   const getDifficultyColor = (level) => {
@@ -286,20 +424,22 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
               sx={{ fontSize: 56, color: "primary.main", mb: 1.5 }}
             />
             <Typography variant="h6" gutterBottom>
-              Upload Questions JSON File
+              Upload Questions JSON Files
             </Typography>
             <Typography
               variant="body2"
               color="text.secondary"
               sx={{ textAlign: "center", maxWidth: 450 }}
             >
-              Upload a JSON file containing an array of questions. All questions
-              will be added to this module at once.
+              Select up to {MAX_FILES} JSON files in one batch. Every file and
+              question is validated first; if anything is invalid, nothing is
+              loaded or uploaded.
             </Typography>
 
             <input
               type="file"
               accept=".json"
+              multiple
               onChange={handleFileUpload}
               style={{ display: "none" }}
               ref={fileInputRef}
@@ -315,7 +455,7 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
                 fileInputRef.current?.click();
               }}
             >
-              Choose JSON File
+              Choose JSON Files
             </Button>
 
             <Typography
@@ -323,7 +463,8 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
               color="text.secondary"
               sx={{ mt: 1.5 }}
             >
-              Supports .json files — max 50 questions per upload
+              Maximum {MAX_FILES} .json files and {MAX_QUESTIONS} total questions
+              per atomic upload
             </Typography>
           </Paper>
 
@@ -355,7 +496,7 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
                 </Typography>
                 {!showPaste && (
                   <Typography variant="body2" color="text.secondary">
-                    Paste a JSON array of questions directly
+                    Paste one JSON source directly
                   </Typography>
                 )}
               </Box>
@@ -530,7 +671,7 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
                 variant="outlined"
                 color="error"
                 onClick={() => {
-                  setQuestions([]);
+                  setFiles([]);
                   setParseError("");
                 }}
               >
@@ -538,6 +679,12 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
               </Button>
             </Box>
           </Box>
+
+          <Alert severity="info" sx={{ mb: 2 }}>
+            This is an all-or-nothing upload. All {questions.length} questions from{" "}
+            {files.length} source{files.length === 1 ? "" : "s"} will be created,
+            or none will be created if validation fails.
+          </Alert>
 
           <Collapse in={showPreview}>
             <TableContainer
@@ -553,6 +700,7 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700, width: 40 }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Source file</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Title</TableCell>
                     <TableCell sx={{ fontWeight: 700, width: 110 }}>
                       Type
@@ -566,13 +714,17 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
                     <TableCell sx={{ fontWeight: 700, width: 80 }}>
                       Tests
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 50 }}></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {questions.map((q, index) => (
-                    <TableRow key={index} hover>
+                    <TableRow key={`${q.sourceName}-${q.sourceIndex}`} hover>
                       <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" noWrap sx={{ maxWidth: 180 }}>
+                          {q.sourceName}
+                        </Typography>
+                      </TableCell>
                       <TableCell>
                         <Typography
                           variant="body2"
@@ -605,15 +757,6 @@ const BulkQuestionUpload = ({ onUpload, onCancel, loading: parentLoading }) => {
                         {q.type === "mcq"
                           ? `${q.options?.length || 0} opts`
                           : `${q.testCases?.length || 0} cases`}
-                      </TableCell>
-                      <TableCell>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleRemoveQuestion(index)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}

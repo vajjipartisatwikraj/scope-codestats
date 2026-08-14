@@ -20,6 +20,13 @@ const {
 
 // Import Cascade Service
 const cascadeService = require("../services/cohortCascadeService");
+const { runWithOptionalTransaction } = require("../utils/mongoTransaction");
+const {
+  BulkQuestionUploadError,
+  TransactionsUnavailableError,
+  prepareBulkQuestionUpload,
+  persistBulkQuestions,
+} = require("../services/bulkQuestionUploadService");
 
 // ============================================================================
 // HELPER FUNCTION: Get Related Cohorts (Shared Content Model)
@@ -1080,17 +1087,12 @@ router.delete("/:id", [auth, adminAuth], async (req, res) => {
 
     console.log(`🗑️ Deleting cohort ${cohort._id} (${cohort.title})`);
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
+    {
       // Use cascade service for proper deletion with relational logic
-      const deletionStats = await cascadeService.deleteCohortWithCascade(
-        cohort._id,
-        session
+      const { result: deletionStats } = await runWithOptionalTransaction(
+        (session) => cascadeService.deleteCohortWithCascade(cohort._id, session),
+        { label: "cohort deletion" }
       );
-
-      await session.commitTransaction();
 
       const deletionSummary = {
         message: deletionStats.isLastCohort
@@ -1102,11 +1104,6 @@ router.delete("/:id", [auth, adminAuth], async (req, res) => {
       console.log("✅ Cohort deletion completed:", deletionSummary);
 
       res.json(deletionSummary);
-    } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      session.endSession();
     }
   } catch (err) {
     console.error("❌ Error deleting cohort:", err);
@@ -1628,47 +1625,96 @@ router.post("/:cohortId/modules", [auth, adminAuth], async (req, res) => {
       moduleOrder = highestOrderModule ? highestOrderModule.order + 1 : 0;
     }
 
+    const moduleData = {
+      title,
+      description,
+      order: moduleOrder,
+      videoResource,
+      documentationUrl,
+      resources: resources || [],
+      cohort: cohort._id,
+    };
+    const relatedCohortIds = relatedCohorts.map((relatedCohort) => relatedCohort._id);
+    const { isTransactionsUnavailableError } = require("../utils/mongoTransaction");
     const session = await mongoose.startSession();
-    session.startTransaction();
+    let module;
+    let requiresStandaloneFallback = false;
 
     try {
-      // Create the module
-      const module = new Module({
-        title,
-        description,
-        order: moduleOrder,
-        videoResource,
-        documentationUrl,
-        resources: resources || [],
-        cohort: cohort._id, // Track creator cohort
-      });
-
+      session.startTransaction();
+      module = new Module(moduleData);
       await module.save({ session });
 
-      // Add the module to ALL related cohorts
-      await Cohort.updateMany(
-        { _id: { $in: relatedCohorts.map((c) => c._id) } },
-        { $push: { modules: module._id } },
+      const cohortUpdate = await Cohort.updateMany(
+        { _id: { $in: relatedCohortIds } },
+        { $addToSet: { modules: module._id } },
         { session }
       );
+      if (cohortUpdate.matchedCount !== relatedCohortIds.length) {
+        throw new Error("One or more related cohorts no longer exist");
+      }
 
       await session.commitTransaction();
-
-      console.log(
-        `Module "${title}" created and added to ${relatedCohorts.length} cohort(s)`
-      );
-
-      res.status(201).json({
-        message: `Module created and added to ${relatedCohorts.length} cohort(s)`,
-        module,
-        affectedCohorts: relatedCohorts,
-      });
     } catch (err) {
-      await session.abortTransaction();
-      throw err;
+      if (session.inTransaction()) {
+        try {
+          await session.abortTransaction();
+        } catch (abortError) {
+          console.error("Error aborting module creation transaction:", abortError);
+        }
+      }
+      if (!isTransactionsUnavailableError(err)) throw err;
+      requiresStandaloneFallback = true;
     } finally {
-      session.endSession();
+      await session.endSession();
     }
+
+    if (requiresStandaloneFallback) {
+      console.warn(
+        "MongoDB transactions are unavailable; creating the module with compensating rollback protection."
+      );
+      module = new Module(moduleData);
+      await module.save();
+
+      try {
+        const cohortUpdate = await Cohort.updateMany(
+          { _id: { $in: relatedCohortIds } },
+          { $addToSet: { modules: module._id } }
+        );
+        if (cohortUpdate.matchedCount !== relatedCohortIds.length) {
+          throw new Error("One or more related cohorts no longer exist");
+        }
+      } catch (fallbackError) {
+        const compensation = await Promise.allSettled([
+          Cohort.updateMany(
+            { _id: { $in: relatedCohortIds } },
+            { $pull: { modules: module._id } }
+          ),
+          Module.deleteOne({ _id: module._id }),
+        ]);
+        const compensationFailures = compensation.filter(
+          (result) => result.status === "rejected"
+        );
+        if (compensationFailures.length > 0) {
+          fallbackError.compensationFailed = true;
+          console.error(
+            "CRITICAL: Module creation compensation was incomplete:",
+            compensationFailures.map((result) => result.reason)
+          );
+        }
+        throw fallbackError;
+      }
+    }
+
+    console.log(
+      `Module "${title}" created and added to ${relatedCohorts.length} cohort(s)`
+    );
+
+    res.status(201).json({
+      message: `Module created and added to ${relatedCohorts.length} cohort(s)`,
+      module,
+      affectedCohorts: relatedCohorts,
+    });
   } catch (err) {
     console.error("Error creating module:", err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -1775,49 +1821,43 @@ router.delete(
         });
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        // Use cascade service for comprehensive deletion
-        const deletionStats =
-          await cascadeService.deleteModuleFromRelatedCohorts(
+      const { result: deletionStats } = await runWithOptionalTransaction(
+        async (session) => {
+          // Use cascade service for comprehensive deletion
+          const stats = await cascadeService.deleteModuleFromRelatedCohorts(
             req.params.cohortId,
             module._id,
             session
           );
 
-        // Update user progress - remove module from ALL cohorts' user progress
-        await UserCohort.updateMany(
-          { cohort: { $in: relatedCohorts.map((c) => c._id) } },
-          {
-            $pull: {
-              moduleProgress: { module: module._id },
-              questionProgress: {
-                question: { $in: module.questions.map((q) => q._id) },
+          // Update user progress - remove module from ALL cohorts' user progress
+          await UserCohort.updateMany(
+            { cohort: { $in: relatedCohorts.map((c) => c._id) } },
+            {
+              $pull: {
+                moduleProgress: { module: module._id },
+                questionProgress: {
+                  question: { $in: module.questions.map((q) => q._id) },
+                },
               },
             },
-          },
-          { session }
-        );
+            session ? { session } : {}
+          );
 
-        await session.commitTransaction();
+          return stats;
+        },
+        { label: "module deletion" }
+      );
 
-        console.log(
-          `✅ Module "${module.title}" deleted from ${deletionStats.affectedCohorts} cohort(s) with full cascade`
-        );
+      console.log(
+        `✅ Module "${module.title}" deleted from ${deletionStats.affectedCohorts} cohort(s) with full cascade`
+      );
 
-        res.json({
-          message: `Module deleted from ${deletionStats.affectedCohorts} cohort(s)`,
-          ...deletionStats,
-          affectedCohorts: relatedCohorts,
-        });
-      } catch (err) {
-        await session.abortTransaction();
-        throw err;
-      } finally {
-        session.endSession();
-      }
+      res.json({
+        message: `Module deleted from ${deletionStats.affectedCohorts} cohort(s)`,
+        ...deletionStats,
+        affectedCohorts: relatedCohorts,
+      });
     } catch (err) {
       console.error("❌ Error deleting module:", err);
       res.status(500).json({ message: "Server error", error: err.message });
@@ -2025,47 +2065,13 @@ router.post(
   }
 );
 
-// ✅ BULK UPLOAD: Create multiple questions at once from JSON
+// ✅ BULK UPLOAD: Atomically create questions from one or more JSON files
 router.post(
   "/:cohortId/modules/:moduleId/questions/bulk",
   [auth, adminAuth],
   async (req, res) => {
     try {
-      const { questions } = req.body;
-
-      if (!questions || !Array.isArray(questions) || questions.length === 0) {
-        return res.status(400).json({
-          message: "Request body must contain a non-empty 'questions' array",
-        });
-      }
-
-      // Validate each question has required fields
-      const validationErrors = [];
-      questions.forEach((q, index) => {
-        if (!q.title) validationErrors.push(`Question ${index + 1}: missing 'title'`);
-        if (!q.description) validationErrors.push(`Question ${index + 1}: missing 'description'`);
-        if (!q.type || !["mcq", "programming"].includes(q.type)) {
-          validationErrors.push(`Question ${index + 1}: 'type' must be 'mcq' or 'programming'`);
-        }
-        if (q.type === "mcq" && (!q.options || q.options.length < 2)) {
-          validationErrors.push(`Question ${index + 1}: MCQ must have at least 2 options`);
-        }
-        if (q.type === "mcq" && q.options && !q.options.some(opt => opt.isCorrect)) {
-          validationErrors.push(`Question ${index + 1}: MCQ must have at least one correct option`);
-        }
-        if (q.type === "programming" && (!q.testCases || q.testCases.length === 0)) {
-          validationErrors.push(`Question ${index + 1}: Programming question must have at least one test case`);
-        }
-      });
-
-      if (validationErrors.length > 0) {
-        return res.status(400).json({
-          message: "Validation errors found in questions",
-          errors: validationErrors,
-        });
-      }
-
-      // Check if module is referenced by the cohort
+      // Preserve the shared-content relationship checks used by the single-create route.
       const cohort = await Cohort.findById(req.params.cohortId);
       if (!cohort) {
         return res.status(404).json({ message: "Cohort not found" });
@@ -2086,127 +2092,51 @@ router.post(
         return res.status(404).json({ message: "Module not found" });
       }
 
-      // Get all related cohorts
       const relatedCohorts = await getRelatedCohorts(req.params.cohortId);
 
-      // PREVIEW MODE
+      // Full preflight occurs before preview responses and before any write starts.
+      const prepared = await prepareBulkQuestionUpload(req.body, {
+        moduleId: module._id,
+        createdBy: req.user.id,
+      });
+
       if (req.query.preview === "true") {
         return res.json({
           action: "bulk_create_questions",
           affectedCohorts: relatedCohorts,
           module: { _id: module._id, title: module.title },
-          questionCount: questions.length,
+          questionCount: prepared.questionCount,
         });
       }
 
-      // Create all questions
-      const createdQuestions = [];
-      const errors = [];
-
-      for (let i = 0; i < questions.length; i++) {
-        try {
-          const q = questions[i];
-
-          const questionData = {
-            title: q.title,
-            description: q.description,
-            type: q.type,
-            difficultyLevel: q.difficultyLevel || "medium",
-            marks: q.marks || 10,
-            module: module._id,
-            hints: q.hints || [],
-            tags: q.tags || [],
-            companies: q.companies || [],
-            editorial: q.editorial || "",
-            createdBy: req.user.id,
-          };
-
-          if (q.type === "mcq") {
-            questionData.options = q.options || [];
-          } else if (q.type === "programming") {
-            questionData.languages = q.languages || [];
-            questionData.defaultLanguage = q.defaultLanguage || "python";
-            questionData.testCases = q.testCases || [];
-            questionData.constraints = q.constraints || {
-              timeLimit: 1000,
-              memoryLimit: 256,
-            };
-            if (q.encryptedEditor !== undefined) {
-              questionData.encryptedEditor = q.encryptedEditor;
-            }
-            if (q.encryptionSettings) {
-              questionData.encryptionSettings = q.encryptionSettings;
-            }
-            if (q.fillInTheBlank !== undefined) {
-              questionData.fillInTheBlank = q.fillInTheBlank;
-            }
-          }
-
-          const question = new Question(questionData);
-          await question.save();
-
-          // Add question to module
-          module.questions.push(question._id);
-
-          createdQuestions.push(question);
-        } catch (err) {
-          errors.push({
-            index: i,
-            title: questions[i].title || `Question ${i + 1}`,
-            error: err.message,
-          });
-        }
-      }
-
-      // Save module with all new question references
-      await module.save();
-
-      // Update user cohorts for ALL related cohorts
-      const relatedCohortIds = relatedCohorts.map((c) => c._id);
-      const userCohorts = await UserCohort.find({
-        cohort: { $in: relatedCohortIds },
+      const result = await persistBulkQuestions({
+        documents: prepared.documents,
+        moduleId: module._id,
+        relatedCohortIds: relatedCohorts.map((relatedCohort) => relatedCohort._id),
       });
 
-      for (const userCohort of userCohorts) {
-        const moduleProgressIndex = userCohort.moduleProgress.findIndex(
-          (mp) => mp.module.toString() === module._id.toString()
-        );
-
-        if (moduleProgressIndex !== -1) {
-          userCohort.moduleProgress[moduleProgressIndex].totalQuestions +=
-            createdQuestions.length;
-
-          for (const question of createdQuestions) {
-            userCohort.questionProgress.push({
-              question: question._id,
-              attempts: 0,
-              solved: false,
-              bestScore: 0,
-            });
-          }
-
-          await userCohort.save();
-        }
-      }
-
       console.log(
-        `✅ Bulk upload: ${createdQuestions.length}/${questions.length} questions created for module "${module.title}" across ${relatedCohorts.length} cohort(s)`
+        `✅ Bulk upload: ${result.created} questions created for module "${module.title}" across ${relatedCohorts.length} cohort(s)`
       );
 
-      res.status(201).json({
-        message: `${createdQuestions.length} question(s) created successfully${
-          errors.length > 0 ? `, ${errors.length} failed` : ""
-        }`,
-        created: createdQuestions.length,
-        failed: errors.length,
-        total: questions.length,
-        errors: errors.length > 0 ? errors : undefined,
-        questions: createdQuestions,
+      return res.status(201).json({
+        message: `${result.created} question(s) created successfully`,
+        created: result.created,
         affectedCohorts: relatedCohorts,
       });
     } catch (err) {
+      if (
+        err instanceof BulkQuestionUploadError ||
+        err instanceof TransactionsUnavailableError
+      ) {
+        const body = typeof err.toResponse === "function"
+          ? err.toResponse()
+          : { message: err.message, code: err.code };
+        return res.status(err.status).json(body);
+      }
+
       console.error("Error in bulk question upload:", err);
-      res.status(500).json({ message: "Server error", error: err.message });
+      return res.status(500).json({ message: "Server error", error: err.message });
     }
   }
 );
@@ -2599,57 +2529,53 @@ router.delete(
       }
 
       // Delete affects ALL cohorts using this question
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const { result: deletionStats } = await runWithOptionalTransaction(
+        async (session) => {
+          const sessionOptions = session ? { session } : {};
 
-      try {
-        // Use cascade service for comprehensive deletion
-        const deletionStats =
-          await cascadeService.deleteQuestionFromRelatedCohorts(
+          // Use cascade service for comprehensive deletion
+          const stats = await cascadeService.deleteQuestionFromRelatedCohorts(
             cohortId,
             questionId,
             session
           );
 
-        // Update ALL user progress data to remove this question
-        await UserCohort.updateMany(
-          {},
-          {
-            $pull: {
-              questionProgress: { question: questionId },
+          // Update ALL user progress data to remove this question
+          await UserCohort.updateMany(
+            {},
+            {
+              $pull: {
+                questionProgress: { question: questionId },
+              },
             },
-          },
-          { session }
-        );
+            sessionOptions
+          );
 
-        // Update module progress counts for ALL cohorts
-        await UserCohort.updateMany(
-          {
-            "moduleProgress.module": moduleId,
-          },
-          {
-            $inc: { "moduleProgress.$.totalQuestions": -1 },
-          },
-          { session }
-        );
+          // Update module progress counts for ALL cohorts
+          await UserCohort.updateMany(
+            {
+              "moduleProgress.module": moduleId,
+            },
+            {
+              $inc: { "moduleProgress.$.totalQuestions": -1 },
+            },
+            sessionOptions
+          );
 
-        await session.commitTransaction();
+          return stats;
+        },
+        { label: "question deletion" }
+      );
 
-        console.log(
-          `✅ Question "${question.title}" deleted from ${deletionStats.affectedCohorts} cohort(s) with full cascade`
-        );
+      console.log(
+        `✅ Question "${question.title}" deleted from ${deletionStats.affectedCohorts} cohort(s) with full cascade`
+      );
 
-        res.json({
-          message: `Question deleted from ${deletionStats.affectedCohorts} cohort(s)`,
-          ...deletionStats,
-          affectedCohorts: relatedCohorts,
-        });
-      } catch (err) {
-        await session.abortTransaction();
-        throw err;
-      } finally {
-        session.endSession();
-      }
+      res.json({
+        message: `Question deleted from ${deletionStats.affectedCohorts} cohort(s)`,
+        ...deletionStats,
+        affectedCohorts: relatedCohorts,
+      });
     } catch (err) {
       console.error("❌ Error deleting question:", err);
       res.status(500).json({ message: "Server error", error: err.message });
@@ -3966,20 +3892,19 @@ router.post("/:id/feedback", auth, async (req, res) => {
       });
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
+    {
       // ✅ Add or update feedback at clone group level
-      const feedback = await cascadeService.addOrUpdateFeedback(
-        cohortId,
-        userId,
-        rating,
-        comment,
-        session
+      const { result: feedback } = await runWithOptionalTransaction(
+        (session) =>
+          cascadeService.addOrUpdateFeedback(
+            cohortId,
+            userId,
+            rating,
+            comment,
+            session
+          ),
+        { label: "feedback submission" }
       );
-
-      await session.commitTransaction();
 
       // Get updated average rating
       const updatedCohort = await Cohort.findById(cohortId).select(
@@ -4007,11 +3932,6 @@ router.post("/:id/feedback", auth, async (req, res) => {
         },
         averageRating: updatedCohort.averageRating,
       });
-    } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      session.endSession();
     }
   } catch (err) {
     console.error("❌ Error submitting feedback:", err);
@@ -4093,17 +4013,12 @@ router.get("/:id/feedback/user/me", auth, async (req, res) => {
 // Delete feedback from a cohort
 // ✅ CLONE GROUP LEVEL: Deletes feedback from the entire clone group
 router.delete("/:id/feedback/:feedbackId", auth, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const { id: cohortId, feedbackId } = req.params;
     const userId = req.user.id;
 
     const cohort = await Cohort.findById(cohortId);
     if (!cohort) {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(404).json({ message: "Cohort not found" });
     }
 
@@ -4112,8 +4027,6 @@ router.delete("/:id/feedback/:feedbackId", auth, async (req, res) => {
     const feedback = await CohortFeedback.findById(feedbackId);
 
     if (!feedback) {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(404).json({ message: "Feedback not found" });
     }
 
@@ -4122,18 +4035,18 @@ router.delete("/:id/feedback/:feedbackId", auth, async (req, res) => {
     const isOwner = feedback.user.toString() === userId;
 
     if (!isAdmin && !isOwner) {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(403).json({
         message: "You can only delete your own feedback",
       });
     }
 
-    try {
+    {
       // 🔄 Delete feedback from clone group
-      await cascadeService.deleteFeedback(cohortId, feedbackId, session);
-
-      await session.commitTransaction();
+      await runWithOptionalTransaction(
+        (session) =>
+          cascadeService.deleteFeedback(cohortId, feedbackId, session),
+        { label: "feedback deletion" }
+      );
 
       console.log(`✅ Feedback deleted from clone group by user ${userId}`);
 
@@ -4141,11 +4054,6 @@ router.delete("/:id/feedback/:feedbackId", auth, async (req, res) => {
         success: true,
         message: "Feedback deleted successfully",
       });
-    } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      session.endSession();
     }
   } catch (err) {
     console.error("❌ Error deleting feedback:", err);
@@ -4581,29 +4489,26 @@ router.put("/:id/eligible-users", [auth, adminAuth], async (req, res) => {
 
     let cleanupStats = null;
     if (removedUserIds.length > 0) {
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const { result } = await runWithOptionalTransaction(
+        async (session) => {
+          // Use cascade service to clean up removed users' data
+          const stats = await cascadeService.removeMultipleUsersDataFromCohort(
+            cohortId,
+            removedUserIds,
+            session
+          );
 
-      try {
-        // Use cascade service to clean up removed users' data
-        cleanupStats = await cascadeService.removeMultipleUsersDataFromCohort(
-          cohortId,
-          removedUserIds,
-          session
-        );
+          // Update the eligible users list
+          cohort.eligibleUsers = userIds;
+          await cohort.save(session ? { session } : {});
 
-        // Update the eligible users list
-        cohort.eligibleUsers = userIds;
-        await cohort.save({ session });
+          return stats;
+        },
+        { label: "eligible user cleanup" }
+      );
 
-        await session.commitTransaction();
-        console.log(`✅ User data cleanup completed:`, cleanupStats);
-      } catch (err) {
-        await session.abortTransaction();
-        throw err;
-      } finally {
-        session.endSession();
-      }
+      cleanupStats = result;
+      console.log(`✅ User data cleanup completed:`, cleanupStats);
     } else {
       // No users removed, just update the list
       cohort.eligibleUsers = userIds;
