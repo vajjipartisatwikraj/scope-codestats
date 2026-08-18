@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -39,6 +39,10 @@ import CohortDetailRight from "./CohortDetailRight";
 import CohortProgress from "./CohortProgress";
 import SharedContentWarningDialog from "./SharedContentWarningDialog";
 import BulkQuestionUpload from "./BulkQuestionUpload";
+import ExamWindowBanner from "./ExamWindowBanner";
+import useExamGuard from "../../hooks/useExamGuard";
+import { EXAM_BAR_HEIGHT } from "./ExamSessionBar";
+import { isExamSessionSearch, withExamSession } from "../../utils/examSession";
 
 // Tab panel component
 function TabPanel(props) {
@@ -60,6 +64,7 @@ function TabPanel(props) {
 const CohortDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { token, user } = useAuth();
   const theme = useTheme();
 
@@ -147,11 +152,64 @@ const CohortDetail = () => {
   // Check if user can edit/modify content (only admin, not teacher)
   const canEdit = user && user.userType === "admin";
 
+  // Exam window guard. Only students of an exam cohort are watched: admins and
+  // teachers review exams outside the window on purpose, and practice cohorts
+  // have no window to watch.
+  //
+  // In an exam session tab the app shell already owns a guard for the whole tab,
+  // so this one stands down rather than polling twice and announcing the end of
+  // the exam twice.
+  const examSession = isExamSessionSearch(location.search);
+  const isExamCohort = cohort?.mode === "exam" || cohort?.examWindow?.isExam;
+  const { exam, remainingMs } = useExamGuard({
+    cohortId: id,
+    enabled: Boolean(isExamCohort) && !isAdmin && !examSession,
+  });
+
   // Fetch cohort details on component mount
   // Only re-fetch if id or token changes, not when isAdmin changes
   useEffect(() => {
     fetchCohortDetails();
   }, [id, token]);
+
+  /**
+   * Turns an exam-window rejection into a message plus a redirect.
+   *
+   * The server answers `exam_not_started` / `exam_ended` / `exam_misconfigured`
+   * from any protected cohort route, so this is the single place that decides
+   * where a locked-out student goes.
+   *
+   * @returns {boolean} true when the error was an exam rejection and handled.
+   */
+  const handleExamAccessError = (errorResponse) => {
+    const reason = errorResponse?.reason;
+
+    if (reason === "exam_ended") {
+      toast.info("This exam has ended.", { autoClose: 6000 });
+      navigate("/dashboard", { replace: true });
+      return true;
+    }
+
+    if (reason === "exam_not_started") {
+      const startsAt = errorResponse?.exam?.startsAt;
+      toast.info(
+        startsAt
+          ? `This exam opens at ${new Date(startsAt).toLocaleString()}.`
+          : "This exam has not started yet.",
+        { autoClose: 6000 }
+      );
+      navigate("/cohorts", { replace: true });
+      return true;
+    }
+
+    if (reason === "exam_misconfigured") {
+      toast.error("This exam is not scheduled correctly. Contact your administrator.");
+      navigate("/cohorts", { replace: true });
+      return true;
+    }
+
+    return false;
+  };
 
   // Fetch cohort details
   const fetchCohortDetails = async () => {
@@ -256,6 +314,8 @@ const CohortDetail = () => {
               navigate("/cohorts");
               return;
             }
+          } else if (handleExamAccessError(errorResponse)) {
+            return;
           }
         }
       }
@@ -409,6 +469,8 @@ const CohortDetail = () => {
               navigate("/cohorts");
               return;
             }
+          } else if (handleExamAccessError(errorResponse)) {
+            return;
           }
         }
       }
@@ -468,11 +530,17 @@ const CohortDetail = () => {
   const handleSolveQuestion = (question) => {
     if (!currentModuleId) return;
 
-    // Open the question in a new tab
-    window.open(
-      `/cohorts/${cohort._id}/modules/${currentModuleId}/questions/${question._id}`,
-      "_blank"
-    );
+    const questionPath = `/cohorts/${cohort._id}/modules/${currentModuleId}/questions/${question._id}`;
+
+    // During an exam the question opens in the same tab. A new tab would be a
+    // fresh browsing context, which drops fullscreen and would be recorded as a
+    // fullscreen exit the student did not cause.
+    if (examSession) {
+      navigate(withExamSession(questionPath, true));
+      return;
+    }
+
+    window.open(questionPath, "_blank");
   };
 
   // Open the create module dialog
@@ -1536,16 +1604,20 @@ const CohortDetail = () => {
     // Removed setCurrentModuleId(null) to preserve module selection
   };
 
+  // An exam session replaces the 64px navbar with the slim countdown bar, so
+  // the page reclaims the difference instead of leaving a dead strip.
+  const chromeHeight = examSession ? EXAM_BAR_HEIGHT : 64;
+
   return (
     <Box
       sx={{
         bgcolor: "transparent",
-        height: "calc(100vh - 64px)", // Account for navbar height (64px)
+        height: `calc(100vh - ${chromeHeight}px)`,
         color: "white",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        maxHeight: "calc(100vh - 64px)",
+        maxHeight: `calc(100vh - ${chromeHeight}px)`,
       }}
     >
       {loading && !cohort ? (
@@ -1573,6 +1645,18 @@ const CohortDetail = () => {
             flex: 1,
           }}
         >
+          {/* Exam schedule and live countdown. Renders nothing for practice
+              cohorts, and falls back to the window sent with the cohort until
+              the first heartbeat lands. */}
+          {isExamCohort && !examSession && (
+            <Box sx={{ px: { xs: 1, md: 2 }, pt: { xs: 1, md: 2 } }}>
+              <ExamWindowBanner
+                exam={exam || cohort.examWindow}
+                remainingMs={remainingMs ?? cohort.examWindow?.msRemaining}
+              />
+            </Box>
+          )}
+
           {/* Use Flexbox for simpler layout */}
           <Box
             sx={{
@@ -1583,6 +1667,7 @@ const CohortDetail = () => {
               p: { xs: 1, md: 2 },
               height: "100%",
               flex: 1,
+              minHeight: 0,
             }}
           >
             {/* Left panel - Cohort info and module list */}

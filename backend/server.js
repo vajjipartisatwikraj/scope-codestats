@@ -239,12 +239,23 @@ console.log("[Socket.IO] ✅ WebSocket server initialized and ready");
 const PracticeArenaTimerService = require("./services/practiceArenaTimerService");
 app.locals.paTimerService = new PracticeArenaTimerService(io);
 
+// Exam lifecycle sweeper: moves exam cohorts to inactive once their window ends
+const examLifecycleService = require("./services/examLifecycleService");
+
 // Initialize timer service after MongoDB connection
 mongoose.connection.once("open", async () => {
   try {
     await app.locals.paTimerService.initialize();
   } catch (error) {
     console.error("[PA Timer] ❌ Failed to initialize timer service:", error);
+  }
+
+  // Access control does not depend on this; it keeps ended exams out of
+  // listings and dashboards without waiting for someone to open the cohort.
+  try {
+    examLifecycleService.startExamSweeper();
+  } catch (error) {
+    console.error("[Exam Sweeper] ❌ Failed to start:", error);
   }
 });
 

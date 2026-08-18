@@ -21,6 +21,18 @@ const {
 // Import Cascade Service
 const cascadeService = require("../services/cohortCascadeService");
 const { runWithOptionalTransaction } = require("../utils/mongoTransaction");
+const {
+  EXAM_MODE,
+  EXAM_STATE,
+  getExamWindow,
+  getExamAccessDenial,
+} = require("../utils/examAccess");
+const examLifecycle = require("../services/examLifecycleService");
+const cohortProctorService = require("../services/cohortProctorService");
+const {
+  buildExamReportWorkbook,
+  buildExportFilename,
+} = require("../services/examReportExcelService");
 const sqlJudge = require("../services/sqlJudgeClient");
 const sqlQuestionService = require("../services/sqlQuestionService");
 const {
@@ -44,12 +56,128 @@ async function getRelatedCohorts(cohortId) {
   return cascadeService.getRelatedCohorts(cohortId);
 }
 
+// ============================================================================
+// HELPER FUNCTION: Exam window gate
+// ============================================================================
+/**
+ * Rejects a student request when the cohort is an exam that is not currently
+ * open, and answers the response itself.
+ *
+ * Every content and execution route funnels through this so the window cannot
+ * be bypassed by hitting a route directly. Admins and teachers pass through.
+ *
+ * @returns {Promise<boolean>} true when the response has already been sent.
+ */
+async function blockedByExamWindow(res, cohort, options = {}) {
+  const { isPrivileged = false, allowBeforeStart = false } = options;
+
+  const denial = getExamAccessDenial(cohort, { isPrivileged, allowBeforeStart });
+  if (!denial) return false;
+
+  // An ended exam also drops out of the active state, so listings and
+  // dashboards agree with what this gate just decided.
+  if (denial.body.reason === "exam_ended") {
+    await examLifecycle
+      .deactivateIfEnded(cohort)
+      .catch((err) => console.error("Exam deactivation failed:", err.message));
+  }
+
+  res.status(denial.status).json(denial.body);
+  return true;
+}
+
+/** Fields the client needs to render exam state on cards and banners. */
+const EXAM_LIST_FIELDS = "mode examStartTime examEndTime";
+
+/** Standard refusal once a student has ended their own exam. */
+const EXAM_SUBMITTED_RESPONSE = {
+  message: "You have already ended this exam",
+  reason: "exam_submitted",
+  error: "EXAM_SUBMITTED",
+};
+
+/**
+ * True when this student has already ended the exam themselves.
+ *
+ * Ending is final, so this closes the cohort for them even while the window is
+ * still open for everyone else.
+ */
+async function hasSubmittedExam(userId, cohortId) {
+  const enrollment = await UserCohort.findOne({
+    user: userId,
+    cohort: cohortId,
+  }).select("examSubmittedAt");
+
+  return Boolean(enrollment?.examSubmittedAt);
+}
+
+/**
+ * Validates the admin-supplied delivery mode and exam window.
+ *
+ * Returns `{ values }` to spread onto the cohort, or `{ error }` to send back as
+ * a 400. Switching to practice clears the window so an exam cohort demoted to
+ * practice cannot keep a stale schedule.
+ *
+ * @param {{mode?: string, examStartTime?: any, examEndTime?: any}} input
+ */
+function parseExamModeInput(input = {}) {
+  const { mode, examStartTime, examEndTime } = input;
+
+  if (mode === undefined) return { values: {} };
+
+  const normalized = String(mode).toLowerCase();
+  if (!["practice", "exam"].includes(normalized)) {
+    return {
+      error: {
+        message: 'Invalid mode: expected "practice" or "exam"',
+        field: "mode",
+      },
+    };
+  }
+
+  if (normalized !== EXAM_MODE) {
+    return {
+      values: { mode: "practice", examStartTime: null, examEndTime: null },
+    };
+  }
+
+  const start = examStartTime ? new Date(examStartTime) : null;
+  const end = examEndTime ? new Date(examEndTime) : null;
+
+  if (!start || Number.isNaN(start.getTime())) {
+    return {
+      error: {
+        message: "Exam cohorts require a valid exam start time",
+        field: "examStartTime",
+      },
+    };
+  }
+  if (!end || Number.isNaN(end.getTime())) {
+    return {
+      error: {
+        message: "Exam cohorts require a valid exam end time",
+        field: "examEndTime",
+      },
+    };
+  }
+  if (end <= start) {
+    return {
+      error: {
+        message: "Exam end time must be after the exam start time",
+        field: "examEndTime",
+      },
+    };
+  }
+
+  return { values: { mode: EXAM_MODE, examStartTime: start, examEndTime: end } };
+}
+
 // Get all cohorts (admin view) - OPTIMIZED with minimal data
 router.get("/admin", [auth, adminAuth], async (req, res) => {
   try {
     const cohorts = await Cohort.find()
       .select(
-        "title description startDate endDate eligibleUsers createdBy createdAt isActive isDraft"
+        `title description startDate endDate eligibleUsers createdBy createdAt isActive isDraft ${EXAM_LIST_FIELDS}`
       )
       .populate("createdBy", "name email")
       .lean()
@@ -79,20 +207,25 @@ router.get("/", auth, async (req, res) => {
     const userId = req.user.id;
 
     // Get cohorts where the user is eligible - ONLY return fields needed for list display
+    //
+    // Published exam cohorts stay listed regardless of `isActive` so an eligible
+    // student can see the exam before it opens and see that it has closed
+    // afterwards. Opening one is still gated by the window; this is visibility
+    // only.
     const eligibleCohorts = await Cohort.find({
       eligibleUsers: userId,
-      isActive: true,
       isDraft: false,
+      $or: [{ isActive: true }, { mode: EXAM_MODE }],
     })
       .select(
-        "title description startDate endDate createdBy createdAt modules eligibleUsers averageRating feedbacks"
-      ) // Include modules, eligibleUsers, and rating fields
+        `title description startDate endDate createdBy createdAt modules eligibleUsers averageRating feedbacks isActive ${EXAM_LIST_FIELDS}`
+      ) // Include modules, eligibleUsers, rating and exam scheduling fields
       .populate("createdBy", "name email")
       .lean();
 
     // Get the user's cohort progress - only essential fields
     const userCohorts = await UserCohort.find({ user: userId })
-      .select("cohort status totalScore rank")
+      .select("cohort status totalScore rank examSubmittedAt")
       .lean();
 
     // Combine the data
@@ -103,6 +236,12 @@ router.get("/", auth, async (req, res) => {
 
       return {
         ...cohort,
+        // Server-evaluated window: the card renders from this instead of
+        // comparing the exam times against the browser clock.
+        examWindow: getExamWindow(cohort),
+        // This student ended their own test, so the exam is over for them even
+        // if the window is still open for everyone else.
+        examSubmitted: Boolean(userCohort?.examSubmittedAt),
         userProgress: userCohort
           ? {
               status: userCohort.status,
@@ -120,6 +259,260 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+/**
+ * Exam window heartbeat.
+ *
+ * Cheap, poll-friendly endpoint the solving screens hit on a timer so a student
+ * who is already inside an exam learns that it closed without having to make a
+ * content request first. The server clock is the only clock that counts, so the
+ * response carries `serverTime` and the client renders its countdown from the
+ * returned offsets rather than from `Date.now()`.
+ *
+ * Deliberately lightweight: no modules, no progress, no leaderboard.
+ */
+router.get("/:id/exam-status", auth, async (req, res) => {
+  try {
+    const cohortId = req.params.id;
+
+    const cohort = await Cohort.findById(cohortId).select(
+      `title isActive isDraft eligibleUsers ${EXAM_LIST_FIELDS}`
+    );
+
+    if (!cohort) {
+      return res
+        .status(404)
+        .json({ message: "Cohort not found", reason: "not_found" });
+    }
+
+    const isPrivileged = isAdminOrTeacher(req.user);
+
+    // Only eligible users learn anything about the cohort from this endpoint.
+    if (!isPrivileged) {
+      const isEligible = (cohort.eligibleUsers || []).some(
+        (id) => id.toString() === req.user.id.toString()
+      );
+      if (!isEligible) {
+        return res.status(403).json({
+          message: "You are not eligible for this cohort",
+          reason: "not_eligible",
+        });
+      }
+    }
+
+    const window = getExamWindow(cohort);
+
+    // Keep the stored state honest even if the sweeper has not fired yet.
+    if (window.state === EXAM_STATE.ENDED) {
+      await examLifecycle
+        .deactivateIfEnded(cohort)
+        .catch((err) => console.error("Exam deactivation failed:", err.message));
+    }
+
+    const denial = getExamAccessDenial(cohort, { isPrivileged });
+
+    // A student who ended the test is finished, even mid-window.
+    const submitted =
+      !isPrivileged && window.isExam
+        ? await hasSubmittedExam(req.user.id, cohortId)
+        : false;
+
+    res.json({
+      cohortId,
+      title: cohort.title,
+      isPrivileged,
+      submitted,
+      accessible: denial === null && !submitted,
+      reason: submitted ? "exam_submitted" : denial?.body.reason ?? null,
+      exam: window,
+    });
+  } catch (err) {
+    console.error("Error fetching exam status:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+/**
+ * PROCTORING — record an integrity event reported by the exam tab.
+ *
+ * The client reports only that something happened; every counter is incremented
+ * here, for the authenticated user, on an exam cohort they are enrolled in. A
+ * tampered client cannot lower its own count or write someone else's.
+ *
+ * Practice cohorts are silently ignored so the endpoint is safe to call from any
+ * cohort screen.
+ */
+router.post("/:id/proctor/event", auth, async (req, res) => {
+  try {
+    const cohortId = req.params.id;
+    const { type, detail } = req.body || {};
+
+    const cohort = await Cohort.findById(cohortId).select(
+      `eligibleUsers ${EXAM_LIST_FIELDS}`
+    );
+    if (!cohort) {
+      return res.status(404).json({ message: "Cohort not found" });
+    }
+
+    // Nothing is tracked outside exam mode.
+    if (cohort.mode !== EXAM_MODE) {
+      return res.json({ tracked: false, reason: "not_an_exam" });
+    }
+
+    // Admins and teachers previewing an exam are not proctored.
+    if (isAdminOrTeacher(req.user)) {
+      return res.json({ tracked: false, reason: "privileged" });
+    }
+
+    const isEligible = (cohort.eligibleUsers || []).some(
+      (id) => id.toString() === req.user.id.toString()
+    );
+    if (!isEligible) {
+      return res
+        .status(403)
+        .json({ message: "You are not eligible for this cohort" });
+    }
+
+    // `session_start` marks attendance rather than logging a violation.
+    if (type === "session_start") {
+      await cohortProctorService.recordExamEntry(cohort, req.user.id);
+      return res.json({ tracked: true, type: "session_start" });
+    }
+
+    const counters = await cohortProctorService.recordViolation(
+      cohort,
+      req.user.id,
+      type,
+      detail
+    );
+
+    res.json({ tracked: true, type, counters });
+  } catch (err) {
+    if (err.status === 400) {
+      return res.status(400).json({ message: err.message });
+    }
+    console.error("Error recording proctor event:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+/** PROCTORING — admin summary for an exam cohort. */
+router.get("/:id/proctor", [auth, adminAuth], async (req, res) => {
+  try {
+    const report = await cohortProctorService.buildExamReport(req.params.id);
+    res.json({
+      summary: report.summary,
+      students: report.students.map(({ questionScores, ...rest }) => rest),
+      modules: report.modules,
+      questions: report.questions,
+    });
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    console.error("Error building proctor summary:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+/**
+ * PROCTORING — download the exam results workbook.
+ *
+ * Streams a styled .xlsx with the summary, per-student results, module and
+ * question breakdowns. Exam cohorts only.
+ */
+router.get("/:id/exam-report/export", [auth, adminAuth], async (req, res) => {
+  try {
+    const report = await cohortProctorService.buildExamReport(req.params.id);
+    const buffer = await buildExamReportWorkbook(report);
+    const filename = buildExportFilename(report);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.send(Buffer.from(buffer));
+
+    console.log(
+      `📊 Exam report exported for cohort ${req.params.id} ` +
+        `(${report.students.length} students) by ${req.user.id}`
+    );
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    console.error("Error exporting exam report:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+/**
+ * END TEST — the student finishes their own exam.
+ *
+ * Everything they submitted is already recorded, so this only records that they
+ * are done and closes the cohort for them. Idempotent: a second call reports the
+ * original finish time rather than failing.
+ */
+router.post("/:id/exam/finish", auth, async (req, res) => {
+  try {
+    const cohortId = req.params.id;
+    const userId = req.user.id;
+
+    const cohort = await Cohort.findById(cohortId).select(
+      `title ${EXAM_LIST_FIELDS}`
+    );
+    if (!cohort) {
+      return res.status(404).json({ message: "Cohort not found" });
+    }
+    if (cohort.mode !== EXAM_MODE) {
+      return res
+        .status(400)
+        .json({ message: "This cohort is not an exam", reason: "not_an_exam" });
+    }
+
+    const enrollment = await UserCohort.findOne({
+      user: userId,
+      cohort: cohortId,
+    });
+    if (!enrollment) {
+      return res
+        .status(403)
+        .json({ message: "Not enrolled in this cohort", reason: "not_enrolled" });
+    }
+
+    if (!enrollment.examSubmittedAt) {
+      enrollment.examSubmittedAt = new Date();
+      enrollment.status = "completed";
+      enrollment.completedAt = enrollment.examSubmittedAt;
+      await enrollment.save();
+      console.log(`📕 Exam ended by user ${userId} for cohort ${cohortId}`);
+    }
+
+    // Mirror onto the proctor record so the report has the finish time and the
+    // score without waiting for a recalculation.
+    await cohortProctorService
+      .recordExamSubmission(
+        await Cohort.findById(cohortId).select(`eligibleUsers ${EXAM_LIST_FIELDS}`),
+        userId,
+        enrollment.examSubmittedAt,
+        enrollment.totalScore
+      )
+      .catch((err) =>
+        console.error("Proctor submission mirror failed:", err.message)
+      );
+
+    res.json({
+      message: "Exam submitted",
+      examSubmittedAt: enrollment.examSubmittedAt,
+      totalScore: enrollment.totalScore,
+    });
+  } catch (err) {
+    console.error("Error ending exam:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 // Get a specific cohort (admin view) - OPTIMIZED to not populate questions OR users
 router.get("/admin/:id", [auth, adminAuth], async (req, res) => {
   try {
@@ -130,7 +523,7 @@ router.get("/admin/:id", [auth, adminAuth], async (req, res) => {
     // DO NOT populate eligibleUsers - they will be fetched when "Manage Users" is clicked
     const cohort = await Cohort.findById(cohortId)
       .select(
-        "title description startDate endDate videoResource documentationUrl createdBy createdAt updatedAt isActive isDraft"
+        `title description startDate endDate videoResource documentationUrl createdBy createdAt updatedAt isActive isDraft ${EXAM_LIST_FIELDS}`
       )
       .populate("createdBy", "name email")
       .populate({
@@ -213,6 +606,26 @@ router.get("/:id", auth, async (req, res) => {
           reason: "draft_mode",
         });
       }
+
+      // Exam cohorts open only inside their window.
+      if (await blockedByExamWindow(res, cohortExists, { isPrivileged: false })) {
+        return;
+      }
+
+      // Ending the test is final: no re-entry, even while the window is open.
+      if (cohortExists.mode === EXAM_MODE) {
+        if (await hasSubmittedExam(userId, cohortId)) {
+          return res.status(403).json(EXAM_SUBMITTED_RESPONSE);
+        }
+
+        // Opening the cohort during the window counts as attending. Recorded
+        // fire-and-forget so proctoring can never block the exam itself.
+        cohortProctorService
+          .recordExamEntry(cohortExists, userId)
+          .catch((err) =>
+            console.error("Proctor entry record failed:", err.message)
+          );
+      }
     } else {
       console.log(
         `Admin user: bypassing eligibility checks for cohort ${cohortId}`
@@ -222,7 +635,7 @@ router.get("/:id", auth, async (req, res) => {
     // Get the cohort with properly populated fields - INCLUDING modules array and feedbacks
     const cohort = await Cohort.findById(cohortId)
       .select(
-        "title description startDate endDate videoResource documentationUrl eligibleUsers modules createdBy createdAt updatedAt cloneGroupId feedbacks averageRating"
+        `title description startDate endDate videoResource documentationUrl eligibleUsers modules createdBy createdAt updatedAt cloneGroupId feedbacks averageRating isActive isDraft ${EXAM_LIST_FIELDS}`
       )
       .populate("createdBy", "name email")
       .lean(); // Use lean() for better performance
@@ -282,6 +695,8 @@ router.get("/:id", auth, async (req, res) => {
     const result = {
       ...cohort,
       modules,
+      // Drives the countdown banner and the client-side exam guard.
+      examWindow: getExamWindow(cohort),
       userProgress: userCohort
         ? {
             status: userCohort.status,
@@ -387,6 +802,10 @@ router.get("/:id/modules", auth, async (req, res) => {
       });
     }
 
+    if (await blockedByExamWindow(res, cohortExists, { isPrivileged: false })) {
+      return;
+    }
+
     // Get the modules for this cohort (use the cohort's modules array as source of truth)
     const modules = await Module.find({ _id: { $in: cohortExists.modules } })
       .sort({ order: 1 })
@@ -412,7 +831,9 @@ router.get("/:id/modules/:moduleId", auth, async (req, res) => {
     // Check if user is admin or teacher
     const isAdmin = isAdminOrTeacher(req.user);
 
-    // Verify the cohort exists and user has access
+    // Verify the cohort exists and user has access.
+    // Exam cohorts are matched without the `isActive` filter so a closed exam
+    // reports "exam ended" instead of a misleading 404.
     let cohort;
     if (isAdmin) {
       cohort = await Cohort.findById(cohortId);
@@ -420,8 +841,8 @@ router.get("/:id/modules/:moduleId", auth, async (req, res) => {
       cohort = await Cohort.findOne({
         _id: cohortId,
         eligibleUsers: userId,
-        isActive: true,
         isDraft: false,
+        $or: [{ isActive: true }, { mode: EXAM_MODE }],
       });
     }
 
@@ -429,6 +850,16 @@ router.get("/:id/modules/:moduleId", auth, async (req, res) => {
       return res
         .status(404)
         .json({ message: "Cohort not found or not eligible" });
+    }
+
+    if (!isAdmin && cohort.mode !== EXAM_MODE && !cohort.isActive) {
+      return res
+        .status(404)
+        .json({ message: "Cohort not found or not eligible" });
+    }
+
+    if (await blockedByExamWindow(res, cohort, { isPrivileged: isAdmin })) {
+      return;
     }
 
     // Find the specific module
@@ -478,8 +909,17 @@ router.get("/:cohortId/modules/:moduleId/questions", auth, async (req, res) => {
         (id) => id.toString() === userId.toString()
       );
 
-      if (!isEligible || !cohortExists.isActive || cohortExists.isDraft) {
+      // An exam cohort that has closed is handled below so the client gets the
+      // specific reason rather than a bare "Access denied".
+      const inactiveForNonExam =
+        cohortExists.mode !== EXAM_MODE && !cohortExists.isActive;
+
+      if (!isEligible || inactiveForNonExam || cohortExists.isDraft) {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (await blockedByExamWindow(res, cohortExists, { isPrivileged: false })) {
+        return;
       }
     }
 
@@ -619,8 +1059,14 @@ router.get("/:cohortId/questions/:questionId", auth, async (req, res) => {
         (id) => id.toString() === userId.toString()
       );
 
-      if (!isEligible || !cohort.isActive || cohort.isDraft) {
+      const inactiveForNonExam = cohort.mode !== EXAM_MODE && !cohort.isActive;
+
+      if (!isEligible || inactiveForNonExam || cohort.isDraft) {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+        return;
       }
     }
 
@@ -795,6 +1241,9 @@ router.post("/", [auth, adminAuth], async (req, res) => {
       isActive,
       isDraft,
       eligibleUserIds,
+      mode,
+      examStartTime,
+      examEndTime,
     } = req.body;
 
     // Validate required fields
@@ -803,6 +1252,11 @@ router.post("/", [auth, adminAuth], async (req, res) => {
         message: "Missing required fields",
         required: ["title", "description", "startDate", "endDate"],
       });
+    }
+
+    const examFields = parseExamModeInput({ mode, examStartTime, examEndTime });
+    if (examFields.error) {
+      return res.status(400).json(examFields.error);
     }
 
     // Create the cohort
@@ -817,6 +1271,7 @@ router.post("/", [auth, adminAuth], async (req, res) => {
       isDraft: isDraft !== undefined ? isDraft : true,
       eligibleUsers: eligibleUserIds || [],
       createdBy: req.user.id,
+      ...examFields.values,
     });
 
     await cohort.save();
@@ -824,6 +1279,10 @@ router.post("/", [auth, adminAuth], async (req, res) => {
     res.status(201).json(cohort);
   } catch (err) {
     console.error("Error creating cohort:", err);
+    // Surface the schema's exam-window invariants as a 400, not a 500.
+    if (err.name === "ValidationError" || /exam/i.test(err.message)) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
@@ -955,6 +1414,9 @@ router.put("/:id", [auth, adminAuth], async (req, res) => {
       isActive,
       isDraft,
       eligibleUserIds,
+      mode,
+      examStartTime,
+      examEndTime,
     } = req.body;
 
     // Find the cohort
@@ -963,6 +1425,12 @@ router.put("/:id", [auth, adminAuth], async (req, res) => {
     if (!cohort) {
       return res.status(404).json({ message: "Cohort not found" });
     }
+
+    const examFields = parseExamModeInput({ mode, examStartTime, examEndTime });
+    if (examFields.error) {
+      return res.status(400).json(examFields.error);
+    }
+    Object.assign(cohort, examFields.values);
 
     // Update the fields
     if (title) cohort.title = title;
@@ -990,7 +1458,16 @@ router.put("/:id", [auth, adminAuth], async (req, res) => {
         const end = new Date(cohort.endDate);
 
         // Set active if current date is between start and end dates
-        const shouldBeActive = now >= start && now <= end;
+        let shouldBeActive = now >= start && now <= end;
+
+        // An exam cohort must be visible to its eligible users the moment it is
+        // published, even when the exam itself is still hours away. It only goes
+        // inactive once the window has closed, which the sweeper handles.
+        if (cohort.mode === EXAM_MODE) {
+          shouldBeActive =
+            getExamWindow(cohort, now).state !== EXAM_STATE.ENDED;
+        }
+
         cohort.isActive = shouldBeActive;
 
         console.log(`Cohort "${cohort.title}" published:`, {
@@ -1014,6 +1491,9 @@ router.put("/:id", [auth, adminAuth], async (req, res) => {
     res.json(cohort);
   } catch (err) {
     console.error("Error updating cohort:", err);
+    if (err.name === "ValidationError" || /exam/i.test(err.message)) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
@@ -1197,14 +1677,25 @@ router.post("/:id/apply", auth, async (req, res) => {
     // Check if the cohort exists and is active
     const cohort = await Cohort.findOne({
       _id: cohortId,
-      isActive: true,
       isDraft: false,
+      $or: [{ isActive: true }, { mode: EXAM_MODE }],
     });
 
     if (!cohort) {
       return res
         .status(404)
         .json({ message: "Cohort not found or not active" });
+    }
+
+    // Applying is allowed from the moment an exam is published, but not once it
+    // has closed.
+    if (
+      await blockedByExamWindow(res, cohort, {
+        isPrivileged: false,
+        allowBeforeStart: true,
+      })
+    ) {
+      return;
     }
 
     // Check if the user is eligible
@@ -1266,14 +1757,26 @@ router.post("/:id/enroll", auth, async (req, res) => {
     // Check if the cohort exists and is active
     const cohort = await Cohort.findOne({
       _id: cohortId,
-      isActive: true,
       isDraft: false,
+      $or: [{ isActive: true }, { mode: EXAM_MODE }],
     });
 
     if (!cohort) {
       return res
         .status(404)
         .json({ message: "Cohort not found or not active" });
+    }
+
+    // Enrolment is permitted before the window opens so the very first request
+    // at start time cannot lose a race against the clock. It is refused once
+    // the exam has ended.
+    if (
+      await blockedByExamWindow(res, cohort, {
+        isPrivileged: false,
+        allowBeforeStart: true,
+      })
+    ) {
+      return;
     }
 
     // Check if the user is eligible
@@ -2374,6 +2877,7 @@ router.get(
       if (!isPrivileged && !enrollment) {
         return res.status(403).json({ message: "Not enrolled in this cohort" });
       }
+      if (await blockedByExamWindow(res, cohort, { isPrivileged })) return;
       if (!question) return res.status(404).json({ message: "Question not found" });
       if (question.type !== "sql") {
         return res.status(400).json({ message: "This question is not a SQL question" });
@@ -2461,6 +2965,7 @@ router.post(
       if (!isPrivileged && !enrollment) {
         return res.status(403).json({ message: "Not enrolled in this cohort" });
       }
+      if (await blockedByExamWindow(res, cohort, { isPrivileged })) return;
       if (!question) return res.status(404).json({ message: "Question not found" });
       if (question.type !== "sql") {
         return res.status(400).json({ message: "This question is not a SQL question" });
@@ -2595,14 +3100,31 @@ router.get(
         cohort = await Cohort.findOne({
           _id: cohortId,
           eligibleUsers: userId,
-          isActive: true,
           isDraft: false,
+          $or: [{ isActive: true }, { mode: EXAM_MODE }],
         });
 
         if (!cohort) {
           return res
             .status(404)
             .json({ message: "Cohort not found or not eligible" });
+        }
+
+        if (cohort.mode !== EXAM_MODE && !cohort.isActive) {
+          return res
+            .status(404)
+            .json({ message: "Cohort not found or not eligible" });
+        }
+
+        if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+          return;
+        }
+
+        if (
+          cohort.mode === EXAM_MODE &&
+          (await hasSubmittedExam(userId, cohortId))
+        ) {
+          return res.status(403).json(EXAM_SUBMITTED_RESPONSE);
         }
       }
 
@@ -3066,6 +3588,18 @@ router.post(
           return res
             .status(403)
             .json({ message: "Not enrolled in this cohort" });
+        }
+
+        // AUTHORITATIVE EXAM CUT-OFF: a submission that arrives after the
+        // window closes is rejected and never scored, however long the client
+        // page has been open.
+        if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+          return;
+        }
+
+        // Same for a student who already ended their test.
+        if (cohort.mode === EXAM_MODE && enrollmentCheck.examSubmittedAt) {
+          return res.status(403).json(EXAM_SUBMITTED_RESPONSE);
         }
       } else {
         console.log(
@@ -3780,8 +4314,15 @@ router.post(
           (id) => id.toString() === userId.toString()
         );
 
-        if (!isEligible || !cohort.isActive) {
+        const inactiveForNonExam = cohort.mode !== EXAM_MODE && !cohort.isActive;
+
+        if (!isEligible || inactiveForNonExam) {
           return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Running code is an exam activity too, so it stops with the window.
+        if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+          return;
         }
       }
 
@@ -4722,6 +5263,159 @@ router.get("/:id/stats", auth, async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+
+/**
+ * Resolve a list of roll numbers (typically from an uploaded CSV) into users.
+ *
+ * Answers three questions an admin needs before importing a class list:
+ *   who exists and can be added, who is already eligible, and which roll numbers
+ *   have no account on the platform.
+ *
+ * Roll numbers are stored trimmed but with their original casing, so matching is
+ * case-insensitive. The fast path uses an indexed `$in` over the obvious casings;
+ * only the leftovers fall back to a `$toLower` comparison, which keeps a large
+ * class list from turning into a full scan.
+ *
+ * Read-only: nothing is added to the cohort here. The caller decides.
+ */
+router.post(
+  "/:id/eligible-users/resolve-rolls",
+  [auth, adminAuth],
+  async (req, res) => {
+    try {
+      const cohortId = req.params.id;
+      const { rollNumbers } = req.body || {};
+
+      if (!Array.isArray(rollNumbers)) {
+        return res.status(400).json({
+          message: "`rollNumbers` must be an array of roll numbers",
+        });
+      }
+      if (rollNumbers.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "The file contained no roll numbers" });
+      }
+      if (rollNumbers.length > 5000) {
+        return res.status(400).json({
+          message: `Too many roll numbers: ${rollNumbers.length}. The limit is 5000 per upload.`,
+        });
+      }
+
+      const cohort = await Cohort.findById(cohortId).select("title eligibleUsers");
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+
+      // Normalise and de-duplicate, keeping the first spelling seen of each roll
+      // so the report can echo the admin's own formatting back to them.
+      const originalByKey = new Map();
+      let blankCount = 0;
+
+      rollNumbers.forEach((raw) => {
+        const text = String(raw ?? "").trim();
+        if (!text) {
+          blankCount += 1;
+          return;
+        }
+        const key = text.toLowerCase();
+        if (!originalByKey.has(key)) originalByKey.set(key, text);
+      });
+
+      const keys = [...originalByKey.keys()];
+      if (keys.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "The file contained no usable roll numbers" });
+      }
+
+      const duplicatesInFile =
+        rollNumbers.length - keys.length - blankCount;
+
+      const projection = "name email rollNumber department section graduatingYear";
+
+      // Fast path: exact match on the lower and upper case spellings.
+      const variants = keys.flatMap((key) => [key, key.toUpperCase()]);
+      let users = await User.find({ rollNumber: { $in: variants } })
+        .select(projection)
+        .lean();
+
+      const foundKeys = new Set(users.map((u) => u.rollNumber.toLowerCase()));
+      const missingKeys = keys.filter((key) => !foundKeys.has(key));
+
+      // Slow path, only for roll numbers stored in some other casing.
+      if (missingKeys.length > 0) {
+        const extra = await User.aggregate([
+          {
+            $match: {
+              $expr: { $in: [{ $toLower: "$rollNumber" }, missingKeys] },
+            },
+          },
+          {
+            $project: {
+              name: 1,
+              email: 1,
+              rollNumber: 1,
+              department: 1,
+              section: 1,
+              graduatingYear: 1,
+            },
+          },
+        ]);
+
+        users = users.concat(extra);
+        extra.forEach((u) => foundKeys.add(u.rollNumber.toLowerCase()));
+      }
+
+      const eligibleIds = new Set(
+        (cohort.eligibleUsers || []).map((id) => id.toString())
+      );
+
+      const matchedUsers = users.map((user) => ({
+        _id: user._id.toString(),
+        name: user.name || "Unknown",
+        email: user.email || "",
+        rollNumber: user.rollNumber || "",
+        department: user.department || "",
+        section: user.section || "",
+        graduatingYear: user.graduatingYear || "",
+        alreadyEligible: eligibleIds.has(user._id.toString()),
+      }));
+
+      const notFoundRollNumbers = keys
+        .filter((key) => !foundKeys.has(key))
+        .map((key) => originalByKey.get(key));
+
+      const alreadyEligible = matchedUsers.filter((u) => u.alreadyEligible);
+      const readyToAdd = matchedUsers.filter((u) => !u.alreadyEligible);
+
+      console.log(
+        `📋 Roll import for cohort ${cohortId}: ${matchedUsers.length} found, ` +
+          `${notFoundRollNumbers.length} missing, ${readyToAdd.length} addable`
+      );
+
+      res.json({
+        cohortId,
+        cohortTitle: cohort.title,
+        summary: {
+          totalProvided: rollNumbers.length,
+          uniqueProvided: keys.length,
+          blankRows: blankCount,
+          duplicatesInFile: Math.max(duplicatesInFile, 0),
+          usersFound: matchedUsers.length,
+          usersNotFound: notFoundRollNumbers.length,
+          alreadyEligible: alreadyEligible.length,
+          readyToAdd: readyToAdd.length,
+        },
+        matchedUsers,
+        notFoundRollNumbers,
+      });
+    } catch (err) {
+      console.error("Error resolving roll numbers:", err);
+      res.status(500).json({ message: "Server error", error: err.message });
+    }
+  }
+);
 
 // Get eligible users for a cohort
 router.get("/:id/eligible-users", [auth, adminAuth], async (req, res) => {

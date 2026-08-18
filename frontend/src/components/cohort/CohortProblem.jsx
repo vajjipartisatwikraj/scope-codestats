@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -70,6 +70,10 @@ import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import QuestionReport from "./QuestionReport";
 import LockIcon from "@mui/icons-material/Lock";
 import SqlResultPanel from "./SqlResultPanel";
+import ExamWindowBanner from "./ExamWindowBanner";
+import useExamGuard from "../../hooks/useExamGuard";
+import { EXAM_BAR_HEIGHT } from "./ExamSessionBar";
+import { isExamSessionSearch, withExamSession } from "../../utils/examSession";
 import {
   fetchSqlQuestionContext,
   runSqlQuery,
@@ -217,6 +221,7 @@ const LANGUAGES = {
 const CohortProblem = () => {
   const { cohortId, moduleId, questionId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { token } = useAuth();
   const { user } = useAuth();
   const { darkMode } = useAppTheme();
@@ -228,6 +233,28 @@ const CohortProblem = () => {
   const [question, setQuestion] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [language, setLanguage] = useState("cpp");
+
+  const isPrivilegedViewer =
+    user?.userType === "admin" || user?.userType === "teacher";
+
+  // Exam session tabs carry `?exam=1`, which collapses the app chrome and puts
+  // the countdown in the shell's top bar.
+  const examSession = isExamSessionSearch(location.search);
+
+  // Exam window guard.
+  //
+  // This is the screen a student is most likely to be sitting on when an exam
+  // closes, so it polls the server and evicts to the dashboard the moment the
+  // window shuts. The poll runs for every cohort because this screen does not
+  // load the cohort document: the endpoint answers `isExam: false` for practice
+  // cohorts, and the hook then does nothing.
+  //
+  // Inside an exam session the shell's guard covers the whole tab, so this one
+  // stands down to avoid a second poll and a duplicate notice.
+  const { exam: examWindow, remainingMs: examRemainingMs } = useExamGuard({
+    cohortId,
+    enabled: !isPrivilegedViewer && !examSession,
+  });
 
   // SQL question state. `sqlContext` holds the schema and sample testcases,
   // `sqlResult` the latest run or submit verdict.
@@ -530,6 +557,22 @@ const CohortProblem = () => {
       ) {
         toast.error("This cohort is not published yet");
         navigate(`/cohorts`);
+        return;
+      }
+
+      // Exam window rejections: leave the exam rather than the question, since
+      // the whole cohort is closed.
+      const examReason = error.response?.data?.reason;
+      if (examReason === "exam_ended") {
+        toast.info("The exam has ended. Your submissions have been saved.", {
+          autoClose: 6000,
+        });
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+      if (examReason === "exam_not_started") {
+        toast.info("This exam has not started yet.", { autoClose: 6000 });
+        navigate("/cohorts", { replace: true });
         return;
       }
 
@@ -1364,9 +1407,10 @@ const CohortProblem = () => {
     }
   }, [testResults]);
 
-  // Navigate back to cohort page
+  // Navigate back to cohort page, keeping the exam session flag so the chrome
+  // stays collapsed and the countdown stays on screen.
   const handleBack = () => {
-    navigate(`/cohorts/${cohortId}`);
+    navigate(withExamSession(`/cohorts/${cohortId}`, examSession));
   };
 
   // Add drag handling functions
@@ -1749,12 +1793,16 @@ const CohortProblem = () => {
     <Box
       sx={{
         position: "fixed",
-        top: 0,
+        // This screen covers the viewport, so during an exam session it starts
+        // below the countdown bar instead of underneath it.
+        top: examSession ? `${EXAM_BAR_HEIGHT}px` : 0,
         left: 0,
         right: 0,
         bottom: 0,
         width: "100vw",
-        height: "100vh",
+        height: examSession
+          ? `calc(100vh - ${EXAM_BAR_HEIGHT}px)`
+          : "100vh",
         overflow: "hidden",
         zIndex: 1200,
         m: 0,
@@ -2120,7 +2168,20 @@ const CohortProblem = () => {
                       >
                         {question.title}
                       </Typography>
-                      {renderStatusIcon()}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        {/* Live exam countdown. Suppressed inside an exam
+                            session, where the shell's top bar already shows it. */}
+                        {!examSession && (
+                          <ExamWindowBanner
+                            exam={examWindow}
+                            remainingMs={examRemainingMs}
+                            compact
+                          />
+                        )}
+                        {renderStatusIcon()}
+                      </Box>
                     </Box>
 
                     {/* Statistics bar similar to the image */}

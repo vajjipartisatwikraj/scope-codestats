@@ -78,6 +78,12 @@ import PATestResults from "./components/PracticeArena/PATestResults";
 import CohortList from "./components/cohort/CohortList";
 import CohortDetail from "./components/cohort/CohortDetail";
 import CohortProblem from "./components/cohort/CohortProblem";
+import ExamSessionHeader from "./components/cohort/ExamSessionHeader";
+import { EXAM_BAR_HEIGHT } from "./components/cohort/ExamSessionBar";
+import {
+  cohortIdFromPath,
+  isExamSessionSearch,
+} from "./utils/examSession";
 import CohortManagementTab from "./components/cohort/CohortManagementTab";
 import CohortStats from "./components/cohort/CohortStats";
 import QuestionReports from "./components/cohort/QuestionReports";
@@ -147,6 +153,16 @@ const MainContent = () => {
     /^\/cohorts\/[^/]+\/modules\/[^/]+\/questions\/[^/]+$/.test(
       location.pathname
     );
+
+  // Exam session tab: opened from the cohort list with `?exam=1`. The navbar
+  // collapses upwards and the sidebar collapses to the left, leaving a
+  // distraction-free screen with the countdown centred at the top.
+  const isExamSession =
+    isExamSessionSearch(location.search) &&
+    location.pathname.startsWith("/cohorts/");
+  const examSessionCohortId = isExamSession
+    ? cohortIdFromPath(location.pathname)
+    : null;
 
   // Check if current path is a test page
   const isTestPage = location.pathname.startsWith("/practice-arena/tests/");
@@ -226,7 +242,8 @@ const MainContent = () => {
     !isCohortProblemPage &&
     !is404Page &&
     !isTestPage &&
-    !isPublicPage;
+    !isPublicPage &&
+    !isExamSession;
 
   // Effect to open specific test page in a new tab
   useEffect(() => {
@@ -288,6 +305,13 @@ const MainContent = () => {
           backgroundColor: "transparent", // Allow theme background to show through for Liquid Glass UI
         }}
       >
+        {/* Exam session bar. Lives above the routes so the countdown survives
+            navigating between the cohort page and its questions, and so it is
+            the single owner of the tab's exam guard. */}
+        {isExamSession && examSessionCohortId && (
+          <ExamSessionHeader cohortId={examSessionCohortId} />
+        )}
+
         {/* Navigation and Main Content Wrapper */}
         <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {/* Mobile Menu Button - Hide when sidebar is open */}
@@ -340,7 +364,13 @@ const MainContent = () => {
               flexGrow: 1,
               minHeight: "auto", // Remove height constraints
               height: "auto",
-              pt: shouldShowNavigation ? { xs: 6, sm: 8 } : 0,
+              // Exam sessions have no navbar, only the slim countdown bar, so
+              // the content clears exactly that much.
+              pt: shouldShowNavigation
+                ? { xs: 6, sm: 8 }
+                : isExamSession
+                ? `${EXAM_BAR_HEIGHT}px`
+                : 0,
               transition: "all 0.25s",
               position: "relative",
               zIndex: 0,

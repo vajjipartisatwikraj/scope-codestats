@@ -57,6 +57,7 @@ import {
   Create as CreateIcon,
   ContentCopy as ContentCopyIcon,
   FileCopy as FileCopyIcon,
+  Download as DownloadIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   RateReview as RateReviewIcon,
@@ -68,6 +69,7 @@ import axios from "axios";
 import { apiUrl } from "../../config/apiConfig";
 import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
+import RollNumberCsvImport from "./RollNumberCsvImport";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
@@ -157,10 +159,17 @@ const CohortManagementTab = () => {
     documentationUrl: "",
     isActive: true,
     isDraft: true,
+    // Delivery mode. Practice is the default; exam adds a hard time window.
+    mode: "practice",
+    examStartTime: null,
+    examEndTime: null,
   });
   const [formErrors, setFormErrors] = useState({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
+  // Which cohort's report is currently being generated, so only that card's
+  // button shows a spinner.
+  const [exportingCohortId, setExportingCohortId] = useState(null);
 
   // Cleanup flag to prevent state updates after unmount
   const [isMounted, setIsMounted] = useState(true);
@@ -226,6 +235,9 @@ const CohortManagementTab = () => {
       documentationUrl: "",
       isActive: true,
       isDraft: true,
+      mode: "practice",
+      examStartTime: null,
+      examEndTime: null,
     });
     setFormErrors({});
     setOpenCreateDialog(true);
@@ -243,6 +255,10 @@ const CohortManagementTab = () => {
       documentationUrl: cohort.documentationUrl || "",
       isActive: cohort.isActive,
       isDraft: cohort.isDraft,
+      // Cohorts created before exam mode existed have no `mode` field.
+      mode: cohort.mode === "exam" ? "exam" : "practice",
+      examStartTime: cohort.examStartTime ? new Date(cohort.examStartTime) : null,
+      examEndTime: cohort.examEndTime ? new Date(cohort.examEndTime) : null,
     });
     setSelectedCohort(cohort);
     setFormErrors({});
@@ -311,6 +327,24 @@ const CohortManagementTab = () => {
       formData.startDate >= formData.endDate
     ) {
       errors.endDate = "End date must be after start date";
+    }
+
+    // Exam mode needs a complete, ordered window. The backend enforces the same
+    // rules; this only saves a round trip.
+    if (formData.mode === "exam") {
+      if (!formData.examStartTime) {
+        errors.examStartTime = "Exam start time is required";
+      }
+      if (!formData.examEndTime) {
+        errors.examEndTime = "Exam end time is required";
+      }
+      if (
+        formData.examStartTime &&
+        formData.examEndTime &&
+        formData.examStartTime >= formData.examEndTime
+      ) {
+        errors.examEndTime = "Exam end time must be after the exam start time";
+      }
     }
 
     setFormErrors(errors);
@@ -396,6 +430,49 @@ const CohortManagementTab = () => {
       toast.error(error.response?.data?.message || "Failed to save cohort");
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Downloads the exam results workbook for an exam cohort.
+   *
+   * The server builds the .xlsx, so this only has to hand the blob to the
+   * browser. Exam cohorts only — the button is not rendered for practice.
+   */
+  const handleDownloadExamReport = async (cohort) => {
+    setExportingCohortId(cohort._id);
+    try {
+      const response = await axios.get(
+        `${apiUrl}/cohorts/${cohort._id}/exam-report/export`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      // Prefer the filename the server chose; fall back to the cohort title.
+      const disposition = response.headers["content-disposition"] || "";
+      const match = /filename="?([^"]+)"?/.exec(disposition);
+      link.download =
+        match?.[1] || `${cohort.title.replace(/\s+/g, "-")}-results.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Exam report downloaded");
+    } catch (error) {
+      console.error("Error downloading exam report:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to download the exam report"
+      );
+    } finally {
+      setExportingCohortId(null);
     }
   };
 
@@ -1220,6 +1297,21 @@ const CohortManagementTab = () => {
     if (cohort.isDraft) {
       return { text: "Draft", color: "default" };
     }
+
+    // An exam cohort's status is its window, not the generic cohort dates.
+    if (cohort.mode === "exam" && cohort.examStartTime && cohort.examEndTime) {
+      const examStart = new Date(cohort.examStartTime);
+      const examEnd = new Date(cohort.examEndTime);
+
+      if (now < examStart) {
+        return { text: "Exam Scheduled", color: "info" };
+      }
+      if (now >= examEnd) {
+        return { text: "Exam Ended", color: "warning" };
+      }
+      return { text: "Exam Live", color: "success" };
+    }
+
     if (!cohort.isActive) {
       return { text: "Inactive", color: "error" };
     } else if (now < startDate) {
@@ -1415,6 +1507,22 @@ const CohortManagementTab = () => {
                               <EditIcon />
                             </IconButton>
                           </Tooltip>
+                          {cohort.mode === "exam" && (
+                            <Tooltip title="Download exam results (Excel)">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDownloadExamReport(cohort)}
+                                disabled={exportingCohortId === cohort._id}
+                                sx={{ color: "#2e7d32" }}
+                              >
+                                {exportingCohortId === cohort._id ? (
+                                  <CircularProgress size={18} />
+                                ) : (
+                                  <DownloadIcon />
+                                )}
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Tooltip title="Duplicate Cohort">
                             <IconButton
                               size="small"
@@ -1602,6 +1710,22 @@ const CohortManagementTab = () => {
                                 <EditIcon />
                               </IconButton>
                             </Tooltip>
+                            {cohort.mode === "exam" && (
+                              <Tooltip title="Download exam results (Excel)">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDownloadExamReport(cohort)}
+                                  disabled={exportingCohortId === cohort._id}
+                                  sx={{ color: "#2e7d32" }}
+                                >
+                                  {exportingCohortId === cohort._id ? (
+                                    <CircularProgress size={18} />
+                                  ) : (
+                                    <DownloadIcon />
+                                  )}
+                                </IconButton>
+                              </Tooltip>
+                            )}
                             <Tooltip title="Duplicate Cohort">
                               <IconButton
                                 size="small"
@@ -1770,6 +1894,22 @@ const CohortManagementTab = () => {
                                 <EditIcon />
                               </IconButton>
                             </Tooltip>
+                            {cohort.mode === "exam" && (
+                              <Tooltip title="Download exam results (Excel)">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDownloadExamReport(cohort)}
+                                  disabled={exportingCohortId === cohort._id}
+                                  sx={{ color: "#2e7d32" }}
+                                >
+                                  {exportingCohortId === cohort._id ? (
+                                    <CircularProgress size={18} />
+                                  ) : (
+                                    <DownloadIcon />
+                                  )}
+                                </IconButton>
+                              </Tooltip>
+                            )}
                             <Tooltip title="Duplicate Cohort">
                               <IconButton
                                 size="small"
@@ -2278,6 +2418,77 @@ const CohortManagementTab = () => {
                 </FormHelperText>
               </FormControl>
             </Grid>
+
+            {/* Delivery mode. Exam mode reveals the window inputs below. */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel id="cohort-mode-label">Cohort Type</InputLabel>
+                <Select
+                  labelId="cohort-mode-label"
+                  name="mode"
+                  value={formData.mode}
+                  onChange={handleInputChange}
+                  label="Cohort Type"
+                >
+                  <MenuItem value="practice">Practice Mode</MenuItem>
+                  <MenuItem value="exam">Exam Mode</MenuItem>
+                </Select>
+                <FormHelperText>
+                  {formData.mode === "exam"
+                    ? "Accessible only between the exam start and end times"
+                    : "Open to eligible users at any time"}
+                </FormHelperText>
+              </FormControl>
+            </Grid>
+
+            {formData.mode === "exam" && (
+              <>
+                <Grid item xs={12}>
+                  <Alert severity="info">
+                    Once published, an exam cohort is visible to every eligible
+                    user, but it can only be opened between the times below. When
+                    the exam ends the cohort becomes inactive and anyone still
+                    inside is returned to their dashboard.
+                  </Alert>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DateTimePicker
+                      label="Exam Start Time"
+                      value={formData.examStartTime}
+                      onChange={(date) => handleDateChange("examStartTime", date)}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          required: true,
+                          error: !!formErrors.examStartTime,
+                          helperText: formErrors.examStartTime,
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DateTimePicker
+                      label="Exam End Time"
+                      value={formData.examEndTime}
+                      onChange={(date) => handleDateChange("examEndTime", date)}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          required: true,
+                          error: !!formErrors.examEndTime,
+                          helperText: formErrors.examEndTime,
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
+                </Grid>
+              </>
+            )}
           </Grid>
         </DialogContent>
 
@@ -2456,9 +2667,24 @@ const CohortManagementTab = () => {
             flexDirection: "column",
             gap: 2,
             height: "80vh",
-            overflow: "hidden",
+            overflow: "auto",
           }}
         >
+          {/* Bulk import by roll number. Resolving is read-only, so the admin
+              sees who exists and who is missing before anything is added. */}
+          {selectedCohort && (
+            <Box sx={{ flexShrink: 0 }}>
+              <RollNumberCsvImport
+                cohortId={selectedCohort._id}
+                currentEligibleIds={eligibleUsers.map((u) => u._id)}
+                onUsersAdded={async () => {
+                  const refreshed = await fetchEligibleUsers(selectedCohort._id);
+                  await fetchFilteredUsers(refreshed);
+                }}
+              />
+            </Box>
+          )}
+
           {/* Filters Section */}
           <Paper sx={{ p: 2, flexShrink: 0 }}>
             <Typography variant="h6" gutterBottom>

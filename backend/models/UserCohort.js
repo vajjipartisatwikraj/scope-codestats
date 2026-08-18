@@ -31,6 +31,14 @@ const userCohortSchema = new mongoose.Schema({
   completedAt: {
     type: Date
   },
+  /**
+   * When the student ended an exam themselves via "END TEST".
+   * Set once and never cleared: the exam cannot be re-entered afterwards.
+   */
+  examSubmittedAt: {
+    type: Date,
+    default: null
+  },
   lastActiveAt: {
     type: Date,
     default: Date.now

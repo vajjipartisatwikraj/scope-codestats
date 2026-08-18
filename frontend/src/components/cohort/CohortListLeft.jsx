@@ -13,18 +13,40 @@ import {
 import { styled } from "@mui/material/styles";
 import { useTheme as useAppTheme } from "../../contexts/ThemeContext";
 import StarRateRoundedIcon from "@mui/icons-material/StarRateRounded";
+import { getExamAccent } from "../../utils/examCardTheme";
 
+/**
+ * Exam cohorts are tinted so a timed assessment is never mistaken for a practice
+ * cohort at a glance: red while it is scheduled or running, green once the window
+ * has closed. Selected state keeps a solid fill for contrast with the white card
+ * text, which is why the accents use mid-tones rather than pastels.
+ */
 const CohortCard = styled(ListItemButton, {
-  shouldForwardProp: (prop) => prop !== "isActive" && prop !== "darkMode",
-})(({ theme, isActive, darkMode }) => ({
+  shouldForwardProp: (prop) =>
+    prop !== "isActive" && prop !== "darkMode" && prop !== "examAccent",
+})(({ theme, isActive, darkMode, examAccent }) => ({
   borderRadius: "12px",
   marginBottom: "16px",
   padding: "20px",
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   cursor: "pointer",
-  background: isActive ? "#0088CC" : darkMode ? "transparent" : "#FFFFFF",
+  background: examAccent
+    ? isActive
+      ? examAccent.solid
+      : darkMode
+      ? examAccent.fillDark
+      : examAccent.fillLight
+    : isActive
+    ? "#0088CC"
+    : darkMode
+    ? "transparent"
+    : "#FFFFFF",
   border: `1px solid ${
-    isActive
+    examAccent
+      ? isActive
+        ? examAccent.solidBorder
+        : examAccent.border
+      : isActive
       ? "#0077b6"
       : darkMode
       ? "rgba(255, 255, 255, 0.1)"
@@ -47,7 +69,7 @@ const CohortCard = styled(ListItemButton, {
         right: -100,
         width: "300px",
         height: "300px",
-        background: "rgba(30, 111, 169, 0.65)",
+        background: examAccent ? examAccent.glow : "rgba(30, 111, 169, 0.65)",
         filter: "blur(100px)",
         borderRadius: "50%",
         pointerEvents: "none",
@@ -55,7 +77,13 @@ const CohortCard = styled(ListItemButton, {
       }
     : {},
   "&:hover": {
-    backgroundColor: isActive
+    backgroundColor: examAccent
+      ? isActive
+        ? examAccent.solidHover
+        : darkMode
+        ? examAccent.hoverDark
+        : examAccent.hoverLight
+      : isActive
       ? "#006699"
       : darkMode
       ? "rgba(255, 255, 255, 0.05)"
@@ -69,7 +97,11 @@ const CohortCard = styled(ListItemButton, {
       : "0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)",
     transform: "translateY(-3px)",
     border: `1px solid ${
-      isActive
+      examAccent
+        ? isActive
+          ? examAccent.solidBorder
+          : examAccent.borderHover
+        : isActive
         ? "#005580"
         : darkMode
         ? "rgba(255, 255, 255, 0.2)"
@@ -90,12 +122,16 @@ const CohortListLeft = ({
   // Function to render individual cohort card
   const renderCohortCard = (cohort) => {
     const isActive = selectedCohortId === cohort._id;
+    // Red while an exam is scheduled or running, green once it has finished,
+    // null for practice cohorts.
+    const examAccent = getExamAccent(cohort);
 
     return (
       <CohortCard
         key={cohort._id}
         isActive={isActive}
         darkMode={darkMode}
+        examAccent={examAccent}
         onClick={() => handleCohortClick(cohort)}
         sx={
           {
@@ -186,8 +222,14 @@ const CohortListLeft = ({
               >
                 <Box
                   sx={{
-                    bgcolor: isActive ? "rgba(255, 255, 255, 0.2)" : "#0088CC",
-                    color: isActive ? "white" : "white",
+                    // The rating badge follows the card's accent so a blue chip
+                    // never sits on a red exam card.
+                    bgcolor: isActive
+                      ? "rgba(255, 255, 255, 0.2)"
+                      : examAccent
+                      ? examAccent.solid
+                      : "#0088CC",
+                    color: "white",
                     borderRadius: "4px",
                     px: 1,
                     py: 0.2,

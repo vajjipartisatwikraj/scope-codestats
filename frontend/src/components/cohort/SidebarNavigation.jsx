@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Box,
   List,
@@ -12,6 +12,7 @@ import {
   Chip,
 } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -24,10 +25,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import { apiUrl } from '../../config/apiConfig';
 import { toast } from 'react-toastify';
+import { isExamSessionSearch, withExamSession } from '../../utils/examSession';
 
 const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemList }) => {
   const navigate = useNavigate();
   const { cohortId, moduleId, questionId } = useParams();
+  const location = useLocation();
+
+  // Every question hop keeps the exam session flag, so the collapsed chrome and
+  // the countdown persist while moving through the paper.
+  const examSession = isExamSessionSearch(location.search);
   const { toggleTheme } = useTheme();
   const { token } = useAuth();
   
@@ -79,6 +86,14 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
   const handleNavigateToHome = () => {
     navigate('/dashboard');
   };
+
+  /**
+   * Back to the cohort's module and question list, in the same tab so the exam
+   * keeps its fullscreen context.
+   */
+  const handleBackToCohort = () => {
+    navigate(withExamSession(`/cohorts/${cohortId}`, examSession));
+  };
   
   const handleNavigateToPreviousQuestion = () => {
     if (loading || currentQuestionIndex <= 0) return;
@@ -87,7 +102,12 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
     const prevIndex = currentQuestionIndex - 1;
     if (prevIndex >= 0 && moduleQuestions[prevIndex]) {
       const prevQuestionId = moduleQuestions[prevIndex]._id;
-      navigate(`/cohorts/${cohortId}/modules/${moduleId}/questions/${prevQuestionId}`);
+      navigate(
+        withExamSession(
+          `/cohorts/${cohortId}/modules/${moduleId}/questions/${prevQuestionId}`,
+          examSession
+        )
+      );
       toast.info("Navigating to previous question");
     }
   };
@@ -99,7 +119,12 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
     const nextIndex = currentQuestionIndex + 1;
     if (nextIndex < moduleQuestions.length && moduleQuestions[nextIndex]) {
       const nextQuestionId = moduleQuestions[nextIndex]._id;
-      navigate(`/cohorts/${cohortId}/modules/${moduleId}/questions/${nextQuestionId}`);
+      navigate(
+        withExamSession(
+          `/cohorts/${cohortId}/modules/${moduleId}/questions/${nextQuestionId}`,
+          examSession
+        )
+      );
       toast.info("Navigating to next question");
     }
   };
@@ -149,7 +174,12 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
   const handleSelectQuestion = (q) => {
     if (onCloseProblemList) onCloseProblemList();
     if (q._id !== questionId) {
-      navigate(`/cohorts/${cohortId}/modules/${moduleId}/questions/${q._id}`);
+      navigate(
+        withExamSession(
+          `/cohorts/${cohortId}/modules/${moduleId}/questions/${q._id}`,
+          examSession
+        )
+      );
     }
   };
 
@@ -212,12 +242,18 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
           />
         </Box>
         
-        {/* Navigation Menu - Just Home icon with premium rounded style */}
+        {/* Navigation Menu.
+            During an exam this is a Back button to the module list rather than a
+            Home button: leaving for the dashboard mid-exam is not a useful
+            action, and it stays in the same tab so fullscreen is preserved. */}
         <List>
           <ListItem sx={{ display: 'flex', justifyContent: 'center', mb: 2, p: 0.5 }}>
-            <Tooltip title="Home" placement="right">
+            <Tooltip
+              title={examSession ? 'Back to questions' : 'Home'}
+              placement="right"
+            >
               <IconButton
-                onClick={handleNavigateToHome}
+                onClick={examSession ? handleBackToCohort : handleNavigateToHome}
                 sx={{
                   width: 36,
                   height: 36,
@@ -230,7 +266,11 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
                   }
                 }}
               >
-                <HomeIcon sx={{ fontSize: 18 }} />
+                {examSession ? (
+                  <ArrowBackIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <HomeIcon sx={{ fontSize: 18 }} />
+                )}
               </IconButton>
             </Tooltip>
           </ListItem>

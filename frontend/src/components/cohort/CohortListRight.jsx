@@ -27,6 +27,17 @@ import axios from "axios";
 import { apiUrl } from "../../config/apiConfig";
 import { useAuth } from "../../contexts/AuthContext";
 
+import { getExamAccent } from "../../utils/examCardTheme";
+
+/** Short, locale-aware timestamp for exam window chips. */
+const formatExamMoment = (iso) =>
+  iso
+    ? new Date(iso).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "--";
+
 const CohortListRight = ({
   selectedCohort,
   hasActiveFilters = false,
@@ -110,6 +121,41 @@ const CohortListRight = ({
     });
   };
 
+  // Exam scheduling, evaluated by the server and sent with the list payload.
+  // `examWindow` is absent for practice cohorts, so `examState` doubles as the
+  // "is this an exam" flag.
+  const examWindow = selectedCohort?.examWindow?.isExam
+    ? selectedCohort.examWindow
+    : null;
+  const examState = examWindow?.state || null;
+  // Ending the test is final, so a submitted exam can never be reopened.
+  const examSubmitted = Boolean(selectedCohort?.examSubmitted);
+  const examOpen =
+    (examState === null || examState === "open") && !examSubmitted;
+
+  // Panel accent: matches the list card exactly (red until the exam finishes,
+  // green afterwards, none for practice).
+  const examAccent = getExamAccent(selectedCohort);
+
+  // Chip colours follow the card accent: red until the exam is over, green once
+  // it is complete.
+  const examChip = (() => {
+    if (examSubmitted) return { label: "Test submitted", color: "success" };
+
+    switch (examState) {
+      case "open":
+        return { label: "Exam live", color: "error" };
+      case "not_started":
+        return { label: "Exam scheduled", color: "error" };
+      case "ended":
+        return { label: "Exam completed", color: "success" };
+      case "misconfigured":
+        return { label: "Exam not scheduled", color: "error" };
+      default:
+        return { label: "", color: "default" };
+    }
+  })();
+
   // Simple helper functions using the progress data
   const isUserEnrolled = () => progress.isEnrolled;
   const getProgressPercentage = () => progress.progressPercentage;
@@ -118,14 +164,21 @@ const CohortListRight = ({
   const handleStartLearning = async () => {
     if (!selectedCohort || !selectedCohort._id) return;
 
-    if (isUserEnrolled()) {
-      // User is already enrolled, navigate to cohort page
-      navigate(`/cohorts/${selectedCohort._id}`);
-    } else {
-      // User needs to enroll first - you might want to add enrollment API call here
-      // For now, just navigate to cohort page where they can enroll
-      navigate(`/cohorts/${selectedCohort._id}`);
+    // Exams open in their own tab, flagged with `?exam=1` so the app shell
+    // renders the distraction-free exam chrome from the very first paint: no
+    // navbar, no sidebar, just the question and the countdown. The list stays
+    // open in the original tab.
+    if (examWindow) {
+      const examUrl = `/cohorts/${selectedCohort._id}?exam=1`;
+      const examTab = window.open(examUrl, "_blank", "noopener");
+
+      // Popup blockers return null; fall back to navigating in place rather
+      // than leaving the click with no effect at all.
+      if (!examTab) navigate(examUrl);
+      return;
     }
+
+    navigate(`/cohorts/${selectedCohort._id}`);
   };
 
   // Use the reviews data instead of selectedCohort.feedbacks for the Reviews tab
@@ -229,12 +282,24 @@ const CohortListRight = ({
     <Box
       sx={{
         height: "80vh", // Fixed height
+        // Exam cohorts carry the same accent as their list card: red while the
+        // exam is scheduled or live, green once it has finished.
         border: `1px solid ${
-          darkMode ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.12)"
+          examAccent
+            ? examAccent.border
+            : darkMode
+            ? "rgba(255, 255, 255, 0.12)"
+            : "rgba(0, 0, 0, 0.12)"
         }`,
         display: "flex",
         flexDirection: "column",
-        bgcolor: darkMode ? "transparent" : "#FFFFFF",
+        bgcolor: examAccent
+          ? darkMode
+            ? examAccent.fillDark
+            : examAccent.fillLight
+          : darkMode
+          ? "transparent"
+          : "#FFFFFF",
         color: darkMode ? "#FFFFFF" : "#0F0F0F",
         borderRadius: "12px",
         px: 3,
@@ -252,7 +317,11 @@ const CohortListRight = ({
             ? "0 6px 16px rgba(0, 0, 0, 0.4), 0 3px 8px rgba(0, 0, 0, 0.3)"
             : "0 6px 16px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.06)",
           border: `1px solid ${
-            darkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 136, 204, 0.2)"
+            examAccent
+              ? examAccent.borderHover
+              : darkMode
+              ? "rgba(255, 255, 255, 0.2)"
+              : "rgba(0, 136, 204, 0.2)"
           }`,
         },
       }}
@@ -279,7 +348,10 @@ const CohortListRight = ({
             style={{ position: "absolute", top: 0, left: 0, opacity: 1 }}
           >
             <g opacity="0.9" filter="url(#filter0_f_255_604)">
-              <path d="M697.5 -237L26 194L714 268L697.5 -237Z" fill="#1580CC" />
+              <path
+                d="M697.5 -237L26 194L714 268L697.5 -237Z"
+                fill={examAccent ? examAccent.glowHex : "#1580CC"}
+              />
               <path d="M697.5 -237L26 194L714 268L697.5 -237Z" stroke="black" />
             </g>
             <defs>
@@ -315,7 +387,7 @@ const CohortListRight = ({
         component="h1"
         sx={{
           fontWeight: 700,
-          mb: 2,
+          mb: examState ? 1 : 2,
           mt: 2,
           fontSize: "2rem",
           color: darkMode ? "#FFFFFF" : "#666666",
@@ -323,6 +395,29 @@ const CohortListRight = ({
       >
         {selectedCohort.title || "Object Oriented Programming"}
       </Typography>
+
+      {/* Exam schedule. Published exams are listed before they open and after
+          they close, so the state has to be spelled out here. */}
+      {examState && (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+          <Chip
+            size="small"
+            label={examChip.label}
+            color={examChip.color}
+            variant={examChip.color === "default" ? "outlined" : "filled"}
+            sx={{ fontWeight: 600 }}
+          />
+          {examWindow?.startsAt && examWindow?.endsAt && (
+            <Chip
+              size="small"
+              variant="outlined"
+              label={`${formatExamMoment(examWindow.startsAt)} → ${formatExamMoment(
+                examWindow.endsAt
+              )}`}
+            />
+          )}
+        </Box>
+      )}
 
       {/* Cohort Description */}
       <Typography
@@ -867,6 +962,9 @@ const CohortListRight = ({
             variant="contained"
             onClick={handleStartLearning}
             endIcon={<ArrowForwardIcon />}
+            // Outside its window an exam cannot be opened. The server enforces
+            // this too; disabling the button just avoids a pointless round trip.
+            disabled={!examOpen}
             sx={{
               bgcolor: "#0088CC",
               color: "white",
@@ -881,7 +979,19 @@ const CohortListRight = ({
               },
             }}
           >
-            {isUserEnrolled() ? "Start Learning" : "Enroll Now"}
+            {examSubmitted
+              ? "Test Submitted"
+              : examState === "not_started"
+              ? "Exam Not Started"
+              : examState === "ended"
+              ? "Exam Completed"
+              : examState === "misconfigured"
+              ? "Unavailable"
+              : examWindow
+              ? "Start"
+              : isUserEnrolled()
+              ? "Start Learning"
+              : "Start"}
           </Button>
         </Box>
       </Box>
