@@ -163,6 +163,8 @@ const CohortManagementTab = () => {
     mode: "practice",
     examStartTime: null,
     examEndTime: null,
+    // Blank means the attempt simply runs to the exam end time.
+    examDurationMinutes: "",
   });
   const [formErrors, setFormErrors] = useState({});
   const [isEditMode, setIsEditMode] = useState(false);
@@ -238,6 +240,7 @@ const CohortManagementTab = () => {
       mode: "practice",
       examStartTime: null,
       examEndTime: null,
+      examDurationMinutes: "",
     });
     setFormErrors({});
     setOpenCreateDialog(true);
@@ -259,6 +262,7 @@ const CohortManagementTab = () => {
       mode: cohort.mode === "exam" ? "exam" : "practice",
       examStartTime: cohort.examStartTime ? new Date(cohort.examStartTime) : null,
       examEndTime: cohort.examEndTime ? new Date(cohort.examEndTime) : null,
+      examDurationMinutes: cohort.examDurationMinutes ?? "",
     });
     setSelectedCohort(cohort);
     setFormErrors({});
@@ -344,6 +348,27 @@ const CohortManagementTab = () => {
         formData.examStartTime >= formData.examEndTime
       ) {
         errors.examEndTime = "Exam end time must be after the exam start time";
+      }
+
+      // Duration is optional. When given it must be a whole number of minutes
+      // that fits inside the window, since nobody could ever use more than that.
+      const rawDuration = String(formData.examDurationMinutes ?? "").trim();
+      if (rawDuration !== "") {
+        const duration = Number(rawDuration);
+
+        if (!Number.isInteger(duration) || duration < 1) {
+          errors.examDurationMinutes =
+            "Enter a whole number of minutes, at least 1";
+        } else if (duration > 1440) {
+          errors.examDurationMinutes = "Duration cannot exceed 24 hours";
+        } else if (formData.examStartTime && formData.examEndTime) {
+          const windowMinutes = Math.floor(
+            (formData.examEndTime - formData.examStartTime) / 60000
+          );
+          if (duration > windowMinutes) {
+            errors.examDurationMinutes = `Longer than the exam window (${windowMinutes} min)`;
+          }
+        }
       }
     }
 
@@ -1306,8 +1331,10 @@ const CohortManagementTab = () => {
       if (now < examStart) {
         return { text: "Exam Scheduled", color: "info" };
       }
+      // Past the end time nobody new can join, though attempts already running
+      // continue to their own deadlines.
       if (now >= examEnd) {
-        return { text: "Exam Ended", color: "warning" };
+        return { text: "Joining Closed", color: "warning" };
       }
       return { text: "Exam Live", color: "success" };
     }
@@ -2446,9 +2473,28 @@ const CohortManagementTab = () => {
                 <Grid item xs={12}>
                   <Alert severity="info">
                     Once published, an exam cohort is visible to every eligible
-                    user, but it can only be opened between the times below. When
-                    the exam ends the cohort becomes inactive and anyone still
-                    inside is returned to their dashboard.
+                    user, but it can only be <strong>started</strong> between the
+                    times below.
+                    {String(formData.examDurationMinutes ?? "").trim() === "" ? (
+                      <>
+                        {" "}
+                        With no duration set, everyone works until the exam end
+                        time and stops together.
+                      </>
+                    ) : (
+                      <>
+                        {" "}
+                        With a duration set, each student gets{" "}
+                        <strong>
+                          {formData.examDurationMinutes} minutes
+                        </strong>{" "}
+                        of their own from the moment they start. A student who
+                        starts late keeps their full time even if it runs past the
+                        end time; once the end time passes, nobody new can start.
+                      </>
+                    )}{" "}
+                    When a student&apos;s time runs out their exam is submitted
+                    automatically.
                   </Alert>
                 </Grid>
 
@@ -2487,6 +2533,51 @@ const CohortManagementTab = () => {
                     />
                   </LocalizationProvider>
                 </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Time Allowed Per Student (minutes)"
+                    name="examDurationMinutes"
+                    type="number"
+                    value={formData.examDurationMinutes}
+                    onChange={handleInputChange}
+                    fullWidth
+                    inputProps={{ min: 1, max: 1440, step: 1 }}
+                    placeholder="e.g. 120"
+                    error={!!formErrors.examDurationMinutes}
+                    helperText={
+                      formErrors.examDurationMinutes ||
+                      "Leave blank to let everyone work until the exam end time"
+                    }
+                  />
+                </Grid>
+
+                {/* Worked example, so the two clocks are unambiguous. */}
+                {formData.examStartTime &&
+                  formData.examEndTime &&
+                  String(formData.examDurationMinutes ?? "").trim() !== "" && (
+                    <Grid item xs={12} sm={6}>
+                      <Alert severity="success" sx={{ height: "100%" }}>
+                        <Typography variant="body2">
+                          Students may start any time between{" "}
+                          <strong>
+                            {formData.examStartTime.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </strong>{" "}
+                          and{" "}
+                          <strong>
+                            {formData.examEndTime.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </strong>
+                          , and each gets {formData.examDurationMinutes} minutes.
+                        </Typography>
+                      </Alert>
+                    </Grid>
+                  )}
               </>
             )}
           </Grid>

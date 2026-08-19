@@ -24,8 +24,11 @@ const { runWithOptionalTransaction } = require("../utils/mongoTransaction");
 const {
   EXAM_MODE,
   EXAM_STATE,
+  ATTEMPT_STATE,
   getExamWindow,
+  getExamAttempt,
   getExamAccessDenial,
+  computeAttemptDeadline,
 } = require("../utils/examAccess");
 const examLifecycle = require("../services/examLifecycleService");
 const cohortProctorService = require("../services/cohortProctorService");
@@ -60,22 +63,64 @@ async function getRelatedCohorts(cohortId) {
 // HELPER FUNCTION: Exam window gate
 // ============================================================================
 /**
- * Rejects a student request when the cohort is an exam that is not currently
- * open, and answers the response itself.
+ * Rejects a student request when their exam attempt is not currently live, and
+ * answers the response itself.
  *
- * Every content and execution route funnels through this so the window cannot
- * be bypassed by hitting a route directly. Admins and teachers pass through.
+ * Every content and execution route funnels through this, so neither the joining
+ * window nor a personal deadline can be bypassed by hitting a route directly.
+ * Admins and teachers pass through.
  *
+ * The student's enrollment carries the attempt clock, so it is loaded here unless
+ * the caller already has it. That keeps every call site to a single line.
+ *
+ * @param {object} res
+ * @param {object} cohort
+ * @param {object} [options]
+ * @param {boolean} [options.isPrivileged]
+ * @param {boolean} [options.allowBeforeStart]
+ * @param {string}  [options.userId]      required for exam cohorts unless
+ *   `enrollment` is supplied
+ * @param {object|null} [options.enrollment]  already-loaded UserCohort row
  * @returns {Promise<boolean>} true when the response has already been sent.
  */
 async function blockedByExamWindow(res, cohort, options = {}) {
-  const { isPrivileged = false, allowBeforeStart = false } = options;
+  const {
+    isPrivileged = false,
+    allowBeforeStart = false,
+    userId = null,
+    enrollment: providedEnrollment,
+  } = options;
 
-  const denial = getExamAccessDenial(cohort, { isPrivileged, allowBeforeStart });
+  if (isPrivileged) return false;
+  if (!cohort || cohort.mode !== EXAM_MODE) return false;
+
+  const enrollment =
+    providedEnrollment !== undefined
+      ? providedEnrollment
+      : userId
+      ? await UserCohort.findOne({ user: userId, cohort: cohort._id }).select(
+          "examAttemptStartedAt examDeadlineAt examSubmittedAt examSubmitReason user"
+        )
+      : null;
+
+  const denial = getExamAccessDenial(cohort, {
+    enrollment,
+    isPrivileged,
+    allowBeforeStart,
+  });
   if (!denial) return false;
 
-  // An ended exam also drops out of the active state, so listings and
-  // dashboards agree with what this gate just decided.
+  // A deadline that has passed is finalised here, so "time up" is recorded at the
+  // first request after it rather than waiting for the sweeper.
+  if (denial.body.reason === "exam_time_up" && enrollment) {
+    await examLifecycle
+      .autoSubmitIfExpired(cohort, enrollment)
+      .catch((err) => console.error("Exam auto-submit failed:", err.message));
+  }
+
+  // A closed window also drops the cohort out of the active state, so listings
+  // and dashboards agree with what this gate just decided. Skipped while any
+  // attempt is still running, which the service checks.
   if (denial.body.reason === "exam_ended") {
     await examLifecycle
       .deactivateIfEnded(cohort)
@@ -86,29 +131,79 @@ async function blockedByExamWindow(res, cohort, options = {}) {
   return true;
 }
 
-/** Fields the client needs to render exam state on cards and banners. */
-const EXAM_LIST_FIELDS = "mode examStartTime examEndTime";
-
-/** Standard refusal once a student has ended their own exam. */
-const EXAM_SUBMITTED_RESPONSE = {
-  message: "You have already ended this exam",
-  reason: "exam_submitted",
-  error: "EXAM_SUBMITTED",
-};
-
 /**
- * True when this student has already ended the exam themselves.
+ * Starts a student's attempt if it has not begun, stamping the anchor and the
+ * personal deadline.
  *
- * Ending is final, so this closes the cohort for them even while the window is
- * still open for everyone else.
+ * Idempotent, and the write is conditional on `examAttemptStartedAt` still being
+ * null, so two concurrent requests cannot produce two different deadlines.
+ *
+ * @returns {Promise<object|null>} the enrollment, or null when not applicable
  */
-async function hasSubmittedExam(userId, cohortId) {
+async function ensureExamAttemptStarted(cohort, userId) {
+  if (!cohort || cohort.mode !== EXAM_MODE) return null;
+
   const enrollment = await UserCohort.findOne({
     user: userId,
-    cohort: cohortId,
-  }).select("examSubmittedAt");
+    cohort: cohort._id,
+  });
+  if (!enrollment) return null;
+  if (enrollment.examSubmittedAt) return enrollment;
+  if (enrollment.examAttemptStartedAt) return enrollment;
 
-  return Boolean(enrollment?.examSubmittedAt);
+  const startedAt = new Date();
+  const deadlineAt = computeAttemptDeadline(cohort, startedAt);
+
+  const updated = await UserCohort.findOneAndUpdate(
+    { _id: enrollment._id, examAttemptStartedAt: null },
+    { $set: { examAttemptStartedAt: startedAt, examDeadlineAt: deadlineAt } },
+    { new: true }
+  );
+
+  // A concurrent request won the race; its stamp is the one that counts.
+  const result = updated || (await UserCohort.findById(enrollment._id));
+
+  console.log(
+    `⏳ Exam attempt started for user ${userId} in cohort ${cohort._id}, ` +
+      `deadline ${result?.examDeadlineAt?.toISOString?.() || "n/a"}`
+  );
+
+  return result;
+}
+
+/** Fields the client needs to render exam state on cards and banners. */
+const EXAM_LIST_FIELDS = "mode examStartTime examEndTime examDurationMinutes";
+
+/** Attempt fields needed to evaluate a student's personal clock. */
+const ATTEMPT_FIELDS =
+  "examAttemptStartedAt examDeadlineAt examSubmittedAt examSubmitReason";
+
+/**
+ * Parses the optional per-student exam duration.
+ *
+ * @returns {{value?: number|null, error?: object}}
+ */
+function parseExamDuration(raw) {
+  if (raw === undefined || raw === null || raw === "") return { value: null };
+
+  const minutes = Number(raw);
+  if (!Number.isInteger(minutes) || minutes < 1) {
+    return {
+      error: {
+        message: "Exam duration must be a whole number of minutes, at least 1",
+        field: "examDurationMinutes",
+      },
+    };
+  }
+  if (minutes > 1440) {
+    return {
+      error: {
+        message: "Exam duration cannot exceed 24 hours",
+        field: "examDurationMinutes",
+      },
+    };
+  }
+  return { value: minutes };
 }
 
 /**
@@ -121,7 +216,7 @@ async function hasSubmittedExam(userId, cohortId) {
  * @param {{mode?: string, examStartTime?: any, examEndTime?: any}} input
  */
 function parseExamModeInput(input = {}) {
-  const { mode, examStartTime, examEndTime } = input;
+  const { mode, examStartTime, examEndTime, examDurationMinutes } = input;
 
   if (mode === undefined) return { values: {} };
 
@@ -137,7 +232,12 @@ function parseExamModeInput(input = {}) {
 
   if (normalized !== EXAM_MODE) {
     return {
-      values: { mode: "practice", examStartTime: null, examEndTime: null },
+      values: {
+        mode: "practice",
+        examStartTime: null,
+        examEndTime: null,
+        examDurationMinutes: null,
+      },
     };
   }
 
@@ -169,7 +269,31 @@ function parseExamModeInput(input = {}) {
     };
   }
 
-  return { values: { mode: EXAM_MODE, examStartTime: start, examEndTime: end } };
+  const duration = parseExamDuration(examDurationMinutes);
+  if (duration.error) return { error: duration.error };
+
+  // A duration longer than the window itself would mean nobody could ever use it
+  // all, which is almost always a typo.
+  const windowMinutes = Math.floor((end - start) / 60000);
+  if (duration.value !== null && duration.value > windowMinutes) {
+    return {
+      error: {
+        message:
+          `Exam duration (${duration.value} min) cannot exceed the exam window ` +
+          `(${windowMinutes} min). Widen the window or shorten the duration.`,
+        field: "examDurationMinutes",
+      },
+    };
+  }
+
+  return {
+    values: {
+      mode: EXAM_MODE,
+      examStartTime: start,
+      examEndTime: end,
+      examDurationMinutes: duration.value,
+    },
+  };
 }
 
 // Get all cohorts (admin view) - OPTIMIZED with minimal data
@@ -225,7 +349,7 @@ router.get("/", auth, async (req, res) => {
 
     // Get the user's cohort progress - only essential fields
     const userCohorts = await UserCohort.find({ user: userId })
-      .select("cohort status totalScore rank examSubmittedAt")
+      .select(`cohort status totalScore rank ${ATTEMPT_FIELDS}`)
       .lean();
 
     // Combine the data
@@ -236,11 +360,12 @@ router.get("/", auth, async (req, res) => {
 
       return {
         ...cohort,
-        // Server-evaluated window: the card renders from this instead of
-        // comparing the exam times against the browser clock.
-        examWindow: getExamWindow(cohort),
-        // This student ended their own test, so the exam is over for them even
-        // if the window is still open for everyone else.
+        // Server-evaluated attempt state: the card renders from this instead of
+        // comparing exam times against the browser clock. Includes this student's
+        // own deadline when their attempt is running.
+        examWindow: getExamAttempt(cohort, userCohort),
+        // The exam is over for this student — by their hand or their clock — even
+        // if the joining window is still open for everyone else.
         examSubmitted: Boolean(userCohort?.examSubmittedAt),
         userProgress: userCohort
           ? {
@@ -299,31 +424,41 @@ router.get("/:id/exam-status", auth, async (req, res) => {
       }
     }
 
-    const window = getExamWindow(cohort);
+    // The attempt clock lives on the enrollment, so the heartbeat reports this
+    // student's own deadline rather than the cohort-wide one.
+    const enrollment =
+      !isPrivileged && cohort.mode === EXAM_MODE
+        ? await UserCohort.findOne({ user: req.user.id, cohort: cohortId })
+        : null;
 
-    // Keep the stored state honest even if the sweeper has not fired yet.
-    if (window.state === EXAM_STATE.ENDED) {
+    // A deadline that has already passed is finalised here, so a student whose
+    // tab was asleep is submitted the moment it wakes up.
+    if (enrollment) {
+      await examLifecycle
+        .autoSubmitIfExpired(cohort, enrollment)
+        .catch((err) => console.error("Exam auto-submit failed:", err.message));
+    }
+
+    const attempt = getExamAttempt(cohort, enrollment);
+
+    // Keep the stored cohort state honest even if the sweeper has not fired yet.
+    // Skipped while an attempt is still running, which the service checks.
+    if (attempt.state === EXAM_STATE.ENDED) {
       await examLifecycle
         .deactivateIfEnded(cohort)
         .catch((err) => console.error("Exam deactivation failed:", err.message));
     }
 
-    const denial = getExamAccessDenial(cohort, { isPrivileged });
-
-    // A student who ended the test is finished, even mid-window.
-    const submitted =
-      !isPrivileged && window.isExam
-        ? await hasSubmittedExam(req.user.id, cohortId)
-        : false;
+    const denial = getExamAccessDenial(cohort, { enrollment, isPrivileged });
 
     res.json({
       cohortId,
       title: cohort.title,
       isPrivileged,
-      submitted,
-      accessible: denial === null && !submitted,
-      reason: submitted ? "exam_submitted" : denial?.body.reason ?? null,
-      exam: window,
+      submitted: attempt.attemptState === ATTEMPT_STATE.SUBMITTED,
+      accessible: denial === null,
+      reason: denial?.body.reason ?? null,
+      exam: attempt,
     });
   } catch (err) {
     console.error("Error fetching exam status:", err);
@@ -448,6 +583,75 @@ router.get("/:id/exam-report/export", [auth, adminAuth], async (req, res) => {
 });
 
 /**
+ * START ATTEMPT — begins this student's personal exam clock.
+ *
+ * Idempotent, and the same work happens automatically when the cohort is opened,
+ * so this exists mainly so the exam screen can start the clock and read back the
+ * exact deadline in one call.
+ *
+ * The deadline is `now + examDurationMinutes` when a duration is configured, and
+ * the cohort's `examEndTime` otherwise. It is stored on the enrollment, so
+ * reloading, re-opening, or an admin editing the duration later cannot change it.
+ */
+router.post("/:id/exam/start", auth, async (req, res) => {
+  try {
+    const cohortId = req.params.id;
+    const userId = req.user.id;
+
+    const cohort = await Cohort.findById(cohortId).select(
+      `title isDraft eligibleUsers ${EXAM_LIST_FIELDS}`
+    );
+    if (!cohort) {
+      return res.status(404).json({ message: "Cohort not found" });
+    }
+    if (cohort.mode !== EXAM_MODE) {
+      return res
+        .status(400)
+        .json({ message: "This cohort is not an exam", reason: "not_an_exam" });
+    }
+
+    const isPrivileged = isAdminOrTeacher(req.user);
+
+    // Admins previewing an exam get no clock and no stored attempt.
+    if (isPrivileged) {
+      return res.json({
+        started: false,
+        reason: "privileged",
+        exam: getExamAttempt(cohort, null),
+      });
+    }
+
+    let enrollment = await UserCohort.findOne({ user: userId, cohort: cohortId });
+    if (!enrollment) {
+      return res
+        .status(403)
+        .json({ message: "Not enrolled in this cohort", reason: "not_enrolled" });
+    }
+
+    // Refuse to start outside the joining window, or to restart a finished exam.
+    // An attempt already running passes through and simply reports its deadline.
+    if (
+      await blockedByExamWindow(res, cohort, {
+        isPrivileged: false,
+        enrollment,
+      })
+    ) {
+      return;
+    }
+
+    enrollment = (await ensureExamAttemptStarted(cohort, userId)) || enrollment;
+
+    res.json({
+      started: true,
+      exam: getExamAttempt(cohort, enrollment),
+    });
+  } catch (err) {
+    console.error("Error starting exam attempt:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+/**
  * END TEST — the student finishes their own exam.
  *
  * Everything they submitted is already recorded, so this only records that they
@@ -483,6 +687,7 @@ router.post("/:id/exam/finish", auth, async (req, res) => {
 
     if (!enrollment.examSubmittedAt) {
       enrollment.examSubmittedAt = new Date();
+      enrollment.examSubmitReason = "manual";
       enrollment.status = "completed";
       enrollment.completedAt = enrollment.examSubmittedAt;
       await enrollment.save();
@@ -505,6 +710,7 @@ router.post("/:id/exam/finish", auth, async (req, res) => {
     res.json({
       message: "Exam submitted",
       examSubmittedAt: enrollment.examSubmittedAt,
+      examSubmitReason: enrollment.examSubmitReason,
       totalScore: enrollment.totalScore,
     });
   } catch (err) {
@@ -607,19 +813,25 @@ router.get("/:id", auth, async (req, res) => {
         });
       }
 
-      // Exam cohorts open only inside their window.
-      if (await blockedByExamWindow(res, cohortExists, { isPrivileged: false })) {
+      // The gate covers all of it: before the window, after it without having
+      // started, a personal deadline that has passed, and an exam already ended.
+      if (await blockedByExamWindow(res, cohortExists, {
+        isPrivileged: false,
+        userId: req.user.id,
+      })) {
         return;
       }
 
-      // Ending the test is final: no re-entry, even while the window is open.
       if (cohortExists.mode === EXAM_MODE) {
-        if (await hasSubmittedExam(userId, cohortId)) {
-          return res.status(403).json(EXAM_SUBMITTED_RESPONSE);
-        }
+        // Opening the cohort is what starts the personal clock. Doing it here
+        // rather than trusting a client call means a student cannot dodge the
+        // timer by skipping the exam screen and going straight to a question.
+        await ensureExamAttemptStarted(cohortExists, userId).catch((err) =>
+          console.error("Exam attempt start failed:", err.message)
+        );
 
-        // Opening the cohort during the window counts as attending. Recorded
-        // fire-and-forget so proctoring can never block the exam itself.
+        // Opening the cohort during the window also counts as attending.
+        // Recorded fire-and-forget so proctoring can never block the exam.
         cohortProctorService
           .recordExamEntry(cohortExists, userId)
           .catch((err) =>
@@ -655,7 +867,9 @@ router.get("/:id", auth, async (req, res) => {
       user: userId,
       cohort: cohortId,
     })
-      .select("status totalScore rank moduleProgress questionProgress")
+      .select(
+        `status totalScore rank moduleProgress questionProgress ${ATTEMPT_FIELDS}`
+      )
       .lean();
 
     // Get cohort leaderboard excluding admin and teacher users
@@ -695,8 +909,9 @@ router.get("/:id", auth, async (req, res) => {
     const result = {
       ...cohort,
       modules,
-      // Drives the countdown banner and the client-side exam guard.
-      examWindow: getExamWindow(cohort),
+      // Drives the countdown banner and the client-side exam guard. Reflects this
+      // student's own deadline once their attempt has begun.
+      examWindow: getExamAttempt(cohort, userCohort),
       userProgress: userCohort
         ? {
             status: userCohort.status,
@@ -802,7 +1017,10 @@ router.get("/:id/modules", auth, async (req, res) => {
       });
     }
 
-    if (await blockedByExamWindow(res, cohortExists, { isPrivileged: false })) {
+    if (await blockedByExamWindow(res, cohortExists, {
+        isPrivileged: false,
+        userId: req.user.id,
+      })) {
       return;
     }
 
@@ -858,7 +1076,10 @@ router.get("/:id/modules/:moduleId", auth, async (req, res) => {
         .json({ message: "Cohort not found or not eligible" });
     }
 
-    if (await blockedByExamWindow(res, cohort, { isPrivileged: isAdmin })) {
+    if (await blockedByExamWindow(res, cohort, {
+      isPrivileged: isAdmin,
+      userId: req.user.id,
+    })) {
       return;
     }
 
@@ -918,7 +1139,10 @@ router.get("/:cohortId/modules/:moduleId/questions", auth, async (req, res) => {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      if (await blockedByExamWindow(res, cohortExists, { isPrivileged: false })) {
+      if (await blockedByExamWindow(res, cohortExists, {
+        isPrivileged: false,
+        userId: req.user.id,
+      })) {
         return;
       }
     }
@@ -1065,7 +1289,10 @@ router.get("/:cohortId/questions/:questionId", auth, async (req, res) => {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+      if (await blockedByExamWindow(res, cohort, {
+        isPrivileged: false,
+        userId: req.user.id,
+      })) {
         return;
       }
     }
@@ -1244,6 +1471,7 @@ router.post("/", [auth, adminAuth], async (req, res) => {
       mode,
       examStartTime,
       examEndTime,
+      examDurationMinutes,
     } = req.body;
 
     // Validate required fields
@@ -1254,7 +1482,12 @@ router.post("/", [auth, adminAuth], async (req, res) => {
       });
     }
 
-    const examFields = parseExamModeInput({ mode, examStartTime, examEndTime });
+    const examFields = parseExamModeInput({
+      mode,
+      examStartTime,
+      examEndTime,
+      examDurationMinutes,
+    });
     if (examFields.error) {
       return res.status(400).json(examFields.error);
     }
@@ -1417,6 +1650,7 @@ router.put("/:id", [auth, adminAuth], async (req, res) => {
       mode,
       examStartTime,
       examEndTime,
+      examDurationMinutes,
     } = req.body;
 
     // Find the cohort
@@ -1426,7 +1660,12 @@ router.put("/:id", [auth, adminAuth], async (req, res) => {
       return res.status(404).json({ message: "Cohort not found" });
     }
 
-    const examFields = parseExamModeInput({ mode, examStartTime, examEndTime });
+    const examFields = parseExamModeInput({
+      mode,
+      examStartTime,
+      examEndTime,
+      examDurationMinutes,
+    });
     if (examFields.error) {
       return res.status(400).json(examFields.error);
     }
@@ -2877,7 +3116,8 @@ router.get(
       if (!isPrivileged && !enrollment) {
         return res.status(403).json({ message: "Not enrolled in this cohort" });
       }
-      if (await blockedByExamWindow(res, cohort, { isPrivileged })) return;
+      if (await blockedByExamWindow(res, cohort, { isPrivileged, userId: req.user.id }))
+        return;
       if (!question) return res.status(404).json({ message: "Question not found" });
       if (question.type !== "sql") {
         return res.status(400).json({ message: "This question is not a SQL question" });
@@ -2965,7 +3205,8 @@ router.post(
       if (!isPrivileged && !enrollment) {
         return res.status(403).json({ message: "Not enrolled in this cohort" });
       }
-      if (await blockedByExamWindow(res, cohort, { isPrivileged })) return;
+      if (await blockedByExamWindow(res, cohort, { isPrivileged, userId: req.user.id }))
+        return;
       if (!question) return res.status(404).json({ message: "Question not found" });
       if (question.type !== "sql") {
         return res.status(400).json({ message: "This question is not a SQL question" });
@@ -3116,15 +3357,15 @@ router.get(
             .json({ message: "Cohort not found or not eligible" });
         }
 
-        if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
-          return;
-        }
-
+        // Covers the joining window, this student's own deadline, and an exam
+        // they have already finished.
         if (
-          cohort.mode === EXAM_MODE &&
-          (await hasSubmittedExam(userId, cohortId))
+          await blockedByExamWindow(res, cohort, {
+            isPrivileged: false,
+            userId: req.user.id,
+          })
         ) {
-          return res.status(403).json(EXAM_SUBMITTED_RESPONSE);
+          return;
         }
       }
 
@@ -3590,16 +3831,17 @@ router.post(
             .json({ message: "Not enrolled in this cohort" });
         }
 
-        // AUTHORITATIVE EXAM CUT-OFF: a submission that arrives after the
-        // window closes is rejected and never scored, however long the client
-        // page has been open.
-        if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+        // AUTHORITATIVE EXAM CUT-OFF: a submission that arrives after this
+        // student's own deadline is rejected and never scored, however long the
+        // client page has been open. The enrollment is already loaded, so it is
+        // handed straight to the gate.
+        if (
+          await blockedByExamWindow(res, cohort, {
+            isPrivileged: false,
+            enrollment: enrollmentCheck,
+          })
+        ) {
           return;
-        }
-
-        // Same for a student who already ended their test.
-        if (cohort.mode === EXAM_MODE && enrollmentCheck.examSubmittedAt) {
-          return res.status(403).json(EXAM_SUBMITTED_RESPONSE);
         }
       } else {
         console.log(
@@ -4321,7 +4563,10 @@ router.post(
         }
 
         // Running code is an exam activity too, so it stops with the window.
-        if (await blockedByExamWindow(res, cohort, { isPrivileged: false })) {
+        if (await blockedByExamWindow(res, cohort, {
+        isPrivileged: false,
+        userId: req.user.id,
+      })) {
           return;
         }
       }

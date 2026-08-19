@@ -128,10 +128,19 @@ const CohortListRight = ({
     ? selectedCohort.examWindow
     : null;
   const examState = examWindow?.state || null;
-  // Ending the test is final, so a submitted exam can never be reopened.
-  const examSubmitted = Boolean(selectedCohort?.examSubmitted);
+  const attemptState = examWindow?.attemptState || null;
+  // Ending the test is final, so a submitted exam can never be reopened. The
+  // same applies once a personal timer has run out.
+  const examSubmitted =
+    Boolean(selectedCohort?.examSubmitted) ||
+    attemptState === "submitted" ||
+    attemptState === "time_up";
+  // An attempt already running may always be resumed, even after joining has
+  // closed — that is the whole point of a per-student timer.
+  const attemptInProgress = attemptState === "in_progress";
   const examOpen =
-    (examState === null || examState === "open") && !examSubmitted;
+    !examSubmitted &&
+    (examState === null || examState === "open" || attemptInProgress);
 
   // Panel accent: matches the list card exactly (red until the exam finishes,
   // green afterwards, none for practice).
@@ -140,7 +149,10 @@ const CohortListRight = ({
   // Chip colours follow the card accent: red until the exam is over, green once
   // it is complete.
   const examChip = (() => {
+    if (attemptState === "time_up")
+      return { label: "Time up — submitted", color: "success" };
     if (examSubmitted) return { label: "Test submitted", color: "success" };
+    if (attemptInProgress) return { label: "Exam in progress", color: "error" };
 
     switch (examState) {
       case "open":
@@ -981,6 +993,8 @@ const CohortListRight = ({
           >
             {examSubmitted
               ? "Test Submitted"
+              : attemptInProgress
+              ? "Resume Exam"
               : examState === "not_started"
               ? "Exam Not Started"
               : examState === "ended"

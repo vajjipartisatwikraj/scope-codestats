@@ -34,7 +34,13 @@ const ExamSessionHeader = ({ cohortId }) => {
   const [ending, setEnding] = useState(false);
   const [fullscreenPromptOpen, setFullscreenPromptOpen] = useState(false);
 
-  const isLiveExam = Boolean(exam?.isExam) && exam.state === "open";
+  // "Live" means this student's attempt is running, which on a timed exam can
+  // continue after joining has closed. Falling back to the window state covers
+  // the moment before the first heartbeat records the attempt.
+  const isLiveExam =
+    Boolean(exam?.isExam) &&
+    (exam.attemptState === "in_progress" ||
+      (exam.attemptState === "not_started" && exam.state === "open"));
 
   // Warnings are toasted rather than blocking, so a student is told immediately
   // without losing their place in the paper.
@@ -107,7 +113,13 @@ const ExamSessionHeader = ({ cohortId }) => {
       <ExamSessionBar
         title={title}
         remainingMs={remainingMs}
-        state={exam.state}
+        // The bar reports the student's own attempt, not the cohort window: on a
+        // timed exam those diverge once joining has closed.
+        state={
+          exam.attemptState === "submitted" || exam.attemptState === "time_up"
+            ? "ended"
+            : "open"
+        }
         ending={ending}
         onEndTest={() => setConfirmOpen(true)}
         violationCount={flagged}

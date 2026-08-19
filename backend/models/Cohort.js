@@ -69,6 +69,7 @@ const cohortSchema = new mongoose.Schema({
       if (value !== "exam" && this instanceof mongoose.Document) {
         this.examStartTime = null;
         this.examEndTime = null;
+        this.examDurationMinutes = null;
       }
       return value;
     },
@@ -87,6 +88,31 @@ const cohortSchema = new mongoose.Schema({
       },
       "Exam cohorts require an exam start time",
     ],
+  },
+  /**
+   * How long a single student gets, once they start, in minutes.
+   *
+   * `null` keeps the original behaviour: the attempt simply runs to
+   * `examEndTime`, so everyone shares one clock.
+   *
+   * With a duration set, [examStartTime, examEndTime] becomes a *joining*
+   * window: a student may begin at any point inside it and then has this many
+   * minutes of their own. Their personal deadline may fall after `examEndTime` —
+   * someone who starts fifteen minutes before the window shuts still gets their
+   * full time.
+   */
+  examDurationMinutes: {
+    type: Number,
+    default: null,
+    min: [1, "Exam duration must be at least 1 minute"],
+    max: [1440, "Exam duration cannot exceed 24 hours"],
+    validate: {
+      validator: function (value) {
+        if (value === null || value === undefined) return true;
+        return Number.isInteger(value);
+      },
+      message: "Exam duration must be a whole number of minutes",
+    },
   },
   examEndTime: {
     type: Date,
@@ -178,6 +204,7 @@ function clearExamWindowForPracticeMode() {
   if (this.mode !== "exam") {
     this.examStartTime = null;
     this.examEndTime = null;
+    this.examDurationMinutes = null;
   }
 }
 

@@ -58,9 +58,18 @@ export const getExamAccent = (cohort) => {
   const isExam = Boolean(window?.isExam || cohort.mode === "exam");
   if (!isExam) return null;
 
-  // Ending the test finishes the exam for this student, so their card turns
-  // green even while the window is still open for others.
-  if (cohort.examSubmitted) return EXAM_ACCENT_GREEN;
+  // Finishing — by hand or by running out of time — completes the exam for this
+  // student, so their card turns green even while others are still working.
+  if (
+    cohort.examSubmitted ||
+    window?.attemptState === "submitted" ||
+    window?.attemptState === "time_up"
+  ) {
+    return EXAM_ACCENT_GREEN;
+  }
+
+  // An attempt still running stays red, even after joining has closed.
+  if (window?.attemptState === "in_progress") return EXAM_ACCENT_RED;
 
   if (window?.state) {
     return window.state === "ended" ? EXAM_ACCENT_GREEN : EXAM_ACCENT_RED;

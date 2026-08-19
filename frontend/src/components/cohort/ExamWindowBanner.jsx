@@ -40,11 +40,24 @@ const ExamWindowBanner = ({ exam, remainingMs, compact = false }) => {
 
   if (!exam?.isExam) return null;
 
-  const { state, startsAt, endsAt, msUntilStart } = exam;
+  const {
+    state,
+    startsAt,
+    endsAt,
+    msUntilStart,
+    durationMinutes,
+    attemptState,
+    deadlineAt,
+  } = exam;
+
+  // An attempt under way is the student's own clock, which may run past the
+  // cohort's end time on a timed exam.
+  const inProgress = attemptState === "in_progress";
+  const finished = attemptState === "submitted" || attemptState === "time_up";
 
   // Compact form for the solving screen, where vertical space is scarce.
   if (compact) {
-    if (state !== "open") return null;
+    if (!inProgress && state !== "open") return null;
     const low = typeof remainingMs === "number" && remainingMs <= 5 * 60 * 1000;
 
     return (
@@ -62,28 +75,51 @@ const ExamWindowBanner = ({ exam, remainingMs, compact = false }) => {
     );
   }
 
-  if (state === "not_started") {
+  if (finished) {
     return (
-      <Alert severity="info" icon={<EventAvailableIcon />} sx={{ mb: 2 }}>
-        <AlertTitle sx={{ fontWeight: 700 }}>Exam scheduled</AlertTitle>
+      <Alert severity="warning" icon={<LockClockIcon />} sx={{ mb: 2 }}>
+        <AlertTitle sx={{ fontWeight: 700 }}>
+          {attemptState === "time_up" ? "Time is up" : "Exam submitted"}
+        </AlertTitle>
         <Typography variant="body2">
-          This exam opens at <strong>{formatMoment(startsAt)}</strong> and closes at{" "}
-          <strong>{formatMoment(endsAt)}</strong>.
-        </Typography>
-        <Typography variant="body2" sx={{ mt: 0.5 }}>
-          Starts in <strong>{formatDuration(msUntilStart)}</strong>.
+          {attemptState === "time_up"
+            ? "Your time ran out and the exam was submitted automatically."
+            : "You have ended this exam. It cannot be opened again."}
         </Typography>
       </Alert>
     );
   }
 
-  if (state === "ended") {
+  if (!inProgress && state === "not_started") {
+    return (
+      <Alert severity="info" icon={<EventAvailableIcon />} sx={{ mb: 2 }}>
+        <AlertTitle sx={{ fontWeight: 700 }}>Exam scheduled</AlertTitle>
+        <Typography variant="body2">
+          You can start this exam any time between{" "}
+          <strong>{formatMoment(startsAt)}</strong> and{" "}
+          <strong>{formatMoment(endsAt)}</strong>.
+        </Typography>
+        {durationMinutes ? (
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            Once you start you will have{" "}
+            <strong>{formatDuration(durationMinutes * 60 * 1000)}</strong> to
+            finish.
+          </Typography>
+        ) : null}
+        <Typography variant="body2" sx={{ mt: 0.5 }}>
+          Opens in <strong>{formatDuration(msUntilStart)}</strong>.
+        </Typography>
+      </Alert>
+    );
+  }
+
+  if (!inProgress && state === "ended") {
     return (
       <Alert severity="warning" icon={<LockClockIcon />} sx={{ mb: 2 }}>
-        <AlertTitle sx={{ fontWeight: 700 }}>Exam ended</AlertTitle>
+        <AlertTitle sx={{ fontWeight: 700 }}>Exam closed</AlertTitle>
         <Typography variant="body2">
-          This exam closed at <strong>{formatMoment(endsAt)}</strong>. It can no
-          longer be opened.
+          Joining closed at <strong>{formatMoment(endsAt)}</strong>. This exam can
+          no longer be started.
         </Typography>
       </Alert>
     );
@@ -100,8 +136,11 @@ const ExamWindowBanner = ({ exam, remainingMs, compact = false }) => {
     );
   }
 
-  // Live.
+  // Live: either an attempt under way, or the window open and not yet started.
   const low = typeof remainingMs === "number" && remainingMs <= 5 * 60 * 1000;
+  // On a timed exam the student's own deadline is what counts; otherwise it is
+  // the shared window end.
+  const closesAt = deadlineAt || endsAt;
 
   return (
     <Alert
@@ -109,7 +148,9 @@ const ExamWindowBanner = ({ exam, remainingMs, compact = false }) => {
       icon={<TimerOutlinedIcon />}
       sx={{ mb: 2 }}
     >
-      <AlertTitle sx={{ fontWeight: 700 }}>Exam in progress</AlertTitle>
+      <AlertTitle sx={{ fontWeight: 700 }}>
+        {inProgress ? "Exam in progress" : "Exam open"}
+      </AlertTitle>
       <Box
         sx={{
           display: "flex",
@@ -119,15 +160,21 @@ const ExamWindowBanner = ({ exam, remainingMs, compact = false }) => {
         }}
       >
         <Typography variant="body2">
-          Time remaining:{" "}
+          {inProgress ? "Your time remaining: " : "You will get: "}
           <strong>{formatDuration(remainingMs)}</strong>
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          Closes at {formatMoment(endsAt)}
+          {inProgress
+            ? `Your exam closes at ${formatMoment(closesAt)}`
+            : `Joining closes at ${formatMoment(endsAt)}`}
         </Typography>
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-        Anything submitted after the exam closes is not accepted.
+        {inProgress
+          ? "When your time ends the exam is submitted automatically."
+          : durationMinutes
+          ? `Your ${durationMinutes}-minute timer starts the moment you open the exam.`
+          : "Anything submitted after the exam closes is not accepted."}
       </Typography>
     </Alert>
   );

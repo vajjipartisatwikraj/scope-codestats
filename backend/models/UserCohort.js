@@ -32,11 +32,39 @@ const userCohortSchema = new mongoose.Schema({
     type: Date
   },
   /**
-   * When the student ended an exam themselves via "END TEST".
-   * Set once and never cleared: the exam cannot be re-entered afterwards.
+   * When this student began their attempt. Set once, on first entry, and never
+   * moved: it is the anchor for their personal deadline, so re-opening the exam
+   * or reloading the page cannot buy extra time.
+   */
+  examAttemptStartedAt: {
+    type: Date,
+    default: null
+  },
+  /**
+   * The student's own deadline, computed on start as
+   * `examAttemptStartedAt + cohort.examDurationMinutes`, or the cohort's
+   * `examEndTime` when no duration is configured.
+   *
+   * Stored rather than derived so that editing the cohort's duration later
+   * cannot shorten or extend an attempt already under way.
+   */
+  examDeadlineAt: {
+    type: Date,
+    default: null
+  },
+  /**
+   * When the exam was finished, either by the student pressing "END TEST" or by
+   * their timer running out. Set once and never cleared: the exam cannot be
+   * re-entered afterwards.
    */
   examSubmittedAt: {
     type: Date,
+    default: null
+  },
+  /** Why the exam finished. */
+  examSubmitReason: {
+    type: String,
+    enum: ['manual', 'time_up', 'window_closed', null],
     default: null
   },
   lastActiveAt: {

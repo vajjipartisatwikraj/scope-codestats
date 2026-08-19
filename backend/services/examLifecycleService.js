@@ -1,37 +1,142 @@
 /**
- * Exam lifecycle: flips exam cohorts to inactive once their window closes.
+ * Exam lifecycle.
  *
- * Two mechanisms, on purpose:
- *   1. A periodic sweeper, so a cohort goes inactive on time even if nobody
- *      touches it. This is what makes "the exam ends by itself" true.
- *   2. A lazy check on access (`deactivateIfEnded`), so a request that arrives
- *      between sweeps still sees the correct state.
+ * Two jobs:
+ *   1. Finalise attempts whose personal deadline has passed, so a student who
+ *      walks away is submitted at their deadline rather than left open.
+ *   2. Flip an exam cohort to inactive once its joining window has closed *and*
+ *      no attempt is still running, so ended exams drop out of listings.
  *
- * Access control never depends on this running: every protected route also
- * evaluates the window directly through `utils/examAccess`. Deactivation is
- * bookkeeping that keeps ended exams out of listings and dashboards.
+ * Both run on a periodic sweeper and lazily on access, because a request that
+ * arrives between sweeps must still see the correct state.
+ *
+ * Access control never depends on this running: every protected route evaluates
+ * the attempt directly through `utils/examAccess`. This is bookkeeping.
  */
 
 const Cohort = require("../models/Cohort");
-const { EXAM_MODE, EXAM_STATE, getExamWindow } = require("../utils/examAccess");
+const UserCohort = require("../models/UserCohort");
+const {
+  EXAM_MODE,
+  EXAM_STATE,
+  ATTEMPT_STATE,
+  getExamWindow,
+  getExamAttempt,
+} = require("../utils/examAccess");
 
 const DEFAULT_SWEEP_INTERVAL_MS = 60 * 1000;
 
 let sweepTimer = null;
 
 /**
- * Deactivates every exam cohort whose end time has passed.
- * Uses a single bulk update so the cost does not grow with cohort count.
+ * Submits every attempt whose deadline has passed.
+ *
+ * This is what makes "when the time ends the exam is submitted" true even for a
+ * student who closed their laptop. Scores are already stored per submission, so
+ * finalising is only a matter of stamping the attempt.
+ *
+ * @returns {Promise<number>} how many attempts were finalised
+ */
+async function autoSubmitExpiredAttempts(now = new Date()) {
+  const result = await UserCohort.updateMany(
+    {
+      examAttemptStartedAt: { $ne: null },
+      examSubmittedAt: null,
+      examDeadlineAt: { $ne: null, $lte: now },
+    },
+    {
+      $set: {
+        examSubmittedAt: now,
+        examSubmitReason: "time_up",
+        status: "completed",
+        completedAt: now,
+        updatedAt: now,
+      },
+    }
+  );
+
+  const changed = result.modifiedCount ?? result.nModified ?? 0;
+  if (changed > 0) {
+    console.log(`⏱️  Exam sweeper: ${changed} attempt(s) auto-submitted on time up`);
+  }
+  return changed;
+}
+
+/**
+ * Finalises a single expired attempt.
+ *
+ * Safe to call on any enrollment: practice cohorts, unstarted and already
+ * submitted attempts are ignored. The passed document is mutated too, so the
+ * caller's copy matches the database without a re-read.
+ *
+ * @returns {Promise<boolean>} true when this call performed the submission
+ */
+async function autoSubmitIfExpired(cohort, enrollment, now = new Date()) {
+  if (!cohort || cohort.mode !== EXAM_MODE || !enrollment) return false;
+
+  const attempt = getExamAttempt(cohort, enrollment, now);
+  if (attempt.attemptState !== ATTEMPT_STATE.TIME_UP) return false;
+
+  await UserCohort.updateOne(
+    { _id: enrollment._id, examSubmittedAt: null },
+    {
+      $set: {
+        examSubmittedAt: now,
+        examSubmitReason: "time_up",
+        status: "completed",
+        completedAt: now,
+        updatedAt: now,
+      },
+    }
+  );
+
+  enrollment.examSubmittedAt = now;
+  enrollment.examSubmitReason = "time_up";
+
+  console.log(
+    `⏱️  Exam time up: attempt auto-submitted for user ${enrollment.user} ` +
+      `in cohort ${cohort._id}`
+  );
+  return true;
+}
+
+/**
+ * Deactivates exam cohorts whose joining window has closed and which have no
+ * attempt still running.
+ *
+ * The second condition matters now that attempts can outlive the window: a
+ * cohort must not be archived out from under someone who is still writing.
  *
  * @returns {Promise<number>} how many cohorts were flipped
  */
 async function deactivateEndedExams(now = new Date()) {
+  const candidates = await Cohort.find({
+    mode: EXAM_MODE,
+    isActive: true,
+    examEndTime: { $ne: null, $lte: now },
+  }).select("_id examStartTime examEndTime examDurationMinutes mode");
+
+  if (candidates.length === 0) return 0;
+
+  const candidateIds = candidates.map((c) => c._id);
+
+  // Any attempt still inside its own deadline keeps its cohort active.
+  const liveAttempts = await UserCohort.find({
+    cohort: { $in: candidateIds },
+    examAttemptStartedAt: { $ne: null },
+    examSubmittedAt: null,
+    examDeadlineAt: { $gt: now },
+  })
+    .select("cohort")
+    .lean();
+
+  const busyCohortIds = new Set(liveAttempts.map((a) => a.cohort.toString()));
+
+  const closable = candidateIds.filter((id) => !busyCohortIds.has(id.toString()));
+  if (closable.length === 0) return 0;
+
   const result = await Cohort.updateMany(
-    {
-      mode: EXAM_MODE,
-      isActive: true,
-      examEndTime: { $ne: null, $lte: now },
-    },
+    { _id: { $in: closable }, isActive: true },
     { $set: { isActive: false, updatedAt: now } }
   );
 
@@ -43,11 +148,9 @@ async function deactivateEndedExams(now = new Date()) {
 }
 
 /**
- * Lazily deactivates a single cohort whose exam has ended.
+ * Lazily deactivates a single cohort whose window has closed.
  *
- * Safe to call on any cohort: practice cohorts and open exams are ignored. The
- * passed document is mutated too, so the caller's copy matches the database
- * without a re-read.
+ * Skips the flip while any attempt is still running, matching the sweeper.
  *
  * @returns {Promise<boolean>} true when this call performed the flip
  */
@@ -56,6 +159,14 @@ async function deactivateIfEnded(cohort, now = new Date()) {
 
   const window = getExamWindow(cohort, now);
   if (window.state !== EXAM_STATE.ENDED) return false;
+
+  const liveAttempt = await UserCohort.exists({
+    cohort: cohort._id,
+    examAttemptStartedAt: { $ne: null },
+    examSubmittedAt: null,
+    examDeadlineAt: { $gt: now },
+  });
+  if (liveAttempt) return false;
 
   await Cohort.updateOne(
     { _id: cohort._id, isActive: true },
@@ -67,19 +178,25 @@ async function deactivateIfEnded(cohort, now = new Date()) {
   return true;
 }
 
+/** One sweep: finalise expired attempts, then archive finished cohorts. */
+async function runSweep() {
+  // Order matters. Auto-submitting first means a cohort whose last attempt just
+  // expired can be archived in the same pass.
+  await autoSubmitExpiredAttempts();
+  await deactivateEndedExams();
+}
+
 /** Starts the periodic sweeper. Idempotent. */
 function startExamSweeper({ intervalMs = DEFAULT_SWEEP_INTERVAL_MS } = {}) {
   if (sweepTimer) return sweepTimer;
 
   // Run once at boot so a restart during an exam settles immediately.
-  deactivateEndedExams().catch((err) =>
+  runSweep().catch((err) =>
     console.error("Exam sweeper (initial) failed:", err.message)
   );
 
   sweepTimer = setInterval(() => {
-    deactivateEndedExams().catch((err) =>
-      console.error("Exam sweeper failed:", err.message)
-    );
+    runSweep().catch((err) => console.error("Exam sweeper failed:", err.message));
   }, intervalMs);
 
   // Never hold the event loop open for this.
@@ -98,8 +215,11 @@ function stopExamSweeper() {
 
 module.exports = {
   DEFAULT_SWEEP_INTERVAL_MS,
+  autoSubmitExpiredAttempts,
+  autoSubmitIfExpired,
   deactivateEndedExams,
   deactivateIfEnded,
+  runSweep,
   startExamSweeper,
   stopExamSweeper,
 };

@@ -82,7 +82,11 @@ const useExamGuard = ({
 
       // Privileged users are reported as accessible, so they are never evicted.
       if (data && data.accessible === false) {
-        if (data.reason === "exam_ended") {
+        if (data.reason === "exam_time_up") {
+          handleExpired(
+            "Your time is up. The exam has been submitted automatically."
+          );
+        } else if (data.reason === "exam_ended") {
           handleExpired("The exam has ended. Your submissions have been saved.");
         } else if (data.reason === "exam_submitted") {
           handleExpired("Your test has been submitted.");
@@ -132,10 +136,16 @@ const useExamGuard = ({
 
   // Local countdown between polls, anchored to server time so the displayed
   // clock matches the clock that actually enforces the cut-off.
-  useEffect(() => {
-    if (!enabled || !exam?.isExam || !exam?.endsAt) return undefined;
+  //
+  // The deadline is this student's own once their attempt has begun, and the
+  // cohort's end time otherwise. On a timed exam those differ, and using the
+  // wrong one would show a student the group's clock instead of theirs.
+  const deadlineIso = exam?.deadlineAt || exam?.endsAt || null;
 
-    const endMs = new Date(exam.endsAt).getTime();
+  useEffect(() => {
+    if (!enabled || !exam?.isExam || !deadlineIso) return undefined;
+
+    const endMs = new Date(deadlineIso).getTime();
 
     const tick = () => {
       const serverNow = Date.now() + clockOffsetRef.current;
@@ -143,14 +153,18 @@ const useExamGuard = ({
       setRemainingMs(Math.max(left, 0));
 
       if (left <= 0) {
-        handleExpired("The exam has ended. Your submissions have been saved.");
+        // The server finalises the attempt; this only reports it. Refreshing
+        // first means the eviction message matches what was actually recorded.
+        handleExpired(
+          "Your time is up. The exam has been submitted automatically."
+        );
       }
     };
 
     tick();
     const ticker = setInterval(tick, 1000);
     return () => clearInterval(ticker);
-  }, [enabled, exam?.isExam, exam?.endsAt, handleExpired]);
+  }, [enabled, exam?.isExam, deadlineIso, handleExpired]);
 
   return {
     exam,
@@ -158,7 +172,11 @@ const useExamGuard = ({
     remainingMs,
     isExam: Boolean(exam?.isExam),
     state: exam?.state || null,
-    expired: exam?.state === "ended",
+    attemptState: exam?.attemptState || null,
+    // "Finished for this student", which is not the same as the cohort window
+    // having closed now that attempts can outlive it.
+    expired:
+      exam?.attemptState === "time_up" || exam?.attemptState === "submitted",
     refresh: fetchStatus,
   };
 };
