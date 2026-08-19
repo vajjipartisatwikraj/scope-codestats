@@ -14,6 +14,12 @@ const mongoose = require("mongoose");
 // Use the platformAPI module directly as it's already an instance
 const platformAPIService = platformAPI;
 
+// Mirrors a saved platform profile onto the User document, which is what the
+// leaderboard reads. Shared with scripts/backfill-platform-scores.js.
+const {
+  mirrorProfileToUserSafe,
+} = require("../services/profileMirror");
+
 // Add or update profile
 router.post("/:platform", auth, async (req, res) => {
   try {
@@ -245,6 +251,27 @@ router.post("/:platform", auth, async (req, res) => {
       }
 
       await profile.save();
+
+      // ─────────────────────────────────────────────────────────────────────
+      // Mirror the fresh stats onto the User document.
+      //
+      // The leaderboard reads `User.platformScores`, not the Profile
+      // collection. Without this step a username update showed new stats on
+      // the dashboard while the leaderboard column stayed at 0 until the
+      // nightly sync ran. The entry shape matches what
+      // `PUT /update-user/:userId` writes, so the two paths agree.
+      // ─────────────────────────────────────────────────────────────────────
+      const mirrored = await mirrorProfileToUserSafe(
+        req.user.id,
+        platform,
+        profile,
+        platformData
+      );
+      if (!mirrored.ok) {
+        console.warn(
+          `[ProfileMirror] ${platform} not mirrored for user ${req.user.id}: ${mirrored.reason}`
+        );
+      }
 
       // Format response data
       const responseData = {
