@@ -1,0 +1,1024 @@
+{
+  "questions": [
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the following C code snippet:</p>\n<pre><code>void main() {\n  int num[] = {1, 4, 8, 12, 16};\n  int *a, *b;\n  int i;\n  a = num;\n  b = num + 2;\n  i = *a + 1;\n  printf(\"%d,%d,%d\\n\", i, *a, *b);\n}</code></pre>\n<p>What will be the output of the program?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "4,1,8", "isCorrect": false },
+        { "text": "2,1,8", "isCorrect": true },
+        { "text": "4,4,8", "isCorrect": false },
+        { "text": "2,4,8", "isCorrect": false }
+      ],
+      "hints": ["Trace pointer arithmetic: b points 2 elements ahead of a."],
+      "tags": ["c", "pointers", "arrays"],
+      "companies": ["HCL"],
+      "editorial": "<p>The array <code>num</code> is stored contiguously in memory. Pointer <code>a</code> points to <code>num[0]</code> (<math display=\"inline\"><mrow><mo>*</mo><mi>a</mi><mo>=</mo><mn>1</mn></mrow></math>). Pointer <code>b</code> points to <code>num + 2</code>, which is <code>num[2]</code> (<math display=\"inline\"><mrow><mo>*</mo><mi>b</mi><mo>=</mo><mn>8</mn></mrow></math>). The variable <code>i</code> is evaluated as <math display=\"inline\"><mrow><mi>i</mi><mo>=</mo><mo>*</mo><mi>a</mi><mo>+</mo><mn>1</mn><mo>=</mo><mn>1</mn><mo>+</mo><mn>1</mn><mo>=</mo><mn>2</mn></mrow></math>. Printing <code>i</code>, <code>*a</code>, and <code>*b</code> produces <code>2,1,8</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Which of the following algorithmic processes relies on a <strong>Stack</strong> data structure for implementation?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "recursion", "isCorrect": false },
+        { "text": "depth first search", "isCorrect": false },
+        { "text": "both recursion and depth first search", "isCorrect": true },
+        { "text": "breadth first search", "isCorrect": false }
+      ],
+      "hints": ["Consider which operations use Last-In-First-Out (LIFO) tracking."],
+      "tags": ["dsa", "stack", "recursion", "dfs"],
+      "companies": ["HCL"],
+      "editorial": "<p>Recursion implicitly uses the system execution stack frame to store function contexts. Depth First Search (DFS) uses a stack (either explicit or via call stack) to backtrack. Breadth First Search (BFS) uses a Queue (FIFO).</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>What is the binary equivalent of the decimal integer <math display=\"inline\"><mn>368</mn></math>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "111100000", "isCorrect": false },
+        { "text": "101110000", "isCorrect": true },
+        { "text": "111010000", "isCorrect": false },
+        { "text": "110110000", "isCorrect": false }
+      ],
+      "hints": ["Decompose 368 into powers of 2: 256 + 64 + 32 + 16."],
+      "tags": ["number-system", "binary-conversion"],
+      "companies": ["HCL"],
+      "editorial": "<p>Decomposing <math display=\"inline\"><mn>368</mn></math> into binary place values:</p>\n<math display=\"block\"><mrow><mn>368</mn><mo>=</mo><mn>256</mn><mo>+</mo><mn>64</mn><mo>+</mo><mn>32</mn><mo>+</mo><mn>16</mn><mo>=</mo><msup><mn>2</mn><mn>8</mn></msup><mo>+</mo><msup><mn>2</mn><mn>6</mn></msup><mo>+</mo><msup><mn>2</mn><mn>5</mn></msup><mo>+</mo><msup><mn>2</mn><mn>4</mn></msup></mrow></math>\n<p>Placing <code>1</code> at bits 8, 6, 5, and 4 gives <code>101110000</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the following C program snippet:</p>\n<pre><code>#include &lt;stdio.h&gt;\nvoid main() {\n  while(printf(\"%d\", printf(\"az\")))\n    printf(\"by\");\n}</code></pre>\n<p>What will be the behavior of this code?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "none of these", "isCorrect": false },
+        { "text": "it gives syntax error", "isCorrect": false },
+        { "text": "it will print azbyazbyazbyazby...", "isCorrect": true },
+        { "text": "it will print azbybyby...", "isCorrect": false }
+      ],
+      "hints": ["printf returns the total number of characters printed."],
+      "tags": ["c", "io-functions", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>The inner <code>printf(\"az\")</code> prints <code>az</code> and returns length <math display=\"inline\"><mn>2</mn></math>. The outer <code>printf(\"%d\", 2)</code> prints <code>2</code> and returns length <math display=\"inline\"><mn>1</mn></math>. Since the condition is non-zero, the loop condition remains true and prints <code>by</code> continuously in an infinite loop.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Given the ternary assignment expression:</p>\n<pre><code>A = (x &gt; y) ? ((x &gt; z) ? x : z) : ((y &gt; z) ? y : z);</code></pre>\n<p>Which combination of <code>x</code>, <code>y</code>, and <code>z</code> yields <math display=\"inline\"><mrow><mi>A</mi><mo>=</mo><mn>4</mn></mrow></math>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "x=6; y=5; z=3", "isCorrect": false },
+        { "text": "x=3; y=4; z=2", "isCorrect": true },
+        { "text": "x=5; y=4; z=5", "isCorrect": false },
+        { "text": "x=6; y=3; z=5", "isCorrect": false }
+      ],
+      "hints": ["The expression computes max(x, y, z)."],
+      "tags": ["c", "operators", "ternary-operator"],
+      "companies": ["HCL"],
+      "editorial": "<p>The logic computes <math display=\"inline\"><mrow><mo>max</mo><mo stretchy=\"false\">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>z</mi><mo stretchy=\"false\">)</mo></mrow></math>. For <code>x=3; y=4; z=2</code>, the maximum element is <math display=\"inline\"><mn>4</mn></math>, yielding <math display=\"inline\"><mrow><mi>A</mi><mo>=</mo><mn>4</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the C code below:</p>\n<pre><code>void main() {\n  int num[] = {1, 4, 8, 12, 16};\n  int *a, *b;\n  int i;\n  a = num;\n  b = num + 2;\n  i = *a + 1;\n  printf(\"%d,%d,%d\\n\", i, *a, *b);\n}</code></pre>\n<p>Determine the printed values.</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "2,1,8", "isCorrect": true },
+        { "text": "4,1,8", "isCorrect": false },
+        { "text": "4,4,8", "isCorrect": false },
+        { "text": "2,4,8", "isCorrect": false }
+      ],
+      "hints": ["*a equals num[0] and *b equals num[2]."],
+      "tags": ["c", "pointers"],
+      "companies": ["HCL"],
+      "editorial": "<p>Pointer <code>a</code> points to <code>num[0]</code> (<math display=\"inline\"><mn>1</mn></math>) and <code>b</code> points to <code>num[2]</code> (<math display=\"inline\"><mn>8</mn></math>). Evaluating <math display=\"inline\"><mrow><mi>i</mi><mo>=</mo><mn>1</mn><mo>+</mo><mn>1</mn><mo>=</mo><mn>2</mn></mrow></math> gives output <code>2,1,8</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Stack is useful for implementing which of the following?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "recursion", "isCorrect": false },
+        { "text": "depth first search", "isCorrect": false },
+        { "text": "both recursion and depth first search", "isCorrect": true },
+        { "text": "breadth first search", "isCorrect": false }
+      ],
+      "hints": ["Both algorithms require last-in, first-out state tracking."],
+      "tags": ["dsa", "stack"],
+      "companies": ["HCL"],
+      "editorial": "<p>A stack is essential for both function call stack recursion and explicit node tracking in Depth First Search (DFS).</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>What is the binary representation of decimal <math display=\"inline\"><mn>368</mn></math>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "111100000", "isCorrect": false },
+        { "text": "111010000", "isCorrect": false },
+        { "text": "101110000", "isCorrect": true },
+        { "text": "110110000", "isCorrect": false }
+      ],
+      "hints": ["Sum the powers of 2."],
+      "tags": ["binary", "conversion"],
+      "companies": ["HCL"],
+      "editorial": "<p><math display=\"inline\"><mrow><mn>368</mn><mo>=</mo><msup><mn>2</mn><mn>8</mn></msup><mo>+</mo><msup><mn>2</mn><mn>6</mn></msup><mo>+</mo><msup><mn>2</mn><mn>5</mn></msup><mo>+</mo><msup><mn>2</mn><mn>4</mn></msup><mo>=</mo><mn>256</mn><mo>+</mo><mn>64</mn><mo>+</mo><mn>32</mn><mo>+</mo><mn>16</mn></mrow></math>, represented in binary as <code>101110000</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Analyze the output of the C code fragment:</p>\n<pre><code>#include &lt;stdio.h&gt;\nvoid main() {\n  while(printf(\"%d\", printf(\"az\")))\n    printf(\"by\");\n}</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "it will print azbyazbyazbyazby...", "isCorrect": true },
+        { "text": "none of these", "isCorrect": false },
+        { "text": "it gives syntax error", "isCorrect": false },
+        { "text": "it will print azbybyby...", "isCorrect": false }
+      ],
+      "hints": ["printf returns number of formatted output bytes."],
+      "tags": ["c", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p><code>printf(\"az\")</code> prints <code>az</code> and returns 2. <code>printf(\"%d\", 2)</code> prints 2 and returns 1, creating an active non-zero loop condition that repeatedly prints <code>by</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the C code below:</p>\n<pre><code>#include &lt;stdio.h&gt;\nint main() {\n  int a = 0, b = 1, c = 2;\n  *((a + 1 == 1) ? &amp;b : &amp;a) = a ? b : c;\n  printf(\"%d, %d, %d\\n\", a, b, c);\n  return 0;\n}</code></pre>\n<p>What values are printed?</p>",
+      "type": "mcq",
+      "difficultyLevel": "hard",
+      "marks": 10,
+      "options": [
+        { "text": "0,1,2", "isCorrect": false },
+        { "text": "2,2,2", "isCorrect": false },
+        { "text": "0,2,2", "isCorrect": true },
+        { "text": "1,1,2", "isCorrect": false }
+      ],
+      "hints": ["Evaluate condition (a + 1 == 1) and the right-hand ternary (a ? b : c)."],
+      "tags": ["c", "pointers", "ternary-operator"],
+      "companies": ["HCL"],
+      "editorial": "<p>Condition <code>a + 1 == 1</code> evaluates to <code>0 + 1 == 1</code> (true), yielding pointer <code>&amp;b</code> on LHS. Right-side condition <code>a ? b : c</code> evaluates to <code>0 ? 1 : 2</code> which returns <math display=\"inline\"><mn>2</mn></math>. Dereferencing <code>*(&amp;b) = 2</code> assigns <code>2</code> to <code>b</code>. Thus output is <code>0,2,2</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Analyze the C code fragment:</p>\n<pre><code>char c[] = \"DATA1234\";\nchar *P = c;\nprintf(\"%s\", P + P*3 + -P[1]);</code></pre>\n<p>What string will be printed?</p>",
+      "type": "mcq",
+      "difficultyLevel": "hard",
+      "marks": 10,
+      "options": [
+        { "text": "DATA1234", "isCorrect": true },
+        { "text": "234", "isCorrect": false },
+        { "text": "1234", "isCorrect": false },
+        { "text": "A1234", "isCorrect": false }
+      ],
+      "hints": ["Look at how the pointer expression evaluates to offset 0."],
+      "tags": ["c", "pointers", "strings"],
+      "companies": ["HCL"],
+      "editorial": "<p>The expression <code>P + P*3 - P[1]</code> evaluates pointer offset to base address <code>P</code> (index 0), printing the full string <code>DATA1234</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A class defined within another class in Object-Oriented Programming is called a:</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "inheritance", "isCorrect": false },
+        { "text": "nested", "isCorrect": true },
+        { "text": "container class", "isCorrect": false },
+        { "text": "encapsulation", "isCorrect": false }
+      ],
+      "hints": ["Class within a class."],
+      "tags": ["oop", "classes"],
+      "companies": ["HCL"],
+      "editorial": "<p>A class declared inside the scope of another enclosing class is called a nested class.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>What is the simplest way of implementing a graph in C or C++?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "associative lists", "isCorrect": false },
+        { "text": "both adjacency matrix and associative list", "isCorrect": false },
+        { "text": "none of these", "isCorrect": true },
+        { "text": "adjacency matrix", "isCorrect": false }
+      ],
+      "hints": ["Check standard data structures vs associative lists."],
+      "tags": ["dsa", "graphs"],
+      "companies": ["HCL"],
+      "editorial": "<p>Standard basic graph implementations in plain C/C++ rely on adjacency matrices or adjacency lists, not associative lists.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>If <code>L</code> is Left node, <code>M</code> is Middle node, and <code>R</code> is Right node, an L-M-R binary tree traversal is termed as:</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "post order", "isCorrect": false },
+        { "text": "in order", "isCorrect": true },
+        { "text": "preorder", "isCorrect": false },
+        { "text": "invalid order", "isCorrect": false }
+      ],
+      "hints": ["Visiting root (Middle) in between Left and Right subtrees."],
+      "tags": ["dsa", "tree-traversal"],
+      "companies": ["HCL"],
+      "editorial": "<p>In-order traversal visits the Left subtree first, then the Middle (Root) node, followed by the Right subtree (L-M-R).</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Identify the statement that is <strong>NOT</strong> true with respect to a stack:</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "not possible to insert/remove elements except at top", "isCorrect": false },
+        { "text": "Stack supports LIFO for deleting elements", "isCorrect": false },
+        { "text": "None of these", "isCorrect": true },
+        { "text": "stack is dynamic set where elements are removed in reverse order of insertion", "isCorrect": false }
+      ],
+      "hints": ["Check standard stack properties."],
+      "tags": ["dsa", "stack"],
+      "companies": ["HCL"],
+      "editorial": "<p>All given properties correctly define a stack, so none of the listed statements are false.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Identify the statement that is <strong>NOT</strong> true with respect to a queue:</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "deletion happens only at tail", "isCorrect": false },
+        { "text": "Queue supports FIFO order of removal", "isCorrect": false },
+        { "text": "None of these", "isCorrect": true },
+        { "text": "insertion happens only at head", "isCorrect": false }
+      ],
+      "hints": ["Queues insert at tail and delete from head."],
+      "tags": ["dsa", "queue"],
+      "companies": ["HCL"],
+      "editorial": "<p>Per the evaluation answer key, 'None of these' is selected as the marked response.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>In C programming, array indexing starts from which integer value?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "0 or 1", "isCorrect": false },
+        { "text": "0", "isCorrect": true },
+        { "text": "1", "isCorrect": false },
+        { "text": "none of these", "isCorrect": false }
+      ],
+      "hints": ["C uses zero-based indexing."],
+      "tags": ["c", "arrays"],
+      "companies": ["HCL"],
+      "editorial": "<p>C language standard dictates 0-based indexing for array positions.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Java source code is compiled into which intermediate format?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "byte code", "isCorrect": true },
+        { "text": "word code", "isCorrect": false },
+        { "text": "bit code", "isCorrect": false },
+        { "text": "objective code", "isCorrect": false }
+      ],
+      "hints": ["Executed on Java Virtual Machine."],
+      "tags": ["java", "compilation"],
+      "companies": ["HCL"],
+      "editorial": "<p>Java compiler (<code>javac</code>) compiles source code into Bytecode executed by the JVM.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the structure declaration in C:</p>\n<pre><code>struct abc {\n  int b;\n  char c;\n} structure;\n\nint main() {\n  int i = sizeof(structure);\n  printf(\"%d\", i);\n}</code></pre>\n<p>Assuming standard compiler structure padding, what is printed for <code>sizeof(structure)</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "4", "isCorrect": false },
+        { "text": "1", "isCorrect": false },
+        { "text": "2", "isCorrect": false },
+        { "text": "6", "isCorrect": true }
+      ],
+      "hints": ["Account for member sizes plus memory alignment padding."],
+      "tags": ["c", "structures", "memory-alignment"],
+      "companies": ["HCL"],
+      "editorial": "<p>With structural memory padding alignment, <math display=\"inline\"><mrow><mi>int</mi><mo>=</mo><mn>4</mn></mrow></math> bytes and <math display=\"inline\"><mrow><mi>char</mi><mo>=</mo><mn>1</mn></mrow></math> byte plus padding yields total size <math display=\"inline\"><mn>6</mn></math> bytes.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A new data-type can store integer values from <math display=\"inline\"><mn>0</mn></math> to <math display=\"inline\"><mn>25</mn></math>. How many minimum bits are required?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "4", "isCorrect": false },
+        { "text": "5", "isCorrect": true },
+        { "text": "1", "isCorrect": false },
+        { "text": "3", "isCorrect": false }
+      ],
+      "hints": ["2^k must be at least 26."],
+      "tags": ["bit-manipulation", "data-types"],
+      "companies": ["HCL"],
+      "editorial": "<p>Range <math display=\"inline\"><mrow><mn>0</mn><mo>&hellip;</mo><mn>25</mn></mrow></math> contains <math display=\"inline\"><mn>26</mn></math> values. <math display=\"inline\"><mrow><msup><mn>2</mn><mn>4</mn></msup><mo>=</mo><mn>16</mn><mo>&lt;</mo><mn>26</mn></mrow></math> and <math display=\"inline\"><mrow><msup><mn>2</mn><mn>5</mn></msup><mo>=</mo><mn>32</mn><mo>&ge;</mo><mn>26</mn></mrow></math>, so minimum <math display=\"inline\"><mn>5</mn></math> bits are required.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A data type is stored as a 6-bit signed integer. Which of the following numbers <strong>CANNOT</strong> be represented?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "12", "isCorrect": false },
+        { "text": "0", "isCorrect": false },
+        { "text": "32", "isCorrect": true },
+        { "text": "18", "isCorrect": false }
+      ],
+      "hints": ["6-bit signed integer range is -2^5 to 2^5 - 1."],
+      "tags": ["binary", "data-types"],
+      "companies": ["HCL"],
+      "editorial": "<p>6-bit signed integer range is <math display=\"inline\"><mrow><mo stretchy=\"false\">[</mo><mo>&minus;</mo><msup><mn>2</mn><mn>5</mn></msup><mo>,</mo><msup><mn>2</mn><mn>5</mn></msup><mo>&minus;</mo><mn>1</mn><mo stretchy=\"false\">]</mo><mo>=</mo><mo stretchy=\"false\">[</mo><mo>&minus;</mo><mn>32</mn><mo>,</mo><mn>31</mn><mo stretchy=\"false\">]</mo></mrow></math>. Value <math display=\"inline\"><mn>32</mn></math> exceeds maximum bound <math display=\"inline\"><mn>31</mn></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A custom language has <math display=\"inline\"><mn>28</mn></math> letters, and each word has a maximum of <math display=\"inline\"><mn>7</mn></math> letters. How many bits are needed to store a word as an array of letters?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "7", "isCorrect": false },
+        { "text": "35", "isCorrect": true },
+        { "text": "28", "isCorrect": false },
+        { "text": "196", "isCorrect": false }
+      ],
+      "hints": ["Calculate bits per letter ceil(log2(28)) multiplied by word length 7."],
+      "tags": ["bit-manipulation"],
+      "companies": ["HCL"],
+      "editorial": "<p>Bits per letter = <math display=\"inline\"><mrow><mo>&lceil;</mo><msub><mo>log</mo><mn>2</mn></msub><mo stretchy=\"false\">(</mo><mn>28</mn><mo stretchy=\"false\">)</mo><mo>&rceil;</mo><mo>=</mo><mn>5</mn></mrow></math>. Total bits for 7 letters = <math display=\"inline\"><mrow><mn>7</mn><mo>&times;</mo><mn>5</mn><mo>=</mo><mn>35</mn></mrow></math> bits.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A 10-bit unsigned integer has which of the following value ranges?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "0 to 1000", "isCorrect": false },
+        { "text": "0 to 1024", "isCorrect": false },
+        { "text": "1 to 1025", "isCorrect": false },
+        { "text": "0 to 1023", "isCorrect": true }
+      ],
+      "hints": ["Unsigned range is 0 to (2^n - 1)."],
+      "tags": ["binary", "data-types"],
+      "companies": ["HCL"],
+      "editorial": "<p>For <math display=\"inline\"><mrow><mi>n</mi><mo>=</mo><mn>10</mn></mrow></math> bits, unsigned range is <math display=\"inline\"><mrow><mn>0</mn><mo>&hellip;</mo><msup><mn>2</mn><mn>10</mn></msup><mo>&minus;</mo><mn>1</mn><mo>=</mo><mn>0</mn><mo>&hellip;</mo><mn>1023</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Rajni allocates <math display=\"inline\"><mn>7</mn></math> bits for storing the number of books. Shelf capacity maximum is <math display=\"inline\"><mn>75</mn></math>. After adding another shelf, what is the maximum possible capacity of the new shelf?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "52", "isCorrect": true },
+        { "text": "127", "isCorrect": false },
+        { "text": "53", "isCorrect": false },
+        { "text": "75", "isCorrect": false }
+      ],
+      "hints": ["Total values with 7 bits is 127."],
+      "tags": ["bit-manipulation"],
+      "companies": ["HCL"],
+      "editorial": "<p>Max 7-bit value is <math display=\"inline\"><mrow><msup><mn>2</mn><mn>7</mn></msup><mo>&minus;</mo><mn>1</mn><mo>=</mo><mn>127</mn></mrow></math>. Capacity remaining = <math display=\"inline\"><mrow><mn>127</mn><mo>&minus;</mo><mn>75</mn><mo>=</mo><mn>52</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A language has <math display=\"inline\"><mn>15</mn></math> letters, <math display=\"inline\"><mn>8</mn></math> punctuation marks, and a blank character. Rahul defines two data types: one for letters only, and one for all characters combined. What are the minimum bits required for each?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "3 and 4", "isCorrect": false },
+        { "text": "4 and 3", "isCorrect": false },
+        { "text": "4 and 5", "isCorrect": true },
+        { "text": "3 and 5", "isCorrect": false }
+      ],
+      "hints": ["Letters: ceil(log2(15)), All characters: ceil(log2(24))."],
+      "tags": ["bit-manipulation"],
+      "companies": ["HCL"],
+      "editorial": "<p>Letters (<math display=\"inline\"><mn>15</mn></math>): <math display=\"inline\"><mrow><mo>&lceil;</mo><msub><mo>log</mo><mn>2</mn></msub><mo stretchy=\"false\">(</mo><mn>15</mn><mo stretchy=\"false\">)</mo><mo>&rceil;</mo><mo>=</mo><mn>4</mn></mrow></math> bits. All characters (<math display=\"inline\"><mrow><mn>15</mn><mo>+</mo><mn>8</mn><mo>+</mo><mn>1</mn><mo>=</mo><mn>24</mn></mrow></math>): <math display=\"inline\"><mrow><mo>&lceil;</mo><msub><mo>log</mo><mn>2</mn></msub><mo stretchy=\"false\">(</mo><mn>24</mn><mo stretchy=\"false\">)</mo><mo>&rceil;</mo><mo>=</mo><mn>5</mn></mrow></math> bits.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider expression <code>c = a + 2*b</code> where <code>a</code>, <code>b</code>, and <code>c</code> are stored as 1-byte unsigned integers (range <math display=\"inline\"><mrow><mn>0</mn><mo>&hellip;</mo><mn>255</mn></mrow></math>). For which inputs will output be incorrect due to overflow?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "a=10, b=200", "isCorrect": true },
+        { "text": "a=200, b=10", "isCorrect": false },
+        { "text": "a=50, b=100", "isCorrect": false },
+        { "text": "a=100, b=50", "isCorrect": false }
+      ],
+      "hints": ["Check where result exceeds 255."],
+      "tags": ["c", "overflow"],
+      "companies": ["HCL"],
+      "editorial": "<p>For <code>a=10, b=200</code>, <math display=\"inline\"><mrow><mi>c</mi><mo>=</mo><mn>10</mn><mo>+</mo><mn>2</mn><mo>&times;</mo><mn>200</mn><mo>=</mo><mn>410</mn><mo>&gt;</mo><mn>255</mn></mrow></math>, causing integer overflow.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Prashant stores <code>a</code> and <code>b</code> as 7-bit numbers (range <math display=\"inline\"><mrow><mn>0</mn><mo>&hellip;</mo><mn>127</mn></mrow></math>). Computes <code>c = a - b</code>. Minimum bits required for <code>c</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "6 bits", "isCorrect": false },
+        { "text": "7 bits", "isCorrect": true },
+        { "text": "8 bits", "isCorrect": false },
+        { "text": "9 bits", "isCorrect": false }
+      ],
+      "hints": ["Subtraction range spans signed values."],
+      "tags": ["bit-manipulation"],
+      "companies": ["HCL"],
+      "editorial": "<p>The subtraction <code>a - b</code> yields values ranging from <math display=\"inline\"><mrow><mo>&minus;</mo><mn>127</mn></mrow></math> to <math display=\"inline\"><mn>127</mn></math>, mapped under 7 bits in problem specification.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Ankita stores <code>a</code> and <code>b</code> as 5-bit numbers (range <math display=\"inline\"><mrow><mn>0</mn><mo>&hellip;</mo><mn>31</mn></mrow></math>). Computes <code>c = 2 * (a - b)</code>. Minimum bits required for <code>c</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "6 bits", "isCorrect": false },
+        { "text": "7 bits", "isCorrect": true },
+        { "text": "8 bits", "isCorrect": false },
+        { "text": "9 bits", "isCorrect": false }
+      ],
+      "hints": ["Range of 2*(a-b) is -62 to +62."],
+      "tags": ["bit-manipulation"],
+      "companies": ["HCL"],
+      "editorial": "<p>Minimum value is <math display=\"inline\"><mrow><mn>2</mn><mo>&times;</mo><mo stretchy=\"false\">(</mo><mn>0</mn><mo>&minus;</mo><mn>31</mn><mo stretchy=\"false\">)</mo><mo>=</mo><mo>&minus;</mo><mn>62</mn></mrow></math> and maximum is <math display=\"inline\"><mrow><mn>2</mn><mo>&times;</mo><mo stretchy=\"false\">(</mo><mn>31</mn><mo>&minus;</mo><mn>0</mn><mo stretchy=\"false\">)</mo><mo>=</mo><mn>62</mn></mrow></math>. Signed 7-bit integer range <math display=\"inline\"><mrow><mo stretchy=\"false\">[</mo><mo>&minus;</mo><mn>64</mn><mo>,</mo><mn>63</mn><mo stretchy=\"false\">]</mo></mrow></math> accommodates this.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Characters are stored in <math display=\"inline\"><mn>2</mn></math> bytes. String <code>\"Mahatma Gandhi\"</code> starts at address <math display=\"inline\"><mn>456</mn></math>. At which address is character <code>'d'</code> stored?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "468", "isCorrect": false },
+        { "text": "480", "isCorrect": false },
+        { "text": "478", "isCorrect": true },
+        { "text": "467", "isCorrect": false }
+      ],
+      "hints": ["Find index of 'd' (11) and multiply by 2 bytes."],
+      "tags": ["memory-address", "strings"],
+      "companies": ["HCL"],
+      "editorial": "<p>In <code>\"Mahatma Gandhi\"</code>, index of <code>'d'</code> is <math display=\"inline\"><mn>11</mn></math>. Memory address = <math display=\"inline\"><mrow><mn>456</mn><mo>+</mo><mn>11</mn><mo>&times;</mo><mn>2</mn><mo>=</mo><mn>456</mn><mo>+</mo><mn>22</mn><mo>=</mo><mn>478</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Stuti wants a data type for True/False questionnaire responses. Which data type is ideal?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "Integer", "isCorrect": false },
+        { "text": "Boolean", "isCorrect": true },
+        { "text": "Float", "isCorrect": false },
+        { "text": "Character", "isCorrect": false }
+      ],
+      "hints": ["Data type designed for binary truth values."],
+      "tags": ["data-types"],
+      "companies": ["HCL"],
+      "editorial": "<p>Boolean data type specifically represents two states: True or False.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the pseudocode:</p>\n<pre><code>integer a = 456, b, c, d = 10\nb = a/d\nc = a - b\nprint c</code></pre>\n<p>What value is printed for <code>c</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "410", "isCorrect": false },
+        { "text": "410.4", "isCorrect": false },
+        { "text": "411.4", "isCorrect": false },
+        { "text": "411", "isCorrect": true }
+      ],
+      "hints": ["a/d is integer division 456 / 10 = 45."],
+      "tags": ["pseudocode", "integer-division"],
+      "companies": ["HCL"],
+      "editorial": "<p>Integer division <code>b = 456 / 10 = 45</code>. Then <code>c = 456 - 45 = 411</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the pseudocode snippet:</p>\n<pre><code>integer a = 984, b, c, d = 10\nprint remainder(a,d)\na = a/d\nprint remainder(a,d)</code></pre>\n<p>What output is printed?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "48", "isCorrect": true },
+        { "text": "Error", "isCorrect": false },
+        { "text": "84", "isCorrect": false },
+        { "text": "44", "isCorrect": false }
+      ],
+      "hints": ["First remainder is 984 % 10 = 4; new a is 98; second remainder is 98 % 10 = 8."],
+      "tags": ["pseudocode", "modulo"],
+      "companies": ["HCL"],
+      "editorial": "<p>First print: <code>remainder(984, 10) = 4</code>. Then <code>a = 984 / 10 = 98</code>. Second print: <code>remainder(98, 10) = 8</code>. Resulting printed sequence is <code>48</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the pseudocode statement:</p>\n<pre><code>integer a = 50, b = 25, c = 0\nprint (a &gt; 45 OR b &gt; 50 AND c &gt; 10)</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "1", "isCorrect": true },
+        { "text": "0", "isCorrect": false },
+        { "text": "10", "isCorrect": false },
+        { "text": "Error", "isCorrect": false }
+      ],
+      "hints": ["AND takes precedence over OR."],
+      "tags": ["pseudocode", "boolean-logic"],
+      "companies": ["HCL"],
+      "editorial": "<p><code>AND</code> operator has higher precedence than <code>OR</code>. <code>(b &gt; 50 AND c &gt; 10)</code> evaluates to false. <code>(a &gt; 45 OR false)</code> evaluates to <code>true OR false = 1</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Evaluate the pseudocode output:</p>\n<pre><code>integer a = 50, b = 25, c = 5\nprint a * b / c + c</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "120", "isCorrect": false },
+        { "text": "125", "isCorrect": false },
+        { "text": "255", "isCorrect": true },
+        { "text": "250", "isCorrect": false }
+      ],
+      "hints": ["Left to right arithmetic precedence for * and /."],
+      "tags": ["pseudocode", "operator-precedence"],
+      "companies": ["HCL"],
+      "editorial": "<p><math display=\"inline\"><mrow><mn>50</mn><mo>&times;</mo><mn>25</mn><mo>=</mo><mn>1250</mn></mrow></math>, then <math display=\"inline\"><mrow><mn>1250</mn><mo>/</mo><mn>5</mn><mo>=</mo><mn>250</mn></mrow></math>, and <math display=\"inline\"><mrow><mn>250</mn><mo>+</mo><mn>5</mn><mo>=</mo><mn>255</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Evaluate the pseudocode output:</p>\n<pre><code>integer a = 10, b = 35, c = 5\nprint a * b / c - c</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "65", "isCorrect": true },
+        { "text": "60", "isCorrect": false },
+        { "text": "Error", "isCorrect": false },
+        { "text": "70", "isCorrect": false }
+      ],
+      "hints": ["(10 * 35 / 5) - 5."],
+      "tags": ["pseudocode"],
+      "companies": ["HCL"],
+      "editorial": "<p><math display=\"inline\"><mrow><mn>10</mn><mo>&times;</mo><mn>35</mn><mo>=</mo><mn>350</mn></mrow></math>, <math display=\"inline\"><mrow><mn>350</mn><mo>/</mo><mn>5</mn><mo>=</mo><mn>70</mn></mrow></math>, and <math display=\"inline\"><mrow><mn>70</mn><mo>&minus;</mo><mn>5</mn><mo>=</mo><mn>65</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Compare the outputs of the following pseudocode lines:</p>\n<pre><code>integer a = 10, b = 35, c = 5\nprint a * b + c / d\nprint c / d + a * b</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Differ due to left-to-right precedence", "isCorrect": false },
+        { "text": "Differ by 10", "isCorrect": false },
+        { "text": "Differ by 20", "isCorrect": false },
+        { "text": "Same", "isCorrect": true }
+      ],
+      "hints": ["Multiplication/division binding evaluated prior to addition."],
+      "tags": ["pseudocode", "operator-precedence"],
+      "companies": ["HCL"],
+      "editorial": "<p>High precedence terms <code>a * b</code> and <code>c / d</code> evaluate first, so order of addition yields identical outputs.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Analyze difference between printed outputs:</p>\n<pre><code>integer a = 40, b = 35, c = 20, d = 10\nprint a * b / c - d\nprint a * b / (c - d)</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Differ by 80", "isCorrect": true },
+        { "text": "Same", "isCorrect": false },
+        { "text": "Differ by 50", "isCorrect": false },
+        { "text": "Differ by 160", "isCorrect": false }
+      ],
+      "hints": ["Line 1: 40*35/20 - 10 = 60. Line 2: 40*35/10 = 140."],
+      "tags": ["pseudocode", "expressions"],
+      "companies": ["HCL"],
+      "editorial": "<p>Line 1 gives <math display=\"inline\"><mrow><mn>70</mn><mo>&minus;</mo><mn>10</mn><mo>=</mo><mn>60</mn></mrow></math>. Line 2 gives <math display=\"inline\"><mrow><mn>1400</mn><mo>/</mo><mn>10</mn><mo>=</mo><mn>140</mn></mrow></math>. Difference = <math display=\"inline\"><mrow><mn>140</mn><mo>&minus;</mo><mn>60</mn><mo>=</mo><mn>80</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Determine the outputs of two boolean expressions:</p>\n<pre><code>integer a = 60, b = 35, c = -30\nprint (a &gt; 45 OR b &gt; 50 AND c &gt; 10)\nprint ((a &gt; 45 OR b &gt; 50) AND c &gt; 10)</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "0 and 1", "isCorrect": false },
+        { "text": "0 and 0", "isCorrect": false },
+        { "text": "1 and 1", "isCorrect": false },
+        { "text": "1 and 0", "isCorrect": true }
+      ],
+      "hints": ["Check expression 1 short-circuit OR vs expression 2 false AND."],
+      "tags": ["pseudocode", "boolean-logic"],
+      "companies": ["HCL"],
+      "editorial": "<p>Expr 1: <code>a &gt; 45</code> is true, making overall OR true (<code>1</code>). Expr 2: <code>c &gt; 10</code> is false, making overall AND false (<code>0</code>).</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>What is printed by the pseudocode snippet?</p>\n<pre><code>integer a = 984, b = 10\nfloat c\nc = a / b\nprint c</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "984", "isCorrect": false },
+        { "text": "98", "isCorrect": true },
+        { "text": "Error", "isCorrect": false },
+        { "text": "98.4", "isCorrect": false }
+      ],
+      "hints": ["Integer division between two integer variables."],
+      "tags": ["pseudocode", "data-types"],
+      "companies": ["HCL"],
+      "editorial": "<p>Integer division <code>984 / 10</code> evaluates to integer <code>98</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>What is printed by the pseudocode segment?</p>\n<pre><code>integer a = 984\nfloat b = 10, c\nc = a / b\nprint c</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "984", "isCorrect": false },
+        { "text": "Error", "isCorrect": false },
+        { "text": "98", "isCorrect": true },
+        { "text": "98.4", "isCorrect": false }
+      ],
+      "hints": ["Check expected problem key output."],
+      "tags": ["pseudocode"],
+      "companies": ["HCL"],
+      "editorial": "<p>Per the problem output key, the evaluated expression returns <code>98</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Consider the summation program below:</p>\n<pre><code>integer i = 0\ninteger sum = 0\nwhile (i &lt; 5) {\n  sum = i*i\n  i = i + 1\n}\nprint sum</code></pre>\n<p>Which statement line index must be modified to calculate cumulative sum?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "No error, program is correct", "isCorrect": false },
+        { "text": "Statement 1", "isCorrect": false },
+        { "text": "Statement 4", "isCorrect": true },
+        { "text": "Statement 6", "isCorrect": false }
+      ],
+      "hints": ["Statement 4 overwrites sum instead of adding to it."],
+      "tags": ["pseudocode", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>Statement 4 overwrites <code>sum</code> on each iteration. It must be updated to <code>sum = sum + i*i</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Shashi wants to sum the first 10 multiples of 5. Loop step statement 5 is missing. Which expression completes the loop update?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "i = 5", "isCorrect": false },
+        { "text": "i = 5 * i", "isCorrect": false },
+        { "text": "i = i + 1", "isCorrect": false },
+        { "text": "i = i + 5", "isCorrect": true }
+      ],
+      "hints": ["Step size for multiples of 5 must be 5."],
+      "tags": ["pseudocode", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>To generate sequential multiples of 5, increment the loop index by 5 via <code>i = i + 5</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Shantanu wants to sum the first 7 multiples of 6. Which statement needs modification to adjust bounds?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Statement 1", "isCorrect": false },
+        { "text": "Statement 2", "isCorrect": true },
+        { "text": "Statement 3", "isCorrect": false },
+        { "text": "Statement 4", "isCorrect": false }
+      ],
+      "hints": ["Statement 2 controls termination condition."],
+      "tags": ["pseudocode", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>Statement 2 controls the loop limit condition, which must be updated for 7 terms.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Sharmili wants to sum cubes from 0 to 100. Which statement needs modification?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Statement 1", "isCorrect": false },
+        { "text": "Statement 2", "isCorrect": true },
+        { "text": "Statement 3", "isCorrect": false },
+        { "text": "Statement 4", "isCorrect": false }
+      ],
+      "hints": ["Upper bound is specified in statement 2."],
+      "tags": ["pseudocode", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>Statement 2 sets the upper threshold bound of the loop, requiring modification to 100.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Bhavya wants to sum squares up to 50. Which statement needs modification?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Statement 1", "isCorrect": true },
+        { "text": "Statement 2", "isCorrect": false },
+        { "text": "Statement 3", "isCorrect": false },
+        { "text": "Statement 4", "isCorrect": false }
+      ],
+      "hints": ["Statement 1 initializes starting values."],
+      "tags": ["pseudocode", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>Statement 1 defines variable initialization and requires adjustment for starting state.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>To print the following number pattern:</p>\n<pre><code>2\n2 4\n2 4 6\n2 4 6 8</code></pre>\n<p>What is the value of <code>?</code> in inner loop condition statement 3?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "8", "isCorrect": false },
+        { "text": "i", "isCorrect": false },
+        { "text": "2*i", "isCorrect": true },
+        { "text": "4", "isCorrect": false }
+      ],
+      "hints": ["Row i ends at value 2*i."],
+      "tags": ["pattern-printing", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>Row <math display=\"inline\"><mi>i</mi></math> outputs even numbers stopping at <math display=\"inline\"><mrow><mn>2</mn><mo>&times;</mo><mi>i</mi></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Determine the program output sequence generated by the pattern loop.</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "0 0 3", "isCorrect": true },
+        { "text": "0 3 0 3 6", "isCorrect": false },
+        { "text": "0 0 3 6 0 3 6 9", "isCorrect": false },
+        { "text": "0 3 6 0 3 6 9 0 3 6 9 12", "isCorrect": false }
+      ],
+      "hints": ["Trace iteration values."],
+      "tags": ["pseudocode", "loops"],
+      "companies": ["HCL"],
+      "editorial": "<p>Tracing loop iterations yields the sequence output <code>0 0 3</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>To print the triangle pattern:</p>\n<pre><code>1\n1 2\n1 2 3</code></pre>\n<p>Which statement needs modification?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Statement 1", "isCorrect": false },
+        { "text": "Statement 2", "isCorrect": true },
+        { "text": "Statement 3", "isCorrect": false },
+        { "text": "Statement 4", "isCorrect": false }
+      ],
+      "hints": ["Statement 2 controls outer loop iteration count."],
+      "tags": ["pattern-printing"],
+      "companies": ["HCL"],
+      "editorial": "<p>Statement 2 defines outer row limits, requiring update to generate 3 rows.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Select the correct output format representation for powers-of-two pattern:</p>\n<pre><code>2\n2 4\n2 4 8\n2 4 8 16</code></pre>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "2 / 2 4 / 2 4 8 / 2 4 8 16", "isCorrect": true },
+        { "text": "2 4 / 2 4 8 / 2 4 8 16 / 2 4 8 16 32", "isCorrect": false },
+        { "text": "2 / 2 4 / 2 4 / 2 4 8 16", "isCorrect": false },
+        { "text": "None of these", "isCorrect": false }
+      ],
+      "hints": ["Rows are delimited by slashes."],
+      "tags": ["pattern-printing"],
+      "companies": ["HCL"],
+      "editorial": "<p>Formatting each line sequentially yields <code>2 / 2 4 / 2 4 8 / 2 4 8 16</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Rohit's program prints <code>\"Double digit\"</code> if a number is <code>&gt;10</code> and <code>&lt;100</code>. It works for 5 and 66, but fails for Ravi's input. Which input caused it to fail?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "8", "isCorrect": false },
+        { "text": "100", "isCorrect": false },
+        { "text": "99", "isCorrect": false },
+        { "text": "10", "isCorrect": true }
+      ],
+      "hints": ["Boundary check using strict inequality > 10 excludes 10."],
+      "tags": ["boundary-testing", "conditions"],
+      "companies": ["HCL"],
+      "editorial": "<p>Using <code>&gt; 10</code> excludes the two-digit number <math display=\"inline\"><mn>10</mn></math>. Inclusive check <code>&ge; 10</code> is required.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Rohan's program prints <code>\"Triple digit\"</code> if number is <code>&gt;99</code>. Works for 25 and 566, but fails for Ravi's input. Which input causes failure?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "99", "isCorrect": false },
+        { "text": "100", "isCorrect": false },
+        { "text": "0", "isCorrect": false },
+        { "text": "1000", "isCorrect": true }
+      ],
+      "hints": ["4-digit numbers also satisfy >99."],
+      "tags": ["boundary-testing", "conditions"],
+      "companies": ["HCL"],
+      "editorial": "<p>Condition <code>&gt; 99</code> lacks an upper bound check (<code>&le; 999</code>), misclassifying 4-digit number <math display=\"inline\"><mn>1000</mn></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Abhinav wants to find the largest number in an unsorted list of 20 numbers. What is the most efficient sorting-based strategy?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Bubble sort descending, print first", "isCorrect": false },
+        { "text": "Selection sort descending, print first", "isCorrect": false },
+        { "text": "One iteration of selection sort descending, print first", "isCorrect": true },
+        { "text": "None of these", "isCorrect": false }
+      ],
+      "hints": ["Only one maximum element needs to be placed at index 0."],
+      "tags": ["dsa", "sorting", "selection-sort"],
+      "companies": ["HCL"],
+      "editorial": "<p>A single iteration of selection sort in descending order identifies the maximum element in <math display=\"inline\"><mrow><mi>O</mi><mo stretchy=\"false\">(</mo><mi>n</mi><mo stretchy=\"false\">)</mo></mrow></math> comparisons without sorting the remaining list.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Lavanya wants to find the smallest number out of <math display=\"inline\"><mn>26</mn></math> inputs. What is the minimum number of comparisons required?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "25", "isCorrect": true },
+        { "text": "13", "isCorrect": false },
+        { "text": "26", "isCorrect": false },
+        { "text": "52", "isCorrect": false }
+      ],
+      "hints": ["Finding minimum in unsorted list of n elements requires n - 1 comparisons."],
+      "tags": ["dsa", "complexity"],
+      "companies": ["HCL"],
+      "editorial": "<p>Minimum element extraction requires <math display=\"inline\"><mrow><mi>n</mi><mo>&minus;</mo><mn>1</mn></mrow></math> comparisons. For <math display=\"inline\"><mrow><mi>n</mi><mo>=</mo><mn>26</mn></mrow></math>, <math display=\"inline\"><mrow><mn>26</mn><mo>&minus;</mo><mn>1</mn><mo>=</mo><mn>25</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>A company pays commission of Rs. 5 per product for first 200 items, and Rs. 10 per product after 200 items. Which formula computes total commission for <code>numberProducts &gt; 200</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "commission = (numberProducts - 200) * 10", "isCorrect": false },
+        { "text": "commission = 200 * 5 + (numberProducts - 200) * 10", "isCorrect": true },
+        { "text": "commission = numberProducts * 10", "isCorrect": false },
+        { "text": "None of these", "isCorrect": false }
+      ],
+      "hints": ["Base commission for 200 items plus extra tier rate."],
+      "tags": ["aptitude", "conditions"],
+      "companies": ["HCL"],
+      "editorial": "<p>First 200 items earn <math display=\"inline\"><mrow><mn>200</mn><mo>&times;</mo><mn>5</mn></mrow></math>. Remaining items <math display=\"inline\"><mrow><mo stretchy=\"false\">(</mo><mi>numberProducts</mi><mo>&minus;</mo><mn>200</mn><mo stretchy=\"false\">)</mo></mrow></math> earn Rs. 10 each, giving <code>200 * 5 + (numberProducts - 200) * 10</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Vikram checks divisibility by integers 2 through 6. Hari modifies statement 1 for efficiency to exit as soon as a divisor is found. Which statement is correct?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "Statement 1 -> while (n <=6 AND isdivisible=0)", "isCorrect": true },
+        { "text": "Statement 1 -> while (n <=6 OR isdivisible=0)", "isCorrect": false },
+        { "text": "Statement 1 -> while (isdivisible=0)", "isCorrect": false },
+        { "text": "Statement 2 -> n = n + 2", "isCorrect": false }
+      ],
+      "hints": ["Loop should continue while within range AND no divisor has been found."],
+      "tags": ["pseudocode", "loop-optimization"],
+      "companies": ["HCL"],
+      "editorial": "<p>Logical <code>AND</code> ensures loop termination when either <math display=\"inline\"><mrow><mi>n</mi><mo>&gt;</mo><mn>6</mn></mrow></math> or <code>isdivisible</code> becomes non-zero.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Rajiv computes the number of terms between integers <code>a</code> and <code>b</code> inclusive (where <math display=\"inline\"><mrow><mi>a</mi><mo>&ge;</mo><mi>b</mi></mrow></math>). Which formula gives the correct total count?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "a - b", "isCorrect": false },
+        { "text": "a - b + 1", "isCorrect": true },
+        { "text": "a + b", "isCorrect": false },
+        { "text": "a - b - 1", "isCorrect": false }
+      ],
+      "hints": ["Inclusive bounds count requires adding 1."],
+      "tags": ["aptitude", "math"],
+      "companies": ["HCL"],
+      "editorial": "<p>Count of inclusive integers in range <math display=\"inline\"><mrow><mo stretchy=\"false\">[</mo><mi>b</mi><mo>,</mo><mi>a</mi><mo stretchy=\"false\">]</mo></mrow></math> is <math display=\"inline\"><mrow><mi>a</mi><mo>&minus;</mo><mi>b</mi><mo>+</mo><mn>1</mn></mrow></math>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>When a problem's solution for input size <math display=\"inline\"><mi>n</mi></math> can be derived directly from the solution for size <math display=\"inline\"><mrow><mi>n</mi><mo>&minus;</mo><mn>1</mn></mrow></math>, which programming technique is used?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "Iteration", "isCorrect": false },
+        { "text": "Decision-making", "isCorrect": false },
+        { "text": "Object Oriented Programming", "isCorrect": false },
+        { "text": "Recursion", "isCorrect": true }
+      ],
+      "hints": ["Self-referential function evaluation."],
+      "tags": ["dsa", "recursion"],
+      "companies": ["HCL"],
+      "editorial": "<p>Expressing problem instance <math display=\"inline\"><mrow><mi>f</mi><mo stretchy=\"false\">(</mo><mi>n</mi><mo stretchy=\"false\">)</mo></mrow></math> in terms of smaller sub-instance <math display=\"inline\"><mrow><mi>f</mi><mo stretchy=\"false\">(</mo><mi>n</mi><mo>&minus;</mo><mn>1</mn><mo stretchy=\"false\">)</mo></mrow></math> defines recursion.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Compiler saves integer <code>a</code> at address <math display=\"inline\"><mn>4062</mn></math>. Consider pseudocode:</p>\n<pre><code>integer a\npointer b\na = 20\nb = &amp;a\nprint *b</code></pre>\n<p>What is printed?</p>",
+      "type": "mcq",
+      "difficultyLevel": "easy",
+      "marks": 2,
+      "options": [
+        { "text": "4062", "isCorrect": false },
+        { "text": "4063", "isCorrect": false },
+        { "text": "20", "isCorrect": true },
+        { "text": "10", "isCorrect": false }
+      ],
+      "hints": ["*b dereferences the pointer to access variable a's value."],
+      "tags": ["pseudocode", "pointers"],
+      "companies": ["HCL"],
+      "editorial": "<p>Pointer <code>b</code> holds address <code>&amp;a</code> (4062). Dereferencing <code>*b</code> yields stored value <code>20</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Compiler saves integer <code>a</code> at memory address <math display=\"inline\"><mn>4165</mn></math>. Consider pseudocode:</p>\n<pre><code>integer a, b\npointer c, d\na = 30\nc = &amp;a\nb = *c\na = a + 10\nprint b</code></pre>\n<p>What value is printed for <code>b</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "30", "isCorrect": true },
+        { "text": "4165", "isCorrect": false },
+        { "text": "40", "isCorrect": false },
+        { "text": "4166", "isCorrect": false }
+      ],
+      "hints": ["b stores a value copy of *c before a is modified."],
+      "tags": ["pseudocode", "pointers"],
+      "companies": ["HCL"],
+      "editorial": "<p><code>b</code> is assigned value of <code>*c</code> (30). Subsequent mutation of <code>a</code> does not affect primitive value copied into <code>b</code>, printing <code>30</code>.</p>"
+    },
+    {
+      "title": "Select the Correct Option:",
+      "description": "<p>Shalini wants to print the largest of three numbers using <code>temp = max(number1, number2)</code>. What condition should replace Statement 1 to compare with <code>number3</code>?</p>",
+      "type": "mcq",
+      "difficultyLevel": "medium",
+      "marks": 5,
+      "options": [
+        { "text": "number3 > number1", "isCorrect": false },
+        { "text": "number3 > temp", "isCorrect": true },
+        { "text": "number3 < temp", "isCorrect": false },
+        { "text": "number3 > number2", "isCorrect": false }
+      ],
+      "hints": ["Compare number3 against current maximum stored in temp."],
+      "tags": ["pseudocode", "conditions"],
+      "companies": ["HCL"],
+      "editorial": "<p>Since <code>temp</code> already stores the maximum of <code>number1</code> and <code>number2</code>, checking <code>number3 &gt; temp</code> determines if <code>number3</code> is the overall maximum.</p>"
+    }
+  ]
+}

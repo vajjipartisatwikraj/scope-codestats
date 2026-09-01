@@ -212,7 +212,10 @@ const AdminDashboard = () => {
             Number(platforms[platform]?.score) || 0,
             Number(codingProfiles[platform]?.score) || 0,
             Number(platformData[platform]?.score) || 0,
-            Number(user.platformScores?.[platform]) || 0,
+            // platformScores holds an object per platform, so the score has to
+            // be read out of it. Coercing the object itself gives NaN, which
+            // silently collapsed this fallback to 0.
+            Number(user.platformScores?.[platform]?.score) || 0,
           );
         };
 
