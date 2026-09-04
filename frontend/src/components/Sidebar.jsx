@@ -19,7 +19,12 @@ import {
 } from '@mui/material';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import TerminalOutlinedIcon from '@mui/icons-material/TerminalOutlined';
-import { isAdminOrTeacher, getResourcePath } from '../utils/userHelpers';
+import {
+  isAdminOrTeacher,
+  getResourcePath,
+  getDashboardPath,
+  isDashboardPath,
+} from '../utils/userHelpers';
 import ViewCarouselRoundedIcon from '@mui/icons-material/ViewCarouselRounded';
 import ViewCarouselOutlinedIcon from '@mui/icons-material/ViewCarouselOutlined';
 import WorkIcon from '@mui/icons-material/Work';
@@ -322,13 +327,36 @@ const Sidebar = ({ onToggle, mobileOpen, onMobileClose }) => {
     iconColor: darkMode ? '#ffffff' : '#00000099',
   };
 
+  /**
+   * Whether a nav item represents the current page.
+   *
+   * An item can declare `matchPaths` for pages reachable at more than one URL —
+   * the admin dashboard answers to both `/admin` and `/admin/dashboard`.
+   * Otherwise an exact match wins, with a prefix match so child routes such as
+   * `/admin/cohorts/:id` keep their parent highlighted.
+   */
+  const isItemActive = (item) => {
+    if (item.matchPaths?.includes(location.pathname)) return true;
+    if (location.pathname === item.path) return true;
+
+    // A bare prefix match on the dashboard would light it up on every page.
+    if (item.path === '/dashboard' || item.path === '/admin/dashboard') {
+      return false;
+    }
+
+    return location.pathname.startsWith(item.path);
+  };
+
   // List of navigation items
   const menuItems = [
     { 
       text: 'Dashboard', 
-      path: '/dashboard', 
-      icon: <CustomDashboardIcon isActive={location.pathname === '/dashboard' || location.pathname === '/admin/dashboard'} />, 
-      divider: false 
+      // Admins go to /admin/dashboard, everyone else to /dashboard.
+      path: getDashboardPath(user), 
+      icon: <CustomDashboardIcon isActive={isDashboardPath(location.pathname)} />, 
+      divider: false,
+      // `/admin` is the same page, so it must highlight this item too.
+      matchPaths: ['/dashboard', '/admin', '/admin/dashboard']
     },
     { 
       text: 'Leaderboard', 
@@ -469,17 +497,17 @@ const Sidebar = ({ onToggle, mobileOpen, onMobileClose }) => {
                     padding: open ? 
                       { xs: '0 10px', sm: '0 16px' } :
                       { xs: '0 4px', sm: '0 8px' },
-                    backgroundColor: location.pathname === item.path || 
-                                   (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? 
-                                   themeColors.activeBackground : 'transparent',
+                    backgroundColor: isItemActive(item)
+                      ? themeColors.activeBackground
+                      : 'transparent',
                     borderRadius: '12px',
                     mx: open ? { xs: 1, sm: 2 } : { xs: 0.5, sm: 1 },
                     position: 'relative',
                     transition: 'all 300ms ease-in-out',
                     '&:hover': {
-                      backgroundColor: location.pathname === item.path || 
-                                     (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ?
-                                     themeColors.activeBackground : 'rgba(5, 133, 224, 0.1)',
+                      backgroundColor: isItemActive(item)
+                        ? themeColors.activeBackground
+                        : 'rgba(5, 133, 224, 0.1)',
                     },
                     '&:active': {
                       transform: 'scale(0.98)',
@@ -507,9 +535,7 @@ const Sidebar = ({ onToggle, mobileOpen, onMobileClose }) => {
                         height: { xs: 18, sm: 24 },
                         transition: 'all 300ms ease-in-out'
                       },
-                      color: location.pathname === item.path || 
-                             (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ?
-                             "#ffffff" : themeColors.iconColor,
+                      color: isItemActive(item) ? "#ffffff" : themeColors.iconColor,
                     }}
                   >
                     {item.icon}
@@ -521,9 +547,7 @@ const Sidebar = ({ onToggle, mobileOpen, onMobileClose }) => {
                         style: { 
                           fontWeight: 500,
                           fontSize: isMobile ? '0.85rem' : '1rem',
-                          color: location.pathname === item.path || 
-                                 (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ?
-                                 "#ffffff": themeColors.text,
+                          color: isItemActive(item) ? "#ffffff" : themeColors.text,
                           opacity: open ? 1 : 0,
                           transition: 'opacity 300ms ease-in-out',
                           whiteSpace: 'nowrap'

@@ -196,14 +196,14 @@ export const AuthProvider = ({ children }) => {
           userData.userType === "admin" ||
           userData.userType === "teacher"
         ) {
-          navigate("/admin", { replace: true });
+          navigate("/admin/dashboard", { replace: true });
         } else {
           navigate("/dashboard", { replace: true });
         }
       } catch (error) {
         // Still navigate based on the userType we have from URL params
         if (userData.userType === "admin" || userData.userType === "teacher") {
-          navigate("/admin", { replace: true });
+          navigate("/admin/dashboard", { replace: true });
         } else {
           navigate("/dashboard", { replace: true });
         }
@@ -248,7 +248,7 @@ export const AuthProvider = ({ children }) => {
     ) {
       // Check if user is admin/teacher and redirect accordingly
       if (user?.userType === "admin" || user?.userType === "teacher") {
-        navigate("/admin", { replace: true });
+        navigate("/admin/dashboard", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }
@@ -272,7 +272,7 @@ export const AuthProvider = ({ children }) => {
       location.pathname === "/dashboard" &&
       (user?.userType === "admin" || user?.userType === "teacher")
     ) {
-      navigate("/admin", { replace: true });
+      navigate("/admin/dashboard", { replace: true });
       return;
     }
   }, [token, location.pathname, navigate, isInitialized, user]);
@@ -286,7 +286,7 @@ export const AuthProvider = ({ children }) => {
 
       // Return appropriate redirect path based on user type
       return userData?.userType === "admin" || userData?.userType === "teacher"
-        ? "/admin"
+        ? "/admin/dashboard"
         : "/dashboard";
     } catch (error) {
       // Error handling for login
@@ -310,7 +310,7 @@ export const AuthProvider = ({ children }) => {
       if (userData.userType && userData.userType !== user?.userType) {
         // User type has changed, redirect accordingly
         if (userData.userType === "admin" || userData.userType === "teacher") {
-          navigate("/admin", { replace: true });
+          navigate("/admin/dashboard", { replace: true });
         } else if (user?.userType === "admin" || user?.userType === "teacher") {
           navigate("/dashboard", { replace: true });
         }

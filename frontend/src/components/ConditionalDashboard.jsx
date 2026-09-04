@@ -20,7 +20,7 @@ const ConditionalDashboard = () => {
           
           // If user is admin, redirect to admin dashboard
           if (updatedUser?.userType === 'admin') {
-            navigate('/admin', { replace: true });
+            navigate('/admin/dashboard', { replace: true });
             return;
           }
         } catch (error) {
@@ -29,7 +29,7 @@ const ConditionalDashboard = () => {
       } 
       // If we already know this is an admin user, redirect
       else if (user?.userType === 'admin') {
-        navigate('/admin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
         return;
       }
       

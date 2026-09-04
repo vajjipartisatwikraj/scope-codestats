@@ -76,11 +76,34 @@ export const getUserTypeBadgeColor = (userType) => {
 
 /**
  * Get appropriate dashboard path for user type
+ *
+ * Admins use `/admin/dashboard` rather than the bare `/admin`, so the URL names
+ * the page being shown and matches the other admin routes
+ * (`/admin/cohorts`, `/admin/courses`, and so on). `/admin` still resolves — it
+ * redirects here — so old links and bookmarks keep working.
+ *
  * @param {Object} user - User object with userType property
  * @returns {string} Dashboard path
  */
 export const getDashboardPath = (user) => {
-  return isAdminOrTeacher(user) ? '/admin' : '/dashboard';
+  return isAdminOrTeacher(user) ? '/admin/dashboard' : '/dashboard';
+};
+
+/**
+ * True when a path is one of the dashboard URLs, for sidebar highlighting.
+ *
+ * `/admin` and `/admin/dashboard` are the same page, so both have to light up
+ * the Dashboard item.
+ *
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+export const isDashboardPath = (pathname) => {
+  return (
+    pathname === '/dashboard' ||
+    pathname === '/admin' ||
+    pathname === '/admin/dashboard'
+  );
 };
 
 /**

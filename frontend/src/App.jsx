@@ -487,13 +487,12 @@ const MainContent = () => {
                     </PrivateRoute>
                   }
                 />
+                {/* `/admin` is kept as a redirect so existing links, bookmarks
+                    and any older navigate("/admin") calls land on the canonical
+                    URL instead of showing the dashboard at a second address. */}
                 <Route
                   path="/admin"
-                  element={
-                    <PrivateRoute adminOnly={true}>
-                      <AdminDashboard />
-                    </PrivateRoute>
-                  }
+                  element={<Navigate to="/admin/dashboard" replace />}
                 />
                 <Route
                   path="/admin/dashboard"
