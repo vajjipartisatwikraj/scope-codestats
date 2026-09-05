@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { DESCRIPTION_LIMITS } = require('../utils/descriptionPoints');
 
 /**
  * ⚠️ CASCADE DELETE NOTICE:
@@ -25,9 +26,46 @@ const achievementSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  // Bullet points, 2-5 entries. See utils/descriptionPoints.js for the
+  // per-point word/character limits enforced by the routes.
   description: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (points) =>
+        Array.isArray(points) &&
+        points.length >= DESCRIPTION_LIMITS.minPoints &&
+        points.length <= DESCRIPTION_LIMITS.maxPoints,
+      message: `Description must have between ${DESCRIPTION_LIMITS.minPoints} and ${DESCRIPTION_LIMITS.maxPoints} points`
+    }
+  },
+  // Internships: the position held
+  role: {
     type: String,
-    required: true
+    trim: true,
+    default: ''
+  },
+  // Certifications: who issued it, and its validity window
+  issuer: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  /**
+   * True when the title matches the curated catalogue in
+   * constants/certifications.js. Always derived on the server - never taken
+   * from the request - so it cannot be forged. Recognised certificates are
+   * highlighted in gold on the profile.
+   */
+  recognized: {
+    type: Boolean,
+    default: false
+  },
+  issuedDate: {
+    type: Date
+  },
+  expiryDate: {
+    type: Date
   },
   tags: [{
     type: String,

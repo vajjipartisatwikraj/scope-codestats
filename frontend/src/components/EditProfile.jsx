@@ -28,6 +28,13 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { apiUrl } from "../config/apiConfig";
 import { useTheme } from "../contexts/ThemeContext";
+import { formatSkillLabel, normalizeSkillSets } from "../utils/skillSets";
+import {
+  departmentOptions,
+  interestOptions,
+  skillOptions,
+} from "../constants/profileOptions";
+import SkillSetsEditor from "./profile/SkillSetsEditor";
 
 // Platform logo URLs
 const platformLogos = {
@@ -39,84 +46,6 @@ const platformLogos = {
   hackerrank:
     "https://cdn4.iconfinder.com/data/icons/logos-and-brands/512/160_Hackerrank_logo_logos-512.png",
 };
-
-// Options for skills and interests autocomplete
-const skillOptions = [
-  "JavaScript",
-  "TypeScript",
-  "React",
-  "Angular",
-  "Vue.js",
-  "Node.js",
-  "Express",
-  "MongoDB",
-  "PostgreSQL",
-  "MySQL",
-  "GraphQL",
-  "REST API",
-  "Python",
-  "Django",
-  "Flask",
-  "Java",
-  "Spring Boot",
-  "C#",
-  ".NET",
-  "PHP",
-  "Laravel",
-  "Ruby",
-  "Ruby on Rails",
-  "AWS",
-  "Azure",
-  "Google Cloud",
-  "Docker",
-  "Kubernetes",
-  "CI/CD",
-  "Git",
-  "GitHub",
-  "GitLab",
-  "HTML",
-  "CSS",
-  "SASS",
-  "LESS",
-  "Redux",
-  "MobX",
-  "Jest",
-  "Mocha",
-  "Cypress",
-  "Testing Library",
-  "Webpack",
-  "Babel",
-  "ESLint",
-  "Prettier",
-  "Machine Learning",
-  "Deep Learning",
-  "Data Science",
-  "TensorFlow",
-  "PyTorch",
-  "Pandas",
-  "NumPy",
-  "SciPy",
-  "R",
-  "Tableau",
-  "Power BI",
-  "Hadoop",
-  "Spark",
-  "Big Data",
-  "C",
-  "C++",
-  "Swift",
-  "Kotlin",
-  "Flutter",
-  "React Native",
-  "Unity",
-  "Web Design",
-  "UI/UX",
-  "Figma",
-  "Sketch",
-  "Adobe XD",
-  "Photoshop",
-  "Illustrator",
-];
 
 // Coding platform list for user profiles
 const codingPlatforms = [
@@ -154,49 +83,6 @@ const codingPlatforms = [
   },
 ];
 
-const interestOptions = [
-  "Web Development",
-  "Mobile Development",
-  "Game Development",
-  "Data Science",
-  "Machine Learning",
-  "Artificial Intelligence",
-  "Cloud Computing",
-  "DevOps",
-  "Cybersecurity",
-  "Blockchain",
-  "IoT",
-  "AR/VR",
-  "Quantum Computing",
-  "Robotics",
-  "Open Source",
-  "UI/UX Design",
-  "Product Management",
-  "Agile",
-  "Scrum",
-  "Project Management",
-  "Technical Writing",
-  "Teaching/Mentoring",
-  "Competitive Programming",
-  "Hackathons",
-  "Startups",
-  "Research",
-  "Computer Graphics",
-  "Computer Vision",
-  "Natural Language Processing",
-  "Data Engineering",
-  "Backend Development",
-  "Frontend Development",
-  "Full Stack Development",
-  "Systems Programming",
-  "Low-level Programming",
-  "Embedded Systems",
-  "Network Programming",
-  "Database Design",
-  "Functional Programming",
-  "Object-Oriented Programming",
-];
-
 // Profile setup steps
 const setupSteps = [
   {
@@ -220,9 +106,15 @@ const setupSteps = [
     platforms: codingPlatforms,
   },
   {
-    label: "Skills & Interests",
-    description: "Tell us about your skills and interests",
-    fields: ["skills", "interests"],
+    label: "Interests",
+    description: "Tell us what you are interested in",
+    fields: ["interests"],
+    requiredFields: [], // Nothing required in this step
+  },
+  {
+    label: "Skills",
+    description: "Group your skills into sets like Languages, Databases or Tools",
+    fields: ["skills"],
     requiredFields: [], // Nothing required in this step
   },
   {
@@ -395,7 +287,7 @@ const EditProfile = ({
         rollNumber: profileData.rollNumber || "",
         // Prioritize existing graduationYear from database, fall back to calculated value
         graduationYear: existingGraduationYear || calculatedGraduationYear,
-        skills: profileData.skills || [],
+        skills: normalizeSkillSets(profileData.skills),
         interests: profileData.interests || [],
         about: profileData.about || "",
         linkedinUrl: profileData.linkedinUrl || "",
@@ -465,20 +357,9 @@ const EditProfile = ({
     }
   }, [profileData, auth?.user]);
 
-  // Handle adding a skill tag
-  const handleAddSkill = (newSkill) => {
-    if (!newSkill || !newSkill.trim()) return;
-
-    // Check if skill already exists to avoid duplicates
-    const normalizedNewSkill = newSkill.trim();
-    const currentSkills = Array.isArray(editProfileData.skills)
-      ? [...editProfileData.skills]
-      : [];
-
-    if (!currentSkills.includes(normalizedNewSkill)) {
-      const updatedSkills = [...currentSkills, normalizedNewSkill];
-      setEditProfileData((prev) => ({ ...prev, skills: updatedSkills }));
-    }
+  // Skills are stored as named sets: [{ name: "Languages", skills: ["Java"] }]
+  const handleSkillSetsChange = (skills) => {
+    setEditProfileData((prev) => ({ ...prev, skills }));
   };
 
   // Handle adding an interest tag
@@ -746,7 +627,13 @@ const EditProfile = ({
         section: editProfileData.section || "",
         rollNumber: rollNumber,
         graduationYear: editProfileData.graduationYear || calculatedGradYear,
-        skills: editProfileData.skills || [],
+        // Only send skill sets that have a name and at least one skill
+        skills: normalizeSkillSets(editProfileData.skills)
+          .map((set) => ({
+            name: formatSkillLabel(set.name),
+            skills: set.skills,
+          }))
+          .filter((set) => set.name && set.skills.length > 0),
         interests: editProfileData.interests || [],
         linkedinUrl: editProfileData.linkedinUrl || "",
         resumeLink: editProfileData.resumeLink || "",
@@ -1074,21 +961,7 @@ const EditProfile = ({
             helperText={fieldErrors.department || ""}
             required
           >
-            {[
-              { value: "AERO", label: "Aeronautical Engineering" },
-              { value: "CSC", label: "Computer Science & Cybersecurity" },
-              { value: "CSD", label: "Computer Science & Data Science" },
-              { value: "CSE", label: "Computer Science & Engineering" },
-              { value: "CSM", label: "Computer Science & ML" },
-              { value: "CSIT", label: "Computer Science & IT" },
-              { value: "IT", label: "Information Technology" },
-              {
-                value: "ECE",
-                label: "Electronics & Communication Engineering",
-              },
-              { value: "MECH", label: "Mechanical Engineering" },
-              { value: "EEE", label: "Electrical & Electronics Engineering" },
-            ].map((option) => (
+            {departmentOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
                 {option.label}
               </MenuItem>
@@ -1223,74 +1096,22 @@ const EditProfile = ({
         );
       case "skills":
         return (
-          <Autocomplete
-            key={index}
-            multiple
-            freeSolo
-            options={skillOptions}
-            value={
-              Array.isArray(editProfileData?.skills)
-                ? editProfileData.skills
-                : []
-            }
-            onChange={(e, newValue) => {
-              // Ensure we always have an array of strings
-              const processedSkills = newValue
-                .map((skill) =>
-                  typeof skill === "string" ? skill.trim() : skill,
-                )
-                .filter((skill) => skill); // Remove any empty skills
-              setEditProfileData((prev) => ({
-                ...prev,
-                skills: processedSkills,
-              }));
-            }}
-            onBlur={(e) => {
-              // Check if there's text in the input and add it as a tag
-              const inputValue = e.target.value?.trim();
-              if (inputValue) {
-                handleAddSkill(inputValue);
-                // Clear the input (note: this might not work perfectly with MUI Autocomplete)
-                setTimeout(() => {
-                  e.target.value = "";
-                }, 0);
-              }
-            }}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip
-                  label={option}
-                  {...getTagProps({ index })}
-                  key={index}
-                  size="small"
-                  sx={{
-                    bgcolor: darkMode
-                      ? "rgba(0,136,204,0.2)"
-                      : "rgba(0,136,204,0.1)",
-                    color: "#0088cc",
-                    border: "1px solid rgba(0,136,204,0.3)",
-                  }}
-                />
-              ))
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                fullWidth
-                margin="normal"
-                label="Skills"
-                placeholder="Add skills and press enter"
-                helperText={
-                  fieldErrors.skills ||
-                  "Enter your skills and press Enter or select from suggestions"
-                }
-                error={!!fieldErrors.skills}
-                disabled={!isEditMode}
-              />
+          <Box key={index} sx={{ width: "100%", mt: 1, mb: 1 }}>
+            <SkillSetsEditor
+              value={editProfileData?.skills}
+              onChange={handleSkillSetsChange}
+              darkMode={darkMode}
+              disabled={!isEditMode}
+            />
+            {fieldErrors.skills && (
+              <Typography
+                variant="caption"
+                sx={{ display: "block", mt: 1, color: "#f44336" }}
+              >
+                {fieldErrors.skills}
+              </Typography>
             )}
-            disabled={!isEditMode}
-            sx={{ width: "100%", marginTop: 2, marginBottom: 1 }}
-          />
+          </Box>
         );
       case "interests":
         return (
@@ -1582,7 +1403,11 @@ const EditProfile = ({
                             <Grid
                               item
                               xs={12}
-                              sm={field === "about" ? 12 : 6}
+                              sm={
+                                ["about", "skills", "interests"].includes(field)
+                                  ? 12
+                                  : 6
+                              }
                               key={idx}
                             >
                               {renderProfileField(field, idx)}
@@ -1736,20 +1561,30 @@ const EditProfile = ({
                 {renderProfileField("githubUrl")}
               </Grid>
 
-              {/* Skills & Interests */}
+              {/* Interests */}
               <Grid item xs={12}>
                 <Typography
                   variant="h6"
                   sx={{ mb: 2, mt: 2, color: "#0088cc" }}
                 >
-                  Skills & Interests
+                  Interests
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                {renderProfileField("interests")}
+              </Grid>
+
+              {/* Skills */}
+              <Grid item xs={12}>
+                <Typography
+                  variant="h6"
+                  sx={{ mb: 2, mt: 2, color: "#0088cc" }}
+                >
+                  Skills
                 </Typography>
               </Grid>
               <Grid item xs={12}>
                 {renderProfileField("skills")}
-              </Grid>
-              <Grid item xs={12}>
-                {renderProfileField("interests")}
               </Grid>
 
               {/* About */}

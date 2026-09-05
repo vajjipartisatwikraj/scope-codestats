@@ -55,6 +55,7 @@ import {
   Work,
   VerifiedUser,
   EmojiEvents,
+  WorkspacePremium as RecognizedIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   ChevronLeft,
@@ -69,6 +70,13 @@ import {
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { apiUrl } from "../config/apiConfig";
+import { normalizeSkillSets } from "../utils/skillSets";
+import { normalizeDescriptionPoints } from "../utils/descriptionPoints";
+import {
+  GOLD,
+  GOLD_SOFT,
+  GOLD_BORDER,
+} from "./profile/CertificationSuggestions";
 
 // Import Dashboard components and utilities
 import {
@@ -3075,18 +3083,34 @@ const UserView = () => {
               >
                 Skills
               </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 3 }}>
-                {userData.skills?.map((skill, index) => (
-                  <Chip
-                    key={`skill-${skill}-${index}`}
-                    label={skill}
-                    size={isMobile ? "small" : "medium"}
+              {normalizeSkillSets(userData.skills).map((skillSet, setIndex) => (
+                <Box key={`skill-set-${setIndex}`} sx={{ mb: 2 }}>
+                  <Typography
+                    variant="subtitle2"
                     sx={{
-                      ...getChipStyle("#0088cc"),
+                      mb: 1,
+                      fontWeight: 600,
+                      color: darkMode
+                        ? "rgba(255,255,255,0.7)"
+                        : "rgba(0,0,0,0.7)",
                     }}
-                  />
-                ))}
-              </Box>
+                  >
+                    {skillSet.name}
+                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {skillSet.skills.map((skill, index) => (
+                      <Chip
+                        key={`skill-${skill}-${index}`}
+                        label={skill}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{
+                          ...getChipStyle("#0088cc"),
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              ))}
 
               <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
 
@@ -4552,6 +4576,20 @@ const UserView = () => {
                                   "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                                 minHeight: "220px",
                                 position: "relative",
+                                // Globally recognized certificates are marked in gold
+                                ...(achievement.recognized && {
+                                  border: `1px solid ${GOLD_BORDER}`,
+                                  "&::before": {
+                                    content: '""',
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: "3px",
+                                    zIndex: 2,
+                                    background: `linear-gradient(90deg, ${GOLD} 0%, rgba(201,162,39,0.35) 100%)`,
+                                  },
+                                }),
                               }}
                             >
                               {/* Gaussian Blur Effect - Only for dark mode */}
@@ -4693,16 +4731,42 @@ const UserView = () => {
                                       )}
                                     </Box>
 
-                                    <Typography
-                                      variant="h6"
-                                      sx={{
-                                        fontWeight: 600,
-                                        color: darkMode ? "white" : "#000000",
-                                        fontSize: "1.1rem",
-                                      }}
-                                    >
-                                      {achievement.title}
-                                    </Typography>
+                                    <Box sx={{ minWidth: 0 }}>
+                                      <Typography
+                                        variant="h6"
+                                        sx={{
+                                          fontWeight: 600,
+                                          color: darkMode ? "white" : "#000000",
+                                          fontSize: "1.1rem",
+                                        }}
+                                      >
+                                        {achievement.title}
+                                      </Typography>
+
+                                      {achievement.recognized && (
+                                        <Chip
+                                          size="small"
+                                          icon={
+                                            <RecognizedIcon
+                                              sx={{
+                                                fontSize: 15,
+                                                color: `${GOLD} !important`,
+                                              }}
+                                            />
+                                          }
+                                          label="Recognized"
+                                          sx={{
+                                            mt: 0.75,
+                                            height: "22px",
+                                            fontSize: "0.7rem",
+                                            fontWeight: 600,
+                                            bgcolor: GOLD_SOFT,
+                                            color: GOLD,
+                                            border: `1px solid ${GOLD_BORDER}`,
+                                          }}
+                                        />
+                                      )}
+                                    </Box>
                                   </Box>
 
                                   {/* External Link */}
@@ -4785,8 +4849,8 @@ const UserView = () => {
                                   </Box>
                                 )}
 
-                                <Typography
-                                  variant="body2"
+                                <Box
+                                  component="ul"
                                   sx={{
                                     color: darkMode
                                       ? "rgba(255, 255, 255, 0.7)"
@@ -4794,15 +4858,27 @@ const UserView = () => {
                                     fontSize: "0.9rem",
                                     lineHeight: 1.6,
                                     flex: 1,
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 3,
-                                    WebkitBoxOrient: "vertical",
+                                    pl: 2.5,
+                                    my: 0,
+                                    // Tailwind preflight removes list markers globally
+                                    listStyleType: "disc",
+                                    listStylePosition: "outside",
+                                    "& li": { display: "list-item" },
                                   }}
                                 >
-                                  {achievement.description}
-                                </Typography>
+                                  {normalizeDescriptionPoints(
+                                    achievement.description,
+                                  ).map((point, pointIdx) => (
+                                    <Typography
+                                      component="li"
+                                      variant="body2"
+                                      key={pointIdx}
+                                      sx={{ mb: 0.5 }}
+                                    >
+                                      {point}
+                                    </Typography>
+                                  ))}
+                                </Box>
 
                                 <Divider
                                   sx={{

@@ -47,6 +47,14 @@ import {
 } from "./components";
 
 import { apiUrl } from "../../config/apiConfig";
+import { normalizeSkillSets } from "../../utils/skillSets";
+import { normalizeDescriptionPoints } from "../../utils/descriptionPoints";
+
+// Descriptions are bullet points; flatten them into one spreadsheet cell
+const formatDescriptionPoints = (description) =>
+  normalizeDescriptionPoints(description)
+    .map((point) => `• ${point}`)
+    .join("\n") || "-";
 
 const AdminDashboard = () => {
   const theme = useTheme();
@@ -386,7 +394,10 @@ const AdminDashboard = () => {
             Number(user.platformData?.totalScore) || 0,
           ),
           rank: index + 1,
-          skills: Array.isArray(user.skills) ? user.skills.join(", ") : "-",
+          skills:
+            normalizeSkillSets(user.skills)
+              .map((set) => `${set.name}: ${set.skills.join(", ")}`)
+              .join(" | ") || "-",
           interests: Array.isArray(user.interests)
             ? user.interests.join(", ")
             : "-",
@@ -541,7 +552,7 @@ const AdminDashboard = () => {
               graduationYear: user.graduatingYear || "-",
               email: user.email,
               title: achievement.title || "-",
-              description: achievement.description || "-",
+              description: formatDescriptionPoints(achievement.description),
               tags: achievement.tags?.join(", ") || "-",
               link: achievementLink,
               imageUrl: achievementImageUrl,
@@ -644,7 +655,7 @@ const AdminDashboard = () => {
               graduationYear: user.graduatingYear || "-",
               email: user.email,
               title: project.title || "-",
-              description: project.description || "-",
+              description: formatDescriptionPoints(project.description),
               tags: project.tags?.join(", ") || "-",
               link: projectLink,
               domainLink: domainLink,
@@ -757,7 +768,7 @@ const AdminDashboard = () => {
               graduationYear: user.graduatingYear || "-",
               email: user.email,
               title: internship.title || "-",
-              description: internship.description || "-",
+              description: formatDescriptionPoints(internship.description),
               tags: internship.tags?.join(", ") || "-",
               link: internshipLink,
               domainLink: internshipDomainLink,
@@ -880,7 +891,7 @@ const AdminDashboard = () => {
               graduationYear: user.graduatingYear || "-",
               email: user.email,
               title: certification.title || "-",
-              description: certification.description || "-",
+              description: formatDescriptionPoints(certification.description),
               tags: certification.tags?.join(", ") || "-",
               link: certificationLink,
               domainLink: certificationDomainLink,

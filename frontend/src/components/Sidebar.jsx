@@ -30,6 +30,8 @@ import ViewCarouselOutlinedIcon from '@mui/icons-material/ViewCarouselOutlined';
 import WorkIcon from '@mui/icons-material/Work';
 import StadiumOutlinedIcon from '@mui/icons-material/StadiumOutlined';
 import StadiumRoundedIcon from '@mui/icons-material/StadiumRounded';
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -371,12 +373,19 @@ const Sidebar = ({ onToggle, mobileOpen, onMobileClose }) => {
       divider: false,
       hideFor: isAdminOrTeacher(user)
     },
+    {
+      // Students only: admins and teachers have no resumes of their own
+      text: 'Build my Resume',
+      path: '/build-resume',
+      icon: location.pathname.startsWith('/build-resume') ? <ArticleRoundedIcon /> : <ArticleOutlinedIcon />,
+      divider: false,
+      hideFor: isAdminOrTeacher(user)
+    },
     { 
       text: 'Cohorts', 
       path: getResourcePath(user, 'cohorts'), 
       icon: location.pathname.includes('/cohorts') || location.pathname.includes('/admin/cohorts') ? <ViewCarouselRoundedIcon /> : <ViewCarouselOutlinedIcon />, 
-      divider: false,
-      isNew: true 
+      divider: false
     },
     { 
       text: 'Practice Arena', 

@@ -306,8 +306,47 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Education history, one entry per level, e.g.
+    // [{ level: "Engineering", name: "MLRIT", startDate: "2022-08",
+    //    endDate: "2026-05", scoreType: "CGPA", score: 8.7, stream: "CSE" }]
+    education: {
+      type: [
+        {
+          _id: false,
+          // Not marked required so an incomplete legacy/partial row can never
+          // block an unrelated user.save(); the routes normalize before saving
+          level: {
+            type: String,
+            enum: ["School", "Intermediate", "Diploma", "Engineering"],
+          },
+          name: { type: String, default: "", trim: true },
+          // Stored as "YYYY-MM" so the UI can use a month picker directly
+          startDate: { type: String, default: "" },
+          endDate: { type: String, default: "" },
+          scoreType: {
+            type: String,
+            enum: ["CGPA", "Percentage"],
+            default: "CGPA",
+          },
+          score: { type: Number, default: null },
+          // Not applicable to School
+          stream: { type: String, default: "", trim: true },
+        },
+      ],
+      default: [],
+    },
+    // Skills grouped into named sets, e.g.
+    // [{ name: "Languages", skills: ["Java", "Python"] }]
     skills: {
-      type: [String],
+      type: [
+        {
+          _id: false,
+          // Not required: legacy documents stored skills as a flat string array
+          // and must not fail validation on an unrelated user.save()
+          name: { type: String, default: "", trim: true },
+          skills: { type: [String], default: [] },
+        },
+      ],
       default: [],
     },
     interests: {
@@ -425,6 +464,25 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+/**
+ * Legacy data support: skills used to be a flat array of strings
+ * (["Java", "Python"]). Reshape it before mongoose casts the document,
+ * otherwise each string is cast into an empty skill-set subdocument and the
+ * original values are lost on the next save().
+ */
+userSchema.pre("init", function (doc) {
+  if (!Array.isArray(doc?.skills)) return;
+
+  const legacySkills = doc.skills.filter((item) => typeof item === "string");
+  if (legacySkills.length === 0) return;
+
+  const skillSets = doc.skills.filter(
+    (item) => item && typeof item === "object",
+  );
+
+  doc.skills = [{ name: "Skills", skills: legacySkills }, ...skillSets];
+});
+
 // Update lastActive whenever the user document is modified
 userSchema.pre("save", async function (next) {
   this.lastActive = new Date();
@@ -477,6 +535,9 @@ userSchema.pre(
 
         // Achievement data - user achievements, internships, projects, certifications
         mongoose.model("Achievement").deleteMany({ user: userId }),
+
+        // Resume data - resumes built with the resume builder
+        mongoose.model("Resume").deleteMany({ user: userId }),
 
         // Rank history data - daily performance tracking
         mongoose.model("RankHistory").deleteMany({ userId: userId }),
@@ -550,6 +611,9 @@ userSchema.pre("findOneAndDelete", async function () {
       // Achievement data - user achievements, internships, projects, certifications
       mongoose.model("Achievement").deleteMany({ user: userId }),
 
+      // Resume data - resumes built with the resume builder
+      mongoose.model("Resume").deleteMany({ user: userId }),
+
       // Rank history data - daily performance tracking
       mongoose.model("RankHistory").deleteMany({ userId: userId }),
 
@@ -615,6 +679,9 @@ userSchema.pre("findByIdAndDelete", async function () {
 
       // Achievement data - user achievements, internships, projects, certifications
       mongoose.model("Achievement").deleteMany({ user: userId }),
+
+      // Resume data - resumes built with the resume builder
+      mongoose.model("Resume").deleteMany({ user: userId }),
 
       // Rank history data - daily performance tracking
       mongoose.model("RankHistory").deleteMany({ userId: userId }),
@@ -686,6 +753,9 @@ userSchema.pre("deleteMany", async function () {
 
       // Achievement data - user achievements, internships, projects, certifications
       mongoose.model("Achievement").deleteMany({ user: { $in: userIds } }),
+
+      // Resume data - resumes built with the resume builder
+      mongoose.model("Resume").deleteMany({ user: { $in: userIds } }),
 
       // Rank history data - daily performance tracking
       mongoose.model("RankHistory").deleteMany({ userId: { $in: userIds } }),

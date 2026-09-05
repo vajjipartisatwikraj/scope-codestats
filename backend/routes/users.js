@@ -6,6 +6,8 @@ const User = require("../models/User");
 const Achievement = require("../models/Achievement");
 const Profile = require("../models/Profile");
 const { isAdminOrTeacher } = require("../utils/userHelpers");
+const { normalizeSkillSets } = require("../utils/skillSets");
+const { normalizeEducation } = require("../utils/education");
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
@@ -180,8 +182,9 @@ router.get("/me", auth, async (req, res) => {
     // Format the response
     const userData = {
       ...user,
-      skills: user.skills || [],
+      skills: normalizeSkillSets(user.skills),
       interests: user.interests || [],
+      education: normalizeEducation(user.education),
       about: user.about || "",
       linkedinUrl: user.linkedinUrl || "",
       graduatingYear: user.graduatingYear,
@@ -323,7 +326,7 @@ router.get("/public/:username", publicUsernameRateLimit, async (req, res) => {
     // Fetch user's achievements
     const achievements = await Achievement.find({ user: user._id })
       .select(
-        "title description type tags link imageUrl startDate endDate domainLink",
+        "title description type tags link imageUrl startDate endDate domainLink role issuer issuedDate expiryDate recognized",
       )
       .lean();
 
@@ -368,7 +371,8 @@ router.get("/public/:username", publicUsernameRateLimit, async (req, res) => {
       profilePicture: user.profilePicture || null,
       totalScore: user.totalScore || 0,
       // Missing fields from User schema
-      skills: user.skills || [],
+      skills: normalizeSkillSets(user.skills),
+      education: normalizeEducation(user.education),
       interests: user.interests || [],
       githubStats: user.githubStats || {
         totalCommits: 0,
@@ -439,7 +443,7 @@ router.get("/:username", async (req, res) => {
     // Fetch user's achievements - OPTIMIZED with field selection and .lean()
     const achievements = await Achievement.find({ user: user._id })
       .select(
-        "title description type tags link imageUrl startDate endDate domainLink",
+        "title description type tags link imageUrl startDate endDate domainLink role issuer issuedDate expiryDate recognized",
       )
       .lean();
 
@@ -472,8 +476,9 @@ router.get("/:username", async (req, res) => {
     // Format the response
     const userData = {
       ...user,
-      skills: user.skills || [],
+      skills: normalizeSkillSets(user.skills),
       interests: user.interests || [],
+      education: normalizeEducation(user.education),
       about: user.about || "",
       linkedinUrl: user.linkedinUrl || "",
       resumeLink: user.resumeLink || "",

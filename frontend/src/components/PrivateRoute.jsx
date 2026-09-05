@@ -62,6 +62,11 @@ const PrivateRoute = ({ children, adminOnly = false }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Resume building is a student-only feature
+  if (location.pathname.startsWith('/build-resume') && (auth.user?.userType === 'admin' || auth.user?.userType === 'teacher')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Check if this is a new user that needs to complete profile setup
   if (auth.user?.newUser === true || auth.user?.profileCompleted === false) {
     // Only redirect if not already on profile setup page

@@ -14,13 +14,39 @@ import {
   Badge, OpenInNew, Delete as DeleteIcon, Close as CloseIcon,
   Search as SearchIcon, VerifiedUser as CertificateIcon,
   Work as InternshipIcon, EmojiEvents as AchievementIcon,
-  Code as ProjectIcon, Description as ResumeIcon
+  Code as ProjectIcon, Description as ResumeIcon,
+  WorkspacePremium as RecognizedIcon
 } from '@mui/icons-material';
 import { apiUrl } from '../config/apiConfig';
+import { normalizeSkillSets } from '../utils/skillSets';
+import { departmentOptions, interestOptions } from '../constants/profileOptions';
+import EditableSection from './profile/EditableSection';
+import SkillSetsEditor from './profile/SkillSetsEditor';
+import EducationEditor from './profile/EducationEditor';
+import {
+  asEditableEducation,
+  formatDateRange,
+  normalizeEducation,
+  validateEducation
+} from '../utils/education';
+import {
+  asEditablePoints,
+  countWords,
+  DESCRIPTION_LIMITS,
+  getPointError,
+  normalizeDescriptionPoints,
+  validateDescriptionPoints
+} from '../utils/descriptionPoints';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import EditProfile from './EditProfile';
+import StyledDialog from './common/StyledDialog';
+import CertificationSuggestions, {
+  GOLD,
+  GOLD_SOFT,
+  GOLD_BORDER
+} from './profile/CertificationSuggestions';
 import { getProfileImageUrl } from '../utils/profileUtils';
 
 // Achievement types with icons
@@ -35,7 +61,20 @@ const MAX_ITEMS_PER_TYPE = 5;
 const LIMITED_TYPES = ['project', 'internship'];
 const LOGO_TOKEN = 'pk_RBjC8X-kSE2wrzZ-kFI4-g';
 
-const getWordCount = (text) => text.trim().split(/\s+/).filter(w => w).length;
+// A stored date is an ISO string, but <input type="date"> needs YYYY-MM-DD
+const toDateInputValue = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+};
+
+// "2026-05-01" -> "May 2026", for the read-only cards
+const formatMonthYear = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+};
 
 const DomainSearch = ({ onDomainSelect, initialValue }) => {
   const [searchQuery, setSearchQuery] = useState(initialValue || '');
@@ -204,6 +243,7 @@ const Profile = () => {
     githubUrl: '',
     skills: [],
     interests: [],
+    education: [],
     about: '',
   });
   const [achievements, setAchievements] = useState([]);
@@ -217,12 +257,18 @@ const Profile = () => {
   const [achievementForm, setAchievementForm] = useState({
     type: 'achievement',
     title: '',
-    description: '',
+    description: ['', ''],
     tags: [],
     link: '',
     domainLink: '',
+    // Internship specific
     startDate: '',
-    endDate: ''
+    endDate: '',
+    role: '',
+    // Certification specific
+    issuer: '',
+    issuedDate: '',
+    expiryDate: ''
   });
   const [editingAchievement, setEditingAchievement] = useState(null);
 
@@ -238,6 +284,14 @@ const Profile = () => {
 
   // Add handlers for tags input
   const [tagInput, setTagInput] = useState('');
+
+  // Catalogue of globally recognized certifications, loaded once
+  const [certificationCatalog, setCertificationCatalog] = useState([]);
+
+  // Inline section editing: which card is open, its draft values, save state
+  const [editingSection, setEditingSection] = useState(null);
+  const [sectionDraft, setSectionDraft] = useState({});
+  const [savingSection, setSavingSection] = useState(false);
 
   // Load profile data when component mounts
   useEffect(() => {
@@ -285,6 +339,18 @@ const Profile = () => {
       // Error handled by parent loadProfileData
     }
   };
+
+  // Recognized certification catalogue, used for the name suggestions
+  useEffect(() => {
+    if (!auth?.token) return;
+
+    axios
+      .get(`${apiUrl}/achievements/certifications/catalog`, {
+        headers: { Authorization: `Bearer ${auth.token}` }
+      })
+      .then((response) => setCertificationCatalog(response.data.certifications || []))
+      .catch(() => setCertificationCatalog([]));
+  }, [auth?.token]);
 
   // Fetch achievements from API
   const fetchAchievements = async () => {
@@ -341,17 +407,188 @@ const Profile = () => {
     toast.success('Profile updated successfully');
   };
 
+  // ---- Inline per-section editing -------------------------------------------
+  // Snapshot of the fields a section owns, used both to seed the draft and to
+  // decide whether the Update button should be enabled.
+  const getSectionValues = (section) => {
+    switch (section) {
+      case 'basic':
+        return {
+          department: profileData.department || '',
+          phone: profileData.phone || '',
+        };
+      case 'about':
+        return { about: profileData.about || '' };
+      case 'education':
+        return { education: asEditableEducation(profileData.education) };
+      case 'skills':
+        return { skills: normalizeSkillSets(profileData.skills) };
+      case 'interests':
+        return {
+          interests: Array.isArray(profileData.interests) ? profileData.interests : [],
+        };
+      case 'social':
+        return {
+          linkedinUrl: profileData.linkedinUrl || '',
+          githubUsername: profileData.profiles?.github?.username || '',
+          resumeLink: profileData.resumeLink || '',
+        };
+      default:
+        return {};
+    }
+  };
+
+  const startSectionEdit = (section) => {
+    setEditingSection(section);
+    setSectionDraft(getSectionValues(section));
+  };
+
+  const cancelSectionEdit = () => {
+    setEditingSection(null);
+    setSectionDraft({});
+  };
+
+  const setDraftField = (field, value) => {
+    setSectionDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const isSectionDirty = (section) =>
+    editingSection === section &&
+    JSON.stringify(sectionDraft) !== JSON.stringify(getSectionValues(section));
+
+  // Saves only the fields belonging to the section being edited
+  const handleSectionSave = async () => {
+    const section = editingSection;
+    const payload = {};
+
+    if (section === 'basic') {
+      const phoneError = validatePhone(sectionDraft.phone);
+      if (phoneError) {
+        toast.error(phoneError);
+        return;
+      }
+      if (!sectionDraft.department) {
+        toast.error('Please select a department');
+        return;
+      }
+      payload.department = sectionDraft.department;
+      payload.phone = sectionDraft.phone;
+    } else if (section === 'about') {
+      payload.about = sectionDraft.about || '';
+    } else if (section === 'education') {
+      const educationError = validateEducation(sectionDraft.education);
+      if (educationError) {
+        toast.error(educationError);
+        return;
+      }
+      payload.education = normalizeEducation(sectionDraft.education, {
+        engineeringStream: profileData.department || ''
+      });
+    } else if (section === 'skills') {
+      payload.skills = normalizeSkillSets(sectionDraft.skills);
+    } else if (section === 'interests') {
+      payload.interests = sectionDraft.interests || [];
+    } else if (section === 'social') {
+      payload.linkedinUrl = sectionDraft.linkedinUrl || '';
+      payload.resumeLink = sectionDraft.resumeLink || '';
+      payload.githubUrl = sectionDraft.githubUsername || '';
+    } else {
+      return;
+    }
+
+    setSavingSection(true);
+    try {
+      await axios.put(`${apiUrl}/profiles/me`, payload, {
+        headers: { Authorization: `Bearer ${auth.token}` }
+      });
+      await fetchProfileData();
+      cancelSectionEdit();
+      toast.success('Updated successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update. Please try again.');
+    } finally {
+      setSavingSection(false);
+    }
+  };
+
+  // Props shared by every editable section card
+  const sectionProps = (section) => ({
+    darkMode,
+    editing: editingSection === section,
+    dirty: isSectionDirty(section),
+    saving: savingSection,
+    onEdit: () => startSectionEdit(section),
+    onCancel: cancelSectionEdit,
+    onSave: handleSectionSave,
+  });
+
+  // Description points of the achievement being edited, kept editable (blanks
+  // included) so rows don't disappear while typing
+  const descriptionPoints = asEditablePoints(achievementForm.description);
+
+  const setDescriptionPoints = (points) => {
+    setAchievementForm((prev) => ({ ...prev, description: points }));
+  };
+
+  const handleDescriptionPointChange = (index, value) => {
+    setDescriptionPoints(
+      descriptionPoints.map((point, i) => (i === index ? value : point))
+    );
+  };
+
+  // One click fills the name, issuer and issuer domain from the catalogue.
+  // The server re-derives `recognized` from the title, so nothing is trusted here.
+  const handleSelectRecognizedCertification = (entry) => {
+    setAchievementForm((prev) => ({
+      ...prev,
+      title: entry.code ? `${entry.name} (${entry.code})` : entry.name,
+      issuer: entry.issuer,
+      domainLink: entry.domain
+    }));
+  };
+
+  // Icon shown in the dialog header, following the selected type
+  const activeTypeMeta = achievementTypes.find(
+    (option) => option.value === achievementForm.type
+  );
+
+  // Switching type clears the fields that only belong to the previous one
+  const handleAchievementTypeChange = (nextType) => {
+    setAchievementForm((prev) => ({
+      ...prev,
+      type: nextType,
+      ...(nextType === 'internship' ? {} : { startDate: '', endDate: '', role: '' }),
+      ...(nextType === 'certification'
+        ? {}
+        : { issuer: '', issuedDate: '', expiryDate: '' })
+    }));
+  };
+
+  const handleAddDescriptionPoint = () => {
+    if (descriptionPoints.length >= DESCRIPTION_LIMITS.maxPoints) return;
+    setDescriptionPoints([...descriptionPoints, '']);
+  };
+
+  const handleRemoveDescriptionPoint = (index) => {
+    setDescriptionPoints(descriptionPoints.filter((_, i) => i !== index));
+  };
+
   // Reset achievement form
   const resetAchievementForm = () => {
     setAchievementForm({
       type: activeTab,
+      // Start with the minimum number of points
+      description: Array(DESCRIPTION_LIMITS.minPoints).fill(''),
       title: '',
-      description: '',
       tags: [],
       link: '',
       domainLink: '',
       startDate: '',
-      endDate: ''
+      endDate: '',
+      role: '',
+      issuer: '',
+      issuedDate: '',
+      expiryDate: ''
     });
     setEditingAchievement(null);
   };
@@ -368,7 +605,16 @@ const Profile = () => {
     setAchievementForm({
       ...achievement,
       tags: tags,
-      domainLink: achievement.domainLink || ''
+      // Handles both the points array and legacy single-string descriptions
+      description: asEditablePoints(achievement.description),
+      domainLink: achievement.domainLink || '',
+      role: achievement.role || '',
+      issuer: achievement.issuer || '',
+      // type="date" inputs only accept YYYY-MM-DD, not the stored ISO string
+      startDate: toDateInputValue(achievement.startDate),
+      endDate: toDateInputValue(achievement.endDate),
+      issuedDate: toDateInputValue(achievement.issuedDate),
+      expiryDate: toDateInputValue(achievement.expiryDate)
     });
     
     setOpenDialog(true);
@@ -379,7 +625,7 @@ const Profile = () => {
     e.preventDefault();
     
     // Validate form
-    if (!achievementForm.title || !achievementForm.description) {
+    if (!achievementForm.title) {
       setErrorDialog({
         open: true,
         title: 'Missing Required Fields',
@@ -401,20 +647,38 @@ const Profile = () => {
       }
     }
     
-    const wordCount = getWordCount(achievementForm.description);
-    if (wordCount > 40) {
-      setErrorDialog({
-        open: true,
-        title: 'Description Too Long',
-        message: `Your description is ${wordCount} words. Please limit it to 40 words or less.`
-      });
+    const descriptionError = validateDescriptionPoints(achievementForm.description);
+    if (descriptionError) {
+      toast.error(descriptionError);
+      return;
+    }
+
+    // Date order checks. Values are YYYY-MM-DD so string comparison is safe.
+    if (
+      achievementForm.type === 'internship' &&
+      achievementForm.startDate &&
+      achievementForm.endDate &&
+      achievementForm.startDate >= achievementForm.endDate
+    ) {
+      toast.error('Start date must be earlier than the end date');
+      return;
+    }
+
+    if (
+      achievementForm.type === 'certification' &&
+      achievementForm.issuedDate &&
+      achievementForm.expiryDate &&
+      achievementForm.issuedDate >= achievementForm.expiryDate
+    ) {
+      toast.error('Issued date must be earlier than the expiry date');
       return;
     }
 
     try {
       // Use the tags array directly from state
       const achievementData = {
-        ...achievementForm
+        ...achievementForm,
+        description: normalizeDescriptionPoints(achievementForm.description)
       };
       
       let response;
@@ -656,15 +920,53 @@ const Profile = () => {
             </Box>
           </Box>
 
-          {/* Quick Info Grid with improved styling */}
-          <Grid container spacing={0} sx={{ 
-            mb: 4, 
-            bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
-            p: 3, 
-            borderRadius: '16px',
-            boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
-          }}>
+          {/* Quick Info Grid - hover the card to edit department / phone */}
+          <EditableSection
+            {...sectionProps('basic')}
+            sx={{
+              mb: 4,
+              bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
+              p: 3,
+              borderRadius: '16px',
+              boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
+            }}
+            editContent={
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Department"
+                    value={sectionDraft.department || ''}
+                    onChange={(e) => setDraftField('department', e.target.value)}
+                  >
+                    {departmentOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    value={sectionDraft.phone || ''}
+                    onChange={(e) => setDraftField('phone', e.target.value.replace(/\D/g, ''))}
+                    helperText="Enter exactly 10 digits"
+                    inputProps={{ maxLength: 10, inputMode: 'numeric' }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
+                    Roll number and email cannot be changed.
+                  </Typography>
+                </Grid>
+              </Grid>
+            }
+          >
+          <Grid container spacing={0}>
             <Grid item xs={12} sm={6} md={3} sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ minWidth: 44, mr: 2, display: 'flex', justifyContent: 'center' }}>
@@ -726,17 +1028,32 @@ const Profile = () => {
               </Box>
             </Grid>
           </Grid>
+          </EditableSection>
 
-          {/* About Section with improved styling */}
-          <Box sx={{
-            p: 3,
-            borderRadius: '16px',
-            boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
-            mb: 3
-          }}>
-            <Typography variant="h6" sx={{ mb: 2, color: darkMode ? '#ffffff' : '#000000' }}>About</Typography>
+          {/* About Section with inline editing */}
+          <EditableSection
+            {...sectionProps('about')}
+            title="About"
+            sx={{
+              p: 3,
+              borderRadius: '16px',
+              boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
+              mb: 3
+            }}
+            editContent={
+              <TextField
+                fullWidth
+                multiline
+                minRows={4}
+                label="About"
+                placeholder="Write a short bio about yourself"
+                value={sectionDraft.about || ''}
+                onChange={(e) => setDraftField('about', e.target.value)}
+              />
+            }
+          >
             <Typography 
               variant="body1" 
               sx={{ 
@@ -747,49 +1064,189 @@ const Profile = () => {
             >
               {profileData.about || 'No bio provided yet.'}
             </Typography>
-          </Box>
+          </EditableSection>
 
-          {/* Skills & Interests with improved styling - displayed side by side */}
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            {profileData.skills && profileData.skills.length > 0 && (
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  height: '100%',
-                  p: 3, 
-                  borderRadius: '16px',
-                  boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-                  border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                  bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff'
-                }}>
-                  <Typography variant="h6" sx={{ mb: 2, color: darkMode ? '#ffffff' : '#000000' }}>Skills</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {profileData.skills.map((skill, index) => (
-                      <Chip 
-                        key={index} 
-                        label={skill} 
+          {/* Education Section with inline editing */}
+          <EditableSection
+            {...sectionProps('education')}
+            title="Education"
+            sx={{
+              p: 3,
+              borderRadius: '16px',
+              boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
+              mb: 3
+            }}
+            editContent={
+              <EducationEditor
+                value={sectionDraft.education}
+                onChange={(education) => setDraftField('education', education)}
+                department={profileData.department || ''}
+                darkMode={darkMode}
+              />
+            }
+          >
+            {normalizeEducation(profileData.education).length === 0 ? (
+              <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontStyle: 'italic' }}>
+                No education added yet.
+              </Typography>
+            ) : (
+              normalizeEducation(profileData.education).map((entry, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    gap: 2,
+                    py: 1.5,
+                    borderTop: index === 0
+                      ? 'none'
+                      : `1px solid ${darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`
+                  }}
+                >
+                  <School sx={{ color: '#0088cc', fontSize: 24, mt: 0.5 }} />
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: darkMode ? '#ffffff' : '#000000' }}>
+                        {entry.name || entry.level}
+                      </Typography>
+                      <Chip
+                        label={entry.level}
+                        size="small"
                         sx={{
                           bgcolor: 'rgba(0, 136, 204, 0.2)',
                           color: '#0088cc',
-                          border: '1px solid rgba(0, 136, 204, 0.3)',
-                          '&:hover': { bgcolor: 'rgba(0, 136, 204, 0.3)' }
+                          border: '1px solid rgba(0, 136, 204, 0.3)'
                         }}
                       />
-                    ))}
+                    </Box>
+                    {entry.stream && (
+                      <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>
+                        {entry.stream}
+                      </Typography>
+                    )}
+                    <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)' }}>
+                      {[
+                        formatDateRange(entry.startDate, entry.endDate),
+                        entry.score !== null ? `${entry.scoreType}: ${entry.score}` : ''
+                      ].filter(Boolean).join('  •  ')}
+                    </Typography>
                   </Box>
                 </Box>
-              </Grid>
+              ))
             )}
-            {profileData.interests && profileData.interests.length > 0 && (
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
+          </EditableSection>
+
+          {/* Skills & Interests - each card edits independently */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <EditableSection
+                {...sectionProps('skills')}
+                title="Skills"
+                sx={{
                   height: '100%',
-                  p: 3, 
+                  p: 3,
                   borderRadius: '16px',
                   boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
                   border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
                   bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff'
-                }}>
-                  <Typography variant="h6" sx={{ mb: 2, color: darkMode ? '#ffffff' : '#000000' }}>Interests</Typography>
+                }}
+                editContent={
+                  <SkillSetsEditor
+                    value={sectionDraft.skills}
+                    onChange={(skills) => setDraftField('skills', skills)}
+                    darkMode={darkMode}
+                  />
+                }
+              >
+                {normalizeSkillSets(profileData.skills).length === 0 ? (
+                  <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontStyle: 'italic' }}>
+                    No skills added yet.
+                  </Typography>
+                ) : (
+                  normalizeSkillSets(profileData.skills).map((skillSet, setIndex) => (
+                    <Box key={setIndex} sx={{ mb: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 1, fontWeight: 600, color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}
+                      >
+                        {skillSet.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {skillSet.skills.map((skill, index) => (
+                          <Chip
+                            key={index}
+                            label={skill}
+                            sx={{
+                              bgcolor: 'rgba(0, 136, 204, 0.2)',
+                              color: '#0088cc',
+                              border: '1px solid rgba(0, 136, 204, 0.3)',
+                              '&:hover': { bgcolor: 'rgba(0, 136, 204, 0.3)' }
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  ))
+                )}
+              </EditableSection>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <EditableSection
+                {...sectionProps('interests')}
+                title="Interests"
+                sx={{
+                  height: '100%',
+                  p: 3,
+                  borderRadius: '16px',
+                  boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+                  border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                  bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff'
+                }}
+                editContent={
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={interestOptions}
+                    value={Array.isArray(sectionDraft.interests) ? sectionDraft.interests : []}
+                    onChange={(e, newValue) =>
+                      setDraftField(
+                        'interests',
+                        [...new Set(newValue.map((i) => String(i).trim()).filter(Boolean))]
+                      )
+                    }
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option}
+                          {...getTagProps({ index })}
+                          key={`${option}-${index}`}
+                          size="small"
+                          sx={{
+                            bgcolor: darkMode ? 'rgba(0,136,204,0.2)' : 'rgba(0,136,204,0.1)',
+                            color: '#0088cc',
+                            border: '1px solid rgba(0,136,204,0.3)'
+                          }}
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        label="Interests"
+                        placeholder="Add an interest and press enter"
+                        helperText="Type an interest and press Enter, or pick from suggestions"
+                      />
+                    )}
+                  />
+                }
+              >
+                {!profileData.interests || profileData.interests.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontStyle: 'italic' }}>
+                    No interests added yet.
+                  </Typography>
+                ) : (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {profileData.interests.map((interest, index) => (
                       <Chip 
@@ -804,46 +1261,55 @@ const Profile = () => {
                       />
                     ))}
                   </Box>
-                </Box>
-              </Grid>
-            )}
+                )}
+              </EditableSection>
+            </Grid>
           </Grid>
 
-          {/* Empty state if no skills or interests */}
-          {(!profileData.skills || profileData.skills.length === 0) && 
-           (!profileData.interests || profileData.interests.length === 0) && (
-            <Box sx={{ 
+          {/* Social Links Section with inline editing */}
+          <EditableSection
+            {...sectionProps('social')}
+            title="Social Links"
+            sx={{ 
+              p: { xs: 2, md: 3 }, 
               mb: 3,
-              p: 3, 
-              borderRadius: '16px',
-              boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
-              textAlign: 'center'
-            }}>
-              <Typography variant="body1" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontStyle: 'italic' }}>
-                No skills or interests added yet. Edit your profile to add some!
-              </Typography>
-            </Box>
-          )}
-
-          {/* Social Links Section */}
-          <Box sx={{ 
-            p: { xs: 2, md: 3 }, 
-            mb: 3,
-            bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
-            borderRadius: 2,
-            boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
-          }}>
-            <Typography variant="h6" sx={{ 
-              color: darkMode ? '#ffffff' : '#000000', 
-              mb: 2,
-              fontWeight: 500,
-              fontSize: { xs: '1.1rem', md: '1.25rem' }
-            }}>
-              Social Links
-            </Typography>
+              borderRadius: 2,
+              boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
+            }}
+            editContent={
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="LinkedIn"
+                    placeholder="Profile URL or username"
+                    value={sectionDraft.linkedinUrl || ''}
+                    onChange={(e) => setDraftField('linkedinUrl', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="GitHub Username"
+                    placeholder="e.g. octocat"
+                    value={sectionDraft.githubUsername || ''}
+                    onChange={(e) => setDraftField('githubUsername', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Resume Link"
+                    placeholder="https://drive.google.com/..."
+                    value={sectionDraft.resumeLink || ''}
+                    onChange={(e) => setDraftField('resumeLink', e.target.value)}
+                  />
+                </Grid>
+              </Grid>
+            }
+          >
             <Box sx={{ display: 'flex', gap: 2 }}>
               {profileData.linkedinUrl && (
                 <IconButton 
@@ -905,7 +1371,7 @@ const Profile = () => {
                 </Typography>
               )}
             </Box>
-          </Box>
+          </EditableSection>
         </Box>
       </Box>
 
@@ -1034,6 +1500,15 @@ const Profile = () => {
 
         {/* Achievements Cards */}
         <Box sx={{ px: { xs: 2, md: 3 } }}>
+          {/* Explains the gold treatment without adding visual noise */}
+          {activeTab === 'certification' && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2 }}>
+              <RecognizedIcon sx={{ fontSize: 16, color: GOLD }} />
+              <Typography variant="caption" sx={{ color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}>
+                Note: globally recognized certificates appear in gold.
+              </Typography>
+            </Box>
+          )}
           {filteredAchievements.length > 0 ? (
             <Box sx={{ 
               display: { xs: 'block', md: 'grid' },
@@ -1045,7 +1520,12 @@ const Profile = () => {
                   key={achievement._id}
                   sx={{
                     mb: { xs: 3, md: 0 },
-                    bgcolor: darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
+                    // Recognized certificates are highlighted in gold
+                    bgcolor: achievement.recognized
+                      ? darkMode
+                        ? 'rgba(201, 162, 39, 0.07)'
+                        : 'rgba(201, 162, 39, 0.05)'
+                      : darkMode ? 'rgba(23, 23, 23, 0.45)' : '#ffffff',
                     borderRadius: '16px',
                     overflow: 'hidden',
                     display: 'flex',
@@ -1053,11 +1533,30 @@ const Profile = () => {
                     transition: 'all 0.2s ease-in-out',
                     height: '100%',
                     minHeight: '220px',
-                    border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    position: 'relative',
+                    border: `1px solid ${
+                      achievement.recognized
+                        ? GOLD_BORDER
+                        : darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                    }`,
                     boxShadow: darkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+                    // A thin gold rule along the top, kept subtle
+                    ...(achievement.recognized && {
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: `linear-gradient(90deg, ${GOLD} 0%, rgba(201,162,39,0.35) 100%)`
+                      }
+                    }),
                     '&:hover': {
                       transform: 'translateY(-4px)',
-                      boxShadow: darkMode ? '0 8px 32px rgba(0, 136, 204, 0.15)' : '0 6px 16px rgba(0, 0, 0, 0.12)',
+                      boxShadow: darkMode
+                        ? '0 8px 32px rgba(0, 136, 204, 0.15)'
+                        : '0 6px 16px rgba(0, 0, 0, 0.12)',
                     }
                   }}
                 >
@@ -1081,19 +1580,59 @@ const Profile = () => {
                     >
                       {achievement.title}
                     </Typography>
-                    
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                        fontSize: '0.9rem',
-                        lineHeight: 1.6,
-                        flex: 1,
-                        mb: 1
-                      }}
-                    >
-                      {achievement.description}
-                    </Typography>
+
+                    {achievement.recognized && (
+                      <Chip
+                        size="small"
+                        icon={<RecognizedIcon sx={{ fontSize: 15, color: `${GOLD} !important` }} />}
+                        label="Recognized"
+                        sx={{
+                          alignSelf: 'flex-start',
+                          height: '22px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          bgcolor: GOLD_SOFT,
+                          color: GOLD,
+                          border: `1px solid ${GOLD_BORDER}`
+                        }}
+                      />
+                    )}
+
+                    {/* Role / issuer, then the relevant date window */}
+                    {(achievement.role || achievement.issuer) && (
+                      <Typography
+                        variant="body2"
+                        sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}
+                      >
+                        {achievement.role || achievement.issuer}
+                      </Typography>
+                    )}
+
+                    {(() => {
+                      const window = achievement.type === 'certification'
+                        ? [
+                            achievement.issuedDate ? `Issued ${formatMonthYear(achievement.issuedDate)}` : '',
+                            achievement.expiryDate ? `Expires ${formatMonthYear(achievement.expiryDate)}` : ''
+                          ]
+                        : [
+                            formatMonthYear(achievement.startDate),
+                            achievement.startDate ? (formatMonthYear(achievement.endDate) || 'Present') : ''
+                          ];
+                      const label = window.filter(Boolean).join(
+                        achievement.type === 'certification' ? '  •  ' : ' - '
+                      );
+                      return label ? (
+                        <Typography
+                          variant="caption"
+                          sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)' }}
+                        >
+                          {label}
+                        </Typography>
+                      ) : null;
+                    })()}
+
+                    {/* Description points are intentionally not shown on the
+                        profile card - they are still editable in the dialog */}
 
                     {/* Tags Section */}
                     {achievement.tags && achievement.tags.length > 0 && (
@@ -1226,85 +1765,176 @@ const Profile = () => {
       </Box>
 
       {/* Achievement Dialog */}
-      <Dialog 
-        open={openDialog} 
-        onClose={() => setOpenDialog(false)} 
-        maxWidth="sm" 
-        fullWidth
+      <StyledDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        darkMode={darkMode}
         fullScreen={isMobile}
-        container={() => document.getElementById('dialog-container') || document.body}
-        disableEnforceFocus
+        icon={activeTypeMeta?.icon}
+        title={editingAchievement ? 'Edit Item' : 'Add New Item'}
+        subtitle={
+          editingAchievement
+            ? 'Update the details of this portfolio item.'
+            : 'Add an achievement, project, internship or certification.'
+        }
+        dialogProps={{
+          container: () => document.getElementById('dialog-container') || document.body,
+          disableEnforceFocus: true
+        }}
+        actions={
+          <>
+            <Button
+              onClick={() => setOpenDialog(false)}
+              sx={{ textTransform: 'none', color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAchievementSubmit}
+              variant="contained"
+              startIcon={editingAchievement ? <EditIcon /> : <AddIcon />}
+              sx={{
+                textTransform: 'none',
+                px: 2.5,
+                borderRadius: '10px',
+                bgcolor: '#0088cc',
+                '&:hover': { bgcolor: '#006699' }
+              }}
+            >
+              {editingAchievement ? 'Update' : 'Create'}
+            </Button>
+          </>
+        }
       >
-        <DialogTitle sx={{ 
-          px: { xs: 2, sm: 3 },
-          py: { xs: 1.5, sm: 2 }
-        }}>
-          {editingAchievement ? 'Edit Item' : 'Add New Item'}
-        </DialogTitle>
-        <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
-          <Box component="form" onSubmit={handleAchievementSubmit} sx={{ mt: 2 }}>
+          <Box component="form" onSubmit={handleAchievementSubmit}>
+            {/* Type picker: a visual choice, so show the four kinds as tiles */}
+            <Typography
+              variant="overline"
+              sx={{ display: 'block', mb: 1, letterSpacing: 1, color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
+            >
+              Type
+            </Typography>
+            <Grid container spacing={1.5} sx={{ mb: 3 }}>
+              {achievementTypes.map((option) => {
+                const selected = achievementForm.type === option.value;
+                return (
+                  <Grid item xs={6} sm={3} key={option.value}>
+                    <Box
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleAchievementTypeChange(option.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleAchievementTypeChange(option.value);
+                        }
+                      }}
+                      sx={{
+                        p: 1.5,
+                        height: '100%',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        borderRadius: '12px',
+                        border: `1px solid ${selected ? '#0088cc' : darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                        bgcolor: selected
+                          ? 'rgba(0,136,204,0.10)'
+                          : darkMode ? 'rgba(255,255,255,0.04)' : 'transparent',
+                        transition: 'all 0.2s ease',
+                        '&:hover': { borderColor: '#0088cc' }
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          color: selected ? '#0088cc' : darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+                          '& svg': { fontSize: 22 }
+                        }}
+                      >
+                        {option.icon}
+                      </Box>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: 'block',
+                          mt: 0.5,
+                          fontWeight: selected ? 600 : 500,
+                          color: selected ? '#0088cc' : darkMode ? '#fff' : '#000'
+                        }}
+                      >
+                        {option.label}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                );
+              })}
+            </Grid>
+
             <Grid container spacing={{ xs: 1.5, sm: 2 }}>
               <Grid item xs={12}>
                 <TextField
-                  select
                   fullWidth
-                  label="Type"
-                  value={achievementForm.type}
-                  onChange={(e) => {
-                    // Reset dates if changing from internship to another type
-                    if (e.target.value !== 'internship') {
-                      setAchievementForm({
-                        ...achievementForm,
-                        type: e.target.value,
-                        startDate: '',
-                        endDate: ''
-                      });
-                    } else {
-                      setAchievementForm({
-                        ...achievementForm,
-                        type: e.target.value
-                      });
-                    }
-                  }}
-                  required
-                >
-                  {achievementTypes.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Title"
+                  label={achievementForm.type === 'certification' ? 'Certificate Name' : 'Title'}
                   value={achievementForm.title}
                   onChange={(e) => setAchievementForm({ ...achievementForm, title: e.target.value })}
                   required
                 />
+
+                {/* Recognized certificate suggestions */}
+                {achievementForm.type === 'certification' && (
+                  <CertificationSuggestions
+                    catalog={certificationCatalog}
+                    query={achievementForm.title}
+                    darkMode={darkMode}
+                    logoToken={LOGO_TOKEN}
+                    onSelect={handleSelectRecognizedCertification}
+                  />
+                )}
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={4}
-                  value={achievementForm.description}
-                  onChange={(e) => setAchievementForm({ ...achievementForm, description: e.target.value })}
-                  required
-                  helperText={`${getWordCount(achievementForm.description)}/40 words (30-40 words recommended)`}
-                  error={getWordCount(achievementForm.description) > 40}
-                  FormHelperTextProps={{
-                    sx: {
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      mt: 0.5
-                    }
-                  }}
-                  placeholder="Keep your description concise (max 40 words)"
-                />
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Description points
+                </Typography>
+                <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}>
+                  {`${DESCRIPTION_LIMITS.minPoints}-${DESCRIPTION_LIMITS.maxPoints} points. Each point needs ${DESCRIPTION_LIMITS.minWords}-${DESCRIPTION_LIMITS.maxWords} words and ${DESCRIPTION_LIMITS.minChars}-${DESCRIPTION_LIMITS.maxChars} characters.`}
+                </Typography>
+
+                {descriptionPoints.map((point, pointIndex) => {
+                  const pointError = point.trim() ? getPointError(point) : null;
+                  return (
+                    <Box key={pointIndex} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        label={`Point ${pointIndex + 1}`}
+                        value={point}
+                        onChange={(e) => handleDescriptionPointChange(pointIndex, e.target.value)}
+                        error={Boolean(pointError)}
+                        helperText={
+                          pointError ||
+                          `${countWords(point)}/${DESCRIPTION_LIMITS.maxWords} words  •  ${point.trim().length}/${DESCRIPTION_LIMITS.maxChars} chars`
+                        }
+                      />
+                      <IconButton
+                        aria-label={`Remove point ${pointIndex + 1}`}
+                        onClick={() => handleRemoveDescriptionPoint(pointIndex)}
+                        disabled={descriptionPoints.length <= 1}
+                        sx={{ color: '#f44336', mt: 1 }}
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </Box>
+                  );
+                })}
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleAddDescriptionPoint}
+                  disabled={descriptionPoints.length >= DESCRIPTION_LIMITS.maxPoints}
+                  sx={{ color: '#0088cc', borderColor: 'rgba(0,136,204,0.5)', textTransform: 'none' }}
+                >
+                  + Add Point
+                </Button>
               </Grid>
               <Grid item xs={12}>
                 <TextField
@@ -1372,6 +2002,16 @@ const Profile = () => {
               </Grid>
               {achievementForm.type === 'internship' && (
                 <>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Role"
+                      value={achievementForm.role}
+                      onChange={(e) => setAchievementForm({ ...achievementForm, role: e.target.value })}
+                      placeholder="e.g. Software Development Intern"
+                      helperText="The position you held"
+                    />
+                  </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
@@ -1380,6 +2020,7 @@ const Profile = () => {
                       value={achievementForm.startDate}
                       onChange={(e) => setAchievementForm({ ...achievementForm, startDate: e.target.value })}
                       InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: achievementForm.endDate || undefined }}
                       required
                     />
                   </Grid>
@@ -1391,21 +2032,52 @@ const Profile = () => {
                       value={achievementForm.endDate}
                       onChange={(e) => setAchievementForm({ ...achievementForm, endDate: e.target.value })}
                       InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: achievementForm.startDate || undefined }}
                       required
+                    />
+                  </Grid>
+                </>
+              )}
+              {achievementForm.type === 'certification' && (
+                <>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Issuer Name"
+                      value={achievementForm.issuer}
+                      onChange={(e) => setAchievementForm({ ...achievementForm, issuer: e.target.value })}
+                      placeholder="e.g. Amazon Web Services"
+                      helperText="The organization that issued this certification"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Issued Date"
+                      type="date"
+                      value={achievementForm.issuedDate}
+                      onChange={(e) => setAchievementForm({ ...achievementForm, issuedDate: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ max: achievementForm.expiryDate || undefined }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Expiry Date"
+                      type="date"
+                      value={achievementForm.expiryDate}
+                      onChange={(e) => setAchievementForm({ ...achievementForm, expiryDate: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: achievementForm.issuedDate || undefined }}
+                      helperText="Leave empty if it does not expire"
                     />
                   </Grid>
                 </>
               )}
             </Grid>
           </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button onClick={handleAchievementSubmit} variant="contained" color="primary">
-            {editingAchievement ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      </StyledDialog>
 
       {/* Edit Profile Component */}
       <EditProfile 

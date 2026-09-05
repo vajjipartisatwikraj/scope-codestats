@@ -9,6 +9,11 @@ const RankHistory = require("../models/RankHistory");
 const ActivityHeatmap = require("../models/ActivityHeatmap");
 const platformAPI = require("../services/platformAPIs");
 const { checkProfileUpdateRateLimit } = require("../services/rateLimiter");
+const { normalizeSkillSets } = require("../utils/skillSets");
+const {
+  normalizeEducation,
+  validateEducation,
+} = require("../utils/education");
 const mongoose = require("mongoose");
 
 // Use the platformAPI module directly as it's already an instance
@@ -1402,7 +1407,7 @@ router.get("/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select(
-        "name email phone department section graduatingYear rollNumber mobileNumber skills interests about linkedinUrl resumeLink profiles profilePicture",
+        "name email phone department section graduatingYear rollNumber mobileNumber skills interests education about linkedinUrl resumeLink profiles profilePicture",
       )
       .lean();
 
@@ -1442,8 +1447,9 @@ router.get("/me", auth, async (req, res) => {
       section: user.section || "",
       rollNumber: user.rollNumber || "",
       graduationYear: graduationYear, // Use the calculated or stored value, never default to current year
-      skills: user.skills || [],
+      skills: normalizeSkillSets(user.skills),
       interests: user.interests || [],
+      education: normalizeEducation(user.education),
       about: user.about || "",
       linkedinUrl: user.linkedinUrl || "",
       resumeLink: user.resumeLink || "",
@@ -1535,6 +1541,7 @@ router.put("/me", auth, async (req, res) => {
       graduationYear,
       skills,
       interests,
+      education,
       about,
       linkedinUrl,
       resumeLink,
@@ -1566,15 +1573,21 @@ router.put("/me", auth, async (req, res) => {
     };
 
     // Build update fields object
-    const updateFields = {
-      mobileNumber: phone,
-      section,
-      skills: Array.isArray(skills) ? skills : [],
-      interests: Array.isArray(interests) ? interests : [],
-      about: about || "",
-      linkedinUrl: linkedinUrl || "",
-      resumeLink: resumeLink || "",
-    };
+    // Only touch the fields the client actually sent, so per-section updates
+    // from the profile page don't wipe everything else.
+    const updateFields = {};
+    if (phone !== undefined) updateFields.mobileNumber = phone;
+    if (section !== undefined) updateFields.section = section;
+    if (about !== undefined) updateFields.about = about || "";
+    if (linkedinUrl !== undefined) updateFields.linkedinUrl = linkedinUrl || "";
+    if (resumeLink !== undefined) updateFields.resumeLink = resumeLink || "";
+    if (interests !== undefined) {
+      updateFields.interests = Array.isArray(interests) ? interests : [];
+    }
+    if (skills !== undefined) {
+      updateFields.skills = normalizeSkillSets(skills);
+    }
+    // education is normalized further down, once we know the user's department
 
     // Only add required fields if they're provided (to avoid potential validation issues)
     if (name) updateFields.name = name;
@@ -1628,6 +1641,23 @@ router.put("/me", auth, async (req, res) => {
 
       if (!existingUser) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      // Engineering entries always take their stream from the department
+      if (education !== undefined) {
+        const normalizedEducation = normalizeEducation(education, {
+          engineeringStream:
+            updateFields.department || existingUser.department || "",
+        });
+
+        const educationError = validateEducation(normalizedEducation);
+        if (educationError) {
+          return res
+            .status(400)
+            .json({ success: false, message: educationError });
+        }
+
+        updateFields.education = normalizedEducation;
       }
 
       // Apply the updates to validate before saving
@@ -1731,8 +1761,9 @@ router.put("/me", auth, async (req, res) => {
         rollNumber: user.rollNumber || "",
         graduationYear:
           user.graduatingYear || calculateGraduationYear(user.rollNumber),
-        skills: user.skills || [],
+        skills: normalizeSkillSets(user.skills),
         interests: user.interests || [],
+        education: normalizeEducation(user.education),
         about: user.about || "",
         linkedinUrl: user.linkedinUrl || "",
         githubUrl: user.profiles?.github || "",

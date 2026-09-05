@@ -74,6 +74,10 @@ import PATestView from "./components/PracticeArena/PATestView";
 import PARandomTestForm from "./components/PracticeArena/PARandomTestForm";
 import PATestResults from "./components/PracticeArena/PATestResults";
 
+// Import resume builder components
+import ResumeList from "./components/resume/ResumeList";
+import ResumeEditor from "./components/resume/ResumeEditor";
+
 // Import cohort components
 import CohortList from "./components/cohort/CohortList";
 import CohortDetail from "./components/cohort/CohortDetail";
@@ -154,6 +158,12 @@ const MainContent = () => {
       location.pathname
     );
 
+  // The resume editor is a full-screen surface with its own rail and top bar,
+  // so the app shell (navbar + sidebar + footer) is hidden for it.
+  const isResumeEditorPage = /^\/build-resume\/[^/]+\/edit$/.test(
+    location.pathname
+  );
+
   // Exam session tab: opened from the cohort list with `?exam=1`. The navbar
   // collapses upwards and the sidebar collapses to the left, leaving a
   // distraction-free screen with the countdown centred at the top.
@@ -189,6 +199,7 @@ const MainContent = () => {
   // Check if current path should not show footer
   const isNoFooterPage =
     isCohortProblemPage ||
+    isResumeEditorPage ||
     isLandingPage || // Landing pages have their own footer
     location.pathname === "/codepad" ||
     isCohortPage || // All cohort pages (list, detail, admin)
@@ -207,6 +218,7 @@ const MainContent = () => {
     "/admin/dashboard",
     "/leaderboard",
     "/codepad",
+    "/build-resume",
     "/courses",
     "/opportunities",
     "/profile",
@@ -232,6 +244,7 @@ const MainContent = () => {
     !location.pathname.startsWith("/admin/cohorts/") &&
     !location.pathname.startsWith("/practice-arena/") &&
     !location.pathname.startsWith("/user-view/") &&
+    !location.pathname.startsWith("/build-resume/") &&
     !location.pathname.startsWith("/public-profile/");
 
   // Show Navbar and Sidebar for authenticated users on valid pages
@@ -240,6 +253,7 @@ const MainContent = () => {
     !isAuthPage &&
     !isLandingPage &&
     !isCohortProblemPage &&
+    !isResumeEditorPage &&
     !is404Page &&
     !isTestPage &&
     !isPublicPage &&
@@ -515,6 +529,27 @@ const MainContent = () => {
                   element={
                     <PrivateRoute>
                       <CodePad />
+                    </PrivateRoute>
+                  }
+                />
+                {/* Resume builder (students only, enforced in PrivateRoute) */}
+                <Route
+                  path="/build-resume"
+                  element={
+                    <PrivateRoute>
+                      <MobileRestrictedRoute pageName="Build my Resume">
+                        <ResumeList />
+                      </MobileRestrictedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/build-resume/:id/edit"
+                  element={
+                    <PrivateRoute>
+                      <MobileRestrictedRoute pageName="Resume Editor">
+                        <ResumeEditor />
+                      </MobileRestrictedRoute>
                     </PrivateRoute>
                   }
                 />

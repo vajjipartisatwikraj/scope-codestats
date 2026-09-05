@@ -369,6 +369,7 @@ app.use("/api/profiles", profileRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/achievements", require("./routes/achievements"));
+app.use("/api/resumes", require("./routes/resumes"));
 app.use("/api/courses", coursesRoutes);
 app.use("/api/opportunities", opportunitiesRoutes);
 app.use("/api/notifications", notificationsRoutes);

@@ -2,10 +2,30 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Achievement = require('../models/Achievement');
+const {
+  normalizeDescriptionPoints,
+  validateDescriptionPoints
+} = require('../utils/descriptionPoints');
+const {
+  RECOGNIZED_CERTIFICATIONS,
+  findRecognizedCertification
+} = require('../constants/certifications');
+
+// Only certifications can be recognised, and only by matching the catalogue
+const resolveRecognized = (type, title) =>
+  type === 'certification' && Boolean(findRecognizedCertification(title));
 
 const MAX_ITEMS_PER_TYPE = 5;
 // Types that have limits
 const LIMITED_TYPES = ['project', 'internship'];
+
+/**
+ * Catalogue of globally recognised certifications, used for the suggestions
+ * shown under the certificate name field.
+ */
+router.get('/certifications/catalog', auth, (req, res) => {
+  res.json({ certifications: RECOGNIZED_CERTIFICATIONS });
+});
 
 // Get all achievements for the logged-in user
 router.get('/', auth, async (req, res) => {
@@ -59,7 +79,10 @@ router.get('/export/all', auth, async (req, res) => {
 // Create a new achievement
 router.post('/', auth, async (req, res) => {
   try {
-    const { type, title, description, tags, link, domainLink, imageUrl, startDate, endDate } = req.body;
+    const {
+      type, title, description, tags, link, domainLink, imageUrl,
+      startDate, endDate, role, issuer, issuedDate, expiryDate
+    } = req.body;
 
     // Check if user has reached the limit for this type (only for limited types)
     if (LIMITED_TYPES.includes(type)) {
@@ -82,17 +105,31 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // Description is a list of bullet points with per-point limits
+    const descriptionPoints = normalizeDescriptionPoints(description);
+    const descriptionError = validateDescriptionPoints(descriptionPoints);
+    if (descriptionError) {
+      return res.status(400).json({ message: descriptionError });
+    }
+
     const achievement = new Achievement({
       user: req.user.id,
       type,
       title,
-      description,
+      description: descriptionPoints,
       tags: tags || [],
       link,
       domainLink,
       imageUrl,
-      startDate,
-      endDate
+      // Internship specific
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      role: role || '',
+      // Certification specific
+      issuer: issuer || '',
+      issuedDate: issuedDate || undefined,
+      expiryDate: expiryDate || undefined,
+      recognized: resolveRecognized(type, title)
     });
 
     await achievement.save();
@@ -106,13 +143,23 @@ router.post('/', auth, async (req, res) => {
 // Update an achievement
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { type, title, description, tags, link, domainLink, imageUrl, startDate, endDate } = req.body;
+    const {
+      type, title, description, tags, link, domainLink, imageUrl,
+      startDate, endDate, role, issuer, issuedDate, expiryDate
+    } = req.body;
 
     if (!type || !title || !description) {
       return res.status(400).json({
         message: 'Missing required fields',
         required: ['type', 'title', 'description']
       });
+    }
+
+    // Description is a list of bullet points with per-point limits
+    const descriptionPoints = normalizeDescriptionPoints(description);
+    const descriptionError = validateDescriptionPoints(descriptionPoints);
+    if (descriptionError) {
+      return res.status(400).json({ message: descriptionError });
     }
 
     let achievement = await Achievement.findById(req.params.id);
@@ -131,13 +178,20 @@ router.put('/:id', auth, async (req, res) => {
       {
         type,
         title,
-        description,
+        description: descriptionPoints,
         tags: tags || [],
         link,
         domainLink,
         imageUrl,
-        startDate,
-        endDate
+        // Internship specific
+        startDate: startDate || null,
+        endDate: endDate || null,
+        role: role || '',
+        // Certification specific
+        issuer: issuer || '',
+        issuedDate: issuedDate || null,
+        expiryDate: expiryDate || null,
+        recognized: resolveRecognized(type, title)
       },
       { new: true }
     );

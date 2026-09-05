@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User = require("../models/User");
 const Profile = require("../models/Profile");
+const { normalizeSkillSets } = require("../utils/skillSets");
 
 // Middleware to authenticate token
 const auth = async (req, res, next) => {
@@ -205,12 +206,11 @@ router.post("/completeRegistration", auth, async (req, res) => {
     if (about !== undefined) user.about = about;
     if (imageUrl !== undefined) user.profilePicture = imageUrl;
 
-    // Handle skills and interests (convert from string to array if needed)
+    // Skills are stored as named sets: [{ name, skills: [] }]
     if (skills !== undefined) {
-      user.skills =
-        typeof skills === "string"
-          ? skills.split(",").map((s) => s.trim())
-          : skills;
+      user.skills = normalizeSkillSets(
+        typeof skills === "string" ? skills.split(",") : skills,
+      );
     }
 
     if (interests !== undefined) {

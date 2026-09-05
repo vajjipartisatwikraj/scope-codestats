@@ -53,6 +53,8 @@ import {
 } from "@mui/icons-material";
 import { useTheme } from "../contexts/ThemeContext";
 import { apiUrl } from "../config/apiConfig";
+import { normalizeSkillSets } from "../utils/skillSets";
+import { normalizeDescriptionPoints } from "../utils/descriptionPoints";
 
 const achievementTypes = [
   { value: "project", label: "Project" },
@@ -2453,20 +2455,34 @@ const PublicUserView = () => {
                   >
                     Skills
                   </Typography>
-                  <Box
-                    sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 3 }}
-                  >
-                    {userData.skills?.map((skill, index) => (
-                      <Chip
-                        key={`skill-${skill}-${index}`}
-                        label={skill}
-                        size={isMobile ? "small" : "medium"}
+                  {normalizeSkillSets(userData.skills).map((skillSet, setIndex) => (
+                    <Box key={`skill-set-${setIndex}`} sx={{ mb: 2 }}>
+                      <Typography
+                        variant="subtitle2"
                         sx={{
-                          ...getChipStyle("#0088cc"),
+                          mb: 1,
+                          fontWeight: 600,
+                          color: darkMode
+                            ? "rgba(255,255,255,0.7)"
+                            : "rgba(0,0,0,0.7)",
                         }}
-                      />
-                    ))}
-                  </Box>
+                      >
+                        {skillSet.name}
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                        {skillSet.skills.map((skill, index) => (
+                          <Chip
+                            key={`skill-${skill}-${index}`}
+                            label={skill}
+                            size={isMobile ? "small" : "medium"}
+                            sx={{
+                              ...getChipStyle("#0088cc"),
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  ))}
 
                   <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
 
@@ -4044,8 +4060,8 @@ const PublicUserView = () => {
                                   </Box>
                                 )}
 
-                                <Typography
-                                  variant="body2"
+                                <Box
+                                  component="ul"
                                   sx={{
                                     color: darkMode
                                       ? "rgba(255, 255, 255, 0.7)"
@@ -4053,15 +4069,27 @@ const PublicUserView = () => {
                                     fontSize: "0.9rem",
                                     lineHeight: 1.6,
                                     flex: 1,
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 3,
-                                    WebkitBoxOrient: "vertical",
+                                    pl: 2.5,
+                                    my: 0,
+                                    // Tailwind preflight removes list markers globally
+                                    listStyleType: "disc",
+                                    listStylePosition: "outside",
+                                    "& li": { display: "list-item" },
                                   }}
                                 >
-                                  {achievement.description}
-                                </Typography>
+                                  {normalizeDescriptionPoints(
+                                    achievement.description,
+                                  ).map((point, pointIdx) => (
+                                    <Typography
+                                      component="li"
+                                      variant="body2"
+                                      key={pointIdx}
+                                      sx={{ mb: 0.5 }}
+                                    >
+                                      {point}
+                                    </Typography>
+                                  ))}
+                                </Box>
 
                                 <Divider
                                   sx={{
