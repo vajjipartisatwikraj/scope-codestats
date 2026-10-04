@@ -1728,15 +1728,6 @@ const PublicUserView = () => {
               gap: { xs: 0.75, sm: 1.5 },
             }}
           >
-            {/* Share Button */}
-            <Button
-              onClick={handleShareClick}
-              startIcon={<IosShare />}
-              sx={getNavbarButtonStyle(false)}
-            >
-              <Box sx={{ display: { xs: "none", sm: "block" } }}>Share</Box>
-            </Button>
-
             {/* Home Button */}
             <Button
               onClick={() => navigate("/")}
@@ -1762,14 +1753,14 @@ const PublicUserView = () => {
       <Box sx={{ pt: { xs: "70px", sm: "80px" } }}>
         <Container
           maxWidth="lg"
-          sx={{ mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+          sx={{ mt: { xs: 1, sm: 4 }, mb: { xs: 1, sm: 4 }, px: { xs: 1, sm: 3 } }}
         >
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 1.5, sm: 3 }}>
             {/* User Header - Always First on Mobile */}
             <Grid item xs={12}>
               <Paper
                 sx={{
-                  p: { xs: 3, sm: 4 },
+                  p: { xs: 1.5, sm: 4 },
                   ...getProfileCardStyle(),
                   position: "relative",
                   overflow: "hidden",
@@ -1933,12 +1924,12 @@ const PublicUserView = () => {
                           color: darkMode ? "#ffffff" : "#000000",
                           textShadow: "none",
                           letterSpacing: "0.5px",
-                          fontSize: { xs: "1.5rem", sm: "2rem", md: "2.25rem" },
+                          fontSize: { xs: "1.25rem", sm: "2rem", md: "2.25rem" },
                           lineHeight: 1.2,
                           wordBreak: "break-word",
                           maxWidth: "100%",
                           textTransform: "capitalize",
-                          mb: 1,
+                          mb: { xs: 0.5, sm: 1 },
                         }}
                       >
                         {userData.name?.toLowerCase()}
@@ -1947,11 +1938,12 @@ const PublicUserView = () => {
                       <Typography
                         variant="h6"
                         sx={{
-                          mb: 2,
+                          mb: { xs: 1.5, sm: 2 },
                           color: darkMode
                             ? "rgba(255, 255, 255, 0.8)"
                             : "rgba(0, 0, 0, 0.8)",
                           textShadow: "none",
+                          fontSize: { xs: "0.9rem", sm: "1.25rem" },
                           fontWeight: 500,
                           fontSize: { xs: "0.8rem", sm: "1rem" },
                         }}
@@ -2058,6 +2050,27 @@ const PublicUserView = () => {
                               <GitHub sx={{ fontSize: 22 }} />
                             </IconButton>
                           )}
+
+                          {/* Share Button */}
+                          <IconButton
+                            onClick={handleShareClick}
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              backgroundColor: darkMode
+                                ? "rgba(33, 150, 243, 0.2)"
+                                : "rgba(33, 150, 243, 0.1)",
+                              color: "#2196f3",
+                              transition: "all 0.2s ease-in-out",
+                              "&:hover": {
+                                backgroundColor: darkMode
+                                  ? "rgba(33, 150, 243, 0.3)"
+                                  : "rgba(33, 150, 243, 0.2)",
+                              },
+                            }}
+                          >
+                            <IosShare sx={{ fontSize: 22 }} />
+                          </IconButton>
                         </Box>
                       </Box>
                     </Box>
@@ -2084,7 +2097,8 @@ const PublicUserView = () => {
                   sx={{
                     fontWeight: 600,
                     color: darkMode ? "#fff" : "#000",
-                    mb: 3,
+                    mb: { xs: 1.5, sm: 3 },
+                    fontSize: { xs: "0.95rem", sm: "1.25rem" },
                   }}
                 >
                   About
@@ -2093,9 +2107,10 @@ const PublicUserView = () => {
                   variant="body2"
                   sx={{
                     color: getTextColor(0.7),
-                    mb: 3,
+                    mb: { xs: 2, sm: 3 },
                     whiteSpace: "pre-line",
                     lineHeight: 1.7,
+                    fontSize: { xs: "0.85rem", sm: "0.875rem" },
                   }}
                 >
                   {userData.about || "No description provided."}
@@ -2108,7 +2123,8 @@ const PublicUserView = () => {
                   userData.codingProfiles?.codeforces?.username ||
                   userData.codingProfiles?.github?.username) && (
                   <>
-                    <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
+                    <Divider sx={{ my: { xs: 2, sm: 3 }, borderColor: getDividerColor() }} />
+
                     <Typography
                       variant="h6"
                       gutterBottom
@@ -2116,7 +2132,8 @@ const PublicUserView = () => {
                         fontWeight: 600,
                         color: darkMode ? "#fff" : "#000",
                         mt: 1,
-                        mb: 3,
+                        mb: { xs: 2, sm: 3 },
+                        fontSize: { xs: "1rem", sm: "1.25rem" },
                       }}
                     >
                       Coding Profiles
@@ -2363,10 +2380,11 @@ const PublicUserView = () => {
                     variant="h6"
                     gutterBottom
                     sx={{
-                      mt: 2,
-                      mb: 3,
+                      mt: { xs: 1.5, sm: 2 },
+                      mb: { xs: 2, sm: 3 },
                       fontWeight: 600,
                       color: darkMode ? "#fff" : "#000",
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                   >
                     Details
@@ -2454,17 +2472,18 @@ const PublicUserView = () => {
                     </Box>
                   </Box>
 
-                  <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
+                  <Divider sx={{ my: { xs: 2, sm: 3 }, borderColor: getDividerColor() }} />
 
                   {/* Skills Section */}
                   <Typography
                     variant="h6"
                     gutterBottom
                     sx={{
-                      mt: 2,
-                      mb: 3,
+                      mt: { xs: 1.5, sm: 2 },
+                      mb: { xs: 2, sm: 3 },
                       fontWeight: 600,
                       color: darkMode ? "#fff" : "#000",
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                   >
                     Skills
@@ -2479,6 +2498,7 @@ const PublicUserView = () => {
                           color: darkMode
                             ? "rgba(255,255,255,0.7)"
                             : "rgba(0,0,0,0.7)",
+                          fontSize: { xs: "0.8rem", sm: "0.875rem" },
                         }}
                       >
                         {skillSet.name}
@@ -2498,17 +2518,18 @@ const PublicUserView = () => {
                     </Box>
                   ))}
 
-                  <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
+                  <Divider sx={{ my: { xs: 2, sm: 3 }, borderColor: getDividerColor() }} />
 
                   {/* Interests Section */}
                   <Typography
                     variant="h6"
                     gutterBottom
                     sx={{
-                      mt: 2,
-                      mb: 3,
+                      mt: { xs: 1.5, sm: 2 },
+                      mb: { xs: 2, sm: 3 },
                       color: darkMode ? "#fff" : "#000",
                       fontWeight: 600,
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                   >
                     Interests
@@ -2561,8 +2582,8 @@ const PublicUserView = () => {
                         sx={{
                           color: darkMode ? "#ffffff" : "#000000",
                           fontWeight: 700,
-                          mb: 3,
-                          fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                          mb: { xs: 2, sm: 3 },
+                          fontSize: { xs: "0.95rem", sm: "1.5rem" },
                         }}
                       >
                         Scope Stats
@@ -2586,9 +2607,10 @@ const PublicUserView = () => {
                               ? "rgba(0, 0, 0, 0.50)"
                               : "#FFFFFF",
                             borderRadius: "16px",
-                            p: { xs: 2.5, sm: 3 },
+                            p: { xs: 2, sm: 3 },
                             textAlign: "center",
-                            flex: "1",
+                            flex: { xs: "none", sm: "1" },
+                            width: { xs: "100%", sm: "auto" },
                             minWidth: 0,
                             boxShadow: darkMode
                               ? "0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2)"
@@ -2680,7 +2702,7 @@ const PublicUserView = () => {
                               sx={{
                                 color: darkMode ? "white" : "#000000",
                                 fontWeight: 700,
-                                fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                                fontSize: { xs: "1.125rem", sm: "1.75rem" },
                                 mb: 0.5,
                                 letterSpacing: "-0.02em",
                               }}
@@ -2742,6 +2764,16 @@ const PublicUserView = () => {
                           </Box>
                         </Box>
 
+                        {/* Rank Cards Container - Side by side on mobile */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: 2,
+                            flex: { xs: "none", sm: "2" },
+                            width: { xs: "100%", sm: "auto" },
+                          }}
+                        >
                         {/* Overall Rank */}
                         {userData.rankingInfo.overallRank !== null &&
                           userData.rankingInfo.totalUsers > 0 && (
@@ -2751,7 +2783,7 @@ const PublicUserView = () => {
                                   ? "rgba(0, 0, 0, 0.50)"
                                   : "#FFFFFF",
                                 borderRadius: "16px",
-                                p: { xs: 2.5, sm: 3 },
+                                p: { xs: 2, sm: 3 },
                                 textAlign: "center",
                                 flex: "1",
                                 minWidth: 0,
@@ -2848,7 +2880,7 @@ const PublicUserView = () => {
                                   sx={{
                                     color: darkMode ? "white" : "#000000",
                                     fontWeight: 700,
-                                    fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                                    fontSize: { xs: "1.125rem", sm: "1.75rem" },
                                     mb: 0.5,
                                     letterSpacing: "-0.02em",
                                   }}
@@ -2926,7 +2958,7 @@ const PublicUserView = () => {
                                   ? "rgba(0, 0, 0, 0.50)"
                                   : "#FFFFFF",
                                 borderRadius: "16px",
-                                p: { xs: 2.5, sm: 3 },
+                                p: { xs: 2, sm: 3 },
                                 textAlign: "center",
                                 flex: "1",
                                 minWidth: 0,
@@ -3023,7 +3055,7 @@ const PublicUserView = () => {
                                   sx={{
                                     color: darkMode ? "white" : "#000000",
                                     fontWeight: 700,
-                                    fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                                    fontSize: { xs: "1.125rem", sm: "1.75rem" },
                                     mb: 0.5,
                                     letterSpacing: "-0.02em",
                                   }}
@@ -3043,7 +3075,7 @@ const PublicUserView = () => {
                                     letterSpacing: "0.02em",
                                   }}
                                 >
-                                  Department Rank
+                                  Dept Rank
                                 </Typography>
 
                                 <Typography
@@ -3086,6 +3118,7 @@ const PublicUserView = () => {
                               </Box>
                             </Box>
                           )}
+                        </Box>
                       </Box>
                     </>
                   )}
@@ -3097,13 +3130,14 @@ const PublicUserView = () => {
                   sx={{
                     fontWeight: 600,
                     color: darkMode ? "#fff" : "#000",
-                    mb: 2,
+                    mb: { xs: 1.5, sm: 2 },
                     mt:
                       userData.rankingInfo &&
                       (userData.rankingInfo.overallRank !== null ||
                         userData.rankingInfo.departmentRank !== null)
                         ? 2
                         : 0,
+                    fontSize: { xs: "0.95rem", sm: "1.5rem" },
                   }}
                 >
                   Coding Profiles
@@ -3458,6 +3492,7 @@ const PublicUserView = () => {
                     mb: 3,
                     fontWeight: 600,
                     color: darkMode ? "#fff" : "#000",
+                    fontSize: { xs: "0.95rem", sm: "1.5rem" },
                   }}
                 >
                   GitHub Stats
@@ -3467,14 +3502,14 @@ const PublicUserView = () => {
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 0 }}
                   >
-                    {/* GitHub Stats Grid - No nested containers */}
-                    <Grid container spacing={3} sx={{ mb: 2 }}>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                    {/* GitHub Stats Grid - 2x2 on mobile, 1x4 on desktop */}
+                    <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Public Repo's
                           </Typography>
@@ -3483,19 +3518,19 @@ const PublicUserView = () => {
                             sx={{
                               color: "#0088cc",
                               fontWeight: 600,
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.publicRepos || 0}
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Total Commits
                           </Typography>
@@ -3504,19 +3539,19 @@ const PublicUserView = () => {
                             sx={{
                               color: "#0088cc",
                               fontWeight: 600,
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.totalCommits || 0}
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Stars
                           </Typography>
@@ -3525,19 +3560,19 @@ const PublicUserView = () => {
                             sx={{
                               color: "#0088cc",
                               fontWeight: 600,
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.starsReceived || 0}
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Followers
                           </Typography>
@@ -3547,7 +3582,7 @@ const PublicUserView = () => {
                               color: "#0088cc",
                               fontWeight: 600,
                               textTransform: "capitalize",
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.followers || 0}
@@ -3567,13 +3602,14 @@ const PublicUserView = () => {
                     />
 
                     {/* GitHub Contribution Calendar */}
-                    <Box sx={{ py: 2 }}>
+                    <Box sx={{ py: { xs: 1.5, sm: 2 } }}>
                       <Typography
                         variant="h6"
                         sx={{
                           color: darkMode ? "white" : "#000000",
                           fontWeight: 500,
-                          mb: 3,
+                          mb: { xs: 2, sm: 3 },
+                          fontSize: { xs: "1rem", sm: "1.25rem" },
                         }}
                       >
                         Contribution Activity
@@ -3605,13 +3641,14 @@ const PublicUserView = () => {
                     />
 
                     {/* Contribution Streak */}
-                    <Box sx={{ py: 2 }}>
+                    <Box sx={{ py: { xs: 1.5, sm: 2 } }}>
                       <Typography
                         variant="h6"
                         sx={{
-                          mb: 3,
+                          mb: { xs: 2, sm: 3 },
                           color: darkMode ? "white" : "#000000",
                           fontWeight: 500,
+                          fontSize: { xs: "1rem", sm: "1.25rem" },
                         }}
                       >
                         Contribution Streak
@@ -3685,7 +3722,7 @@ const PublicUserView = () => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    mb: 2,
+                    mb: { xs: 1.5, sm: 2 },
                   }}
                 >
                   <Typography
@@ -3693,7 +3730,8 @@ const PublicUserView = () => {
                     sx={{
                       color: darkMode ? "#fff" : "#000",
                       fontWeight: 600,
-                      mb: 3,
+                      mb: { xs: 2, sm: 3 },
+                      fontSize: { xs: "1.125rem", sm: "1.5rem" },
                     }}
                   >
                     Achievements
@@ -3703,7 +3741,7 @@ const PublicUserView = () => {
                 {/* Achievement Type Tabs */}
                 <Box
                   sx={{
-                    mb: 3,
+                    mb: { xs: 2, sm: 3 },
                     width: "100%",
                     position: "relative",
                     height: "auto",

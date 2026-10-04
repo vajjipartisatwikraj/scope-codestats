@@ -2151,14 +2151,18 @@ const UserView = () => {
   return (
     <Container
       maxWidth="lg"
-      sx={{ mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+      sx={{ 
+        mt: { xs: 1, sm: 4 }, 
+        mb: { xs: 2, sm: 4 },
+        px: { xs: 1, sm: 3 },
+      }}
     >
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 1.5, sm: 3 }}>
         {/* User Header - Always First on Mobile */}
         <Grid item xs={12}>
           <Paper
             sx={{
-              p: { xs: 3, sm: 4 },
+              p: { xs: 2, sm: 4 },
               ...getProfileCardStyle(),
               position: "relative",
               overflow: "hidden",
@@ -2319,12 +2323,12 @@ const UserView = () => {
                       color: darkMode ? "#ffffff" : "#000000",
                       textShadow: "none",
                       letterSpacing: "0.5px",
-                      fontSize: { xs: "1.5rem", sm: "2rem", md: "2.25rem" },
+                      fontSize: { xs: "1.25rem", sm: "2rem", md: "2.25rem" },
                       lineHeight: 1.2,
                       wordBreak: "break-word",
                       maxWidth: "100%",
                       textTransform: "capitalize",
-                      mb: 1,
+                      mb: { xs: 0.5, sm: 1 },
                     }}
                   >
                     {userData.name?.toLowerCase()}
@@ -2333,7 +2337,8 @@ const UserView = () => {
                   <Typography
                     variant="h6"
                     sx={{
-                      mb: 2,
+                      mb: { xs: 1.5, sm: 2 },
+                      fontSize: { xs: "0.9rem", sm: "1.25rem" },
                       color: darkMode
                         ? "rgba(255, 255, 255, 0.8)"
                         : "rgba(0, 0, 0, 0.8)",
@@ -2495,7 +2500,12 @@ const UserView = () => {
             <Typography
               variant="h6"
               gutterBottom
-              sx={{ fontWeight: 600, color: darkMode ? "#fff" : "#000", mb: 3 }}
+              sx={{ 
+                fontWeight: 600, 
+                color: darkMode ? "#fff" : "#000", 
+                mb: { xs: 1.5, sm: 3 },
+                fontSize: { xs: "0.95rem", sm: "1.25rem" },
+              }}
             >
               About
             </Typography>
@@ -2503,9 +2513,10 @@ const UserView = () => {
               variant="body2"
               sx={{
                 color: getTextColor(0.7),
-                mb: 3,
+                mb: { xs: 2, sm: 3 },
                 whiteSpace: "pre-line",
                 lineHeight: 1.7,
+                fontSize: { xs: "0.85rem", sm: "0.875rem" },
               }}
             >
               {userData.about || "No description provided."}
@@ -2518,7 +2529,7 @@ const UserView = () => {
               userData.codingProfiles?.codeforces?.username ||
               userData.codingProfiles?.github?.username) && (
               <>
-                <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
+                <Divider sx={{ my: { xs: 2, sm: 3 }, borderColor: getDividerColor() }} />
                 <Typography
                   variant="h6"
                   gutterBottom
@@ -2526,7 +2537,8 @@ const UserView = () => {
                     fontWeight: 600,
                     color: darkMode ? "#fff" : "#000",
                     mt: 1,
-                    mb: 3,
+                    mb: { xs: 2, sm: 3 },
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
                   }}
                 >
                   Coding Profiles
@@ -2803,7 +2815,7 @@ const UserView = () => {
                   }}
                 >
                   <Typography sx={{ color: getTextColor(0.5) }}>
-                    Department
+                    Dept
                   </Typography>
                   <Typography>{userData.department}</Typography>
                 </Box>
@@ -2852,17 +2864,18 @@ const UserView = () => {
                 </Box>
               </Box>
 
-              <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
+              <Divider sx={{ my: { xs: 2, sm: 3 }, borderColor: getDividerColor() }} />
 
               {/* Skills Section */}
               <Typography
                 variant="h6"
                 gutterBottom
                 sx={{
-                  mt: 2,
-                  mb: 3,
+                  mt: { xs: 1.5, sm: 2 },
+                  mb: { xs: 2, sm: 3 },
                   fontWeight: 600,
                   color: darkMode ? "#fff" : "#000",
+                  fontSize: { xs: "1rem", sm: "1.25rem" },
                 }}
               >
                 Skills
@@ -2877,6 +2890,7 @@ const UserView = () => {
                       color: darkMode
                         ? "rgba(255,255,255,0.7)"
                         : "rgba(0,0,0,0.7)",
+                      fontSize: { xs: "0.8rem", sm: "0.875rem" },
                     }}
                   >
                     {skillSet.name}
@@ -2896,17 +2910,18 @@ const UserView = () => {
                 </Box>
               ))}
 
-              <Divider sx={{ my: 3, borderColor: getDividerColor() }} />
+              <Divider sx={{ my: { xs: 2, sm: 3 }, borderColor: getDividerColor() }} />
 
               {/* Interests Section */}
               <Typography
                 variant="h6"
                 gutterBottom
                 sx={{
-                  mt: 2,
-                  mb: 3,
+                  mt: { xs: 1.5, sm: 2 },
+                  mb: { xs: 2, sm: 3 },
                   color: darkMode ? "#fff" : "#000",
                   fontWeight: 600,
+                  fontSize: { xs: "1rem", sm: "1.25rem" },
                 }}
               >
                 Interests
@@ -3043,7 +3058,7 @@ const UserView = () => {
               <Paper
                 sx={{
                   p: { xs: 2, sm: 3 },
-                  mb: 3,
+                  mb: { xs: 2, sm: 3 },
                   ...getStatsCardStyle(),
                 }}
               >
@@ -3057,8 +3072,8 @@ const UserView = () => {
                         sx={{
                           color: darkMode ? "#ffffff" : "#000000",
                           fontWeight: 700,
-                          mb: 3,
-                          fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                          mb: { xs: 2, sm: 3 },
+                          fontSize: { xs: "0.95rem", sm: "1.5rem" },
                         }}
                       >
                         Scope Stats
@@ -3083,7 +3098,8 @@ const UserView = () => {
                             borderRadius: "16px",
                             p: { xs: 2, sm: 2.5, md: 3 },
                             textAlign: "center",
-                            flex: "1",
+                            flex: { xs: "none", sm: "1" },
+                            width: { xs: "100%", sm: "auto" },
                             minWidth: 0,
                             boxShadow: darkMode
                               ? "0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2)"
@@ -3175,7 +3191,7 @@ const UserView = () => {
                               sx={{
                                 color: darkMode ? "white" : "#000000",
                                 fontWeight: 700,
-                                fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                                fontSize: { xs: "1.125rem", sm: "1.75rem" },
                                 mb: 0.5,
                                 letterSpacing: "-0.02em",
                               }}
@@ -3237,6 +3253,16 @@ const UserView = () => {
                           </Box>
                         </Box>
 
+                        {/* Rank Cards Container - Side by side on mobile */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: 2,
+                            flex: { xs: "none", sm: "2" },
+                            width: { xs: "100%", sm: "auto" },
+                          }}
+                        >
                         {/* Overall Rank */}
                         {userData.rankingInfo.overallRank !== null &&
                           userData.rankingInfo.totalUsers > 0 && (
@@ -3538,7 +3564,7 @@ const UserView = () => {
                                     letterSpacing: "0.02em",
                                   }}
                                 >
-                                  Department Rank
+                                  Dept Rank
                                 </Typography>
 
                                 <Typography
@@ -3581,6 +3607,7 @@ const UserView = () => {
                               </Box>
                             </Box>
                           )}
+                        </Box>
                       </Box>
                     </>
                   )}
@@ -3592,13 +3619,14 @@ const UserView = () => {
                   sx={{
                     fontWeight: 600,
                     color: darkMode ? "#fff" : "#000",
-                    mb: 2,
+                    mb: { xs: 1.5, sm: 2 },
                     mt:
                       userData.rankingInfo &&
                       (userData.rankingInfo.overallRank !== null ||
                         userData.rankingInfo.departmentRank !== null)
                         ? 2
                         : 0,
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
                   }}
                 >
                   Detailed Breakdown
@@ -3962,6 +3990,7 @@ const UserView = () => {
                   gutterBottom
                   sx={{
                     mb: 3,
+                    fontSize: { xs: "0.95rem", sm: "1.5rem" },
                     fontWeight: 600,
                     color: darkMode ? "#fff" : "#000",
                   }}
@@ -3973,14 +4002,14 @@ const UserView = () => {
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 0 }}
                   >
-                    {/* GitHub Stats Grid - No nested containers */}
-                    <Grid container spacing={3} sx={{ mb: 2 }}>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                    {/* GitHub Stats Grid - 2x2 on mobile, 1x4 on desktop */}
+                    <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Public Repo's
                           </Typography>
@@ -3989,19 +4018,19 @@ const UserView = () => {
                             sx={{
                               color: "#0088cc",
                               fontWeight: 600,
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.publicRepos || 0}
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Total Commits
                           </Typography>
@@ -4010,19 +4039,19 @@ const UserView = () => {
                             sx={{
                               color: "#0088cc",
                               fontWeight: 600,
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.totalCommits || 0}
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Stars
                           </Typography>
@@ -4031,19 +4060,19 @@ const UserView = () => {
                             sx={{
                               color: "#0088cc",
                               fontWeight: 600,
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.starsReceived || 0}
                           </Typography>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Box sx={{ textAlign: "center", py: 2 }}>
+                      <Grid item xs={6} sm={6} md={3}>
+                        <Box sx={{ textAlign: "center", py: { xs: 1.5, sm: 2 } }}>
                           <Typography
                             variant="body1"
                             color={getTextColor(0.7)}
-                            sx={{ mb: 1 }}
+                            sx={{ mb: 1, fontSize: { xs: "0.85rem", sm: "1rem" } }}
                           >
                             Followers
                           </Typography>
@@ -4053,7 +4082,7 @@ const UserView = () => {
                               color: "#0088cc",
                               fontWeight: 600,
                               textTransform: "capitalize",
-                              fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                              fontSize: { xs: "1.125rem", sm: "1.75rem" },
                             }}
                           >
                             {userData.githubStats?.followers || 0}
@@ -4191,7 +4220,7 @@ const UserView = () => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    mb: 2,
+                    mb: { xs: 1.5, sm: 2 },
                   }}
                 >
                   <Typography
@@ -4199,6 +4228,7 @@ const UserView = () => {
                     sx={{
                       color: darkMode ? "#fff" : "#000",
                       fontWeight: 600,
+                      fontSize: { xs: "1.125rem", sm: "1.5rem" },
                       mb: 3,
                     }}
                   >
