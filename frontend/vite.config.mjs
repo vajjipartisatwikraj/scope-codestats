@@ -37,6 +37,7 @@ export default defineConfig({
   },
   plugins: [react(), viteTsconfigPaths()],
   server: {
+    host: true, // Allow access from network
     open: true,
     proxy: {
       "/api": {

@@ -77,6 +77,7 @@ import {
   GOLD_SOFT,
   GOLD_BORDER,
 } from "./profile/CertificationSuggestions";
+import { QRCodeSVG } from "qrcode.react";
 
 // Import Dashboard components and utilities
 import {
@@ -539,44 +540,6 @@ const UserView = () => {
       "0%, 100%": { opacity: 0.5 },
       "50%": { opacity: 1 },
     },
-    "&:hover": {
-      transform: "translateY(-6px) scale(1.01)",
-      animation: "none",
-      boxShadow: darkMode
-        ? `
-          0 30px 80px rgba(0, 0, 0, 0.9),
-          0 15px 40px rgba(0, 0, 0, 0.7),
-          0 6px 20px rgba(0, 0, 0, 0.5),
-          inset 0 2px 4px rgba(255, 255, 255, 0.2),
-          inset 0 -1px 2px rgba(0, 0, 0, 0.1)
-        `
-        : `
-          0 30px 80px rgba(0, 0, 0, 0.15),
-          0 15px 40px rgba(0, 0, 0, 0.12),
-          0 6px 20px rgba(0, 0, 0, 0.1),
-          inset 0 3px 6px rgba(255, 255, 255, 1),
-          inset 0 -1px 2px rgba(0, 0, 0, 0.05)
-        `,
-      background: darkMode
-        ? `
-          linear-gradient(135deg, 
-            rgba(0, 0, 0, 0.15) 0%, 
-            rgba(15, 25, 45, 0.4) 25%,
-            rgba(25, 40, 70, 0.5) 50%,
-            rgba(0, 0, 0, 0.45) 75%,
-            rgba(0, 0, 0, 0.25) 100%
-          )
-        `
-        : `
-          linear-gradient(135deg, 
-            rgba(255, 255, 255, 0.5) 0%,
-            rgba(255, 255, 255, 0.3) 25%,
-            rgba(245, 250, 255, 0.4) 50%,
-            rgba(255, 255, 255, 0.35) 75%,
-            rgba(255, 255, 255, 0.2) 100%
-          )
-        `,
-    },
   });
 
   const getInnerCardStyle = () => ({
@@ -630,39 +593,6 @@ const UserView = () => {
         ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)"
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)",
     },
-    "&:hover": {
-      transform: "translateY(-4px) scale(1.005)",
-      boxShadow: darkMode
-        ? `
-          0 18px 48px rgba(0, 0, 0, 0.7),
-          0 8px 24px rgba(0, 0, 0, 0.5),
-          inset 0 2px 3px rgba(255, 255, 255, 0.15),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.1)
-        `
-        : `
-          0 18px 48px rgba(0, 0, 0, 0.12),
-          0 8px 24px rgba(0, 0, 0, 0.08),
-          inset 0 3px 4px rgba(255, 255, 255, 0.9),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.03)
-        `,
-      background: darkMode
-        ? `
-          linear-gradient(135deg, 
-            rgba(0, 0, 0, 0.25) 0%,
-            rgba(15, 25, 50, 0.45) 30%,
-            rgba(0, 0, 0, 0.55) 70%,
-            rgba(0, 0, 0, 0.35) 100%
-          )
-        `
-        : `
-          linear-gradient(135deg, 
-            rgba(255, 255, 255, 0.7) 0%,
-            rgba(248, 250, 255, 0.6) 30%,
-            rgba(255, 255, 255, 0.8) 70%,
-            rgba(255, 255, 255, 0.5) 100%
-          )
-        `,
-    },
   });
 
   // iPhone-style Liquid Glass Chip Style
@@ -715,37 +645,6 @@ const UserView = () => {
       background: darkMode
         ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)"
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)",
-    },
-    "&:hover": {
-      transform: "scale(1.08) translateY(-1px)",
-      boxShadow: darkMode
-        ? `
-          0 8px 24px ${color}40,
-          0 4px 12px rgba(0, 0, 0, 0.4),
-          inset 0 2px 2px rgba(255, 255, 255, 0.15),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.05)
-        `
-        : `
-          0 8px 24px ${color}30,
-          0 4px 12px rgba(0, 0, 0, 0.08),
-          inset 0 2px 3px rgba(255, 255, 255, 0.9),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.02)
-        `,
-      background: darkMode
-        ? `
-          linear-gradient(135deg, 
-            rgba(0, 0, 0, 0.2) 0%,
-            rgba(10, 20, 40, 0.4) 50%,
-            rgba(0, 0, 0, 0.45) 100%
-          )
-        `
-        : `
-          linear-gradient(135deg, 
-            rgba(255, 255, 255, 0.6) 0%,
-            rgba(245, 250, 255, 0.5) 50%,
-            rgba(255, 255, 255, 0.7) 100%
-          )
-        `,
     },
     transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
   });
@@ -841,24 +740,7 @@ const UserView = () => {
         ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)"
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)",
     },
-    "&:hover": {
-      transform: "translateY(-8px) scale(1.015)",
-      boxShadow: darkMode
-        ? `
-          0 35px 90px rgba(0, 0, 0, 1),
-          0 18px 50px rgba(0, 0, 0, 0.8),
-          0 8px 25px rgba(0, 0, 0, 0.6),
-          inset 0 3px 6px rgba(255, 255, 255, 0.25),
-          inset 0 -2px 4px rgba(0, 0, 0, 0.1)
-        `
-        : `
-          0 35px 90px rgba(0, 0, 0, 0.18),
-          0 18px 50px rgba(0, 0, 0, 0.15),
-          0 8px 25px rgba(0, 0, 0, 0.12),
-          inset 0 4px 8px rgba(255, 255, 255, 1),
-          inset 0 -2px 4px rgba(0, 0, 0, 0.04)
-        `,
-    },
+    transition: "all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
   });
 
   const getStatsCardStyle = () => ({
@@ -899,22 +781,6 @@ const UserView = () => {
     position: "relative",
     overflow: "hidden",
     transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-    "&:hover": {
-      transform: "translateY(-5px) scale(1.008)",
-      boxShadow: darkMode
-        ? `
-          0 22px 60px rgba(0, 0, 0, 0.8),
-          0 12px 35px rgba(0, 0, 0, 0.6),
-          inset 0 2px 4px rgba(255, 255, 255, 0.18),
-          inset 0 -1px 2px rgba(0, 0, 0, 0.08)
-        `
-        : `
-          0 22px 60px rgba(0, 0, 0, 0.12),
-          0 12px 35px rgba(0, 0, 0, 0.1),
-          inset 0 3px 5px rgba(255, 255, 255, 0.9),
-          inset 0 -1px 2px rgba(0, 0, 0, 0.03)
-        `,
-    },
   });
 
   const getAchievementCardStyle = () => ({
@@ -967,22 +833,6 @@ const UserView = () => {
       background: darkMode
         ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)"
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)",
-    },
-    "&:hover": {
-      transform: "translateY(-3px) scale(1.01)",
-      boxShadow: darkMode
-        ? `
-          0 16px 40px rgba(0, 0, 0, 0.7),
-          0 8px 20px rgba(0, 0, 0, 0.5),
-          inset 0 2px 3px rgba(255, 255, 255, 0.12),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.05)
-        `
-        : `
-          0 16px 40px rgba(0, 0, 0, 0.1),
-          0 8px 20px rgba(0, 0, 0, 0.08),
-          inset 0 3px 4px rgba(255, 255, 255, 0.8),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.02)
-        `,
     },
   });
 
@@ -1132,22 +982,6 @@ const UserView = () => {
         ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)"
         : "linear-gradient(90deg, transparent, rgba(0,0,0,0.1), transparent)",
     },
-    "&:hover": {
-      transform: "translateY(-4px) scale(1.005)",
-      boxShadow: darkMode
-        ? `
-          0 18px 48px rgba(0, 0, 0, 0.7),
-          0 8px 24px rgba(0, 0, 0, 0.5),
-          inset 0 2px 3px rgba(255, 255, 255, 0.15),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.1)
-        `
-        : `
-          0 18px 48px rgba(0, 0, 0, 0.15),
-          0 8px 24px rgba(0, 0, 0, 0.1),
-          inset 0 3px 4px rgba(255, 255, 255, 0.9),
-          inset 0 -1px 1px rgba(0, 0, 0, 0.02)
-        `,
-    },
   });
 
   const getButtonGlassStyle = (isPrimary = false) => ({
@@ -1209,39 +1043,6 @@ const UserView = () => {
         ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)"
         : "linear-gradient(90deg, transparent, rgba(0,0,0,0.1), transparent)",
     },
-    "&:hover": {
-      transform: "translateY(-2px) scale(1.05)",
-      background: isPrimary
-        ? "linear-gradient(145deg, #0077bb 0%, #004470 100%)"
-        : darkMode
-          ? `
-            linear-gradient(135deg, 
-              rgba(0, 0, 0, 0.7) 0%,
-              rgba(20, 20, 20, 0.9) 50%,
-              rgba(0, 0, 0, 0.8) 100%
-            )
-          `
-          : `
-            linear-gradient(135deg, 
-              rgba(230, 230, 230, 0.9) 0%,
-              rgba(240, 240, 240, 0.95) 50%,
-              rgba(250, 250, 250, 0.9) 100%
-            )
-          `,
-      boxShadow: isPrimary
-        ? "0 6px 24px rgba(0, 136, 204, 0.5), inset 0 1px 0 rgba(255,255,255,0.3)"
-        : darkMode
-          ? `
-            0 6px 20px rgba(0, 0, 0, 0.5),
-            0 3px 12px rgba(0, 0, 0, 0.4),
-            inset 0 2px 2px rgba(255, 255, 255, 0.15)
-          `
-          : `
-            0 6px 20px rgba(0, 0, 0, 0.15),
-            0 3px 12px rgba(0, 0, 0, 0.1),
-            inset 0 2px 3px rgba(255, 255, 255, 0.9)
-          `,
-    },
   });
 
   const [achievementCounts, setAchievementCounts] = useState({
@@ -1275,12 +1076,6 @@ const UserView = () => {
       try {
         const response = await axios.get(`${apiUrl}/users/${username}`);
         const userData = response.data;
-        console.log(userData);
-        // Log the first achievement to verify domainLink is present
-        if (userData.achievements && userData.achievements.length > 0) {
-          console.log("First achievement data:", userData.achievements[0]);
-        }
-
         if (userData.codingProfiles?.github?.username) {
           // Instead of making API calls that cause 401 errors,
           // just use the data we already have from the backend
@@ -2433,17 +2228,6 @@ const UserView = () => {
                     "linear-gradient(90deg, rgba(255,255,255,0.6) 0%, transparent 100%)",
                   borderRadius: "1px",
                   filter: "blur(1px)",
-                  animation: "floatingLight 3s ease-in-out infinite",
-                },
-                "@keyframes floatingLight": {
-                  "0%, 100%": {
-                    transform: "translateX(0) translateY(0)",
-                    opacity: 0.6,
-                  },
-                  "50%": {
-                    transform: "translateX(10px) translateY(-2px)",
-                    opacity: 1,
-                  },
                 },
               }}
             />
@@ -3212,19 +2996,6 @@ const UserView = () => {
                                   ? "1px solid rgba(255, 255, 255, 0.15)"
                                   : "1px solid rgba(0, 0, 0, 0.08)",
                               }),
-                          "&:hover": {
-                            transform: "translateY(-2px) scale(1.02)",
-                            ...(isActive
-                              ? {
-                                  background:
-                                    "linear-gradient(145deg, #0077bb 0%, #004470 100%)",
-                                  boxShadow:
-                                    "0 6px 24px rgba(0, 136, 204, 0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
-                                }
-                              : {
-                                  boxShadow: `0 6px 20px rgba(0, 136, 204, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)`,
-                                }),
-                          },
                         }}
                       >
                         <Box
@@ -3296,11 +3067,10 @@ const UserView = () => {
                       <Box
                         sx={{
                           display: "flex",
-                          gap: { xs: 1, sm: 2 },
+                          flexDirection: { xs: "column", sm: "row" },
+                          gap: { xs: 2, sm: 2 },
                           mb: 4,
-                          flexWrap: "nowrap",
                           alignItems: "stretch",
-                          justifyContent: "stretch",
                           width: "100%",
                         }}
                       >
@@ -3311,7 +3081,7 @@ const UserView = () => {
                               ? "rgba(0, 0, 0, 0.50)"
                               : "#FFFFFF",
                             borderRadius: "16px",
-                            p: { xs: 2.5, sm: 3 },
+                            p: { xs: 2, sm: 2.5, md: 3 },
                             textAlign: "center",
                             flex: "1",
                             minWidth: 0,
@@ -3476,7 +3246,7 @@ const UserView = () => {
                                   ? "rgba(0, 0, 0, 0.50)"
                                   : "#FFFFFF",
                                 borderRadius: "16px",
-                                p: { xs: 2.5, sm: 3 },
+                                p: { xs: 2, sm: 2.5, md: 3 },
                                 textAlign: "center",
                                 flex: "1",
                                 minWidth: 0,
@@ -3651,7 +3421,7 @@ const UserView = () => {
                                   ? "rgba(0, 0, 0, 0.50)"
                                   : "#FFFFFF",
                                 borderRadius: "16px",
-                                p: { xs: 2.5, sm: 3 },
+                                p: { xs: 2, sm: 2.5, md: 3 },
                                 textAlign: "center",
                                 flex: "1",
                                 minWidth: 0,
@@ -3836,37 +3606,99 @@ const UserView = () => {
 
                 {/* Pie Charts Section */}
                 <Box sx={{ mt: 2 }}>
-                  <Tabs
-                    value={activeChartTab}
-                    onChange={(e, newValue) => setActiveChartTab(newValue)}
-                    variant="scrollable"
-                    scrollButtons="auto"
+                  {/* Tabs Container with Arrows */}
+                  <Box
                     sx={{
+                      position: "relative",
                       mb: 3,
-                      "& .MuiTab-root": {
-                        color: getTextColor(0.7),
-                        "&.Mui-selected": {
-                          color: "#0088cc",
-                        },
-                      },
-                      "& .MuiTabs-indicator": {
-                        backgroundColor: "#0088cc",
-                      },
+                      height: "auto",
                     }}
                   >
-                    <Tab
-                      key="overall-tab"
-                      label="Overall Score"
-                      value="overall"
-                    />
-                    <Tab
-                      key="problems-tab"
-                      label="Problems Solved"
-                      value="problems"
-                    />
-                    <Tab key="contests-tab" label="Contests" value="contests" />
-                    <Tab key="rating-tab" label="Rating" value="rating" />
-                  </Tabs>
+                    <Box
+                      id="breakdown-tabs-container"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        position: "relative",
+                        overflowX: "auto",
+                        "&::-webkit-scrollbar": {
+                          display: "none",
+                        },
+                        scrollbarWidth: "none",
+                        msOverflowStyle: "none",
+                      }}
+                    >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: { xs: 0.5, sm: 1 },
+                        minWidth: "min-content",
+                        justifyContent: "flex-start",
+                        width: "100%",
+                        flexWrap: "nowrap",
+                      }}
+                    >
+                      {[
+                        { value: "overall", label: "Overall Score" },
+                        { value: "problems", label: "Problems Solved" },
+                        { value: "contests", label: "Contests" },
+                        { value: "rating", label: "Rating" },
+                      ].map((tab) => {
+                        const isActive = activeChartTab === tab.value;
+                        return (
+                          <Box
+                            key={tab.value}
+                            onClick={() => setActiveChartTab(tab.value)}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: { xs: 0.5, sm: 1 },
+                              px: { xs: 1.5, sm: 2 },
+                              py: { xs: 0.75, sm: 1 },
+                              borderRadius: "16px",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              minWidth: "fit-content",
+                              position: "relative",
+                              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                              ...(isActive
+                                ? {
+                                    background:
+                                      "linear-gradient(145deg, #0088cc 0%, #005580 100%)",
+                                    backdropFilter: "blur(20px)",
+                                    WebkitBackdropFilter: "blur(20px)",
+                                    boxShadow:
+                                      "0 4px 20px rgba(0, 136, 204, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+                                    border: "1px solid rgba(0, 136, 204, 0.3)",
+                                  }
+                                : {
+                                    background: darkMode
+                                      ? "linear-gradient(145deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%)"
+                                      : "linear-gradient(145deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.5) 100%)",
+                                    border: darkMode
+                                      ? "1px solid rgba(255, 255, 255, 0.15)"
+                                      : "1px solid rgba(0, 0, 0, 0.08)",
+                                  }),
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                color: isActive
+                                  ? "white"
+                                  : darkMode
+                                    ? "rgba(255, 255, 255, 0.9)"
+                                    : "rgba(0, 0, 0, 0.8)",
+                              }}
+                            >
+                              {tab.label}
+                            </Typography>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
 
                   <Box
                     sx={{
@@ -3893,7 +3725,7 @@ const UserView = () => {
                             activeChartTab,
                           )}
                           cx="50%"
-                          cy="50%"
+                          cy="45%"
                           innerRadius={isMobile ? 60 : 80}
                           outerRadius={isMobile ? 80 : 120}
                           paddingAngle={4}
@@ -4036,7 +3868,7 @@ const UserView = () => {
                     <Box
                       sx={{
                         position: "absolute",
-                        top: "48%", // Adjusted to account for legend at bottom
+                        top: "45%",
                         left: "50%",
                         transform: "translate(-50%, -50%)",
                         textAlign: "center",
@@ -4047,12 +3879,15 @@ const UserView = () => {
                         alignItems: "center",
                         justifyContent: "center",
                         bgcolor: darkMode
-                          ? "rgba(18, 18, 18, 0.8)"
-                          : "rgba(255, 255, 255, 0.9)",
+                          ? "rgba(0, 0, 0, 0.85)"
+                          : "rgba(255, 255, 255, 0.95)",
                         boxShadow: darkMode
-                          ? "0 4px 16px rgba(0, 0, 0, 0.4)"
-                          : "0 4px 16px rgba(0, 0, 0, 0.1)",
+                          ? "0 4px 16px rgba(0, 0, 0, 0.6)"
+                          : "0 4px 16px rgba(0, 0, 0, 0.15)",
                         borderRadius: "50%",
+                        border: darkMode
+                          ? "1px solid rgba(255, 255, 255, 0.1)"
+                          : "1px solid rgba(0, 0, 0, 0.05)",
                         zIndex: 10,
                         pointerEvents: "none",
                         backdropFilter: "blur(10px)",
@@ -4111,6 +3946,7 @@ const UserView = () => {
                     </Box>
                   </Box>
                 </Box>
+              </Box>
               </Paper>
 
               {/* GitHub Stats Section */}
@@ -4373,25 +4209,25 @@ const UserView = () => {
                 {/* Achievement Type Tabs */}
                 <Box
                   sx={{
-                    mb: 3,
-                    width: "100%",
-                    overflowX: "auto",
                     position: "relative",
-                    zIndex: 10,
-                    "&::-webkit-scrollbar": {
-                      height: "4px",
-                    },
-                    "&::-webkit-scrollbar-track": {
-                      background: "transparent",
-                    },
-                    "&::-webkit-scrollbar-thumb": {
-                      background: darkMode
-                        ? "rgba(255, 255, 255, 0.2)"
-                        : "rgba(0, 0, 0, 0.2)",
-                      borderRadius: "2px",
-                    },
+                    width: "100%",
+                    mb: 3,
                   }}
                 >
+                  <Box
+                    id="achievement-tabs-container"
+                    sx={{
+                      width: "100%",
+                      overflowX: "auto",
+                      position: "relative",
+                      zIndex: 10,
+                      "&::-webkit-scrollbar": {
+                        display: "none",
+                      },
+                      scrollbarWidth: "none",
+                      msOverflowStyle: "none",
+                    }}
+                  >
                   <Box
                     sx={{
                       display: "flex",
@@ -4460,20 +4296,6 @@ const UserView = () => {
                                     ? "linear-gradient(145deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%)"
                                     : "linear-gradient(145deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.5) 100%)",
                                 }),
-                            "&:hover": {
-                              transform: "translateY(-2px) scale(1.02)",
-                              zIndex: 25,
-                              ...(isActive
-                                ? {
-                                    background:
-                                      "linear-gradient(145deg, #0077bb 0%, #004470 100%)",
-                                    boxShadow:
-                                      "0 6px 24px rgba(0, 136, 204, 0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
-                                  }
-                                : {
-                                    boxShadow: `0 6px 20px rgba(0, 136, 204, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)`,
-                                  }),
-                            },
                           }}
                         >
                           {/* Icon */}
@@ -4540,6 +4362,7 @@ const UserView = () => {
                     })}
                   </Box>
                 </Box>
+              </Box>
 
                 {/* Achievements Cards Container */}
                 <Box
@@ -5091,19 +4914,6 @@ const UserView = () => {
                                 ? "1px solid rgba(255, 255, 255, 0.15)"
                                 : "1px solid rgba(0, 0, 0, 0.08)",
                             }),
-                        "&:hover": {
-                          transform: "translateY(-2px) scale(1.02)",
-                          ...(isActive
-                            ? {
-                                background:
-                                  "linear-gradient(145deg, #0077bb 0%, #004470 100%)",
-                                boxShadow:
-                                  "0 6px 24px rgba(0, 136, 204, 0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
-                              }
-                            : {
-                                boxShadow: `0 6px 20px rgba(0, 136, 204, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)`,
-                              }),
-                        },
                       }}
                     >
                       <Box
@@ -5239,18 +5049,13 @@ const UserView = () => {
             boxShadow: darkMode
               ? "0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.10) inset"
               : "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.50) inset",
-            animation: "dialogSpring 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            "@keyframes dialogSpring": {
+            animation: "dialogFade 0.25s ease-out",
+            "@keyframes dialogFade": {
               "0%": {
                 opacity: 0,
-                transform: "scale(0.9) translateY(-10px)",
-              },
-              "50%": {
-                transform: "scale(1.02) translateY(2px)",
               },
               "100%": {
                 opacity: 1,
-                transform: "scale(1) translateY(0)",
               },
             },
           }}
@@ -5327,7 +5132,7 @@ const UserView = () => {
 
           {/* Content Section with Glass Effect */}
           <DialogContent sx={{ p: 3, background: "transparent" }}>
-            {/* Profile Preview Card with Liquid Glass */}
+            {/* Profile Preview - Name and Class at top */}
             <Box
               sx={{
                 background: darkMode
@@ -5339,57 +5144,30 @@ const UserView = () => {
                   ? "1px solid rgba(255,255,255,0.12)"
                   : "1px solid rgba(255,255,255,0.3)",
                 borderRadius: "16px",
-                p: 3,
+                p: 2.5,
                 mb: 3,
-                position: "relative",
-                overflow: "hidden",
                 boxShadow: darkMode
-                  ? "0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)"
-                  : "0 8px 24px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6)",
-                transition: "all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)",
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  top: 0,
-                  left: "15%",
-                  right: "15%",
-                  height: "1px",
-                  background: darkMode
-                    ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)"
-                    : "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)",
-                },
-                "&:hover": {
-                  transform: "translateY(-2px)",
-                  boxShadow: darkMode
-                    ? "0 12px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)"
-                    : "0 12px 32px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.7)",
-                },
+                  ? "0 4px 16px rgba(0,0,0,0.3)"
+                  : "0 4px 16px rgba(0,0,0,0.08)",
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
+                    width: 50,
+                    height: 50,
                     borderRadius: "12px",
                     background: darkMode
                       ? "linear-gradient(135deg, rgba(0,136,204,0.5) 0%, rgba(0,85,128,0.7) 100%)"
                       : "linear-gradient(135deg, #0088cc 0%, #005580 100%)",
-                    backdropFilter: "blur(10px)",
-                    WebkitBackdropFilter: "blur(10px)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    mr: 3,
+                    mr: 2.5,
                     color: "white",
-                    fontSize: "1.4rem",
+                    fontSize: "1.5rem",
                     fontWeight: "600",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                    boxShadow:
-                      "0 4px 12px rgba(0,136,204,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                    border: darkMode
-                      ? "1px solid rgba(255,255,255,0.15)"
-                      : "1px solid rgba(255,255,255,0.2)",
+                    boxShadow: "0 4px 12px rgba(0,136,204,0.3)",
                   }}
                 >
                   {userData?.name?.charAt(0)?.toUpperCase()}
@@ -5399,11 +5177,9 @@ const UserView = () => {
                     variant="h6"
                     sx={{
                       fontWeight: 600,
-                      color: darkMode
-                        ? "rgba(255,255,255,0.95)"
-                        : "rgba(0,0,0,0.9)",
-                      mb: 0.5,
-                      fontSize: "1.1rem",
+                      color: darkMode ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.9)",
+                      fontSize: "1.15rem",
+                      mb: 0.3,
                     }}
                   >
                     {userData?.name}
@@ -5411,201 +5187,119 @@ const UserView = () => {
                   <Typography
                     variant="body2"
                     sx={{
-                      color: darkMode
-                        ? "rgba(255,255,255,0.7)"
-                        : "rgba(0,0,0,0.6)",
+                      color: darkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)",
                       fontSize: "0.85rem",
                     }}
                   >
-                    {userData?.department} • {userData?.section} • Score:{" "}
-                    {userData?.totalScore || 0}
+                    {userData?.department} • {userData?.section}
                   </Typography>
                 </Box>
               </Box>
-
-              <Typography
-                variant="body2"
-                sx={{
-                  color: darkMode
-                    ? "rgba(255,255,255,0.75)"
-                    : "rgba(0,0,0,0.7)",
-                  fontStyle: "italic",
-                  pl: 7.5,
-                  fontSize: "0.9rem",
-                }}
-              >
-                "Check out my coding achievements and projects!"
-              </Typography>
             </Box>
 
-            {/* URL Input Section with Glass Effect */}
-            <Box sx={{ mb: 3 }}>
+            {/* QR Code Section - Centered */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
               <Typography
                 variant="subtitle2"
                 sx={{
                   mb: 2,
                   fontWeight: 600,
                   color: darkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)",
-                  fontSize: "0.9rem",
+                  fontSize: "0.95rem",
                 }}
               >
-                Your Public Profile Link
+                Scan QR Code
               </Typography>
-
-              <TextField
-                fullWidth
-                variant="outlined"
-                value={userData ? getPublicProfileUrl() : ""}
-                InputProps={{
-                  readOnly: true,
-                  endAdornment: (
-                    <IconButton
-                      onClick={handleOpenLink}
-                      sx={{
-                        color: "#0088cc",
-                        bgcolor: darkMode
-                          ? "rgba(0,136,204,0.12)"
-                          : "rgba(0,136,204,0.08)",
-                        backdropFilter: "blur(10px)",
-                        WebkitBackdropFilter: "blur(10px)",
-                        border: darkMode
-                          ? "1px solid rgba(0,136,204,0.2)"
-                          : "1px solid rgba(0,136,204,0.15)",
-                        width: 36,
-                        height: 36,
-                        transition: "all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)",
-                        "&:hover": {
-                          bgcolor: darkMode
-                            ? "rgba(0,136,204,0.20)"
-                            : "rgba(0,136,204,0.12)",
-                          transform: "scale(1.05)",
-                          boxShadow: "0 4px 12px rgba(0,136,204,0.3)",
-                        },
-                        "&:active": {
-                          transform: "scale(0.95)",
-                        },
-                      }}
-                    >
-                      <OpenInNew sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  ),
-                  sx: {
-                    background: darkMode
-                      ? "rgba(0, 0, 0, 0.2)"
-                      : "rgba(255, 255, 255, 0.25)",
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
-                    borderRadius: "12px",
-                    "& fieldset": {
-                      borderColor: darkMode
-                        ? "rgba(255,255,255,0.12)"
-                        : "rgba(0,0,0,0.1)",
-                      borderWidth: "1px",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: darkMode
-                        ? "rgba(0,136,204,0.4)"
-                        : "rgba(0,136,204,0.5)",
-                    },
-                    "& .MuiOutlinedInput-root.Mui-focused fieldset": {
-                      borderColor: "#0088cc",
-                      borderWidth: "1.5px",
-                    },
-                  },
-                }}
+              <Box
                 sx={{
-                  "& input": {
-                    color: darkMode
-                      ? "rgba(255,255,255,0.9)"
-                      : "rgba(0,0,0,0.8)",
-                    fontSize: "0.85rem",
-                    fontFamily:
-                      'ui-monospace, SFMono-Regular, "SF Mono", monospace',
-                    fontWeight: 500,
-                  },
+                  p: 2,
+                  background: "white",
+                  borderRadius: "16px",
+                  boxShadow: darkMode
+                    ? "0 8px 24px rgba(0,0,0,0.4)"
+                    : "0 8px 24px rgba(0,0,0,0.15)",
                 }}
-              />
+              >
+                <QRCodeSVG
+                  value={userData ? getPublicProfileUrl() : ""}
+                  size={160}
+                  level="H"
+                  includeMargin={true}
+                  fgColor="#000000"
+                />
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  mt: 2,
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                  fontSize: "0.8rem",
+                  textAlign: "center",
+                }}
+              >
+                Scan to view profile
+              </Typography>
             </Box>
 
-            {/* Action Buttons with Glass Effect */}
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-              <Button
-                onClick={handleShareOnLinkedIn}
-                variant="contained"
-                startIcon={<LinkedIn />}
-                sx={{
-                  background:
-                    "linear-gradient(135deg, #0077b5 0%, #005885 100%)",
-                  backdropFilter: "blur(10px)",
-                  WebkitBackdropFilter: "blur(10px)",
-                  color: "white",
-                  fontWeight: 600,
-                  borderRadius: "12px",
-                  textTransform: "none",
-                  px: 3,
-                  py: 1.2,
-                  fontSize: "0.9rem",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  boxShadow:
-                    "0 4px 15px rgba(0,119,181,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                  transition: "all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)",
-                  "&:hover": {
-                    background:
-                      "linear-gradient(135deg, #005885 0%, #004466 100%)",
-                    transform: "translateY(-1px) scale(1.02)",
-                    boxShadow:
-                      "0 6px 20px rgba(0,119,181,0.4), inset 0 1px 0 rgba(255,255,255,0.25)",
-                  },
-                  "&:active": {
-                    transform: "translateY(0) scale(0.98)",
-                  },
+            {/* Action Buttons */}
+            <Box sx={{ display: "flex", gap: 1.5, justifyContent: "center" }}>
+              <IconButton
+                onClick={() => {
+                  navigator.clipboard.writeText(getPublicProfileUrl());
+                  setSnackbarMessage("Link copied to clipboard!");
+                  setSnackbarOpen(true);
                 }}
-              >
-                Share on LinkedIn
-              </Button>
-
-              <Button
-                onClick={handleOpenLink}
-                variant="outlined"
-                startIcon={<OpenInNew />}
                 sx={{
                   background: darkMode
                     ? "rgba(0, 0, 0, 0.2)"
                     : "rgba(255, 255, 255, 0.3)",
                   backdropFilter: "blur(10px)",
                   WebkitBackdropFilter: "blur(10px)",
-                  borderColor: darkMode
-                    ? "rgba(0,136,204,0.4)"
-                    : "rgba(0,136,204,0.5)",
+                  border: darkMode
+                    ? "1.5px solid rgba(0,136,204,0.4)"
+                    : "1.5px solid rgba(0,136,204,0.5)",
                   color: "#0088cc",
-                  fontWeight: 600,
-                  borderRadius: "12px",
-                  textTransform: "none",
-                  px: 3,
-                  py: 1.2,
-                  fontSize: "0.9rem",
-                  borderWidth: "1.5px",
-                  boxShadow: darkMode
-                    ? "0 4px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)"
-                    : "0 4px 15px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)",
-                  transition: "all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)",
+                  borderRadius: "10px",
+                  width: 48,
+                  height: 48,
                   "&:hover": {
                     borderColor: "#0088cc",
-                    color: "#005580",
                     background: darkMode
                       ? "rgba(0,136,204,0.15)"
                       : "rgba(0,136,204,0.15)",
-                    transform: "translateY(-1px) scale(1.02)",
-                    boxShadow: darkMode
-                      ? "0 6px 20px rgba(0,136,204,0.25), inset 0 1px 0 rgba(255,255,255,0.12)"
-                      : "0 6px 20px rgba(0,136,204,0.2), inset 0 1px 0 rgba(255,255,255,0.7)",
-                  },
-                  "&:active": {
-                    transform: "translateY(0) scale(0.98)",
                   },
                 }}
               >
-                Open Link
+                <ContentCopyIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+
+              <Button
+                onClick={handleOpenLink}
+                variant="contained"
+                sx={{
+                  background: "linear-gradient(135deg, #0088cc 0%, #005580 100%)",
+                  color: "white",
+                  fontWeight: 600,
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1.2,
+                  fontSize: "0.9rem",
+                  boxShadow: "0 4px 12px rgba(0,136,204,0.3)",
+                  "&:hover": {
+                    background: "linear-gradient(135deg, #005580 0%, #004466 100%)",
+                    boxShadow: "0 6px 16px rgba(0,136,204,0.4)",
+                  },
+                }}
+              >
+                Open Profile
               </Button>
             </Box>
           </DialogContent>

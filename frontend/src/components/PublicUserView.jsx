@@ -21,6 +21,10 @@ import {
   Link as MuiLink,
   AppBar,
   Toolbar,
+  Dialog,
+  DialogContent,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   PieChart,
@@ -50,7 +54,10 @@ import {
   Login,
   AccountCircle,
   Description as DescriptionIcon,
+  IosShare,
+  ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
+import { QRCodeSVG } from "qrcode.react";
 import { useTheme } from "../contexts/ThemeContext";
 import { apiUrl } from "../config/apiConfig";
 import { normalizeSkillSets } from "../utils/skillSets";
@@ -327,6 +334,9 @@ const PublicUserView = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("project");
   const [activeChartTab, setActiveChartTab] = useState("overall");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
   const [profilePicError, setProfilePicError] = useState(false);
   const calendarRef = useRef(null);
   const currentUsernameRef = useRef(null); // Ref to track current username being fetched
@@ -346,6 +356,31 @@ const PublicUserView = () => {
 
   const getHoverBgColor = (baseColor) =>
     darkMode ? `${baseColor}30` : `${baseColor}15`;
+
+  // Share functionality helper functions
+  const getPublicProfileUrl = () => {
+    return `${window.location.origin}/public-profile/${username}`;
+  };
+
+  const handleShareClick = () => {
+    setShareDialogOpen(true);
+  };
+
+  const handleCloseShareDialog = () => {
+    setShareDialogOpen(false);
+  };
+
+  const handleOpenLink = () => {
+    const profileUrl = getPublicProfileUrl();
+    window.open(profileUrl, "_blank");
+    setSnackbarMessage("Profile opened in new tab!");
+    setSnackbarOpen(true);
+    setShareDialogOpen(false);
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
 
   // iPhone-style Liquid Glass styling functions
   const getCardStyle = () => ({
@@ -466,7 +501,6 @@ const PublicUserView = () => {
       "50%": { opacity: 1 },
     },
     "&:hover": {
-      transform: "translateY(-6px) scale(1.01)",
       animation: "none",
       boxShadow: darkMode
         ? `
@@ -557,7 +591,6 @@ const PublicUserView = () => {
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)",
     },
     "&:hover": {
-      transform: "translateY(-4px) scale(1.005)",
       boxShadow: darkMode
         ? `
           0 18px 48px rgba(0, 0, 0, 0.7),
@@ -643,7 +676,6 @@ const PublicUserView = () => {
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)",
     },
     "&:hover": {
-      transform: "scale(1.08) translateY(-1px)",
       boxShadow: darkMode
         ? `
           0 8px 24px ${color}40,
@@ -733,7 +765,6 @@ const PublicUserView = () => {
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)",
     },
     "&:hover": {
-      transform: "translateY(-8px) scale(1.015)",
       boxShadow: darkMode
         ? `
           0 35px 90px rgba(0, 0, 0, 1),
@@ -791,7 +822,6 @@ const PublicUserView = () => {
     overflow: "hidden",
     transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
     "&:hover": {
-      transform: "translateY(-5px) scale(1.008)",
       boxShadow: darkMode
         ? `
           0 22px 60px rgba(0, 0, 0, 0.8),
@@ -860,7 +890,6 @@ const PublicUserView = () => {
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)",
     },
     "&:hover": {
-      transform: "translateY(-3px) scale(1.01)",
       boxShadow: darkMode
         ? `
           0 16px 40px rgba(0, 0, 0, 0.7),
@@ -980,13 +1009,19 @@ const PublicUserView = () => {
           inset 0 1px 2px rgba(255, 255, 255, 0.8)
         `,
     fontWeight: 600,
-    px: { xs: 2, sm: 3 },
-    py: { xs: 0.75, sm: 1 },
-    fontSize: { xs: "0.875rem", sm: "1rem" },
+    px: { xs: 1.5, sm: 3 },
+    py: { xs: 0.5, sm: 1 },
+    fontSize: { xs: "0.75rem", sm: "1rem" },
     textTransform: "none",
     position: "relative",
     overflow: "hidden",
-    minWidth: { xs: "80px", sm: "100px" },
+    minWidth: { xs: "60px", sm: "100px" },
+    "& .MuiButton-startIcon": {
+      marginRight: { xs: "4px", sm: "8px" },
+      "& svg": {
+        fontSize: { xs: "1rem", sm: "1.25rem" },
+      },
+    },
     "&::before": {
       content: '""',
       position: "absolute",
@@ -999,7 +1034,6 @@ const PublicUserView = () => {
         : "linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)",
     },
     "&:hover": {
-      transform: "translateY(-1px) scale(1.02)",
       background: isPrimary
         ? "linear-gradient(145deg, #0077bb 0%, #004470 100%)"
         : darkMode
@@ -1270,7 +1304,6 @@ const PublicUserView = () => {
             }
             
             .calendar rect:hover {
-              transform: scale(1.1) !important;
               stroke: #0088cc !important;
               stroke-width: 1px !important;
             }
@@ -1627,7 +1660,7 @@ const PublicUserView = () => {
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: { xs: 1, sm: 2 },
+              gap: { xs: 0.75, sm: 2 },
             }}
           >
             {/* Logo */}
@@ -1636,8 +1669,8 @@ const PublicUserView = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: { xs: 36, sm: 44 },
-                height: { xs: 36, sm: 44 },
+                width: { xs: 28, sm: 44 },
+                height: { xs: 28, sm: 44 },
                 position: "relative",
               }}
             >
@@ -1647,8 +1680,8 @@ const PublicUserView = () => {
                 style={{
                   width: "100%",
                   height: "100%",
-                  maxWidth: "32px",
-                  maxHeight: "32px",
+                  maxWidth: "28px",
+                  maxHeight: "28px",
                   objectFit: "contain",
                   transition: "all 0.3s ease",
                 }}
@@ -1677,7 +1710,7 @@ const PublicUserView = () => {
                 variant="subtitle1"
                 sx={{
                   fontWeight: 700,
-                  fontSize: "1rem",
+                  fontSize: "0.875rem",
                   color: darkMode ? "#fff" : "#101010",
                   letterSpacing: "0.5px",
                 }}
@@ -1692,9 +1725,18 @@ const PublicUserView = () => {
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: { xs: 1, sm: 2 },
+              gap: { xs: 0.75, sm: 1.5 },
             }}
           >
+            {/* Share Button */}
+            <Button
+              onClick={handleShareClick}
+              startIcon={<IosShare />}
+              sx={getNavbarButtonStyle(false)}
+            >
+              <Box sx={{ display: { xs: "none", sm: "block" } }}>Share</Box>
+            </Button>
+
             {/* Home Button */}
             <Button
               onClick={() => navigate("/")}
@@ -1748,11 +1790,9 @@ const PublicUserView = () => {
                     animation: "breatheBackground 4s ease-in-out infinite",
                     "@keyframes breatheBackground": {
                       "0%, 100%": {
-                        transform: "scale(1)",
                         opacity: darkMode ? 0.7 : 0.6,
                       },
                       "50%": {
-                        transform: "scale(1.01)",
                         opacity: darkMode ? 0.8 : 0.7,
                       },
                     },
@@ -1797,17 +1837,6 @@ const PublicUserView = () => {
                         "linear-gradient(90deg, rgba(255,255,255,0.6) 0%, transparent 100%)",
                       borderRadius: "1px",
                       filter: "blur(1px)",
-                      animation: "floatingLight 3s ease-in-out infinite",
-                    },
-                    "@keyframes floatingLight": {
-                      "0%, 100%": {
-                        transform: "translateX(0) translateY(0)",
-                        opacity: 0.6,
-                      },
-                      "50%": {
-                        transform: "translateX(10px) translateY(-2px)",
-                        opacity: 1,
-                      },
                     },
                   }}
                 />
@@ -1843,18 +1872,6 @@ const PublicUserView = () => {
                           overflow: "hidden",
                           position: "relative",
                           zIndex: 2,
-                          animation: "profileBreathe 5s ease-in-out infinite",
-                          "@keyframes profileBreathe": {
-                            "0%, 100%": {
-                              transform: "scale(1)",
-                              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
-                            },
-                            "50%": {
-                              transform: "scale(1.03)",
-                              boxShadow:
-                                "0 8px 30px rgba(0, 136, 204, 0.6), 0 4px 20px rgba(0, 0, 0, 0.4)",
-                            },
-                          },
                         }}
                       >
                         {userData.profilePicture && !profilePicError ? (
@@ -1993,7 +2010,6 @@ const PublicUserView = () => {
                                 transition: "all 0.2s ease-in-out",
                                 "&:hover": {
                                   backgroundColor: "rgba(0,119,181,0.2)",
-                                  transform: "scale(1.1)",
                                 },
                               }}
                             >
@@ -2013,7 +2029,6 @@ const PublicUserView = () => {
                                 transition: "all 0.2s ease-in-out",
                                 "&:hover": {
                                   backgroundColor: "rgba(244,67,54,0.2)",
-                                  transform: "scale(1.1)",
                                 },
                               }}
                             >
@@ -2037,7 +2052,6 @@ const PublicUserView = () => {
                                   backgroundColor: darkMode
                                     ? "rgba(255,255,255,0.2)"
                                     : "rgba(36,41,46,0.2)",
-                                  transform: "scale(1.1)",
                                 },
                               }}
                             >
@@ -2557,9 +2571,9 @@ const PublicUserView = () => {
                       <Box
                         sx={{
                           display: "flex",
-                          gap: { xs: 1, sm: 2 },
+                          flexDirection: { xs: "column", sm: "row" },
+                          gap: { xs: 2, sm: 2 },
                           mb: 4,
-                          flexWrap: "nowrap",
                           alignItems: "stretch",
                           justifyContent: "stretch",
                           width: "100%",
@@ -3097,37 +3111,101 @@ const PublicUserView = () => {
 
                 {/* Pie Charts Section */}
                 <Box sx={{ mt: 3 }}>
-                  <Tabs
-                    value={activeChartTab}
-                    onChange={(e, newValue) => setActiveChartTab(newValue)}
-                    variant="scrollable"
-                    scrollButtons="auto"
+                  {/* Chart Tabs with Navigation */}
+                  <Box
                     sx={{
                       mb: 3,
-                      "& .MuiTab-root": {
-                        color: getTextColor(0.7),
-                        "&.Mui-selected": {
-                          color: "#0088cc",
-                        },
-                      },
-                      "& .MuiTabs-indicator": {
-                        backgroundColor: "#0088cc",
-                      },
+                      width: "100%",
+                      position: "relative",
+                      height: "auto",
                     }}
                   >
-                    <Tab
-                      key="overall-tab"
-                      label="Overall Score"
-                      value="overall"
-                    />
-                    <Tab
-                      key="problems-tab"
-                      label="Problems Solved"
-                      value="problems"
-                    />
-                    <Tab key="contests-tab" label="Contests" value="contests" />
-                    <Tab key="rating-tab" label="Rating" value="rating" />
-                  </Tabs>
+                    <Box
+                      id="chart-tabs-container"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        position: "relative",
+                        overflowX: "auto",
+                        "&::-webkit-scrollbar": {
+                          display: "none",
+                        },
+                        scrollbarWidth: "none",
+                        msOverflowStyle: "none",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: { xs: 0.5, sm: 1 },
+                          minWidth: "min-content",
+                          justifyContent: "flex-start",
+                          width: "100%",
+                          flexWrap: "nowrap",
+                        }}
+                      >
+                        {[
+                          { value: "overall", label: "Overall Score" },
+                          { value: "problems", label: "Problems Solved" },
+                          { value: "contests", label: "Contests" },
+                          { value: "rating", label: "Rating" },
+                        ].map((tab) => {
+                          const isActive = activeChartTab === tab.value;
+                          return (
+                            <Box
+                              key={tab.value}
+                              onClick={() => setActiveChartTab(tab.value)}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: { xs: 0.5, sm: 1 },
+                                px: { xs: 1.5, sm: 2 },
+                                py: { xs: 0.75, sm: 1 },
+                                borderRadius: "16px",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                minWidth: "fit-content",
+                                position: "relative",
+                                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                ...(isActive
+                                  ? {
+                                      background:
+                                        "linear-gradient(145deg, #0088cc 0%, #005580 100%)",
+                                      backdropFilter: "blur(20px)",
+                                      WebkitBackdropFilter: "blur(20px)",
+                                      boxShadow:
+                                        "0 4px 20px rgba(0, 136, 204, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+                                      border: "1px solid rgba(0, 136, 204, 0.3)",
+                                    }
+                                  : {
+                                      background: darkMode
+                                        ? "linear-gradient(145deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%)"
+                                        : "linear-gradient(145deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.5) 100%)",
+                                      border: darkMode
+                                        ? "1px solid rgba(255, 255, 255, 0.15)"
+                                        : "1px solid rgba(0, 0, 0, 0.08)",
+                                    }),
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontWeight: 600,
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                  color: isActive
+                                    ? "white"
+                                    : darkMode
+                                      ? "rgba(255, 255, 255, 0.9)"
+                                      : "rgba(0, 0, 0, 0.8)",
+                                }}
+                              >
+                                {tab.label}
+                              </Typography>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  </Box>
 
                   <Box
                     sx={{ position: "relative", height: 400, width: "100%" }}
@@ -3142,7 +3220,7 @@ const PublicUserView = () => {
                             activeChartTab,
                           )}
                           cx="50%"
-                          cy="50%"
+                          cy="45%"
                           innerRadius={isMobile ? 60 : 80}
                           outerRadius={isMobile ? 80 : 120}
                           paddingAngle={4}
@@ -3293,11 +3371,14 @@ const PublicUserView = () => {
                         alignItems: "center",
                         justifyContent: "center",
                         bgcolor: darkMode
-                          ? "rgba(18, 18, 18, 0.8)"
-                          : "rgba(255, 255, 255, 0.9)",
+                          ? "rgba(0, 0, 0, 0.85)"
+                          : "rgba(255, 255, 255, 0.95)",
                         boxShadow: darkMode
                           ? "0 4px 16px rgba(0, 0, 0, 0.4)"
                           : "0 4px 16px rgba(0, 0, 0, 0.1)",
+                        border: darkMode
+                          ? "1px solid rgba(255, 255, 255, 0.1)"
+                          : "1px solid rgba(0, 0, 0, 0.05)",
                         borderRadius: "50%",
                         zIndex: 10,
                         pointerEvents: "none",
@@ -3624,23 +3705,24 @@ const PublicUserView = () => {
                   sx={{
                     mb: 3,
                     width: "100%",
-                    overflowX: "auto",
                     position: "relative",
-                    zIndex: 10,
-                    "&::-webkit-scrollbar": {
-                      height: "4px",
-                    },
-                    "&::-webkit-scrollbar-track": {
-                      background: "transparent",
-                    },
-                    "&::-webkit-scrollbar-thumb": {
-                      background: darkMode
-                        ? "rgba(255, 255, 255, 0.2)"
-                        : "rgba(0, 0, 0, 0.2)",
-                      borderRadius: "2px",
-                    },
+                    height: "auto",
                   }}
                 >
+                  <Box
+                    id="achievement-tabs-container"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      position: "relative",
+                      overflowX: "auto",
+                      "&::-webkit-scrollbar": {
+                        display: "none",
+                      },
+                      scrollbarWidth: "none",
+                      msOverflowStyle: "none",
+                    }}
+                  >
                   <Box
                     sx={{
                       display: "flex",
@@ -3710,7 +3792,6 @@ const PublicUserView = () => {
                                     : "linear-gradient(145deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.5) 100%)",
                                 }),
                             "&:hover": {
-                              transform: "translateY(-2px) scale(1.02)",
                               zIndex: 25,
                               ...(isActive
                                 ? {
@@ -3789,6 +3870,7 @@ const PublicUserView = () => {
                     })}
                   </Box>
                 </Box>
+              </Box>
 
                 {/* Achievements Cards Container */}
                 <Box
@@ -3998,7 +4080,6 @@ const PublicUserView = () => {
                                           bgcolor: darkMode
                                             ? "rgba(255, 255, 255, 0.2)"
                                             : "rgba(255, 255, 255, 0.9)",
-                                          transform: "scale(1.1)",
                                         },
                                       }}
                                     >
@@ -4239,6 +4320,334 @@ const PublicUserView = () => {
           </Grid>
         </Container>
       </Box>
+
+      {/* Share Profile Dialog */}
+      <Dialog
+        open={shareDialogOpen}
+        onClose={handleCloseShareDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx:{
+            bgcolor: "transparent",
+            boxShadow: "none",
+            overflow: "visible",
+          },
+        }}
+        sx={{
+          "& .MuiBackdrop-root": {
+            backdropFilter: "blur(8px)",
+            backgroundColor: darkMode
+              ? "rgba(0, 0, 0, 0.6)"
+              : "rgba(0, 0, 0, 0.3)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            background: darkMode
+              ? "rgba(10, 10, 12, 0.85)"
+              : "rgba(242, 242, 247, 0.60)",
+            backdropFilter: "saturate(180%) blur(20px)",
+            WebkitBackdropFilter: "saturate(180%) blur(20px)",
+            border: darkMode
+              ? "0.5px solid rgba(255, 255, 255, 0.18)"
+              : "0.5px solid rgba(0, 0, 0, 0.04)",
+            borderRadius: "24px",
+            overflow: "hidden",
+            position: "relative",
+            boxShadow: darkMode
+              ? "0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.10) inset"
+              : "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.50) inset",
+            animation: "dialogFade 0.25s ease-out",
+            "@keyframes dialogFade": {
+              "0%": {
+                opacity: 0,
+              },
+              "100%": {
+                opacity: 1,
+              },
+            },
+          }}
+        >
+          <Box
+            sx={{
+              px: 3,
+              py: 2.5,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              borderBottom: darkMode
+                ? "0.5px solid rgba(255, 255, 255, 0.10)"
+                : "0.5px solid rgba(0, 0, 0, 0.08)",
+              background: "transparent",
+            }}
+          >
+            <Box sx={{ pr: 2, flex: 1 }}>
+              <Typography
+                variant="h5"
+                sx={{
+                  color: darkMode ? "#FFFFFF" : "#000000",
+                  fontWeight: 700,
+                  fontSize: "1.35rem",
+                  letterSpacing: "-0.02em",
+                  mb: 0.5,
+                }}
+              >
+                Share Profile
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: darkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)",
+                  fontSize: "0.875rem",
+                }}
+              >
+                Share this amazing coding profile!
+              </Typography>
+            </Box>
+
+            <IconButton
+              onClick={handleCloseShareDialog}
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                color: darkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.7)",
+                bgcolor: darkMode
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: darkMode
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.08)",
+                transition: "all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)",
+                "&:hover": {
+                  bgcolor: darkMode
+                    ? "rgba(255, 255, 255, 0.12)"
+                    : "rgba(0, 0, 0, 0.08)",
+                  transform: "scale(1.05)",
+                },
+                "&:active": {
+                  transform: "scale(0.95)",
+                },
+              }}
+            >
+              <Box sx={{ fontSize: 18, fontWeight: "bold", lineHeight: 1 }}>
+                ×
+              </Box>
+            </IconButton>
+          </Box>
+
+          <DialogContent sx={{ p: 3, background: "transparent" }}>
+            {userData && (
+              <Box
+                sx={{
+                  background: darkMode
+                    ? "rgba(0, 0, 0, 0.2)"
+                    : "rgba(255, 255, 255, 0.3)",
+                  backdropFilter: "blur(20px) saturate(110%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(110%)",
+                  border: darkMode
+                    ? "1px solid rgba(255,255,255,0.12)"
+                    : "1px solid rgba(255,255,255,0.3)",
+                  borderRadius: "16px",
+                  p: 2.5,
+                  mb: 3,
+                  boxShadow: darkMode
+                    ? "0 4px 16px rgba(0,0,0,0.3)"
+                    : "0 4px 16px rgba(0,0,0,0.08)",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: "12px",
+                      background: darkMode
+                        ? "linear-gradient(135deg, rgba(0,136,204,0.5) 0%, rgba(0,85,128,0.7) 100%)"
+                        : "linear-gradient(135deg, #0088cc 0%, #005580 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mr: 2.5,
+                      color: "white",
+                      fontSize: "1.5rem",
+                      fontWeight: "600",
+                      boxShadow: "0 4px 12px rgba(0,136,204,0.3)",
+                    }}
+                  >
+                    {userData?.name?.charAt(0)?.toUpperCase()}
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        color: darkMode ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.9)",
+                        fontSize: "1.15rem",
+                        mb: 0.3,
+                      }}
+                    >
+                      {userData?.name}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: darkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      {userData?.department} • {userData?.section}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  mb: 2,
+                  fontWeight: 600,
+                  color: darkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)",
+                  fontSize: "0.95rem",
+                }}
+              >
+                Scan QR Code
+              </Typography>
+              <Box
+                sx={{
+                  p: 2,
+                  background: "white",
+                  borderRadius: "16px",
+                  boxShadow: darkMode
+                    ? "0 8px 24px rgba(0,0,0,0.4)"
+                    : "0 8px 24px rgba(0,0,0,0.15)",
+                }}
+              >
+                <QRCodeSVG
+                  value={getPublicProfileUrl()}
+                  size={160}
+                  level="H"
+                  includeMargin={true}
+                  fgColor="#000000"
+                />
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  mt: 2,
+                  color: darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                  fontSize: "0.8rem",
+                  textAlign: "center",
+                }}
+              >
+                Scan to view profile
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 1.5, justifyContent: "center" }}>
+              <IconButton
+                onClick={() => {
+                  navigator.clipboard.writeText(getPublicProfileUrl());
+                  setSnackbarMessage("Link copied to clipboard!");
+                  setSnackbarOpen(true);
+                }}
+                sx={{
+                  background: darkMode
+                    ? "rgba(0, 0, 0, 0.2)"
+                    : "rgba(255, 255, 255, 0.3)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  border: darkMode
+                    ? "1.5px solid rgba(0,136,204,0.4)"
+                    : "1.5px solid rgba(0,136,204,0.5)",
+                  color: "#0088cc",
+                  borderRadius: "10px",
+                  width: 48,
+                  height: 48,
+                  "&:hover": {
+                    borderColor: "#0088cc",
+                    background: darkMode
+                      ? "rgba(0,136,204,0.15)"
+                      : "rgba(0,136,204,0.15)",
+                  },
+                }}
+              >
+                <ContentCopyIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+
+              <Button
+                onClick={handleOpenLink}
+                variant="contained"
+                sx={{
+                  background: "linear-gradient(135deg, #0088cc 0%, #005580 100%)",
+                  color: "white",
+                  fontWeight: 600,
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1.2,
+                  fontSize: "0.9rem",
+                  boxShadow: "0 4px 12px rgba(0,136,204,0.3)",
+                  "&:hover": {
+                    background: "linear-gradient(135deg, #005580 0%, #004466 100%)",
+                    boxShadow: "0 6px 16px rgba(0,136,204,0.4)",
+                  },
+                }}
+              >
+                Open Profile
+              </Button>
+            </Box>
+          </DialogContent>
+        </Box>
+      </Dialog>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{
+          "& .MuiSnackbarContent-root": {
+            minWidth: "auto",
+          },
+        }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity="success"
+          variant="filled"
+          icon={<OpenInNew />}
+          sx={{
+            width: "100%",
+            background: "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)",
+            color: "white",
+            borderRadius: "12px",
+            fontWeight: 500,
+            fontSize: "0.95rem",
+            boxShadow: "0 4px 20px rgba(76,175,80,0.3)",
+            "& .MuiAlert-icon": {
+              color: "white",
+            },
+            "& .MuiAlert-action": {
+              color: "white",
+            },
+          }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
