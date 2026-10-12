@@ -18,9 +18,13 @@ const Footer = () => {
   const isPublicPage = location.pathname.startsWith('/public-profile/');
   const isCohortProblemPage = /^\/cohorts\/[^/]+\/modules\/[^/]+\/questions\/[^/]+$/.test(location.pathname);
   const isTestPage = location.pathname.startsWith('/practice-arena/tests/');
+  // Speech test setup, section list and question screens run without the sidebar.
+  const isSpeechTestFlowPage = /^\/speech-tests\/[^/]+(\/setup|\/feedback|\/sections\/[^/]+(\/results)?)?$/.test(
+    location.pathname
+  );
   
   // Determine if navigation is shown
-  const shouldShowNavigation = token && !isAuthPage && !isCohortProblemPage && !isTestPage && !isPublicPage;
+  const shouldShowNavigation = token && !isAuthPage && !isCohortProblemPage && !isTestPage && !isPublicPage && !isSpeechTestFlowPage;
   
   // Listen to sidebar state changes through body classes
   useEffect(() => {

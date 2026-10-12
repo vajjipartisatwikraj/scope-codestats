@@ -15,6 +15,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
   useTheme,
@@ -64,14 +65,35 @@ const StatTile = ({ label, value, color }) => {
  * and how many roll numbers have no account at all. Adding is a separate,
  * explicit step, so an admin can review the mismatches first.
  */
-const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }) => {
+/**
+ * By default this targets a cohort. Other screens (speech tests) reuse it by
+ * passing their own endpoints:
+ *   - `resolveUrl`  POST endpoint that resolves roll numbers to users
+ *   - `saveUrl`     PUT endpoint that replaces the eligible list with { userIds }
+ *   - `entityLabel` word used in the copy ("cohort", "test")
+ *   - `allowPaste`  also show a box for typing or pasting roll numbers
+ */
+const RollNumberCsvImport = ({
+  cohortId,
+  onUsersAdded,
+  currentEligibleIds = [],
+  resolveUrl,
+  saveUrl,
+  entityLabel = "cohort",
+  allowPaste = false,
+}) => {
   const fileInputRef = useRef(null);
   const [fileName, setFileName] = useState("");
+  const [pasted, setPasted] = useState("");
   const [parsing, setParsing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [result, setResult] = useState(null);
   const [showMissing, setShowMissing] = useState(false);
   const [showFound, setShowFound] = useState(false);
+
+  const effectiveResolveUrl =
+    resolveUrl || `${apiUrl}/cohorts/${cohortId}/eligible-users/resolve-rolls`;
+  const effectiveSaveUrl = saveUrl || `${apiUrl}/cohorts/${cohortId}/eligible-users`;
 
   const resetResult = () => {
     setResult(null);
@@ -79,28 +101,22 @@ const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }
     setShowFound(false);
   };
 
-  const handleFile = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = ""; // allow re-uploading the same file
-    if (!file) return;
-
-    setFileName(file.name);
+  /** Parses raw text (a file's contents or pasted roll numbers) and resolves it. */
+  const resolveText = async (text, emptyMessage) => {
     resetResult();
     setParsing(true);
 
     try {
-      const text = await file.text();
       const parsed = parseRollNumberCsv(text);
 
       if (parsed.rollNumbers.length === 0) {
-        toast.error("No roll numbers found in that file");
+        toast.error(emptyMessage);
         return;
       }
 
-      const { data } = await axios.post(
-        `${apiUrl}/cohorts/${cohortId}/eligible-users/resolve-rolls`,
-        { rollNumbers: parsed.rollNumbers }
-      );
+      const { data } = await axios.post(effectiveResolveUrl, {
+        rollNumbers: parsed.rollNumbers,
+      });
 
       setResult({ ...data, parsed });
 
@@ -114,14 +130,28 @@ const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }
     } catch (error) {
       console.error("Roll number import failed:", error);
       toast.error(
-        error.response?.data?.message || "Could not read that file"
+        error.response?.data?.message || "Could not read those roll numbers"
       );
     } finally {
       setParsing(false);
     }
   };
 
-  /** Adds every resolved-but-not-yet-eligible user to the cohort. */
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // allow re-uploading the same file
+    if (!file) return;
+
+    setFileName(file.name);
+    await resolveText(await file.text(), "No roll numbers found in that file");
+  };
+
+  const handlePaste = async () => {
+    setFileName("");
+    await resolveText(pasted, "Type or paste at least one roll number");
+  };
+
+  /** Adds every resolved-but-not-yet-eligible user. */
   const handleAddAll = async () => {
     const toAdd = (result?.matchedUsers || []).filter((u) => !u.alreadyEligible);
     if (toAdd.length === 0) return;
@@ -134,11 +164,12 @@ const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }
         ...new Set([...currentEligibleIds, ...toAdd.map((u) => u._id)]),
       ];
 
-      await axios.put(`${apiUrl}/cohorts/${cohortId}/eligible-users`, {
+      await axios.put(effectiveSaveUrl, {
         userIds: merged,
       });
 
-      toast.success(`Added ${toAdd.length} student(s) to the cohort`);
+      toast.success(`Added ${toAdd.length} student(s) to the ${entityLabel}`);
+      setPasted("");
       resetResult();
       setFileName("");
       onUsersAdded?.();
@@ -205,6 +236,29 @@ const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }
         </Button>
       </Box>
 
+      {allowPaste && (
+        <Box sx={{ display: "flex", gap: 1.5, mt: 2, alignItems: "flex-start" }}>
+          <TextField
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            placeholder="Or type / paste roll numbers (one per line, or separated by commas)"
+            multiline
+            minRows={2}
+            maxRows={6}
+            size="small"
+            fullWidth
+          />
+          <Button
+            variant="outlined"
+            onClick={handlePaste}
+            disabled={parsing || !pasted.trim()}
+            sx={{ whiteSpace: "nowrap", mt: 0.25 }}
+          >
+            Check
+          </Button>
+        </Box>
+      )}
+
       {fileName && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
           File: {fileName}
@@ -236,7 +290,7 @@ const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }
             </Grid>
             <Grid item xs={6} sm={3}>
               <StatTile
-                label="Already in cohort"
+                label={`Already in ${entityLabel}`}
                 value={summary.alreadyEligible}
                 color="#0288d1"
               />
@@ -326,7 +380,7 @@ const RollNumberCsvImport = ({ cohortId, onUsersAdded, currentEligibleIds = [] }
                       <TableCell>
                         <Chip
                           size="small"
-                          label={user.alreadyEligible ? "Already in cohort" : "Will be added"}
+                          label={user.alreadyEligible ? `Already in ${entityLabel}` : "Will be added"}
                           color={user.alreadyEligible ? "info" : "success"}
                           variant={user.alreadyEligible ? "outlined" : "filled"}
                         />

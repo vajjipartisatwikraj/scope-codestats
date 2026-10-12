@@ -28,6 +28,8 @@ import {
 import ViewCarouselRoundedIcon from '@mui/icons-material/ViewCarouselRounded';
 import ViewCarouselOutlinedIcon from '@mui/icons-material/ViewCarouselOutlined';
 import WorkIcon from '@mui/icons-material/Work';
+import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
+import RecordVoiceOverOutlinedIcon from '@mui/icons-material/RecordVoiceOverOutlined';
 import StadiumOutlinedIcon from '@mui/icons-material/StadiumOutlined';
 import StadiumRoundedIcon from '@mui/icons-material/StadiumRounded';
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
@@ -386,6 +388,22 @@ const Sidebar = ({ onToggle, mobileOpen, onMobileClose }) => {
       path: getResourcePath(user, 'cohorts'), 
       icon: location.pathname.includes('/cohorts') || location.pathname.includes('/admin/cohorts') ? <ViewCarouselRoundedIcon /> : <ViewCarouselOutlinedIcon />, 
       divider: false
+    },
+    {
+      // Students: the tests scheduled for them
+      text: 'Speech Test',
+      path: '/speech-tests',
+      icon: location.pathname.startsWith('/speech-tests') ? <RecordVoiceOverIcon /> : <RecordVoiceOverOutlinedIcon />,
+      divider: false,
+      hideFor: isAdminOrTeacher(user)
+    },
+    {
+      // Teachers and admins: create and schedule communication tests
+      text: 'Communication Test',
+      path: '/admin/communication-tests',
+      icon: location.pathname.startsWith('/admin/communication-tests') ? <RecordVoiceOverIcon /> : <RecordVoiceOverOutlinedIcon />,
+      divider: false,
+      hideFor: !isAdminOrTeacher(user)
     },
     { 
       text: 'Practice Arena', 

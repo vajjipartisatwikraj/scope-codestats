@@ -8,6 +8,8 @@ node_modules/
 history/
 testing/
 SQLJudge/
+SpeechJudge/
+AI-InterviewJudge/
 
 # Environment variables
 .env

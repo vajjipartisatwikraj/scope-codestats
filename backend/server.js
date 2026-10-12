@@ -257,6 +257,14 @@ mongoose.connection.once("open", async () => {
   } catch (error) {
     console.error("[Exam Sweeper] ❌ Failed to start:", error);
   }
+
+  // Speech tests: auto-submits sections that ran out of time, sends submitted
+  // sections to SpeechJudge and collects their scores.
+  try {
+    require("./services/speechTestService").startSpeechTestSweeper();
+  } catch (error) {
+    console.error("[Speech Test Sweeper] ❌ Failed to start:", error);
+  }
 });
 
 // Initialize syncProgress tracking for profile synchronization
@@ -376,6 +384,7 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/auth/google", googleAuthRoutes);
 app.use("/api/cohorts", cohortsRoutes);
+app.use("/api/speech-tests", require("./routes/speechTests"));
 app.use("/api/practice-arena", practiceArenaRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/dailyStats", dailyStatsRoutes);

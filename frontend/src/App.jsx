@@ -74,6 +74,17 @@ import PATestView from "./components/PracticeArena/PATestView";
 import PARandomTestForm from "./components/PracticeArena/PARandomTestForm";
 import PATestResults from "./components/PracticeArena/PATestResults";
 
+// Import speech (communication) test components
+import SpeechTestDashboard from "./components/SpeechTest/SpeechTestDashboard";
+import SpeechTestOverview from "./components/SpeechTest/overview/SpeechTestOverview";
+import SpeechTestSetup from "./components/SpeechTest/setup/SpeechTestSetup";
+import SpeechSectionRunner from "./components/SpeechTest/runner/SectionRunner";
+import SectionResultsPage from "./components/SpeechTest/results/SectionResultsPage";
+import SpeechTestFeedbackPage from "./components/SpeechTest/feedback/SpeechTestFeedbackPage";
+import SpeechTestLeaderboardPage from "./components/SpeechTest/SpeechTestLeaderboardPage";
+import CommunicationTestManagement from "./components/SpeechTest/CommunicationTestManagement";
+import CommunicationTestEditor from "./components/SpeechTest/CommunicationTestEditor";
+
 // Import resume builder components
 import ResumeList from "./components/resume/ResumeList";
 import ResumeEditor from "./components/resume/ResumeEditor";
@@ -177,9 +188,26 @@ const MainContent = () => {
   // Check if current path is a test page
   const isTestPage = location.pathname.startsWith("/practice-arena/tests/");
 
+  // A running speech-test section has its own fixed header: no app navbar or
+  // sidebar, so the student cannot navigate away mid-section. The footer stays;
+  // the page is sized to leave room for it so nothing scrolls.
+  const isSpeechSectionPage = /^\/speech-tests\/[^/]+\/sections\/[^/]+$/.test(
+    location.pathname
+  );
+
   // Check if current path is the specific test page that needs to open in a new window
   const isSpecificTestPage =
     location.pathname === "/practice-arena/tests/682a240c9f66f41e5696e2ce";
+
+  // The pre-test setup screens (instructions, audio check) have their own
+  // header, so the app navbar and sidebar are hidden. The footer stays.
+  const isSpeechSetupPage =
+    /^\/speech-tests\/[^/]+\/(setup|feedback)$/.test(location.pathname) ||
+    // Detailed results of one section.
+    /^\/speech-tests\/[^/]+\/sections\/[^/]+\/results$/.test(location.pathname) ||
+    // The student's section list (`/speech-tests/:id`) uses the same fixed
+    // header in place of the app navbar and sidebar.
+    /^\/speech-tests\/[^/]+$/.test(location.pathname);
 
   // Check if current path is an admin page
   const isAdminPage = location.pathname.startsWith("/admin/");
@@ -234,6 +262,8 @@ const MainContent = () => {
     "/cohorts",
     "/admin/practice-arena",
     "/admin/cohorts",
+    "/speech-tests",
+    "/admin/communication-tests",
   ];
 
   // Check if current path might be a 404 page
@@ -243,6 +273,8 @@ const MainContent = () => {
     !location.pathname.startsWith("/cohorts/") &&
     !location.pathname.startsWith("/admin/cohorts/") &&
     !location.pathname.startsWith("/practice-arena/") &&
+    !location.pathname.startsWith("/speech-tests/") &&
+    !location.pathname.startsWith("/admin/communication-tests/") &&
     !location.pathname.startsWith("/user-view/") &&
     !location.pathname.startsWith("/build-resume/") &&
     !location.pathname.startsWith("/public-profile/");
@@ -256,6 +288,8 @@ const MainContent = () => {
     !isResumeEditorPage &&
     !is404Page &&
     !isTestPage &&
+    !isSpeechSectionPage &&
+    !isSpeechSetupPage &&
     !isPublicPage &&
     !isExamSession;
 
@@ -709,6 +743,104 @@ const MainContent = () => {
                       <MobileRestrictedRoute pageName="Practice Arena Management">
                         <PracticeArenaManagement />
                       </MobileRestrictedRoute>
+                    </PrivateRoute>
+                  }
+                />
+
+                {/* Speech Test Routes (students) */}
+                <Route
+                  path="/speech-tests"
+                  element={
+                    <PrivateRoute>
+                      <SpeechTestDashboard />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/speech-tests/:id"
+                  element={
+                    <PrivateRoute>
+                      <SpeechTestOverview />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/speech-tests/:id/setup"
+                  element={
+                    <PrivateRoute>
+                      <SpeechTestSetup />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/speech-tests/:id/sections/:sectionId"
+                  element={
+                    <PrivateRoute>
+                      <SpeechSectionRunner />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/speech-tests/:id/feedback"
+                  element={
+                    <PrivateRoute>
+                      <SpeechTestFeedbackPage />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/speech-tests/:id/sections/:sectionId/results"
+                  element={
+                    <PrivateRoute>
+                      <SectionResultsPage />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/speech-tests/:id/leaderboard"
+                  element={
+                    <PrivateRoute>
+                      <SpeechTestLeaderboardPage />
+                    </PrivateRoute>
+                  }
+                />
+
+                {/* Communication Test Routes (teachers and admins) */}
+                <Route
+                  path="/admin/communication-tests"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <MobileRestrictedRoute pageName="Communication Tests">
+                        <CommunicationTestManagement />
+                      </MobileRestrictedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/communication-tests/new"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <MobileRestrictedRoute pageName="Communication Test Editor">
+                        <CommunicationTestEditor />
+                      </MobileRestrictedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/communication-tests/:id/edit"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <MobileRestrictedRoute pageName="Communication Test Editor">
+                        <CommunicationTestEditor />
+                      </MobileRestrictedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/communication-tests/:id/results"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <SpeechTestLeaderboardPage />
                     </PrivateRoute>
                   }
                 />
