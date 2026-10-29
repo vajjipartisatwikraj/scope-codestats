@@ -24,12 +24,6 @@ export const adminApi = {
   remove: (id) => unwrap(axios.delete(`${base}/admin/${id}`)),
   publish: (id, publish) => unwrap(axios.post(`${base}/admin/${id}/publish`, { publish })),
 
-  eligibleUsers: (id) => unwrap(axios.get(`${base}/admin/${id}/eligible-users`)),
-  saveEligibleUsers: (id, userIds) =>
-    unwrap(axios.put(`${base}/admin/${id}/eligible-users`, { userIds })),
-  resolveRollsUrl: (id) => `${base}/admin/${id}/eligible-users/resolve-rolls`,
-  eligibleUsersUrl: (id) => `${base}/admin/${id}/eligible-users`,
-
   results: (id) => unwrap(axios.get(`${base}/admin/${id}/results`)),
   deleteAttempt: (id, attemptId) => unwrap(axios.delete(`${base}/admin/${id}/attempts/${attemptId}`)),
   judgeStatus: () => unwrap(axios.get(`${base}/admin/judge/status`)),

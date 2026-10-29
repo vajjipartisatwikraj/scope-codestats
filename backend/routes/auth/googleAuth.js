@@ -8,8 +8,14 @@ const User = require('../../models/User');
 
 // Configure Passport Google OAuth strategy
 require('../../config/passport');
+const log = require("../../utils/logger").scope("GOOGLE-AUTH");
+const { signLoginIntent, readLoginIntent } = require('../../utils/loginIntent');
 
-// Google OAuth login route
+// Two sign-in pages share one Google flow, one callback and one JWT. The teacher page
+// only adds a signed `state` that comes back to the callback (utils/loginIntent.js);
+// the student route is unchanged.
+
+// Google OAuth login route (student sign-in page)
 router.get('/', 
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
@@ -17,27 +23,38 @@ router.get('/',
   })
 );
 
-// Google OAuth callback route
+// Google OAuth login route (teacher sign-in page)
+router.get('/teacher', (req, res, next) =>
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+    state: signLoginIntent('teacher')
+  })(req, res, next)
+);
+
+// Google OAuth callback route (both sign-in pages)
 router.get('/callback', (req, res, next) => {
-  console.log('Received Google OAuth callback');
+  log.debug('Received Google OAuth callback');
+  // Where to send the person back to if sign-in fails
+  const loginPath = readLoginIntent(req) === 'teacher' ? '/teacher-login' : '/login';
   
   passport.authenticate('google', { failureRedirect: '/login?error=google-auth-failed' }, async (err, user) => {
     if (err) {
-      console.error('Google auth error:', err);
+      log.error('Google auth error:', err);
       let errorMessage = 'Authentication failed';
       
       // Handle validation errors specifically
       if (err.name === 'ValidationError') {
         errorMessage = err.message.replace('User validation failed: ', '');
-        console.log('Validation error occurred:', errorMessage);
+        log.debug('Validation error occurred:', errorMessage);
       }
       
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=${encodeURIComponent(errorMessage)}`);
+      return res.redirect(`${process.env.FRONTEND_URL}${loginPath}?error=${encodeURIComponent(errorMessage)}`);
     }
 
     if (!user) {
-      console.log('No user returned from Google auth');
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth-failed`);
+      log.debug('No user returned from Google auth');
+      return res.redirect(`${process.env.FRONTEND_URL}${loginPath}?error=auth-failed`);
     }
 
     // Generate unique session token for single active login enforcement
@@ -62,12 +79,12 @@ router.get('/callback', (req, res, next) => {
     );
 
     // Log successful authentication
-    console.log(`User ${user._id} authenticated with Google, redirecting to auth success page`);
-    console.log(`User type: ${user.userType || 'user (default)'}`);
-    console.log(`Session token generated - old sessions invalidated`);
+    log.debug(`User ${user._id} authenticated with Google, redirecting to auth success page`);
+    log.debug(`User type: ${user.userType || 'user (default)'}`);
+    log.debug(`Session token generated - old sessions invalidated`);
 
     // Redirect to frontend auth success page with user data, including profile picture
-    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}&userId=${user._id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&newUser=${user.newUser}&profileCompleted=${user.profileCompleted}&userType=${encodeURIComponent(user.userType || 'user')}&profilePicture=${encodeURIComponent(user.profilePicture || '')}`);
+    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}&userId=${user._id}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&newUser=${user.newUser}&profileCompleted=${user.profileCompleted}&userType=${encodeURIComponent(user.userType || 'user')}&signupIntent=${encodeURIComponent(user.signupIntent || 'student')}&profilePicture=${encodeURIComponent(user.profilePicture || '')}`);
   })(req, res, next);
 });
 
@@ -95,7 +112,7 @@ router.get('/debug-profile', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching Google profile debug info:', error);
+    log.error('Error fetching Google profile debug info:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 });

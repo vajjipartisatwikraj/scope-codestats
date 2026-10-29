@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const Resume = require("../models/Resume");
 const User = require("../models/User");
+const Profile = require("../models/Profile");
 const Achievement = require("../models/Achievement");
 const { buildProfileSnapshot } = require("../utils/resumeProfileImport");
 const {
@@ -16,6 +17,7 @@ const {
   RESUME_FONT_IDS,
   DEFAULT_RESUME_FONT_ID,
 } = require("../resumeFonts");
+const log = require("../utils/logger").scope("RESUMES");
 
 const MAX_RESUMES_PER_USER = 5;
 
@@ -54,19 +56,28 @@ router.get("/profile-data", async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select(
-        "name email mobileNumber phone about education skills interests linkedinUrl resumeLink profiles",
+        "name email mobileNumber phone about education skills interests linkedinUrl resumeLink",
       )
       .lean();
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const achievements = await Achievement.find({ user: req.user.id })
-      .select("type title role issuer description tags link domainLink startDate endDate issuedDate createdAt")
-      .lean();
+    const [achievements, platformProfiles] = await Promise.all([
+      Achievement.find({ user: req.user.id })
+        .select("type title role issuer description tags link domainLink startDate endDate issuedDate createdAt")
+        .lean(),
+      // The resume links to the student's GitHub and LeetCode profiles.
+      Profile.find({ userId: req.user.id, platform: { $in: ["github", "leetcode"] } })
+        .select("platform username")
+        .lean(),
+    ]);
+    const profiles = Object.fromEntries(
+      platformProfiles.map((p) => [p.platform, p.username])
+    );
 
-    res.json({ profile: buildProfileSnapshot(user, achievements) });
+    res.json({ profile: buildProfileSnapshot({ ...user, profiles }, achievements) });
   } catch (err) {
-    console.error("Error building resume profile data:", err);
+    log.error("Error building resume profile data:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -84,7 +95,7 @@ router.get("/", async (req, res) => {
     const resumes = await Resume.find(query).sort({ updatedAt: -1 }).lean();
     res.json({ resumes, limit: MAX_RESUMES_PER_USER });
   } catch (err) {
-    console.error("Error fetching resumes:", err);
+    log.error("Error fetching resumes:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -101,7 +112,7 @@ router.get("/:id", async (req, res) => {
 
     res.json(resume);
   } catch (err) {
-    console.error("Error fetching resume:", err);
+    log.error("Error fetching resume:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -138,7 +149,7 @@ router.post("/", async (req, res) => {
     await resume.save();
     res.status(201).json(resume);
   } catch (err) {
-    console.error("Error creating resume:", err);
+    log.error("Error creating resume:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -183,7 +194,7 @@ router.put("/:id", async (req, res) => {
     await resume.save();
     res.json(resume);
   } catch (err) {
-    console.error("Error updating resume:", err);
+    log.error("Error updating resume:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -199,7 +210,7 @@ router.delete("/:id", async (req, res) => {
 
     res.json({ message: "Resume deleted successfully" });
   } catch (err) {
-    console.error("Error deleting resume:", err);
+    log.error("Error deleting resume:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

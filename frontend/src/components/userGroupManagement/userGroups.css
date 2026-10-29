@@ -1,0 +1,393 @@
+/*
+ * User groups
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Two
+ * panes from 900px (the groups at the left, the selected group at the right); below that the panes
+ * are two screens. Only what the kit does not have lives here. design/screens.md sections 16 and 19.
+ */
+
+.ug-pad {
+  padding: 16px;
+}
+
+/* ---- Layout ----------------------------------------------------------------------------------- */
+
+.ug-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-gap);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .ug-layout {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  }
+
+  .ug-layout[data-empty='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .ug-layout {
+    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  }
+}
+
+.ug-detail {
+  min-width: 0;
+  outline: none;
+}
+
+.ug-back {
+  margin: 0 0 8px -16px;
+}
+
+.ug-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+  min-width: 0;
+}
+
+/* ---- The list of groups ------------------------------------------------------------------------ */
+
+.ug-search {
+  padding: 0 16px 12px;
+}
+
+.ug-groups {
+  margin: 0;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .ug-groups {
+    max-height: min(640px, calc(100dvh - 340px));
+    min-height: 120px;
+  }
+}
+
+.ug-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+  color: var(--ds-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ug-group:hover {
+  background-color: var(--ds-raised);
+}
+
+.ug-group[aria-current='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.ug-group:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.ug-group__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ug-group__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ug-group__meta {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ug-group[aria-current='true'] .ug-group__meta {
+  color: var(--ds-accent-text);
+}
+
+.ug-group__caret {
+  flex: none;
+  visibility: hidden;
+}
+
+.ug-group__caret[data-on='true'] {
+  visibility: visible;
+}
+
+/* A phone shows the list on its own, so every row shows its caret: it opens the group */
+@media (max-width: 899.95px) {
+  .ug-group__caret {
+    visibility: visible;
+    color: var(--ds-muted);
+  }
+}
+
+/* ---- The numbers of a group ---------------------------------------------------------------------- */
+
+.ug-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .ug-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+.ug-stat {
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.ug-stat p {
+  margin: 0;
+}
+
+.ug-stat__label {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ug-stat__value {
+  margin: 2px 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.ug-stat__context {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.ug-skeleton-gap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.ug-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+@media (min-width: 600px) {
+  .ug-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .ug-fields__action {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
+.ug-used {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.ug-used__title {
+  margin: 0 0 8px;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.ug-used__text {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+/* ---- Adding roll numbers --------------------------------------------------------------------------- */
+
+.ug-rolls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ug-rolls__file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ug-rolls__name {
+  min-width: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+.ug-rolls__count {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.ug-rolls__count:empty {
+  display: none;
+}
+
+.ug-add-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 16px;
+}
+
+.ug-add-note {
+  flex: 1 1 240px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ug-result {
+  margin-top: 16px;
+}
+
+/* ---- Students ------------------------------------------------------------------------------------------ */
+
+.ug-roll {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ug-member {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ug-member:last-child {
+  border-bottom: 0;
+}
+
+.ug-member__roll {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ug-member .ui-table__meta {
+  grid-column: 1 / -1;
+}
+
+.ug-unmatched {
+  padding: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+@media (min-width: 900px) {
+  .ug-unmatched {
+    padding: 20px 24px 24px;
+  }
+}
+
+.ug-unmatched__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ug-unmatched__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.ug-unmatched__text {
+  margin: 4px 0 12px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ug-unmatched__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 160px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* ---- Delete dialog ---------------------------------------------------------------------------------------- */
+
+.ug-blocked {
+  margin: 0;
+  padding-left: 20px;
+  font: var(--ds-type-body);
+}
+
+.ug-blocked li + li {
+  margin-top: 4px;
+}
+
+/* ---- Create drawer ------------------------------------------------------------------------------------------- */
+
+.ug-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.ug-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ug-form__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}

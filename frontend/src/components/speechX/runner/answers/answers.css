@@ -1,0 +1,314 @@
+/*
+ * Answers of the question screen: the save line, the jumbled-word builder, the fill-in-the-blank
+ * input, the multiple-choice options and the email box. Prefix sxr-, tokens only. Controls that
+ * animate their own colours reset their children (the global `* { transition }` in index.css would
+ * otherwise ease them a second time) and name the one thing they animate.
+ */
+
+/* ---- Save status line ------------------------------------------------------------------------------ */
+
+.sxr-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  visibility: hidden;
+}
+
+.sxr-save[data-shown='true'] {
+  visibility: visible;
+}
+
+.sxr-save[data-tone='saved'] {
+  color: var(--ds-success);
+}
+
+.sxr-save[data-tone='error'] {
+  color: var(--ds-warning);
+  font-weight: 600;
+}
+
+/* ---- Words (jumbled sentence) --------------------------------------------------------------------------- */
+
+.sxr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxr-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-body-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease),
+    transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxr-chip *,
+.sxr-chip *::before,
+.sxr-chip *::after {
+  transition: none;
+}
+
+.sxr-chip[data-plain='true'] {
+  cursor: default;
+}
+
+.sxr-chip:hover:not(:disabled):not([data-plain='true']) {
+  background-color: var(--ds-high);
+}
+
+.sxr-chip:active:not(:disabled):not([data-plain='true']) {
+  transform: scale(0.97);
+}
+
+/* A word placed in the sentence */
+.sxr-chip[data-filled='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.sxr-chip[data-filled='true']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--ds-accent-text) 16%, var(--ds-accent-soft));
+}
+
+.sxr-chip:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* Already placed, or the screen is busy: the high fill, a subtle label */
+.sxr-chip:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxr-chip:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.sxr-answerline-wrap {
+  margin-top: 24px;
+}
+
+.sxr-answerline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 72px;
+  padding: 12px;
+  border: 2px dashed var(--ds-field-border);
+  border-radius: var(--ds-radius-lg);
+  background-color: transparent;
+  transition:
+    background-color var(--ds-duration-base) var(--ds-ease),
+    border-color var(--ds-duration-base) var(--ds-ease);
+}
+
+.sxr-answerline[data-filled='true'] {
+  border-color: transparent;
+  background-color: var(--ds-raised);
+}
+
+.sxr-answerline__empty {
+  margin: 0 4px;
+  color: var(--ds-subtle);
+  font: var(--ds-type-body);
+}
+
+.sxr-answerline__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  min-height: 36px;
+  margin-top: 8px;
+}
+
+.sxr-answerline__foot .sxr-save {
+  margin: 0;
+}
+
+/* ---- Fill in the blank ---------------------------------------------------------------------------------------- */
+
+.sxr-blank {
+  min-height: 44px;
+  max-width: 100%;
+  margin: 0;
+  padding: 2px 12px;
+  border: 0;
+  border-bottom: 2px solid var(--ds-field-border);
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  transition: border-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxr-blank[data-inline='true'] {
+  margin: 0 4px;
+}
+
+.sxr-blank::placeholder {
+  color: var(--ds-subtle);
+  font-weight: 500;
+}
+
+.sxr-blank:not(:placeholder-shown) {
+  border-bottom-color: var(--ds-accent);
+}
+
+.sxr-blank:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.sxr-blank:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  border-bottom-color: transparent;
+}
+
+/* ---- Multiple choice -------------------------------------------------------------------------------------------- */
+
+.sxr-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+  margin-top: 16px;
+}
+
+.sxr-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 8px 16px 8px 12px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-body-lg);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxr-option *,
+.sxr-option *::before,
+.sxr-option *::after {
+  transition: none;
+}
+
+.sxr-option:hover:not(:disabled) {
+  background-color: var(--ds-high);
+}
+
+.sxr-option[data-on='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+  font-weight: 600;
+}
+
+.sxr-option[data-on='true']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--ds-accent-text) 16%, var(--ds-accent-soft));
+}
+
+.sxr-option:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxr-option:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.sxr-option__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--ds-surface);
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+.sxr-option__mark[data-shape='square'] {
+  border-radius: var(--ds-radius-sm);
+}
+
+.sxr-option[data-on='true'] .sxr-option__mark {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.sxr-option__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Email -------------------------------------------------------------------------------------------------------- */
+
+.sxr-email {
+  max-width: 760px;
+  margin-top: 20px;
+}
+
+.sxr-email__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.sxr-email__foot .sxr-save {
+  margin: 4px 0 0;
+}
+
+.sxr-count {
+  margin-top: 4px;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}

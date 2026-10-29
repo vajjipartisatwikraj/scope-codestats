@@ -82,7 +82,11 @@ const speechTestSchema = new Schema(
       },
     },
     sections: { type: [sectionSchema], default: [] },
+    // Who may take the test. Stored list; change it by attaching and detaching user groups
+    // (services/userGroups/testGroupService.js).
     eligibleUsers: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    // User groups attached to this test. Their members are part of eligibleUsers.
+    userGroups: [{ type: Schema.Types.ObjectId, ref: "UserGroup" }],
     // Students only see published tests.
     isPublished: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -91,6 +95,7 @@ const speechTestSchema = new Schema(
 );
 
 speechTestSchema.index({ eligibleUsers: 1, isPublished: 1 });
+speechTestSchema.index({ userGroups: 1 });
 
 const SpeechTest = mongoose.model("SpeechTest", speechTestSchema);
 SpeechTest.SECTION_TYPES = SECTION_TYPES;

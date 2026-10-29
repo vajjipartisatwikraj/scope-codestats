@@ -1,0 +1,170 @@
+/*
+ * Opportunity management (admin table page, compact).
+ *
+ * Built on the shared kit (components/ui/ui.css) and the --ds-* tokens, so Midnight and Daylight
+ * both work. This file only adds what that kit does not have: the title button, the deadline
+ * cell, the drawer's form sections and the danger zone. Everything is prefixed om-.
+ */
+
+/* ---- Filter row ---------------------------------------------------------------------------- */
+
+.om-toolbar {
+  margin: 0;
+  padding: 16px;
+}
+
+@media (max-width: 599.95px) {
+  .om-toolbar .ui-field-inline {
+    flex: 1 1 140px;
+  }
+
+  .om-toolbar .ui-select,
+  .om-toolbar .ui-select[data-variant='pill'] .ui-select__control {
+    width: 100%;
+  }
+}
+
+.om-notice {
+  padding: 16px 16px 0;
+}
+
+/* ---- Rows ----------------------------------------------------------------------------------- */
+
+.om-row {
+  cursor: pointer;
+}
+
+.om-cell-main {
+  width: 38%;
+  max-width: 0;
+}
+
+.om-open {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background-color: transparent;
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.om-open:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.om-open:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.om-sort-icon {
+  display: inline-flex;
+  color: var(--ds-subtle);
+}
+
+th[aria-sort='ascending'] .om-sort-icon,
+th[aria-sort='descending'] .om-sort-icon {
+  color: var(--ds-text);
+}
+
+.om-deadline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.om-deadline__date {
+  font-variant-numeric: tabular-nums;
+}
+
+/* index.css colours every a:hover; an icon link keeps its own colour */
+.om-external,
+.om-external:hover {
+  color: var(--ds-text);
+  text-decoration: none;
+}
+
+.om-external:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.om-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+@media (max-width: 899.95px) {
+  .ui-list__row .om-open {
+    min-height: 24px;
+  }
+}
+
+/* ---- Drawer form ----------------------------------------------------------------------------- */
+
+.om-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.om-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.om-section + .om-section {
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.om-section__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+/* The danger zone: the one place a destructive action lives inside the form */
+.om-danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-danger-soft);
+}
+
+.om-danger__text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.om-danger__title {
+  margin: 0;
+  color: var(--ds-danger);
+  font: var(--ds-type-label);
+}
+
+.om-danger__body {
+  margin: 2px 0 0;
+  color: var(--ds-text);
+  font: var(--ds-type-body-sm);
+}

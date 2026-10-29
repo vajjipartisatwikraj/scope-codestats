@@ -1,0 +1,921 @@
+/*
+ * speechX: the shared foundation of the speech (communication) test screens
+ *
+ * Plain CSS on the design tokens (--ds-*), no Material UI. ThemeContext publishes the Midnight and
+ * Daylight roles, so nothing here belongs to one theme. Rules: DESIGN.md and design/screens.md
+ * (sections 1, 10, 11, 17 to 19, 21 and 22). Cards are flat (24px corners, no border, no shadow);
+ * there is no glass, blur, glow or gradient; a state is a tint plus an icon plus a word.
+ *
+ * Prefix sx-. Variables:
+ *
+ *   --sx-header   72px, the height of the fixed top bar (FocusHeader).
+ *   --sx-footer   the height of the app footer (Footer.jsx / Footer.css), by window width:
+ *                   80px   from 520px up. The footer is 8px of top padding + a bar of at least 56px
+ *                          (a 32px logo and 12px of padding on each side; the logo is 138px wide and
+ *                          the text about 265px, so the row fits from about 500px) + 16px of bottom
+ *                          padding.
+ *                  112px   under 520px, where the bar wraps to two rows: 8 + (12 + 32 + 8 + 20 + 12)
+ *                          + 16 = 108px, plus a little room.
+ *                  136px   under 360px, where the text itself can wrap to two lines: 128px, plus room.
+ *                 The values are a little generous on purpose: if the footer is shorter than the
+ *                 variable the stage simply ends a few pixels above it (the footer sits at the bottom
+ *                 of the page), while a too-small value would make the page scroll.
+ *   --sx-stage    calc(100dvh - var(--sx-header) - var(--sx-footer)): the room between the top bar and
+ *                 the footer. Size a no-scroll screen with it (see .sx-stage).
+ *   --sx-gap      the gap between cards: 12px, 16px from 600px, 20px from 900px (DESIGN.md, Layout).
+ *   --sx-pad      the side padding of a page: 16px, 24px from 600px, 32px from 1200px.
+ *
+ * The app's global `* { transition }` rule (index.css) would make every child ease its colours a
+ * second time, so each component below that animates its own colours resets its children with
+ * `transition: none` and names the one thing it animates.
+ */
+
+:root {
+  --sx-header: 72px;
+  --sx-footer: 80px;
+  --sx-stage: calc(100vh - var(--sx-header) - var(--sx-footer));
+  --sx-gap: 12px;
+  --sx-pad: 16px;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --sx-stage: calc(100dvh - var(--sx-header) - var(--sx-footer));
+  }
+}
+
+@media (max-width: 519.95px) {
+  :root {
+    --sx-footer: 112px;
+  }
+}
+
+@media (max-width: 359.95px) {
+  :root {
+    --sx-footer: 136px;
+  }
+}
+
+@media (min-width: 600px) {
+  :root {
+    --sx-gap: 16px;
+    --sx-pad: 24px;
+  }
+}
+
+@media (min-width: 900px) {
+  :root {
+    --sx-gap: 20px;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --sx-pad: 32px;
+  }
+}
+
+/* ---- Helpers -------------------------------------------------------------------------------- */
+
+/* Visually hidden, still read by assistive technology */
+.sx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hidden on phones (under 600px) and hidden under 900px */
+@media (max-width: 599.95px) {
+  .sx-hide-phone {
+    display: none !important;
+  }
+}
+
+@media (min-width: 600px) {
+  .sx-phone-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 899.95px) {
+  .sx-hide-narrow {
+    display: none !important;
+  }
+}
+
+/* A full-height stage: exactly the room between the top bar and the footer. Nothing scrolls on the
+   stage itself; anything taller scrolls inside its own column. */
+.sx-stage {
+  box-sizing: border-box;
+  height: calc(100vh - var(--sx-header) - var(--sx-footer));
+  min-height: 0;
+  overflow: hidden;
+}
+
+@supports (height: 100dvh) {
+  .sx-stage {
+    height: calc(100dvh - var(--sx-header) - var(--sx-footer));
+  }
+}
+
+/* A hairline, 16px of room on each side */
+.sx-divider {
+  height: 1px;
+  margin: 16px 0;
+  border: 0;
+  background-color: var(--ds-line);
+}
+
+/* A row of InfoLines that fills the width */
+.sx-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Focus page frame ----------------------------------------------------------------------- */
+
+.sx-page {
+  --sx-w: 880px;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: calc(var(--sx-w) + 2 * var(--sx-pad));
+  min-height: var(--sx-stage);
+  margin: 0 auto;
+  padding: var(--sx-pad);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sx-page[data-width='narrow'] {
+  --sx-w: 760px;
+}
+
+.sx-page[data-width='reading'] {
+  --sx-w: 880px;
+}
+
+.sx-page[data-width='wide'] {
+  --sx-w: 1100px;
+}
+
+.sx-page[data-width='full'] {
+  --sx-w: 1280px;
+}
+
+/* Content in the middle of the stage */
+.sx-page[data-center='true'] {
+  justify-content: center;
+}
+
+.sx-page[data-gap='true'] {
+  gap: var(--sx-gap);
+}
+
+.sx-page *,
+.sx-page *::before,
+.sx-page *::after {
+  box-sizing: border-box;
+}
+
+/* ---- Reveal --------------------------------------------------------------------------------- */
+
+@keyframes sx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--sx-reveal-y, 12px));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sx-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes sx-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* "backwards": the block waits invisible through its delay, and nothing is left on it afterwards,
+   so a transform from the animation never becomes a containing block for fixed children */
+.sx-reveal {
+  animation: sx-rise var(--sx-reveal-duration, 280ms) var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) var(--sx-reveal-delay, 0ms) backwards;
+}
+
+.sx-reveal[data-still='true'] {
+  animation: none;
+}
+
+.sx-reveal[data-leaving='true'] {
+  animation: sx-leave 180ms ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-reveal {
+    animation: sx-fade 150ms linear var(--sx-reveal-delay, 0ms) backwards;
+  }
+
+  .sx-reveal[data-still='true'] {
+    animation: none;
+  }
+
+  .sx-reveal[data-leaving='true'] {
+    animation: sx-fade 150ms linear reverse forwards;
+  }
+}
+
+/* ---- Focus header (the fixed top bar) -------------------------------------------------------- */
+
+/* The bar is fixed to the viewport (position: sticky would not work: the app shell wraps pages in
+   overflow containers). This spacer keeps the page from sliding underneath it. */
+.sx-header-spacer {
+  flex: none;
+  height: var(--sx-header);
+}
+
+.sx-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1100; /* above the page, below the 1199 Navbar level and every dialog */
+  box-sizing: border-box;
+  height: var(--sx-header);
+  border-bottom: 1px solid var(--ds-line);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sx-header *,
+.sx-header *::before,
+.sx-header *::after {
+  box-sizing: border-box;
+}
+
+/* The same side padding and 1440px limit as the footer, so the brand lines up with the page */
+.sx-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 1440px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--sx-pad);
+}
+
+.sx-header__slot {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sx-header__tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.sx-header__slot + .sx-header__tools {
+  margin-left: 0;
+}
+
+.sx-header__divider {
+  flex: none;
+  width: 1px;
+  height: 28px;
+  margin: 0 4px;
+  background-color: var(--ds-line);
+}
+
+/* Brand: logo, wordmark and the optional subtitle */
+.sx-brand {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  border-radius: var(--ds-radius-md);
+  color: var(--ds-text);
+  text-decoration: none;
+  transition: none;
+}
+
+/* The global a / a:hover colour in index.css is the retired link blue */
+a.sx-brand,
+a.sx-brand:visited,
+a.sx-brand:hover,
+a.sx-brand:active {
+  color: var(--ds-text);
+  text-decoration: none;
+}
+
+a.sx-brand:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sx-brand__logo {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 36px;
+  object-fit: contain;
+}
+
+.sx-brand__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sx-brand__name {
+  font: var(--ds-type-title);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-title);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sx-brand__subtitle {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* Under 480px only the mark stays; the words remain for screen readers */
+@media (max-width: 479.95px) {
+  .sx-brand__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+/* Connection indicator: SignalBars and a word */
+.sx-conn {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--ds-muted);
+}
+
+.sx-conn__text {
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+.sx-conn[data-online='false'] .sx-conn__text {
+  color: var(--ds-danger);
+  font-weight: 700;
+}
+
+@media (max-width: 599.95px) {
+  .sx-conn__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+/* Profile: avatar, name and class */
+.sx-profile {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  transition: none;
+}
+
+.sx-profile *,
+.sx-profile *::before,
+.sx-profile *::after {
+  transition: none;
+}
+
+.sx-profile[data-interactive='true'] {
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sx-profile[data-interactive='true']:hover {
+  background-color: var(--ds-raised);
+}
+
+.sx-profile[data-interactive='true']:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sx-profile__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 12px;
+}
+
+.sx-profile__name {
+  max-width: 180px;
+  overflow: hidden;
+  font: var(--ds-type-label);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sx-profile__role {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Under 900px (or with compact) only the avatar is shown */
+@media (max-width: 899.95px) {
+  .sx-profile__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+.sx-header[data-compact='true'] .sx-profile__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.sx-header[data-compact='true'] .sx-conn__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 599.95px) {
+  .sx-header__inner {
+    gap: 8px;
+  }
+
+  .sx-header__slot {
+    gap: 8px;
+  }
+
+  .sx-header__divider {
+    display: none;
+  }
+
+  .sx-header__tools {
+    gap: 4px;
+  }
+}
+
+/* ---- Card ------------------------------------------------------------------------------------ */
+
+.sx-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+}
+
+.sx-card *,
+.sx-card *::before,
+.sx-card *::after {
+  box-sizing: border-box;
+}
+
+.sx-card[data-tone='raised'] {
+  background-color: var(--ds-raised);
+}
+
+.sx-card[data-fill='true'] {
+  height: 100%;
+}
+
+.sx-card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
+}
+
+.sx-card[data-padded='false'] > .sx-card__body {
+  padding: 0;
+}
+
+.sx-card__footer {
+  padding: 0 16px 16px;
+}
+
+@media (min-width: 600px) {
+  .sx-card__body {
+    padding: 24px;
+  }
+
+  .sx-card__footer {
+    padding: 0 24px 24px;
+  }
+}
+
+/* ---- Card banner ------------------------------------------------------------------------------ */
+
+.sx-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.sx-banner[data-divided='true'] {
+  border-bottom: 1px solid var(--ds-line);
+}
+
+@media (min-width: 600px) {
+  .sx-banner {
+    padding: 24px;
+  }
+
+  .sx-banner[data-compact='true'] {
+    padding: 16px 20px;
+  }
+}
+
+.sx-banner__text {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.sx-banner__label {
+  margin: 0 0 4px;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sx-banner__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.sx-banner__title[data-level='1'] {
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.sx-banner__description {
+  max-width: 72ch;
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sx-banner__aside {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sx-banner__extra {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* ---- Tonal mark ------------------------------------------------------------------------------- */
+
+.sx-mark {
+  --sx-hue: var(--ds-accent-text);
+
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--sx-mark-size, 40px);
+  height: var(--sx-mark-size, 40px);
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+/* A data-series hue: a 22% tint of the hue on the raised tone, the icon a deeper (Daylight) or
+   lighter (Midnight) mix of the hue with the text colour, so it keeps 3:1 against the tint */
+.sx-mark:not([data-hue='accent']) {
+  background-color: color-mix(in srgb, var(--sx-hue) 22%, var(--ds-raised));
+  color: color-mix(in srgb, var(--sx-hue) 78%, var(--ds-text));
+}
+
+.sx-mark[data-hue='blue'] {
+  --sx-hue: var(--ds-series-blue);
+}
+
+.sx-mark[data-hue='teal'] {
+  --sx-hue: var(--ds-series-teal);
+}
+
+.sx-mark[data-hue='amber'] {
+  --sx-hue: var(--ds-series-amber);
+}
+
+.sx-mark[data-hue='violet'] {
+  --sx-hue: var(--ds-series-violet);
+}
+
+.sx-mark[data-hue='coral'] {
+  --sx-hue: var(--ds-series-coral);
+}
+
+.sx-mark[data-hue='green'] {
+  --sx-hue: var(--ds-series-green);
+}
+
+.sx-mark[data-hue='sky'] {
+  --sx-hue: var(--ds-series-sky);
+}
+
+.sx-mark[data-hue='slate'] {
+  --sx-hue: var(--ds-series-slate);
+}
+
+.sx-mark > svg {
+  display: block;
+}
+
+/* ---- Info line --------------------------------------------------------------------------------- */
+
+.sx-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sx-info__text {
+  min-width: 0;
+}
+
+.sx-info__label {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sx-info__value {
+  margin: 0;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Question states ----------------------------------------------------------------------------
+   Put data-state on any element (a palette tile, a row, a dot) and it gets --sx-state-bg and
+   --sx-state-fg; `.sx-state` also paints them. The review state is a violet tonal built from the
+   series, with its foreground mixed toward the text colour so the number keeps 4.5:1 on the tint. */
+
+[data-state='answered'] {
+  --sx-state-bg: var(--ds-accent-soft);
+  --sx-state-fg: var(--ds-accent-text);
+}
+
+[data-state='current'] {
+  --sx-state-bg: var(--ds-spotlight);
+  --sx-state-fg: var(--ds-on-spotlight);
+}
+
+[data-state='open'] {
+  --sx-state-bg: var(--ds-raised);
+  --sx-state-fg: var(--ds-muted);
+}
+
+[data-state='later'],
+[data-state='flagged'] {
+  --sx-state-bg: var(--ds-warning-soft);
+  --sx-state-fg: var(--ds-warning);
+}
+
+[data-state='review'] {
+  --sx-state-bg: color-mix(in srgb, var(--ds-series-violet) 22%, var(--ds-raised));
+  --sx-state-fg: color-mix(in srgb, var(--ds-series-violet) 55%, var(--ds-text));
+}
+
+.sx-state {
+  background-color: var(--sx-state-bg);
+  color: var(--sx-state-fg);
+}
+
+.sx-state-dot {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--sx-dot, 36px);
+  height: var(--sx-dot, 36px);
+  border-radius: 50%;
+  background-color: var(--sx-state-bg);
+  color: var(--sx-state-fg);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sx-state-dot *,
+.sx-state-dot *::before,
+.sx-state-dot *::after {
+  transition: none;
+}
+
+.sx-state-dot[data-size='sm'] {
+  --sx-dot: 24px;
+}
+
+.sx-state-dot[data-size='md'] {
+  --sx-dot: 36px;
+}
+
+.sx-state-dot[data-size='lg'] {
+  --sx-dot: 44px;
+}
+
+.sx-state-dot > svg {
+  display: block;
+}
+
+/* With a number inside, the icon becomes a small inverted badge on the corner */
+.sx-state-dot__badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--sx-state-fg);
+  color: var(--sx-state-bg);
+  box-shadow: 0 0 0 2px var(--sx-ring, var(--ds-surface));
+}
+
+.sx-state-dot__badge > svg {
+  display: block;
+}
+
+.sx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sx-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.sx-legend__count {
+  color: var(--ds-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Exam status badge ------------------------------------------------------------------------- */
+
+@keyframes sx-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.78);
+  }
+}
+
+.sx-pulse {
+  animation: sx-pulse 1.8s var(--ds-ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-pulse {
+    animation: none;
+  }
+}
+
+/* ---- Page hero ----------------------------------------------------------------------------------- */
+
+.sx-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 var(--sx-gap);
+}
+
+.sx-hero__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The ui PageHeader keeps its own bottom margin from the --ui-gap of a ui Page; here the hero
+   owns the spacing */
+.sx-hero .ui-page-header {
+  margin: 0;
+}

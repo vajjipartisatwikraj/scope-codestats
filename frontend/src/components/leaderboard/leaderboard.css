@@ -1,0 +1,2354 @@
+/*
+ * Leaderboard
+ *
+ * Plain CSS on the design tokens (--ds-*), like the Sidebar, the Navbar and the student dashboard.
+ * Nothing here belongs to one theme: ThemeContext publishes the Midnight and Daylight roles as
+ * variables and every colour below is one of them. The rules come from DESIGN.md and
+ * design/screens.md section 6.
+ *
+ *   the page          a header, then your rank (a band), the champions (three cards) and the
+ *                     highlights (four tiles), then the board
+ *   the board         one surface card: tabs, search and filters, the list, the pages
+ *   the list          a real table from 900px (sticky rank and student, scrolls sideways for the
+ *                     platforms), a list of rows below that, with a sheet for the rest
+ *
+ * One inverted tile (the spotlight: your rank) and one blue tile (the accent: the first champion). Cards are flat. Only
+ * the floating layers (the sheet, the position bar) cast a shadow. No glass, no glow, no gradient.
+ */
+
+.lb {
+  --lb-pad-x: 0px;
+  --lb-gap: 12px;
+
+  box-sizing: border-box;
+  /*
+   * The page never scrolls sideways: the table scrolls inside its own card. Hidden helpers
+   * (.lb-sr) are absolutely placed, so without a positioned parent they would sit far to the right of
+   * the wide table and stretch the whole page. Clipping sideways, with this as the parent, stops that.
+   */
+  position: relative;
+  overflow-x: clip;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 4px var(--lb-pad-x) 40px;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.lb[data-bar='true'] {
+  padding-bottom: 104px;
+}
+
+.lb *,
+.lb *::before,
+.lb *::after {
+  box-sizing: border-box;
+}
+
+@media (min-width: 900px) {
+  .lb {
+    --lb-pad-x: 24px;
+    --lb-gap: 20px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .lb {
+    --lb-pad-x: 32px;
+  }
+}
+
+/* Read by screen readers only */
+.lb-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Controls ---------------------------------------------------------------------------- */
+
+.lb-icon-button,
+.lb-secondary,
+.lb-spotlight,
+.lb-primary,
+.lb-ghost,
+.lb-pill-button,
+.lb-page {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.lb-icon-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.lb-secondary,
+.lb-spotlight,
+.lb-primary,
+.lb-pill-button {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--ds-radius-pill);
+}
+
+.lb-secondary,
+.lb-pill-button {
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.lb-spotlight {
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+}
+
+.lb-primary {
+  width: 100%;
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.lb-ghost {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  color: var(--ds-accent-text);
+}
+
+/* index.css gives every a:hover its own colour; each state of a link-styled control names its text */
+.lb-primary,
+.lb-primary:hover,
+.lb-primary:active {
+  color: var(--ds-on-accent);
+}
+
+.lb-icon-button:hover:not(:disabled),
+.lb-secondary:hover:not(:disabled),
+.lb-pill-button:hover {
+  background-color: var(--ds-high);
+}
+
+.lb-spotlight:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--ds-spotlight) 82%, var(--ds-on-spotlight));
+}
+
+.lb-primary:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+.lb-primary:active {
+  background-color: var(--ds-accent-press);
+}
+
+.lb-ghost:hover {
+  background-color: var(--ds-accent-soft);
+}
+
+.lb-pill-button[data-active='true'],
+.lb-pill-button[aria-expanded='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+/* Disabled: the high fill with a subtle label, no change of opacity (DESIGN.md) */
+.lb-icon-button:disabled,
+.lb-secondary:disabled,
+.lb-spotlight:disabled,
+.lb-place__button:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.lb-icon-button:focus-visible,
+.lb-secondary:focus-visible,
+.lb-spotlight:focus-visible,
+.lb-primary:focus-visible,
+.lb-ghost:focus-visible,
+.lb-pill-button:focus-visible,
+.lb-page:focus-visible,
+.lb-bar__button:focus-visible,
+.lb-sort:focus-visible,
+.lb-search__clear:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.lb-icon-button[data-spinning='true'] svg {
+  animation: lb-spin 900ms linear infinite;
+}
+
+@keyframes lb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A phone keeps the icon of a header action and drops its word */
+@media (max-width: 599.95px) {
+  .lb-header__actions .lb-secondary,
+  .lb-header__actions .lb-spotlight {
+    width: 44px;
+    padding: 0;
+  }
+
+  .lb-header__actions .lb-secondary span,
+  .lb-header__actions .lb-spotlight span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+/* ---- Header ------------------------------------------------------------------------------ */
+
+.lb-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 12px 24px;
+  margin: 0 0 var(--lb-gap);
+}
+
+.lb-header__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * On a wide screen the actions float in the top right corner instead of taking a row of their own,
+ * so the champions start higher and the highlights come into the first screen.
+ */
+@media (min-width: 900px) {
+  .lb-header {
+    position: relative;
+    z-index: 2;
+    height: 0;
+    margin: 0;
+  }
+
+  .lb-header__actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+}
+
+/* ---- The blocks above the board ------------------------------------------------------------------ */
+
+/*
+ * Top to bottom: your rank (the spotlight band), the champions (three cards, the first is the accent
+ * tile) and the highlights (four small tiles).
+ */
+.lb-top {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 0 24px;
+}
+
+.lb-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+}
+
+.lb-section-title {
+  margin: 0 0 12px;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.lb-section-head .lb-section-title {
+  margin: 0;
+}
+
+.lb-section-note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* Your rank: the one inverted tile of the screen, a slim band */
+.lb-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px 40px;
+  min-width: 0;
+  padding: 24px 32px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+}
+
+/* On a wide screen the band starts below the first screen: the champions and highlights fill it */
+@media (min-width: 900px) {
+  .lb-top {
+    padding-top: 24px;
+  }
+
+  .lb-place {
+    margin-top: 72px;
+  }
+}
+
+.lb-place--loading {
+  min-height: 112px;
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.lb-place__lead {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    'label label'
+    'figure note';
+  align-items: baseline;
+  justify-content: start;
+  column-gap: 12px;
+}
+
+.lb-place__label {
+  grid-area: label;
+  margin: 0;
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-label);
+}
+
+.lb-place__figure {
+  grid-area: figure;
+  margin: 0;
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-place__note {
+  grid-area: note;
+  margin: 0;
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-body);
+}
+
+/* How far up the board: a pill meter that fills once when the band first appears */
+.lb-meter {
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.lb-meter__caption {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.lb-meter__track {
+  display: block;
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-pill);
+  background-color: color-mix(in srgb, var(--ds-on-spotlight) 18%, var(--ds-spotlight));
+}
+
+.lb-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-on-spotlight);
+  transform-origin: left center;
+  animation: lb-meter-in var(--ds-duration-enter) var(--ds-ease-enter) both;
+}
+
+@keyframes lb-meter-in {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.lb-place__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin: 0;
+}
+
+.lb-place__facts > div {
+  min-width: 0;
+}
+
+.lb-place__facts dt {
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.lb-place__facts dd {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 2px 0 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-place__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-left: auto;
+}
+
+.lb-place__next {
+  margin: 0;
+  font: var(--ds-type-label);
+}
+
+.lb-place__button {
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-on-spotlight);
+  color: var(--ds-spotlight);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.lb-place__button:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--ds-on-spotlight) 86%, var(--ds-spotlight));
+}
+
+.lb-place__button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-spotlight),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* On the inverted tile the change badge is a tonal pill of the tile's own colours */
+.lb-place .lb-change {
+  background-color: color-mix(in srgb, var(--ds-on-spotlight) 14%, var(--ds-spotlight));
+  color: var(--ds-on-spotlight);
+}
+
+/*
+ * Champions: three cards in a row, the winner in the middle and raised, over a quiet backdrop (the
+ * word "Champions" and two large X marks). The backdrop uses solid tints of the page colours, never
+ * opacity, so it reads in both themes. Each card has a soft two-colour banner (a deliberate
+ * exception to the no-gradient rule, asked for by the product owner) with the place on it, a
+ * hexagonal picture that overlaps the banner, and the figures below.
+ */
+.lb-champs {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+  container: champs / inline-size;
+  /* A long, gentle ease-out for the entrance: it leaves quickly and settles slowly */
+  --lb-soft: cubic-bezier(0.22, 0.8, 0.28, 1);
+  /* The light that glides over the lettering at the end of the entrance (see the block below) */
+  --lb-glide: cubic-bezier(0.45, 0, 0.25, 1);
+  --lb-shine: var(--ds-on-accent);
+  --lb-sweep: linear-gradient(
+    135deg,
+    transparent 42%,
+    color-mix(in srgb, black 35%, transparent) 46%,
+    black 50%,
+    color-mix(in srgb, black 35%, transparent) 54%,
+    transparent 58%
+  );
+}
+
+/* Daylight lights the letters up to white; Midnight lifts them to a pale grey */
+[data-theme='midnight'] .lb-champs {
+  --lb-shine: color-mix(in srgb, var(--ds-text) 24%, var(--ds-canvas));
+}
+
+/*
+ * Everything in the section is sized from the width of the section (cqw), not of the window, so it
+ * follows the space the page really has next to the sidebar.
+ */
+.lb-champs__stage {
+  --lb-mark: clamp(2.75rem, 11cqw, 7.25rem);
+  /* The size of the X marks, and the width left for the cards once each X has its own space beside them */
+  --lb-x: clamp(7rem, 22cqw, 22rem);
+  --lb-grid: min(1000px, calc(100cqw - 1.2 * var(--lb-x)));
+
+  position: relative;
+  padding-top: calc(var(--lb-mark) * 0.12);
+}
+
+.lb-champs__mark {
+  position: relative;
+  top: calc(var(--lb-mark) * -0.14);
+  z-index: 0;
+  display: block;
+  margin: 0 0 calc(var(--lb-mark) * -0.4);
+  color: color-mix(in srgb, var(--ds-text) 7%, var(--ds-canvas));
+  font-family: var(--ds-font);
+  font-size: var(--lb-mark);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}
+
+.lb-champs__x {
+  position: absolute;
+  z-index: 0;
+  top: calc(var(--lb-mark) * 0.7);
+  color: color-mix(in srgb, var(--ds-text) 7%, var(--ds-canvas));
+  font-family: var(--ds-font);
+  font-size: var(--lb-x);
+  /* 800 is the heaviest weight of the font, so a stroke of the same colour thickens the letter further */
+  font-weight: 800;
+  -webkit-text-stroke: 0.05em currentColor;
+  /* A box of fixed width with the letter centred in it, so both sides are the same distance away */
+  width: 0.9em;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+  pointer-events: none;
+}
+
+/*
+ * Each X sits against the outer edge of the card row, with its inner part a little behind the outer
+ * card. The row is narrowed (--lb-grid) so the whole letter always fits inside the section.
+ */
+.lb-champs__x[data-side='left'] {
+  left: calc((100cqw - var(--lb-grid)) / 2 - 0.5em);
+}
+
+.lb-champs__x[data-side='right'] {
+  right: calc((100cqw - var(--lb-grid)) / 2 - 0.5em);
+}
+
+.lb-champs__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--lb-gap);
+  width: var(--lb-grid);
+  margin: 0 auto;
+}
+
+.lb-champs__empty {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 24px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.lb-champ {
+  --lb-banner: 112px;
+  --lb-hex: 88px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: calc(var(--lb-banner) - var(--lb-hex) / 2) 20px 28px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+.lb-champ--loading {
+  min-height: 300px;
+  background-color: var(--ds-raised);
+}
+
+/* The winner is in the middle, a little taller, and the other two sit beside it */
+.lb-champ[data-place='1'] {
+  --lb-banner: 128px;
+  --lb-hex: 104px;
+
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.lb-champ[data-place='2'] {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 24px;
+}
+
+.lb-champ[data-place='3'] {
+  grid-column: 3;
+  grid-row: 1;
+  margin-top: 24px;
+}
+
+.lb-champ__banner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--lb-banner);
+  background-color: var(--ds-accent);
+}
+
+.lb-champ__ordinal {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  margin: 0;
+  color: var(--ds-on-accent);
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-champ[data-place='1'] .lb-champ__ordinal {
+  font: var(--ds-type-numeral-xl);
+  letter-spacing: var(--ds-tracking-numeral-xl);
+}
+
+.lb-champ__suffix {
+  margin-left: 2px;
+  font: var(--ds-type-title);
+  letter-spacing: 0;
+}
+
+/* After the font shorthands above, which would reset it */
+.lb-champ__ordinal,
+.lb-champ[data-place='1'] .lb-champ__ordinal,
+.lb-champ__suffix {
+  font-style: italic;
+}
+
+.lb-champ__top {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--lb-hex);
+}
+
+.lb-champ__hex {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--lb-hex);
+  height: var(--lb-hex);
+  background-color: var(--ds-surface);
+  clip-path: url(#lb-hex);
+}
+
+.lb-champ__hex .lb-avatar {
+  width: calc(var(--lb-hex) - 10px);
+  height: calc(var(--lb-hex) - 10px);
+  border-radius: 0;
+  clip-path: url(#lb-hex);
+}
+
+.lb-champ__pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  padding-bottom: 4px;
+}
+
+/* The figure of the list in a dark pill, like a score badge */
+.lb-champ__score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+  font: var(--ds-type-label);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lb-champ__unit {
+  font: var(--ds-type-caption);
+  letter-spacing: 0;
+}
+
+.lb-champ__who {
+  min-width: 0;
+  margin: 12px 0 0;
+}
+
+.lb-champ__name {
+  margin: 0;
+  overflow: hidden;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-champ__name a,
+.lb-highlight__name a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.lb-champ__name a:hover,
+.lb-highlight__name a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lb-champ__name a:focus-visible,
+.lb-highlight__name a:focus-visible {
+  border-radius: var(--ds-radius-xs);
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 3px;
+}
+
+.lb-champ__meta {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Three figures divided by hairlines, the number over its name */
+.lb-champ__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.lb-champ__stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--ds-line);
+}
+
+.lb-champ__stats > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.lb-champ__stats dt {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-champ__stats dd {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The number beside the pips is spelled out in the hint; the card keeps just the pips */
+.lb-champ .lb-pips__number {
+  display: none;
+}
+
+.lb-champ__profile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin: 24px 0 0;
+  border: 1px solid var(--ds-high);
+  border-radius: var(--ds-radius-pill);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-decoration: none;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.lb-champ__profile:hover {
+  background-color: var(--ds-raised);
+}
+
+.lb-champ__profile:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* Not enough room beside the cards for the X marks: they go, and the cards take the whole width */
+@container champs (max-width: 1019.95px) {
+  .lb-champs__stage {
+    --lb-grid: 100cqw;
+  }
+
+  .lb-champs__x {
+    display: none;
+  }
+}
+
+/* Less room (a tablet, or a desktop with the sidebar open): smaller cards, same layout */
+@container champs (max-width: 1079.95px) {
+  .lb-champ {
+    --lb-banner: 96px;
+    --lb-hex: 76px;
+
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .lb-champ[data-place='1'] {
+    --lb-banner: 112px;
+    --lb-hex: 92px;
+  }
+
+  .lb-champ__ordinal {
+    top: 10px;
+    right: 16px;
+    font-size: 1.75rem;
+  }
+
+  .lb-champ[data-place='1'] .lb-champ__ordinal {
+    font-size: 2.25rem;
+  }
+
+  .lb-champ__suffix {
+    font-size: 0.9375rem;
+  }
+
+  .lb-champ__score {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 0.8125rem;
+  }
+
+  .lb-champ__name {
+    font: var(--ds-type-title-sm);
+    letter-spacing: var(--ds-tracking-title-sm);
+  }
+
+  .lb-champ__stats > div {
+    padding-left: 8px;
+  }
+}
+
+/* Little room (a phone): no backdrop, and each champion is one row */
+@container champs (max-width: 639.95px) {
+  .lb-champs__x,
+  .lb-champ__banner,
+  .lb-champ__stats,
+  .lb-champ__profile,
+  .lb-champ__pills .lb-change,
+  .lb-champ__unit {
+    display: none;
+  }
+
+  .lb-champs__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .lb-champ--loading {
+    min-height: 80px;
+  }
+
+  .lb-champ,
+  .lb-champ[data-place] {
+    --lb-hex: 48px;
+
+    grid-column: auto;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: 2.5rem auto minmax(0, 1fr) auto;
+    grid-template-areas: 'ordinal hex who score';
+    align-items: center;
+    column-gap: 12px;
+    margin-top: 0;
+    padding: 16px;
+  }
+
+  .lb-champ__top,
+  .lb-champ__pills {
+    display: contents;
+  }
+
+  .lb-champ__hex {
+    grid-area: hex;
+  }
+
+  .lb-champ__hex .lb-avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .lb-champ .lb-avatar__initials {
+    font-size: 0.9rem;
+  }
+
+  .lb-champ__ordinal,
+  .lb-champ[data-place='1'] .lb-champ__ordinal {
+    position: static;
+    grid-area: ordinal;
+    color: var(--ds-muted);
+    font: var(--ds-type-numeral-m);
+    font-size: 1.25rem;
+    letter-spacing: var(--ds-tracking-numeral-m);
+  }
+
+  .lb-champ__suffix {
+    font-size: 0.75rem;
+  }
+
+  .lb-champ__who {
+    grid-area: who;
+    margin: 0;
+  }
+
+  .lb-champ__score {
+    grid-area: score;
+  }
+}
+
+/*
+ * The entrance of the champions, played once when the page opens (data-intro on the section is
+ * removed by Summary.jsx a moment after the last step ends, so a filter that swaps the students
+ * never replays it). One calm sequence, only opacity and transform:
+ *
+ *   1. the winner fades in and settles                                  0.00s to 0.90s
+ *   2. second and third slide out from behind the winner into place,
+ *      and at the same moment each X slides a shorter way out from
+ *      behind its outer card                                            0.45s to 1.75s
+ *   3. "Champions" rises from behind the cards to its place                 1.00s to 2.30s
+ *
+ * Every step uses a long, gentle ease-out (slow start of the fade, no sudden stop). The cards sit above the backdrop
+ * and the winner above its neighbours, which is what makes "from behind" read correctly.
+ */
+.lb-champ[data-place='1'] {
+  z-index: 2;
+}
+
+.lb-champ[data-place='2'],
+.lb-champ[data-place='3'] {
+  z-index: 1;
+}
+
+.lb-champ[data-place='2'] {
+  --lb-from: calc(100% + var(--lb-gap));
+}
+
+.lb-champ[data-place='3'] {
+  --lb-from: calc(-100% - var(--lb-gap));
+}
+
+.lb-champs[data-intro='true'] .lb-champ[data-place='1'] {
+  animation: lb-champ-front 900ms var(--lb-soft) both;
+}
+
+.lb-champs[data-intro='true'] .lb-champ[data-place='2'],
+.lb-champs[data-intro='true'] .lb-champ[data-place='3'] {
+  animation: lb-champ-side 1300ms var(--lb-soft) 450ms both;
+}
+
+.lb-champs[data-intro='true'] .lb-champs__x[data-side='left'] {
+  --lb-x-from: 0.2em;
+
+  animation: lb-x-in 1300ms var(--lb-soft) 450ms both;
+}
+
+.lb-champs[data-intro='true'] .lb-champs__x[data-side='right'] {
+  --lb-x-from: -0.2em;
+
+  animation: lb-x-in 1300ms var(--lb-soft) 450ms both;
+}
+
+.lb-champs[data-intro='true'] .lb-champs__mark {
+  animation: lb-mark-in 1300ms var(--lb-soft) 1000ms both;
+}
+
+@keyframes lb-champ-front {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lb-champ-side {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--lb-from)) scale(0.96);
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lb-x-in {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--lb-x-from));
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lb-mark-in {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--lb-mark) * 0.6));
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* One row per champion: there is nothing to slide out from, so the rows rise one after the other */
+@container champs (max-width: 639.95px) {
+  .lb-champs[data-intro='true'] .lb-champ[data-place] {
+    animation: lb-champ-front 800ms var(--lb-soft) both;
+  }
+
+  .lb-champs[data-intro='true'] .lb-champ[data-place='2'] {
+    animation-delay: 180ms;
+  }
+
+  .lb-champs[data-intro='true'] .lb-champ[data-place='3'] {
+    animation-delay: 360ms;
+  }
+
+  .lb-champs[data-intro='true'] .lb-champs__mark {
+    animation-delay: 540ms;
+    animation-duration: 1000ms;
+  }
+
+  .lb-champs[data-intro='true'] .lb-champs__mark::after {
+    animation-delay: 1200ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-champs[data-intro='true'] .lb-champ[data-place],
+  .lb-champs[data-intro='true'] .lb-champs__x[data-side],
+  .lb-champs[data-intro='true'] .lb-champs__mark,
+  .lb-champs[data-intro='true'] .lb-champs__x[data-side]::after,
+  .lb-champs[data-intro='true'] .lb-champs__mark::after {
+    animation: none;
+  }
+}
+
+/*
+ * The light. When the entrance is over, one soft band of light glides over the lettering from the
+ * top left to the bottom right, like a lamp moved across a pane of glass: first over the left X, then
+ * over the word, then over the right X, so it reads as a single movement. The band lives in a copy of
+ * each letter (::after, filled with the "shine" colour) that is only visible where a diagonal mask
+ * lets it through, so the light follows the shape of the letters exactly, outline included. Only the
+ * mask moves; the letters themselves stay put.
+ *
+ *   left X     1.65s to 3.15s
+ *   word       1.90s to 3.40s
+ *   right X    2.35s to 3.85s
+ *
+ * It starts while the last of the entrance is still settling (the soft ease-out spends its final
+ * stretch moving by fractions of a pixel), so there is no pause between the two.
+ */
+.lb-champs__mark::after,
+.lb-champs__x::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: var(--lb-shine);
+  pointer-events: none;
+  -webkit-mask-image: var(--lb-sweep);
+  mask-image: var(--lb-sweep);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  /* A mask three times the size of the letters: its middle is the band, and moving it from the top
+     left corner of the box to the bottom right takes the band clean across. */
+  -webkit-mask-size: 300% 300%;
+  mask-size: 300% 300%;
+  -webkit-mask-position: 100% 100%;
+  mask-position: 100% 100%;
+}
+
+.lb-champs[data-intro='true'] .lb-champs__x[data-side='left']::after {
+  animation: lb-shine 1500ms var(--lb-glide) 1650ms both;
+}
+
+.lb-champs[data-intro='true'] .lb-champs__mark::after {
+  animation: lb-shine 1500ms var(--lb-glide) 1900ms both;
+}
+
+.lb-champs[data-intro='true'] .lb-champs__x[data-side='right']::after {
+  animation: lb-shine 1500ms var(--lb-glide) 2350ms both;
+}
+
+@keyframes lb-shine {
+  from {
+    -webkit-mask-position: 100% 100%;
+    mask-position: 100% 100%;
+  }
+
+  to {
+    -webkit-mask-position: 0% 0%;
+    mask-position: 0% 0%;
+  }
+}
+/* Highlights: who tops each measure. The columns follow the width of the section, not of the window. */
+.lb-highlights {
+  min-width: 0;
+  container: highlights / inline-size;
+}
+
+.lb-highlights__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lb-highlight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 80px;
+  padding: 16px 20px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.lb-highlight--loading {
+  background-color: var(--ds-raised);
+}
+
+.lb-highlight__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lb-highlight__picture {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.lb-highlight__badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+  outline: 2px solid var(--ds-surface);
+}
+
+.lb-highlight__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lb-highlight__label {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-highlight__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-highlight__figure {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 4px;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-highlight__unit {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: 0;
+}
+
+@container highlights (min-width: 480px) {
+  .lb-highlights__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container highlights (min-width: 640px) {
+  .lb-highlights__list {
+    gap: var(--lb-gap);
+  }
+}
+
+@container highlights (min-width: 960px) {
+  .lb-highlights__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Text blocks shared with the list and the sheet */
+.lb-item__text,
+.lb-student__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lb-item__name-text {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-item__meta,
+.lb-student__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* A phone: the band stacks and each champion is one row */
+@media (max-width: 699.95px) {
+  .lb-top {
+    gap: 20px;
+  }
+
+  .lb-place {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .lb-meter {
+    flex: none;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .lb-place__action {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 0;
+  }
+}
+
+@container highlights (max-width: 479.95px) {
+  .lb-highlight {
+    min-height: 72px;
+    padding: 12px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-meter__fill {
+    animation: none;
+  }
+}
+
+/* ---- The board ---------------------------------------------------------------------------- */
+
+.lb-board {
+  min-width: 0;
+  padding: 24px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.lb-board__head {
+  margin: 0 0 16px;
+}
+
+@media (max-width: 599.95px) {
+  .lb-board {
+    padding: 16px;
+  }
+
+  .lb-board__head .pt {
+    display: flex;
+    width: 100%;
+  }
+
+  .lb-board__head .pt__item {
+    flex: 1 1 0;
+    padding: 0 8px;
+  }
+}
+
+/* ---- Search and filters ------------------------------------------------------------------- */
+
+.lb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.lb-filters[data-compact='true'] {
+  display: block;
+}
+
+.lb-filters__selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lb-filters__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-filters__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.lb-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.lb-search {
+  position: relative;
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  max-width: 420px;
+  min-width: 0;
+}
+
+.lb-filters[data-compact='true'] .lb-search {
+  flex: 1 1 auto;
+  max-width: none;
+}
+
+.lb-search input {
+  width: 100%;
+  height: 44px;
+  padding: 0 40px 0 44px;
+  border: 1px solid var(--ds-field-border);
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.lb-search input::placeholder {
+  color: var(--ds-subtle);
+}
+
+.lb-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.lb-search input:focus {
+  border-color: transparent;
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.lb-search__icon {
+  position: absolute;
+  left: 16px;
+  color: var(--ds-muted);
+  pointer-events: none;
+}
+
+.lb-search__clear {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+}
+
+.lb-search__clear:hover {
+  background-color: var(--ds-high);
+  color: var(--ds-text);
+}
+
+.lb-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.lb-select select {
+  width: 100%;
+  height: 44px;
+  padding: 0 36px 0 16px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.lb-select select:hover {
+  background-color: var(--ds-high);
+}
+
+.lb-select select:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.lb-select__icon {
+  position: absolute;
+  right: 14px;
+  color: var(--ds-muted);
+  pointer-events: none;
+}
+
+/* ---- The table ---------------------------------------------------------------------------- */
+
+.lb-table {
+  position: relative;
+  min-width: 0;
+}
+
+.lb-table[data-refreshing='true'] .lb-table__scroll {
+  opacity: 0.6;
+}
+
+.lb-table__scroll {
+  position: relative;
+  overflow-x: auto;
+  border-top: 1px solid var(--ds-line);
+  transition: opacity 200ms var(--ds-ease);
+}
+
+.lb-table__scroll:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-focus);
+}
+
+.lb-table table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.lb-th {
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ds-line);
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.lb-table td {
+  height: 64px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ds-line);
+  font: var(--ds-type-body);
+  white-space: nowrap;
+}
+
+.lb-table [data-align='end'] {
+  text-align: right;
+}
+
+.lb-table [data-align='center'] {
+  text-align: center;
+}
+
+.lb-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 -6px;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lb-sort:hover {
+  color: var(--ds-text);
+}
+
+.lb-sort[data-active='true'] {
+  color: var(--ds-text);
+}
+
+.lb-sort__arrows {
+  display: inline-flex;
+  color: var(--ds-subtle);
+}
+
+.lb-sort[data-active='true'] .lb-sort__arrows {
+  color: var(--ds-accent-text);
+}
+
+.lb-platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-platform__mark {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* A row: its fill is a variable so the two sticky cells can match it */
+.lb-row {
+  --lb-row-bg: var(--ds-surface);
+
+  cursor: pointer;
+}
+
+.lb-row:hover {
+  --lb-row-bg: var(--ds-raised);
+}
+
+.lb-row[data-own='true'] {
+  --lb-row-bg: var(--ds-accent-soft);
+}
+
+.lb-row td {
+  background-color: var(--lb-row-bg);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.lb-col-rank {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 72px;
+  min-width: 72px;
+  text-align: center;
+}
+
+.lb-col-student {
+  position: sticky;
+  left: 72px;
+  z-index: 2;
+  min-width: 264px;
+  border-right: 1px solid var(--ds-line);
+}
+
+thead .lb-col-rank,
+thead .lb-th:nth-child(2) {
+  position: sticky;
+  z-index: 3;
+  background-color: var(--ds-surface);
+}
+
+thead .lb-col-rank {
+  left: 0;
+}
+
+thead .lb-th:nth-child(2) {
+  left: 72px;
+  border-right: 1px solid var(--ds-line);
+}
+
+.lb-student {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lb-student__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--ds-type-label);
+}
+
+.lb-student__name a {
+  max-width: 200px;
+  overflow: hidden;
+  color: var(--ds-text);
+  text-decoration: none;
+  text-overflow: ellipsis;
+}
+
+.lb-student__name a:hover {
+  color: var(--ds-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lb-student__name a:focus-visible {
+  outline: none;
+  border-radius: var(--ds-radius-xs);
+  box-shadow:
+    0 0 0 2px var(--lb-row-bg),
+    0 0 0 4px var(--ds-focus);
+}
+
+.lb-nowrap {
+  white-space: nowrap;
+}
+
+.lb-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-num--strong {
+  font-weight: 800;
+}
+
+.lb-table td[data-empty='true'] {
+  color: var(--ds-subtle);
+}
+
+.lb-table__hint {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+}
+
+/* ---- Pieces of a row ---------------------------------------------------------------------- */
+
+.lb-avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--lb-size, 40px);
+  height: var(--lb-size, 40px);
+  overflow: hidden;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--lb-tone, var(--ds-series-slate)) 22%, var(--ds-raised));
+  color: var(--ds-text);
+}
+
+.lb-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lb-avatar__initials {
+  font: var(--ds-type-label);
+  font-size: calc(var(--lb-size, 40px) * 0.34);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* The first three ranks are tonal circles; the rest are plain numerals in the same box */
+.lb-rank {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font: var(--ds-type-label);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-rank[data-place='1'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.lb-rank[data-place='2'] {
+  background-color: var(--ds-high);
+  color: var(--ds-text);
+}
+
+.lb-rank[data-place='3'] {
+  background-color: var(--ds-raised);
+  box-shadow: inset 0 0 0 1px var(--ds-line);
+  color: var(--ds-text);
+}
+
+.lb-pips {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-pips__row {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.lb-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--ds-high);
+}
+
+.lb-pip[data-on='true'] {
+  background-color: var(--ds-accent);
+}
+
+.lb-pips__number {
+  min-width: 1ch;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  font: var(--ds-type-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+.lb-change[data-trend='up'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.lb-change[data-trend='down'] {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.lb-change[data-trend='flat'] {
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+}
+
+.lb-you {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+  font: var(--ds-type-caption);
+  font-weight: 700;
+}
+
+.lb-hint {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---- The list (below 900px) ----------------------------------------------------------------- */
+
+.lb-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ds-line);
+  transition: opacity 200ms var(--ds-ease);
+}
+
+.lb-list[data-refreshing='true'] {
+  opacity: 0.6;
+}
+
+.lb-item {
+  display: grid;
+  grid-template-columns: 32px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--ds-line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.lb-item:hover {
+  background-color: var(--ds-raised);
+}
+
+.lb-item[data-own='true'] {
+  background-color: var(--ds-accent-soft);
+}
+
+.lb-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-focus);
+}
+
+.lb-item__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lb-item__figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.lb-item__value {
+  font: var(--ds-type-numeral-m);
+  font-size: 1.25rem;
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-change[data-compact='true'] {
+  height: 22px;
+  padding: 0 8px;
+}
+
+/* ---- Pages ------------------------------------------------------------------------------------ */
+
+.lb-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: 16px 0 0;
+}
+
+.lb-pager__range {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-pager__pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lb-pager .lb-icon-button:disabled {
+  background-color: transparent;
+}
+
+.lb-page {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--ds-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-page:hover {
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.lb-page[data-current='true'] {
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+}
+
+.lb-pager__gap {
+  width: 24px;
+  color: var(--ds-subtle);
+  text-align: center;
+}
+
+.lb-pager__current {
+  padding: 0 8px;
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 599.95px) {
+  .lb-pager {
+    justify-content: center;
+  }
+
+  .lb-pager__range {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+}
+
+/* ---- Loading, empty, error ---------------------------------------------------------------------- */
+
+.lb-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+
+.lb-skeleton__row {
+  position: relative;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.lb-skeleton__row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--ds-high), transparent);
+  transform: translateX(-100%);
+  animation: lb-shimmer 1.4s var(--ds-ease) infinite;
+}
+
+@keyframes lb-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.lb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: var(--ds-muted);
+  text-align: center;
+}
+
+.lb-empty__title {
+  margin: 4px 0 0;
+  color: var(--ds-text);
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.lb-empty__text {
+  max-width: 44ch;
+  margin: 0 0 8px;
+  font: var(--ds-type-body);
+}
+
+.lb-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.lb-notice p {
+  flex: 1 1 200px;
+  margin: 0;
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- The position bar (a floating layer) ---------------------------------------------------------- */
+
+.lb-bar {
+  position: fixed;
+  bottom: 16px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 720px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-surface);
+  box-shadow: var(--ds-shadow-float-sm);
+}
+
+.lb-bar__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.lb-bar__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  font: var(--ds-type-label);
+  white-space: nowrap;
+}
+
+.lb-bar__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-bar__button {
+  flex: none;
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+}
+
+.lb-bar__button:hover {
+  background-color: color-mix(in srgb, var(--ds-spotlight) 82%, var(--ds-on-spotlight));
+}
+
+/* ---- The sheet (a phone) --------------------------------------------------------------------------- */
+
+.lb-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.lb-scrim {
+  position: absolute;
+  inset: 0;
+  background-color: var(--ds-scrim);
+  animation: lb-fade 220ms var(--ds-ease) both;
+}
+
+.lb-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 90dvh;
+  max-height: 90vh;
+  margin: 0 auto;
+  padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  border-radius: var(--ds-radius-2xl) var(--ds-radius-2xl) 0 0;
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-float-md);
+  font-family: var(--ds-font);
+  animation: lb-rise 320ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.lb-sheet:focus {
+  outline: none;
+}
+
+@media (min-width: 600px) {
+  .lb-sheet {
+    max-width: 560px;
+    bottom: 24px;
+    border-radius: var(--ds-radius-2xl);
+  }
+}
+
+@supports (height: 100dvh) {
+  .lb-sheet {
+    max-height: 90dvh;
+  }
+}
+
+.lb-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lb-sheet__who {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lb-sheet__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.lb-sheet__meta {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.lb-sheet__figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--ds-line);
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.lb-sheet__figures dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.lb-sheet__figures dd {
+  margin: 2px 0 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-sheet__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.lb-sheet__inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.lb-sheet__heading {
+  margin: 4px 0 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.lb-sheet__platforms {
+  margin: -8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lb-sheet__platforms li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--ds-line);
+  font: var(--ds-type-body);
+}
+
+.lb-sheet__platforms li:last-child {
+  border-bottom: 0;
+}
+
+.lb-sheet__platforms .lb-num {
+  font-weight: 700;
+}
+
+.lb-sheet__platforms li[data-empty='true'] .lb-num {
+  color: var(--ds-subtle);
+  font-weight: 500;
+}
+
+@keyframes lb-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-icon-button[data-spinning='true'] svg,
+  .lb-skeleton__row::after,
+  .lb-scrim,
+  .lb-sheet {
+    animation: none;
+  }
+}

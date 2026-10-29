@@ -1,0 +1,122 @@
+/*
+ * ChartLegend
+ *
+ * A dot and a label per entry. Colours are --cl-* variables whose defaults are design tokens.
+ * See ChartLegend.jsx for the props.
+ */
+
+.cl {
+  --cl-text: var(--ds-text);
+  --cl-muted: var(--ds-muted);
+  --cl-gap: 8px 20px;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cl-gap);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cl[data-layout='column'] {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.cl__item {
+  min-width: 0;
+}
+
+.cl[data-layout='column'] .cl__item {
+  width: 100%;
+}
+
+.cl__entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background: none;
+  color: var(--cl-text);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-align: left;
+}
+
+.cl[data-layout='column'] .cl__entry {
+  width: 100%;
+  padding: 6px 8px;
+  margin-inline: -8px;
+  width: calc(100% + 16px);
+}
+
+button.cl__entry {
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+button.cl__entry:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.cl__entry[data-active='true'] {
+  background-color: var(--ds-raised);
+}
+
+.cl__swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--ds-bar-muted);
+}
+
+.cl__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cl__label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cl__detail {
+  color: var(--cl-muted);
+  font-weight: 400;
+}
+
+.cl__value {
+  flex: none;
+  margin-left: auto;
+  padding-left: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A switched-off series: the dot becomes a hollow ring and the name a muted strike-through, so
+   the state does not rest on colour alone */
+.cl__entry[data-off='true'] .cl__label {
+  color: var(--cl-muted);
+  font-weight: 500;
+  text-decoration: line-through;
+}
+
+.cl__entry[data-off='true'] .cl__swatch {
+  background-color: transparent !important;
+  box-shadow: inset 0 0 0 2px var(--ds-bar-muted);
+}

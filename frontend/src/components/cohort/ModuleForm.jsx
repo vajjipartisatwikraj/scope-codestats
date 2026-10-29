@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import {
   Box,
   TextField,
@@ -336,7 +337,7 @@ const ModuleForm = ({ initialData, onSave, onCancel, isEdit = false }) => {
                     marginBottom: 1,
                   },
                 }}
-                dangerouslySetInnerHTML={{ __html: formData.documentationUrl }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(formData.documentationUrl) }}
               />
             </Paper>
           )}

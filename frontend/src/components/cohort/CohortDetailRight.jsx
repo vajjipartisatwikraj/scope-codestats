@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import {
   Box,
   Typography,
@@ -333,7 +334,7 @@ const CohortDetailRight = ({
           <Box
             className="notes-content"
             dangerouslySetInnerHTML={{
-              __html: processHTMLContent(module.documentationUrl),
+              __html: sanitizeHtml(processHTMLContent(module.documentationUrl)),
             }}
             sx={{
               color: darkMode ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)",

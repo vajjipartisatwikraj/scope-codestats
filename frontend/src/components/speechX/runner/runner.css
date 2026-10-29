@@ -1,0 +1,671 @@
+/*
+ * speechX/runner: the question screen of a running section
+ *
+ * Plain CSS on the design tokens (--ds-*), prefix sxr-. Midnight and Daylight both work through the
+ * theme variables; nothing here is colour-literal. Layout and proportions follow the screen this
+ * replaces: a 72px top bar, a 300px question list on the left (a block on top below 900px), the
+ * question on the right, a footer row with the navigation, and a stage that is exactly
+ * var(--sx-stage) tall so the page itself never scrolls.
+ *
+ * Rules kept: cards are flat (24px, no border, no shadow); disabled is the high fill with a subtle
+ * label (no lowered opacity); status is never colour alone (icon + word); motion is 150 to 220ms on
+ * transform, opacity and colour; reduced motion gets a short fade.
+ *
+ * The page-wide `* { transition }` in index.css would ease the children of an animated control a
+ * second time, so each control that animates its own colours resets its children below.
+ *
+ * Other files: RecordingPanel.css, answers/answers.css, review/review.css.
+ */
+
+.sxr-root {
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sxr-root *,
+.sxr-root *::before,
+.sxr-root *::after {
+  box-sizing: border-box;
+}
+
+.sxr-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Keyframes -------------------------------------------------------------------------------- */
+
+@keyframes sxr-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sxr-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sxr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sxr-spin {
+  animation: sxr-spin 900ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxr-spin {
+    animation: none;
+  }
+}
+
+/* ---- Top bar content (FocusHeader slot) ----------------------------------------------------------- */
+
+.sxr-bar {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .sxr-bar {
+    gap: 24px;
+  }
+}
+
+.sxr-bar__divider {
+  flex: none;
+  width: 1px;
+  height: 32px;
+  background-color: var(--ds-line);
+}
+
+.sxr-bar__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 300px;
+  margin-right: auto;
+}
+
+.sxr-bar__label,
+.sxr-bar__name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sxr-bar__label {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxr-bar__name {
+  font: var(--ds-type-label);
+  line-height: 1.3;
+}
+
+.sxr-bar__progress {
+  display: flex;
+  flex: 1 1 0;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.sxr-bar__progress .sp {
+  max-width: 560px;
+}
+
+/* A section with many questions: thinner segments so the row never outgrows the bar */
+.sxr-bar__progress .sp__segment {
+  min-width: 2px;
+}
+
+/* ---- Timer pill ------------------------------------------------------------------------------------ */
+
+.sxr-timer {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+  white-space: nowrap;
+  transition:
+    background-color var(--ds-duration-base) var(--ds-ease),
+    color var(--ds-duration-base) var(--ds-ease);
+}
+
+.sxr-timer *,
+.sxr-timer *::before,
+.sxr-timer *::after {
+  transition: none;
+}
+
+.sxr-timer__time {
+  font: var(--ds-type-title-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* The last minute: the danger tint, a warning icon, the same numerals */
+.sxr-timer[data-low='true'] {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+/* ---- Stage ------------------------------------------------------------------------------------------ */
+
+.sxr-stage {
+  box-sizing: border-box;
+  height: var(--sx-stage);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sxr-stage__grid {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--sx-gap);
+  width: 100%;
+  max-width: 1440px;
+  height: 100%;
+  margin: 0 auto;
+  padding: var(--sx-gap) var(--sx-pad);
+}
+
+@media (min-width: 900px) {
+  .sxr-stage__grid[data-layout='split'] {
+    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+.sxr-stage__grid[data-layout='review'] {
+  grid-template-rows: minmax(0, 1fr);
+  max-width: calc(1100px + 2 * var(--sx-pad));
+}
+
+/* ---- Question palette ----------------------------------------------------------------------------------- */
+
+.sxr-palette {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 0;
+  max-height: min(320px, 46vh);
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+@media (min-width: 900px) {
+  .sxr-palette {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 20px;
+    max-height: none;
+    padding: 24px 20px 20px;
+  }
+}
+
+.sxr-palette__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sxr-palette__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxr-palette__count {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* One Review button in two places: beside the heading in the top block, at the foot of the column */
+.sxr-palette .sxr-palette__review-bottom {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .sxr-palette .sxr-palette__review-top {
+    display: none;
+  }
+
+  .sxr-palette .sxr-palette__review-bottom {
+    display: inline-flex;
+  }
+}
+
+.sxr-palette__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+  margin: -4px;
+  padding: 4px;
+  overflow-y: auto;
+}
+
+@media (min-width: 900px) {
+  .sxr-palette__tiles {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.sxr-palette__key {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .sxr-palette__key {
+    padding-top: 16px;
+    border-top: 1px solid var(--ds-line);
+  }
+}
+
+.sxr-legend {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sxr-key__summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -8px 0;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+  cursor: pointer;
+  list-style: none;
+}
+
+.sxr-key__summary::-webkit-details-marker {
+  display: none;
+}
+
+.sxr-key__summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+  border-radius: var(--ds-radius-xs);
+}
+
+.sxr-key .sxr-legend {
+  flex-flow: row wrap;
+  gap: 8px 16px;
+  padding: 8px 0 4px;
+}
+
+/* ---- A question tile ------------------------------------------------------------------------------------- */
+
+.sxr-tile {
+  --sx-ring: var(--ds-surface);
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxr-tile *,
+.sxr-tile *::before,
+.sxr-tile *::after {
+  transition: none;
+}
+
+.sxr-tile:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.sxr-tile:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.sxr-tile:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxr-tile:disabled {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxr-tile:hover:not(:disabled),
+  .sxr-tile:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ---- The question card --------------------------------------------------------------------------------------- */
+
+.sxr-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.sxr-main__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+@media (min-width: 600px) {
+  .sxr-main__scroll {
+    padding: 20px 16px;
+  }
+}
+
+@media (min-width: 900px) {
+  .sxr-main__scroll {
+    padding: 24px 20px;
+  }
+}
+
+/* The question uses the whole width of the card: the text is what the student has to read */
+.sxr-main__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.sxr-question {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: sxr-enter 220ms var(--ds-ease-enter) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxr-question {
+    animation: sxr-fade 150ms linear both;
+  }
+}
+
+/* ---- The question ------------------------------------------------------------------------------------------ */
+
+.sxr-prompt-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sxr-instructions {
+  margin-bottom: 20px;
+}
+
+.sxr-cue {
+  margin: 0;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+/*
+ * The question line: the page's h1, in the app font. It is the thing the student must read (aloud,
+ * or to answer), so it is large: Headline size on a phone, a little more on a desktop, with a
+ * comfortable line height. It runs the width of the card (about 75 characters at most).
+ */
+.sxr-prompt {
+  max-width: 75ch;
+  margin: 12px 0 0;
+  color: var(--ds-text);
+  font: var(--ds-type-headline);
+  font-size: clamp(1.375rem, 1rem + 1vw, 1.875rem);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: var(--ds-tracking-headline);
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+.sxr-hint {
+  margin: 12px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxr-prompt-gap {
+  margin-top: 16px;
+}
+
+.sxr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.sxr-dialog-text {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+}
+
+/* ---- Footer navigation ------------------------------------------------------------------------------------------- */
+
+.sxr-footer {
+  display: grid;
+  flex: none;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'prev next'
+    'marks marks';
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+@media (min-width: 600px) {
+  .sxr-footer {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'prev marks next';
+    padding: 16px 24px;
+  }
+}
+
+@media (min-width: 900px) {
+  .sxr-footer {
+    padding: 16px 20px;
+  }
+}
+
+.sxr-footer__prev {
+  grid-area: prev;
+}
+
+.sxr-footer__next {
+  grid-area: next;
+}
+
+.sxr-footer__marks {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: marks;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sxr-mark {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+@media (min-width: 600px) {
+  .sxr-mark {
+    flex: none;
+    padding: 0 16px;
+  }
+}
+
+.sxr-mark *,
+.sxr-mark *::before,
+.sxr-mark *::after {
+  transition: none;
+}
+
+.sxr-mark:hover:not(:disabled) {
+  background-color: var(--ds-high);
+}
+
+.sxr-mark[data-on='true'] {
+  background-color: var(--sx-state-bg);
+  color: var(--sx-state-fg);
+}
+
+.sxr-mark[data-on='true']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--sx-state-fg) 14%, var(--sx-state-bg));
+}
+
+.sxr-mark:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxr-mark:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+/* ---- Loading ---------------------------------------------------------------------------------------------------------- */
+
+.sxr-skeleton .sxr-palette__tiles {
+  overflow: hidden;
+}
+
+.sxr-skeleton__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sxr-loading {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+/* ---- Submitting overlay ------------------------------------------------------------------------------------------------------ */
+
+.sxr-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background-color: var(--ds-scrim);
+  animation: sxr-fade 180ms var(--ds-ease) both;
+}
+
+.sxr-veil__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  padding: 32px 28px;
+  border-radius: var(--ds-radius-2xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-float-md);
+  text-align: center;
+  outline: none;
+}
+
+.sxr-veil__icon {
+  margin-bottom: 8px;
+  color: var(--ds-accent-text);
+}
+
+.sxr-veil__text {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxr-veil__sub {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxr-veil {
+    animation: sxr-fade 150ms linear both;
+  }
+}

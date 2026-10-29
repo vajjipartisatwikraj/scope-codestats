@@ -262,12 +262,12 @@ const SubmissionDetailsView = ({
         {submission.user && typeof submission.user === 'object' && (
           <Box
             onClick={() => {
-              // Use rollNumber or email prefix for user-view route
-              const userIdentifier = submission.user?.rollNumber || 
-                submission.user?.email?.split('@')[0] || 
-                submission.user?.username;
+              // The profile page finds a student by the part of the email before the "@"
+              const userIdentifier = submission.user?.email?.split('@')[0] ||
+                submission.user?.username ||
+                submission.user?.rollNumber;
               if (userIdentifier) {
-                window.open(`/user-view/${userIdentifier}`, '_blank');
+                window.open(`/public-profile/${encodeURIComponent(userIdentifier)}`, '_blank', 'noopener');
               }
             }}
             sx={{

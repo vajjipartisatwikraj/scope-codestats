@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Cohort = require('../models/Cohort');
 const Opportunity = require('../models/Opportunity');
 const Course = require('../models/Course');
+const log = require("../utils/logger").scope("SEARCH");
 
 /**
  * @route   GET /api/search
@@ -103,7 +104,7 @@ router.get('/', auth, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Search error:', err);
+    log.error('Search error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

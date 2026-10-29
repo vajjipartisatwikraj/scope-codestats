@@ -10,6 +10,10 @@ testing/
 SQLJudge/
 SpeechJudge/
 AI-InterviewJudge/
+.kiro/
+.impeccable/
+documents/
+design/
 
 # Environment variables
 .env
@@ -61,3 +65,11 @@ coverage/
 !.yarn/sdks
 !.yarn/versions
 .pnp.* 
+
+# Secrets and one-off scripts that must never be committed
+.env.production
+.env.*.local
+backend/config/vapid-keys.json
+backend/probe.cjs
+backend/delete-graduation-year-2025.js
+backend/run-profile-update.js

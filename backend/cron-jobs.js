@@ -1,79 +1,50 @@
+/**
+ * Scheduled jobs. This is the only place that schedules anything.
+ *
+ * Active job:
+ *   - Profile sync, every day at 12:00 AM IST: refreshes every student's
+ *     platform Profiles (LeetCode, Codeforces, CodeChef, HackerRank, GitHub,
+ *     Scope-CodeStats). The job itself lives in scripts/updateUserProfiles.js and
+ *     is run through services/syncJobService, which also records it in the
+ *     sync history.
+ *
+ * Admins can also run it on demand from the admin dashboard
+ * (POST /api/admin/sync-jobs, see controllers/dailyCronController.js).
+ */
 const cron = require("node-cron");
+const { startSyncJob } = require("./services/syncJobService");
+const logger = require("./utils/logger");
 
-// Import the daily maintenance cron job
-const {
-  startDailyMaintenanceCron,
-  stopDailyMaintenanceCron,
-} = require("./scripts/daily-maintenance-cron");
+const PROFILE_SYNC_SCHEDULE = "0 0 * * *"; // 12:00 AM
+const TIMEZONE = "Asia/Kolkata";
 
-/**
- * ✅ CRON JOBS ENABLED ✅
- *
- * Initialize all cron jobs for the application
- *
- * ACTIVE CRON JOBS:
- * - Midnight Cron (12:00 AM IST): Daily statistics snapshot & ranking
- *   - Snapshots current User data into DailyStats documents
- *   - Calculates and updates user rankings (overall + department)
- *   - Calculates consistency index (based on score growth)
- *   - Calculates seven-day score for progress tracking
- *   - Regenerates analytics documents (PerformanceOverview, Heatmap, etc.)
- *
- * - Morning Cron (5:00 AM IST): Second daily statistics run
- *   - Same as midnight job - ensures data is captured after any overnight changes
- *   - Acts as a safety net if the midnight job failed or had partial results
- *
- * NOTE: Profile synchronization (fetching from external APIs like LeetCode,
- * Codeforces, etc.) is NOT automated. It must be triggered manually by an
- * admin via: POST /api/admin/sync-profiles from the Admin Dashboard.
- *
- * MANUAL EXECUTION:
- * - Daily maintenance: POST /api/admin/trigger-cron (requires admin auth)
- * - Profile sync: POST /api/admin/sync-profiles (requires admin auth)
- * - Script: node backend/scripts/daily-maintenance-cron.js
- */
+const profileSyncJob = cron.schedule(
+  PROFILE_SYNC_SCHEDULE,
+  async () => {
+    try {
+      // Goes through the job service so the run appears in the admin's list.
+      // The job itself reports its progress and completion (scripts/updateUserProfiles.js).
+      const { started, syncId } = await startSyncJob({ jobType: "scheduled" });
+      if (started) {
+        logger.info("CRON", "profile sync triggered (12:00 AM IST)", { sync: syncId });
+      } else {
+        logger.warn("CRON", "profile sync skipped, one is already running", { sync: syncId });
+      }
+    } catch (error) {
+      logger.error("CRON", error, { note: "scheduled profile sync could not start" });
+    }
+  },
+  { scheduled: false, timezone: TIMEZONE }
+);
+
 function initializeCronJobs() {
-  console.log("🕐 Initializing cron jobs...");
-
-  // ✅ ENABLED: Daily maintenance cron jobs (midnight + morning)
-  const started = startDailyMaintenanceCron();
-
-  if (started) {
-    console.log("✅ Daily maintenance cron jobs started successfully");
-    console.log("⏰ Midnight job: Runs daily at 12:00 AM IST (Stats & Rankings)");
-    console.log("⏰ Morning job: Runs daily at 5:00 AM IST (Stats & Rankings backup)");
-  } else {
-    console.log(
-      "⚠️  Daily maintenance cron jobs failed to start or were already running"
-    );
-  }
-
-  console.log("✅ ALL CRON JOBS ARE ENABLED");
-  console.log(
-    "💡 Profile sync must be triggered manually from the admin dashboard"
-  );
-  console.log("📋 Cron schedules:");
-  console.log("   - 12:00 AM IST: Daily stats snapshot & ranking calculation");
-  console.log("   - 5:00 AM IST: Daily stats snapshot & ranking (backup run)");
-
-  // You can add more cron jobs here in the future
-  // Example:
-  // cron.schedule('0 0 * * 0', () => {
-  //   console.log('Weekly maintenance job running...');
-  // });
+  profileSyncJob.start();
+  logger.ready("CRON", "profile sync daily at 12:00 AM IST");
 }
 
-/**
- * Gracefully stop all cron jobs
- */
 function stopCronJobs() {
-  console.log("🛑 Stopping all cron jobs...");
-  stopDailyMaintenanceCron();
-  console.log("✅ All cron jobs stopped");
+  profileSyncJob.stop();
+  logger.info("CRON", "stopped");
 }
 
-module.exports = {
-  initializeCronJobs,
-  stopCronJobs,
-};
-
+module.exports = { initializeCronJobs, stopCronJobs, profileSyncJob };

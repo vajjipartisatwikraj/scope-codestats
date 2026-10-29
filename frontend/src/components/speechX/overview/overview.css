@@ -1,0 +1,336 @@
+/*
+ * Test overview: the student's section list (route /speech-tests/:id), prefix sxv-
+ *
+ * Plain CSS on the design tokens (--ds-*), built on the speechX shared kit (FocusHeader, FocusPage,
+ * SpeechCard). Cards are flat. The one spotlight tile is the progress (or final score) tile; the
+ * one filled button is the next action. Components: SpeechTestOverview.jsx, SectionRow.jsx,
+ * TestInfoCard.jsx, ProgressPanel.jsx, SectionDialogs.jsx.
+ */
+
+/* ---- Header strip ---------------------------------------------------------------------------- */
+
+.sxv-bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 24px;
+  min-width: 0;
+}
+
+.sxv-bar__label {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sxv-bar__progress {
+  flex: 0 1 280px;
+  min-width: 120px;
+}
+
+/* ---- Layout ----------------------------------------------------------------------------------- */
+
+.sxv-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .sxv-layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 32px;
+  }
+}
+
+.sxv-main,
+.sxv-aside {
+  min-width: 0;
+}
+
+/*
+ * On a desktop-sized window the page does not scroll: the top bar and the footer stay where they
+ * are, the title and the test card stay in view, and only the list of sections scrolls inside its
+ * card. (The page padding is part of the stage, so it is taken off the height.) On a smaller
+ * window the page scrolls as a whole.
+ */
+@media (min-width: 900px) and (min-height: 560px) {
+  .sxv-layout {
+    align-items: stretch;
+    grid-template-rows: minmax(0, 1fr);
+    height: calc(var(--sx-stage) - 2 * var(--sx-pad));
+  }
+
+  .sxv-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .sxv-title,
+  .sxv-lead {
+    flex: none;
+  }
+
+  .sxv-list-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sxv-list-card > .sx-card__body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sxv-aside {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+.sxv-title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.sxv-lead {
+  margin: 4px 0 16px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxv-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* A single card in the middle of the page (no attempt, or an error) */
+.sxv-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+  margin: 24px auto 0;
+}
+
+.sxv-centered > .ui-button[data-variant='ghost'] {
+  align-self: center;
+}
+
+.sxv-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---- The section list ------------------------------------------------------------------------- */
+
+.sxv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxv-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas:
+    'mark text'
+    'status status'
+    'action action';
+  align-items: center;
+  gap: 12px 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ds-line);
+  background-color: transparent;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxv-row *,
+.sxv-row *::before,
+.sxv-row *::after {
+  transition: none;
+}
+
+.sxv-row:first-child {
+  border-top-left-radius: var(--ds-radius-xl);
+  border-top-right-radius: var(--ds-radius-xl);
+}
+
+.sxv-row:last-child {
+  border-bottom: 0;
+  border-bottom-right-radius: var(--ds-radius-xl);
+  border-bottom-left-radius: var(--ds-radius-xl);
+}
+
+/* The open section: the whole row is tinted, and says "In progress" in words */
+.sxv-row[data-running='true'] {
+  background-color: var(--ds-accent-soft);
+}
+
+.sxv-row > .sx-mark {
+  grid-area: mark;
+}
+
+.sxv-row__number {
+  font: var(--ds-type-label);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sxv-row__text {
+  grid-area: text;
+  min-width: 0;
+}
+
+.sxv-row__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  overflow-wrap: anywhere;
+}
+
+.sxv-row__meta {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxv-row__status {
+  display: flex;
+  grid-area: status;
+  align-items: center;
+  gap: 12px;
+  padding-left: 60px;
+}
+
+.sxv-row__score {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxv-row__action {
+  display: flex;
+  flex-direction: column;
+  grid-area: action;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.sxv-row__why {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxv-row__notice {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 600px) {
+  .sxv-row {
+    padding: 16px 24px;
+  }
+
+  .sxv-row__action {
+    align-items: flex-start;
+  }
+
+  .sxv-row__action > .ui-button {
+    min-width: 160px;
+  }
+}
+
+@media (min-width: 900px) {
+  .sxv-row {
+    grid-template-columns: 44px minmax(0, 1fr) auto 176px;
+    grid-template-areas: 'mark text status action';
+    gap: 16px;
+  }
+
+  .sxv-row__status {
+    justify-content: flex-end;
+    min-width: 168px;
+    padding-left: 0;
+  }
+
+  .sxv-row__action {
+    align-items: stretch;
+  }
+
+  .sxv-row__action > .ui-button {
+    min-width: 0;
+  }
+}
+
+/* ---- The side column --------------------------------------------------------------------------- */
+
+.sxv-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+  min-width: 0;
+}
+
+.sxv-info {
+  display: grid;
+  gap: 12px;
+}
+
+.sxv-note {
+  margin: 16px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxv-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sxv-progress__context {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.sxv-progress__context > p {
+  margin: 8px 0 0;
+}
+
+.sxv-progress__why {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-align: center;
+}
+
+/* ---- Dialogs ------------------------------------------------------------------------------------ */
+
+.sxv-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sxv-dialog__text {
+  margin: 0;
+  font: var(--ds-type-body);
+}

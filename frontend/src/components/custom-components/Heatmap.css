@@ -1,0 +1,196 @@
+/*
+ * Heatmap
+ *
+ * A calendar grid: weeks are columns, days are rows. The squares get their size from the width
+ * of their column, so the grid always fills its container; below --hm-min-cell per square it
+ * scrolls sideways instead. The five shades are --hm-l0 (empty) to --hm-l4 (fullest), mixed from
+ * the accent token, and the `colors` prop replaces them. See Heatmap.jsx for the props.
+ */
+
+.hm,
+.hm-legend {
+  --hm-l0: var(--ds-high);
+  --hm-l1: color-mix(in srgb, var(--ds-accent) 28%, var(--ds-high));
+  --hm-l2: color-mix(in srgb, var(--ds-accent) 52%, var(--ds-high));
+  --hm-l3: color-mix(in srgb, var(--ds-accent) 76%, var(--ds-high));
+  --hm-l4: var(--ds-accent);
+  --hm-label: var(--ds-subtle);
+  --hm-radius: var(--ds-radius-xs);
+}
+
+.hm {
+  --hm-weeks: 53;
+  --hm-months-h: 24px;
+  --hm-gap: 3px;
+  --hm-min-cell: 9px;
+
+  min-width: 0;
+}
+
+.hm *,
+.hm *::before,
+.hm *::after,
+.hm-legend *,
+.hm-legend *::before,
+.hm-legend *::after {
+  transition: none;
+}
+
+.hm__scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.hm__inner {
+  min-width: calc(var(--hm-weeks) * var(--hm-min-cell) + (var(--hm-weeks) - 1) * var(--hm-gap));
+}
+
+/* ---- The squares ----------------------------------------------------------------------- */
+
+.hm__grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(var(--hm-weeks), minmax(0, 1fr));
+  grid-template-rows: repeat(7, auto);
+  gap: var(--hm-gap);
+}
+
+.hm__cell,
+.hm-legend__cell {
+  display: block;
+  border-radius: min(var(--hm-radius), 30%);
+  background-color: var(--hm-l0);
+}
+
+.hm__cell {
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+}
+
+/* Fill mode: the box is measured (the stage is a size container) and the squares get the biggest
+   side that fits BOTH ways, so they are always square. The grid and the month names under it are
+   centred as one block. */
+.hm[data-fill='true'] {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hm[data-fill='true'] .hm__scroll,
+.hm[data-fill='true'] .hm__inner {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hm[data-fill='true'] .hm__stage {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  container-type: size;
+}
+
+.hm[data-fill='true'] .hm__block {
+  --hm-cell: max(
+    4px,
+    min(
+      calc((100cqw - (var(--hm-weeks) - 1) * var(--hm-gap)) / var(--hm-weeks)),
+      calc((100cqh - var(--hm-months-h) - 6 * var(--hm-gap)) / 7)
+    )
+  );
+
+  flex: none;
+  width: max-content;
+}
+
+.hm[data-fill='true'] .hm__grid {
+  grid-template-columns: repeat(var(--hm-weeks), var(--hm-cell));
+  grid-template-rows: repeat(7, var(--hm-cell));
+}
+
+.hm[data-fill='true'] .hm__months {
+  grid-template-columns: repeat(var(--hm-weeks), var(--hm-cell));
+}
+
+.hm[data-fill='true'] .hm__cell {
+  aspect-ratio: auto;
+}
+/* The blank squares before the first day and after the last one keep the columns whole */
+.hm__cell--void {
+  visibility: hidden;
+}
+
+/*
+ * Entrance: every square grows from a point as it fades in. The wave runs along the weeks (the
+ * columns) and a little down the days of the week, so it reads as a diagonal sweep that is over
+ * in about a second. The month names follow. Timing comes from shared.css.
+ */
+.hm[data-animate='true'] .hm__cell:not(.hm__cell--void) {
+  animation: cc-pop-in calc(var(--cc-enter) * 0.9) var(--cc-ease) both;
+  animation-delay: calc(
+    var(--cc-start) + var(--w, 0) * min(14ms, calc(560ms / var(--n, 1))) + var(--r, 0) * 12ms
+  );
+}
+
+.hm[data-animate='true'] .hm__month {
+  animation: cc-fade-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 420ms);
+}
+
+.hm[data-shape='circle'] .hm__cell,
+.hm-legend[data-shape='circle'] .hm-legend__cell {
+  border-radius: 50%;
+}
+
+.hm[data-shape='square'] .hm__cell,
+.hm-legend[data-shape='square'] .hm-legend__cell {
+  border-radius: 0;
+}
+
+/* ---- Month names ----------------------------------------------------------------------- */
+
+.hm__months {
+  display: grid;
+  grid-template-columns: repeat(var(--hm-weeks), minmax(0, 1fr));
+  gap: 0 var(--hm-gap);
+  margin-top: 8px;
+}
+
+.hm__month {
+  overflow: visible;
+  color: var(--hm-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+/* ---- The key --------------------------------------------------------------------------- */
+
+.hm-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hm-legend__cell {
+  width: 12px;
+  height: 12px;
+}
+
+.hm-legend__text {
+  color: var(--hm-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.hm-legend__text:first-child {
+  margin-right: 4px;
+}
+
+.hm-legend__text:last-child {
+  margin-left: 4px;
+}

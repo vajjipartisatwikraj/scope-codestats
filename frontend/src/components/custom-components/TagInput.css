@@ -1,0 +1,210 @@
+/* TagInput: chips and a text field in one box (see TagInput.jsx for the props) */
+
+.ti,
+.ti *,
+.ti *::before,
+.ti *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+.ti {
+  --ti-bg: var(--ds-raised);
+  --ti-border: var(--ds-field-border);
+  --ti-text: var(--ds-text);
+  --ti-muted: var(--ds-muted);
+  --ti-tag-bg: var(--ds-accent-soft);
+  --ti-tag-text: var(--ds-accent-text);
+  --ti-focus: var(--ds-focus);
+  --ti-danger: var(--ds-danger);
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ti__label {
+  color: var(--ti-text);
+  font: var(--ds-type-label);
+}
+
+.ti__box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--ti-border);
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ti-bg);
+  color: var(--ti-text);
+  cursor: text;
+}
+
+.ti__box:focus-within {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--ti-focus);
+}
+
+.ti[data-invalid='true'] .ti__box {
+  border-color: var(--ti-danger);
+}
+
+.ti[data-invalid='true'] .ti__box:focus-within {
+  border-color: transparent;
+}
+
+.ti[data-disabled='true'] .ti__box {
+  border-color: transparent;
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.ti__tags {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ti__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  height: 32px;
+  padding: 0 4px 0 12px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ti-tag-bg);
+  color: var(--ti-tag-text);
+  font: var(--ds-type-label);
+}
+
+.ti__tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ti__remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ti__remove:hover:not(:disabled) {
+  background-color: var(--ds-high);
+}
+
+.ti__remove:focus-visible,
+.ti__suggestion:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-raised),
+    0 0 0 4px var(--ti-focus);
+}
+
+.ti__input {
+  flex: 1 1 120px;
+  min-width: 0;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background-color: transparent;
+  color: inherit;
+  font: var(--ds-type-body);
+}
+
+.ti__input::placeholder {
+  color: var(--ds-subtle);
+}
+
+.ti__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ti__suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ti-bg);
+  color: var(--ti-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ti__suggestion:hover {
+  background-color: var(--ds-high);
+  color: var(--ti-text);
+}
+
+.ti__hint,
+.ti__error {
+  margin: 0;
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.ti__hint {
+  color: var(--ti-muted);
+}
+
+.ti__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ti-danger);
+}
+
+.ti__error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+@media (pointer: coarse), (max-width: 899.95px) {
+  .ti__box {
+    min-height: 48px;
+  }
+
+  .ti__remove {
+    width: 36px;
+    height: 36px;
+    margin: -2px 0;
+  }
+
+  .ti__tag {
+    height: 36px;
+  }
+
+  .ti__suggestion {
+    height: 44px;
+    padding: 0 16px;
+  }
+}

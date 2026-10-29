@@ -39,6 +39,17 @@ export const isRegularUser = (user) => {
 };
 
 /**
+ * True for someone who signed in from the teacher sign-in page and has not been
+ * approved yet: still a regular user, waiting on (or about to make) a teacher access
+ * request. They only see the teacher access page until an admin approves.
+ * @param {Object} user - User object with userType and signupIntent
+ * @returns {boolean}
+ */
+export const isPendingTeacher = (user) => {
+  return Boolean(user) && user.userType === 'user' && user.signupIntent === 'teacher';
+};
+
+/**
  * Get user type display name
  * @param {string} userType - User type string
  * @returns {string} Display name for user type
@@ -82,10 +93,14 @@ export const getUserTypeBadgeColor = (userType) => {
  * (`/admin/cohorts`, `/admin/courses`, and so on). `/admin` still resolves — it
  * redirects here — so old links and bookmarks keep working.
  *
+ * People waiting for teacher approval have no dashboard yet; their home is the teacher
+ * access page.
+ *
  * @param {Object} user - User object with userType property
  * @returns {string} Dashboard path
  */
 export const getDashboardPath = (user) => {
+  if (isPendingTeacher(user)) return '/teacher-access';
   return isAdminOrTeacher(user) ? '/admin/dashboard' : '/dashboard';
 };
 

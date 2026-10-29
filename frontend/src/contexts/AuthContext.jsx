@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { apiUrl } from "../config/apiConfig";
+import { getDashboardPath } from "../utils/userHelpers";
 
 // Global state for tracking active processes
 export const activeSyncState = {
@@ -136,6 +137,7 @@ export const AuthProvider = ({ children }) => {
       const profileCompleted = params.get("profileCompleted") === "true";
       const userType = params.get("userType") || "user"; // Make sure we capture userType
       const profilePicture = params.get("profilePicture") || ""; // Capture profile picture URL
+      const signupIntent = params.get("signupIntent") || "student"; // Which sign-in page created the account
 
       if (!token || !userId) {
         navigate("/login", { replace: true });
@@ -150,6 +152,7 @@ export const AuthProvider = ({ children }) => {
         newUser,
         profileCompleted,
         userType,
+        signupIntent,
         profilePicture, // Store profile picture URL
       };
 
@@ -177,6 +180,8 @@ export const AuthProvider = ({ children }) => {
         userData = {
           ...userData,
           userType: fullUserData.userType,
+          signupIntent: fullUserData.signupIntent || signupIntent,
+          teacherRequest: fullUserData.teacherRequest || null,
           department: fullUserData.department,
           section: fullUserData.section,
           graduatingYear: fullUserData.graduatingYear,
@@ -190,23 +195,16 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
 
         // Determine where to navigate based on user status
+        // Teacher sign-in accounts skip the student profile form (the server marks
+        // them complete) and wait on the teacher access page until approved.
         if (newUser === true || profileCompleted === false) {
           navigate("/profile?setup=true", { replace: true });
-        } else if (
-          userData.userType === "admin" ||
-          userData.userType === "teacher"
-        ) {
-          navigate("/admin/dashboard", { replace: true });
         } else {
-          navigate("/dashboard", { replace: true });
+          navigate(getDashboardPath(userData), { replace: true });
         }
       } catch (error) {
         // Still navigate based on the userType we have from URL params
-        if (userData.userType === "admin" || userData.userType === "teacher") {
-          navigate("/admin/dashboard", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
+        navigate(getDashboardPath(userData), { replace: true });
       }
     };
 
@@ -228,6 +226,7 @@ export const AuthProvider = ({ children }) => {
       location.pathname === "/" ||
       location.pathname === "/register" ||
       location.pathname === "/login" ||
+      location.pathname === "/teacher-login" ||
       location.pathname === "/about" ||
       location.pathname === "/docs" ||
       location.pathname === "/contact" ||
@@ -243,15 +242,12 @@ export const AuthProvider = ({ children }) => {
     if (
       token &&
       (location.pathname === "/login" ||
+        location.pathname === "/teacher-login" ||
         location.pathname === "/register" ||
         location.pathname === "/")
     ) {
-      // Check if user is admin/teacher and redirect accordingly
-      if (user?.userType === "admin" || user?.userType === "teacher") {
-        navigate("/admin/dashboard", { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
+      // Admin/teacher -> admin dashboard, student -> dashboard, pending teacher -> teacher access page
+      navigate(getDashboardPath(user), { replace: true });
       return;
     }
 
@@ -285,9 +281,7 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
 
       // Return appropriate redirect path based on user type
-      return userData?.userType === "admin" || userData?.userType === "teacher"
-        ? "/admin/dashboard"
-        : "/dashboard";
+      return getDashboardPath(userData);
     } catch (error) {
       // Error handling for login
       return false;
@@ -335,20 +329,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Create value object with guaranteed non-null values
-  const value = {
-    user: user || null,
-    token: token || null,
-    login,
-    logout,
-    isAuthenticated: Boolean(token),
-    isAdmin: user?.userType === "admin",
-    isTeacher: user?.userType === "teacher",
-    isAdminOrTeacher:
-      user?.userType === "admin" || user?.userType === "teacher",
-    setUser: updateUser,
-    isInitialized,
-    refreshUserData: fetchUserData,
-  };
+  // Memoized: this provider re-renders on every navigation (it reads the location), and a
+  // new object each time made every consumer, PrivateRoute included, re-run its effects.
+  // The functions only close over user, token and navigate, so these inputs are enough.
+  /* eslint-disable react-hooks/exhaustive-deps */
+  const value = useMemo(
+    () => ({
+      user: user || null,
+      token: token || null,
+      login,
+      logout,
+      isAuthenticated: Boolean(token),
+      isAdmin: user?.userType === "admin",
+      isTeacher: user?.userType === "teacher",
+      isAdminOrTeacher:
+        user?.userType === "admin" || user?.userType === "teacher",
+      setUser: updateUser,
+      isInitialized,
+      refreshUserData: fetchUserData,
+    }),
+    [user, token, isInitialized],
+  );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1,3 +1,5 @@
+const log = require("./logger").scope("TRANSACTION");
+
 function isTransactionsUnavailableError(error) {
   const messages = [];
   let current = error;
@@ -52,7 +54,7 @@ async function runWithOptionalTransaction(work, options = {}) {
       try {
         await session.abortTransaction();
       } catch (abortError) {
-        console.error(`Error aborting ${label} transaction:`, abortError);
+        log.error(`Error aborting ${label} transaction:`, abortError);
       }
     }
     if (!transactionsUnavailable) throw error;
@@ -60,7 +62,7 @@ async function runWithOptionalTransaction(work, options = {}) {
     await session.endSession();
   }
 
-  console.warn(
+  log.debug(
     `MongoDB transactions are unavailable; running ${label} without a transaction.`
   );
   const result = await work(null);

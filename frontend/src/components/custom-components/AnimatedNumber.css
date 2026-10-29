@@ -1,0 +1,34 @@
+/*
+ * AnimatedNumber
+ *
+ * Two layers in one grid cell: the final text (invisible, it fixes the width and is what a
+ * screen reader reads) and the counting text on top, right aligned so digits grow leftwards.
+ * It inherits the font of its parent; only the numerals are made tabular.
+ */
+
+.an {
+  display: inline-grid;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: inherit;
+}
+
+.an__final,
+.an__live {
+  grid-area: 1 / 1;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+/* Not drawn, but it stays in the page: it sets the width and screen readers read it
+   (`visibility: hidden` would remove it from the accessibility tree) */
+.an__final {
+  color: transparent;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .an__live {
+    transition: none;
+  }
+}

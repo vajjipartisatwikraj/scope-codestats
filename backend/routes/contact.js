@@ -3,6 +3,7 @@ const router = express.Router();
 const rateLimit = require("express-rate-limit");
 const { body, validationResult } = require("express-validator");
 const { sendMail } = require("../utils/mailer");
+const log = require("../utils/logger").scope("CONTACT");
 
 // Limit abuse: max 5 messages per 15 minutes per IP
 const contactRateLimit = rateLimit({
@@ -76,7 +77,7 @@ router.post(
       await sendMail({ subject, text, html, replyTo: email });
       return res.json({ message: "Your message has been sent. We'll get back to you soon." });
     } catch (error) {
-      console.error("Error sending contact email:", error.message);
+      log.error("Error sending contact email:", error.message);
       return res.status(500).json({
         message: "Sorry, we couldn't send your message right now. Please try again later.",
       });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import {
@@ -766,7 +767,7 @@ const TeacherQuestionView = () => {
           {question?.editorial ? (
             <Box
               className="question-description"
-              dangerouslySetInnerHTML={{ __html: question.editorial }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(question.editorial) }}
               sx={{
                 ...htmlContentStyles,
                 "& a": {
@@ -1012,7 +1013,7 @@ const TeacherQuestionView = () => {
         <Box sx={{ p: 2 }}>
           <Box
             className="question-description"
-            dangerouslySetInnerHTML={{ __html: question.description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(question.description) }}
             sx={{ ...htmlContentStyles, mb: 3 }}
           />
 

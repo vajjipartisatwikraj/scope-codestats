@@ -34,12 +34,6 @@ export const toSqlErrorMessage = (error, fallback = "Request failed") => {
 
 // ─────────────────────────────── admin ───────────────────────────────
 
-/** Engine reachability and whether publishing is configured. */
-export const fetchSqlEngineHealth = async () => {
-  const { data } = await axios.get(`${apiUrl}/cohorts/sql-engine/health`, authHeaders());
-  return data;
-};
-
 /**
  * Generate Outputs — runs the reference solution against every seed and returns
  * the generated expected rows per testcase. Writes nothing.
@@ -106,7 +100,6 @@ export const submitSqlQuery = async (cohortId, moduleId, questionId, sql) => {
 };
 
 export default {
-  fetchSqlEngineHealth,
   generateSqlOutputs,
   validateSqlTestcases,
   publishSqlQuestion,

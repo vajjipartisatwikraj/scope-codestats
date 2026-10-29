@@ -1,63 +1,85 @@
 const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const logger = require('../utils/logger');
 
-const connectDB = async () => {
-  try {
-    if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in environment variables');
-    }
+let handlersAttached = false;
 
-    // Fix IPv6 resolution issue in Node.js v17+:
-    // 'localhost' may resolve to '::1' (IPv6) but MongoDB typically binds to 127.0.0.1 (IPv4)
-    let mongoUri = process.env.MONGODB_URI;
-    if (mongoUri.includes('localhost')) {
-      mongoUri = mongoUri.replace(/localhost/g, '127.0.0.1');
-    }
+const attachConnectionHandlers = () => {
+  if (handlersAttached) return;
+  handlersAttached = true;
 
-    const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000, // 5 second timeout
-      socketTimeoutMS: 45000, // Socket timeout
-      connectTimeoutMS: 10000, // Connection timeout
-      maxPoolSize: 10, // Maximum number of connections in the pool
-      minPoolSize: 1, // Minimum number of connections in the pool
-    });
+  mongoose.connection.on('error', (err) => {
+    logger.error('DB', err);
+  });
 
-    console.log('MongoDB Connected Successfully');
+  mongoose.connection.on('disconnected', () => {
+    logger.warn('DB', 'disconnected, reconnecting');
+  });
 
-    // Safely log part of the connection string, hiding credentials if present
-    const connectionString = process.env.MONGODB_URI;
-    let logSafeDbUrl = 'localhost database';
+  mongoose.connection.on('reconnected', () => {
+    logger.ready('DB', 'reconnected');
+  });
+};
 
-    if (connectionString.includes('@')) {
-      // For URIs with credentials (user:pass@host/db)
-      logSafeDbUrl = connectionString.split('@')[1];
-    } else if (connectionString.includes('://')) {
-      // For URIs without credentials (mongodb://host/db)
-      logSafeDbUrl = connectionString.split('://')[1];
-    }
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    console.log('Database URL:', logSafeDbUrl);
-
-    // Set up connection event handlers
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err.message);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected. Attempting to reconnect...');
-    });
-
-    mongoose.connection.on('reconnected', () => {
-      console.log('MongoDB reconnected successfully');
-    });
-
-    return conn;
-  } catch (err) {
-    console.error('MongoDB connection error:', err.message);
-    // Don't exit process, let the application handle reconnection
+/**
+ * Connects to MongoDB.
+ *
+ * By default one failed attempt throws, which is what the standalone scripts want.
+ * The server passes `{ maxAttempts: Infinity }` so a short database outage at boot
+ * (the database restarting, a slow network) is retried with a growing pause (1 s up
+ * to 30 s) instead of crashing the process.
+ */
+const connectDB = async ({ maxAttempts = 1 } = {}) => {
+  if (!process.env.MONGODB_URI) {
+    const err = new Error('MONGODB_URI is not defined in environment variables');
+    logger.error('DB', err);
     throw err;
+  }
+
+  // Fix IPv6 resolution issue in Node.js v17+:
+  // 'localhost' may resolve to '::1' (IPv6) but MongoDB typically binds to 127.0.0.1 (IPv4)
+  let mongoUri = process.env.MONGODB_URI;
+  if (mongoUri.includes('localhost')) {
+    mongoUri = mongoUri.replace(/localhost/g, '127.0.0.1');
+  }
+
+  attachConnectionHandlers();
+
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const conn = await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000, // 5 second timeout
+        socketTimeoutMS: 45000, // Socket timeout
+        connectTimeoutMS: 10000, // Connection timeout
+        maxPoolSize: 10, // Maximum number of connections in the pool
+        minPoolSize: 1, // Minimum number of connections in the pool
+      });
+
+      // Log host and database only, never credentials
+      let logSafeDbUrl = 'localhost database';
+      if (mongoUri.includes('@')) {
+        // For URIs with credentials (user:pass@host/db)
+        logSafeDbUrl = mongoUri.split('@')[1];
+      } else if (mongoUri.includes('://')) {
+        // For URIs without credentials (mongodb://host/db)
+        logSafeDbUrl = mongoUri.split('://')[1];
+      }
+      logger.ready('DB', logSafeDbUrl.split('?')[0]);
+
+      return conn;
+    } catch (err) {
+      if (attempt >= maxAttempts) {
+        logger.error('DB', err);
+        throw err;
+      }
+      const delay = Math.min(30000, 1000 * 2 ** Math.min(attempt - 1, 5));
+      logger.warn('DB', `connection attempt ${attempt} failed (${err.message}), retrying in ${delay / 1000}s`);
+      await wait(delay);
+    }
   }
 };
 
-module.exports = connectDB; 
+module.exports = connectDB;

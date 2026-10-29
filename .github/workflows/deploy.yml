@@ -1,9 +1,21 @@
-name: Deploy CodeStats
+name: Deploy CodeStats 4.0.0
 
 on:
   push:
     branches:
-      - version-3.0.0
+      - version-4.0.0
+  # Lets you run the deploy by hand from the Actions tab (it deploys the branch you pick)
+  workflow_dispatch:
+
+# Two deploys at once would fight over the same folders on the server, so a newer push waits
+# for the running one instead of starting beside it
+concurrency:
+  group: deploy-codestats
+  cancel-in-progress: false
+
+env:
+  # The branch the server checks out. Keep it the same as the branch above.
+  RELEASE_BRANCH: version-4.0.0
 
 jobs:
   deploy:
@@ -46,6 +58,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: RELEASE_BRANCH
           script: |
             set -e
 
@@ -56,9 +69,9 @@ jobs:
 
             git fetch origin
 
-            git checkout version-3.0.0
+            git checkout "$RELEASE_BRANCH"
 
-            git reset --hard origin/version-3.0.0
+            git reset --hard "origin/$RELEASE_BRANCH"
 
             sudo rm -rf /var/www/codestats/*
 
@@ -68,12 +81,17 @@ jobs:
 
             npm install
 
+            # Fail the deploy here, before restarting, if the server cannot even load
+            node --check server.js
+
             pm2 restart all
 
             pm2 save
 
+            # Check the config first: a typo in nginx should stop the deploy, not take the site down
+            sudo nginx -t
             sudo systemctl restart nginx
 
             rm -f /home/ubuntu/frontend-dist.tar.gz
 
-            echo "Deployment completed successfully"
+            echo "Deployment of $RELEASE_BRANCH completed successfully"

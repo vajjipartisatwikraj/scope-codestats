@@ -1,0 +1,48 @@
+/*
+ * WaveformBars
+ *
+ * Rounded bars centred on a midline, in a flex row. With a progress value a second, identical
+ * row in the played colour lies on top and is cut at the progress edge, so the colour sweeps
+ * through the wave instead of jumping from bar to bar. Colours are --wb-* variables whose
+ * defaults are design tokens. See WaveformBars.jsx for the props.
+ */
+
+.wb {
+  --wb-color: var(--ds-bar-muted);
+  --wb-played: var(--ds-accent);
+  --wb-height: 40px;
+  --wb-gap: 3px;
+  --wb-progress: 0;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--wb-height);
+  /* More bars than fit (a resize not caught up yet) are cut, never spilled over the neighbours */
+  overflow: hidden;
+}
+
+.wb__layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--wb-gap);
+}
+
+.wb__bar {
+  flex: 1 1 0;
+  min-width: 2px;
+  min-height: 4px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--wb-color);
+}
+
+.wb__layer--played .wb__bar {
+  background-color: var(--wb-played);
+}
+
+/* Cut at the progress edge: only what has been played shows */
+.wb__layer--played {
+  clip-path: inset(0 calc((1 - var(--wb-progress)) * 100%) 0 0);
+}

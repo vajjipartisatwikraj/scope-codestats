@@ -1,0 +1,72 @@
+/*
+ * AnimatedCheck
+ *
+ * A disc and a tick. The tick is one path whose length is normalised to 1, so it is drawn by
+ * moving its dash offset from 1 to 0. At rest the tick is fully drawn, so reduced motion (which
+ * removes the animations) shows the finished check. Colours are --ac-* variables. See
+ * AnimatedCheck.jsx for the props.
+ */
+
+.ac {
+  --ac-size: 44px;
+  --ac-bg: var(--ds-success-soft);
+  --ac-tick: var(--ds-success);
+  --ac-delay: 0ms;
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--ac-size);
+  height: var(--ac-size);
+  border-radius: 50%;
+  background-color: var(--ac-bg);
+  color: var(--ac-tick);
+  vertical-align: middle;
+  animation: ac-settle 420ms var(--cc-ease) var(--ac-delay) backwards;
+}
+
+.ac__svg {
+  display: block;
+  width: 56%;
+  height: 56%;
+  overflow: visible;
+}
+
+.ac__tick {
+  fill: none;
+  stroke: var(--ac-tick);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: ac-draw 460ms var(--cc-ease) calc(var(--ac-delay) + 200ms) backwards;
+}
+
+@keyframes ac-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ac-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* shared.css stops the animations of everything inside; the disc itself is stopped here */
+@media (prefers-reduced-motion: reduce) {
+  .ac {
+    animation: none;
+  }
+}

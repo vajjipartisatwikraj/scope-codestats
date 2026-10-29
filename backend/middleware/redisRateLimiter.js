@@ -20,13 +20,14 @@
 const jwt = require("jsonwebtoken");
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+const log = require("../utils/logger").scope("REDIS-RATE-LIMITER");
 
 // Optional Redis - only load if redis package is installed
 let redisClient = null;
 try {
   redisClient = require("../config/redis");
 } catch (error) {
-  console.log(
+  log.debug(
     "[Rate Limiter] ⚠️  Redis not installed, using in-memory fallback"
   );
 }
@@ -61,7 +62,7 @@ function cleanupFallbackStore() {
     }
   }
 
-  console.log(
+  log.debug(
     `[Rate Limiter Fallback] Cleanup: ${fallbackTimestamps.submit.size} submit, ${fallbackTimestamps.run.size} run cooldowns`
   );
 }
@@ -86,7 +87,7 @@ function getUserIdentifier(req) {
         return `user_${decoded.userId}`;
       }
     } catch (err) {
-      console.log(
+      log.debug(
         "[Submission Rate Limiter] Invalid token, using IP-based tracking"
       );
     }
@@ -145,7 +146,7 @@ async function checkRateLimit(key, cooldownMs, type) {
       retryAfter: 0,
     };
   } catch (error) {
-    console.error(
+    log.error(
       `[Redis Rate Limiter] Error checking rate limit for ${type}:`,
       error.message
     );
@@ -215,7 +216,7 @@ const submissionRateLimiter = async (req, res, next) => {
     // Rate limit check passed
     next();
   } catch (error) {
-    console.error("[Submission Rate Limiter] Error:", error);
+    log.error("[Submission Rate Limiter] Error:", error);
     // On error, allow the request (fail open)
     next();
   }
@@ -248,7 +249,7 @@ const runCodeRateLimiter = async (req, res, next) => {
     // Rate limit check passed
     next();
   } catch (error) {
-    console.error("[Run Code Rate Limiter] Error:", error);
+    log.error("[Run Code Rate Limiter] Error:", error);
     // On error, allow the request (fail open)
     next();
   }

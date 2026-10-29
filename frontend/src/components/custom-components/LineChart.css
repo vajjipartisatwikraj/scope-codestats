@@ -1,0 +1,145 @@
+/*
+ * LineChart
+ *
+ * An SVG chart that is drawn in real pixels (LineChart.jsx measures its own width). Colours are
+ * --lc-* variables whose defaults are design tokens; the `colors` prop and any parent can
+ * replace them. The area fill is the line colour fading from 18% to nothing, as DESIGN.md
+ * describes for charts.
+ */
+
+.lc {
+  --lc-line: var(--ds-accent);
+  --lc-area: var(--lc-line);
+  --lc-dot: var(--lc-line);
+  --lc-dot-ring: var(--ds-surface);
+  --lc-stem: var(--lc-line);
+  --lc-grid: var(--ds-line);
+  --lc-label: var(--ds-subtle);
+
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+.lc *,
+.lc *::before,
+.lc *::after {
+  transition: none;
+}
+
+.lc__canvas {
+  position: relative;
+  width: 100%;
+}
+
+/* Fill mode: the canvas takes the height the parent leaves and the chart is drawn to it */
+.lc[data-fill='true'] {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lc[data-fill='true'] .lc__canvas {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lc__svg {
+  display: block;
+  overflow: visible;
+}
+
+.lc__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  text-align: center;
+}
+
+/* ---- Marks ----------------------------------------------------------------------------- */
+
+.lc__grid {
+  stroke: var(--lc-grid);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.lc__tick-label {
+  fill: var(--lc-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.lc__line {
+  fill: none;
+  stroke: var(--lc-line);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lc__stem {
+  stroke: var(--lc-stem);
+  stroke-linecap: round;
+}
+
+.lc__dot {
+  fill: var(--lc-dot);
+  stroke: var(--lc-dot-ring);
+}
+
+/* Dots on stems sit on the stem itself, so a ring around each would only add clutter */
+.lc[data-variant='stems'] .lc__dot {
+  stroke: none;
+}
+
+.lc__dot--base {
+  fill: none;
+  stroke: var(--lc-dot);
+  stroke-width: 1.5;
+}
+
+/* ---- Entrance -------------------------------------------------------------------------- */
+
+/*
+ * A line (or area) draws itself from the left, its area fades in under it and the dot on the
+ * latest point appears when the line gets there. Stems (and their dots) rise into place one
+ * after another in a soft wave. Timing comes from shared.css.
+ */
+.lc[data-animate='true'] .lc__line {
+  /* pathLength is 1 in LineChart.jsx, so one dash as long as the line, pushed out of view */
+  stroke-dasharray: 1;
+  animation: lc-draw calc(var(--cc-enter) * 1.6) var(--cc-ease) both;
+  animation-delay: var(--cc-start);
+}
+
+.lc[data-animate='true'] .lc__area {
+  animation: cc-fade-in calc(var(--cc-enter) * 1.4) var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 200ms);
+}
+
+.lc[data-animate='true']:not([data-variant='stems']) .lc__dot {
+  animation: cc-pop-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + var(--cc-enter) * 1.4);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.lc[data-animate='true'] .lc__stem-group,
+.lc[data-animate='true'][data-variant='stems'] .lc__dot {
+  animation: cc-rise-in var(--cc-enter) var(--cc-ease) both;
+  animation-delay: var(--cc-delay);
+}
+
+@keyframes lc-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

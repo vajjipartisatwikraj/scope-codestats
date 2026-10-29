@@ -1,0 +1,71 @@
+/*
+ * TimelineStrip
+ *
+ * A row of pill-shaped parts whose widths follow their lengths (flex-grow is the length). Each
+ * part is a soft tint of its tone with the tone's text colour inside. The parts grow out of their
+ * left edge one after another once on mount (transform only). See TimelineStrip.jsx for the props.
+ */
+.tl {
+  --tl-text: var(--ds-text);
+  --tl-height: 32px;
+  --tl-gap: 3px;
+  display: block;
+  min-width: 0;
+  color: var(--tl-text);
+}
+
+.tl *,
+.tl *::before,
+.tl *::after {
+  transition: none;
+}
+
+.tl__empty {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.tl__strip {
+  display: flex;
+  gap: var(--tl-gap);
+  height: var(--tl-height);
+}
+
+.tl__part {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 4px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--tl-fill, var(--ds-accent-soft));
+  color: var(--tl-ink, var(--ds-accent-text));
+  transform-origin: left center;
+}
+
+.tl__text {
+  padding: 0 8px;
+  overflow: hidden;
+  font: var(--ds-type-caption);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@keyframes tl-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.tl[data-animate='true'] .tl__part {
+  animation: tl-grow var(--cc-enter) var(--cc-ease) backwards;
+  animation-delay: var(--cc-delay);
+}

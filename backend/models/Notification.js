@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const webPushUtil = require('../utils/webPushUtil');
+const log = require("../utils/logger").scope("NOTIFICATION");
 const User = mongoose.model('User');
 
 /**
@@ -56,7 +57,7 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.pre('save', function(next) {
   // If deletionTime is set, but it's in the past, set it to null
   if (this.deletionTime && new Date(this.deletionTime) < new Date()) {
-    console.warn('Attempted to set a deletionTime in the past, resetting to null');
+    log.warn('Attempted to set a deletionTime in the past, resetting to null');
     this.deletionTime = null;
   }
   next();
@@ -68,7 +69,7 @@ notificationSchema.pre('updateOne', function(next) {
   if (update.$set && update.$set.deletionTime) {
     // If deletionTime is set, but it's in the past, set it to null
     if (new Date(update.$set.deletionTime) < new Date()) {
-      console.warn('Attempted to set a deletionTime in the past, resetting to null');
+      log.warn('Attempted to set a deletionTime in the past, resetting to null');
       update.$set.deletionTime = null;
     }
   }
@@ -127,7 +128,7 @@ notificationSchema.statics.createGlobalNotification = async function(title, mess
     
     return createdNotifications;
   } catch (error) {
-    console.error('Error creating global notification:', error);
+    log.error('Error creating global notification:', error);
     throw error;
   }
 };

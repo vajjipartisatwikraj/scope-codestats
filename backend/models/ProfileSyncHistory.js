@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const log = require("../utils/logger").scope("PROFILE-SYNC-HISTORY");
 
 const profileSyncHistorySchema = new mongoose.Schema({
   // Basic sync info
@@ -69,7 +70,7 @@ const profileSyncHistorySchema = new mongoose.Schema({
   platformStats: [{
     platform: {
       type: String,
-      enum: ['leetcode', 'codeforces', 'codechef', 'geeksforgeeks', 'hackerrank'],
+      enum: ['leetcode', 'codeforces', 'codechef', 'geeksforgeeks', 'hackerrank', 'github', 'scopecodestats'],
       required: true
     },
     totalProfiles: {
@@ -107,7 +108,7 @@ const profileSyncHistorySchema = new mongoose.Schema({
     userYear: Number,
     platform: {
       type: String,
-      enum: ['leetcode', 'codeforces', 'codechef', 'geeksforgeeks', 'hackerrank']
+      enum: ['leetcode', 'codeforces', 'codechef', 'geeksforgeeks', 'hackerrank', 'github', 'scopecodestats']
     },
     platformUsername: String,
     error: String,
@@ -341,36 +342,29 @@ profileSyncHistorySchema.statics.getSyncStatistics = async function(days = 30) {
   return stats.length > 0 ? stats[0] : null;
 };
 
-// Static method to cleanup old records (keep only last 3)
-profileSyncHistorySchema.statics.cleanupOldRecords = async function() {
+// Static method to cleanup old records (keeps the most recent `keep` runs;
+// a run that is still going is never deleted)
+profileSyncHistorySchema.statics.cleanupOldRecords = async function(keep = 50) {
   try {
-    // Count total records
-    const totalCount = await this.countDocuments();
-    
-    // If we have more than 3 records, delete the oldest ones
-    if (totalCount > 3) {
-      // Get the IDs of records to keep (last 3)
-      const recordsToKeep = await this.find()
-        .sort({ startTime: -1 })
-        .limit(3)
-        .select('_id');
-      
-      const idsToKeep = recordsToKeep.map(record => record._id);
-      
-      // Delete all records except the ones we want to keep
-      const result = await this.deleteMany({ _id: { $nin: idsToKeep } });
-      
-      console.log(`ProfileSyncHistory cleanup: Deleted ${result.deletedCount} old records, kept last 3`);
-      return result.deletedCount;
+    const recent = await this.find()
+      .sort({ startTime: -1 })
+      .limit(keep)
+      .select('_id');
+
+    const result = await this.deleteMany({
+      _id: { $nin: recent.map((record) => record._id) },
+      status: { $ne: 'running' }
+    });
+
+    if (result.deletedCount > 0) {
+      log.debug(`ProfileSyncHistory cleanup: deleted ${result.deletedCount} old records, kept the last ${keep}`);
     }
-    
-    return 0;
+    return result.deletedCount;
   } catch (error) {
-    console.error('Error cleaning up ProfileSyncHistory:', error);
+    log.error('Error cleaning up ProfileSyncHistory:', error);
     throw error;
   }
 };
-
 const ProfileSyncHistory = mongoose.model('ProfileSyncHistory', profileSyncHistorySchema);
 
 module.exports = ProfileSyncHistory;

@@ -1,0 +1,110 @@
+/*
+ * Teacher requests
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Only what
+ * the kit does not have lives here: the filter bar, the note cell, the decision cell and the rows
+ * that replace the table on a phone. design/screens.md sections 16 and 19.
+ */
+
+.tr-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.tr-body {
+  min-height: 160px;
+  outline: none;
+}
+
+.tr-pad {
+  padding: 16px;
+}
+
+/* ---- Table cells ------------------------------------------------------------------------------- */
+
+.tr .ui-table {
+  min-width: 760px;
+}
+
+.tr .ui-table td {
+  vertical-align: top;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.tr-note-cell {
+  width: 34%;
+  min-width: 220px;
+}
+
+.tr-note {
+  display: -webkit-box;
+  max-width: 52ch;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-text);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.tr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tr-decision {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.tr-decision__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Rows on a phone --------------------------------------------------------------------------- */
+
+.tr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.tr-item:last-child {
+  border-bottom: 0;
+}
+
+.tr-item .ui-table__cell-main {
+  width: 100%;
+}
+
+.tr-item__when {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.tr-item .tr-actions {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.tr-item .tr-actions .ui-button {
+  flex: 1 1 0;
+}

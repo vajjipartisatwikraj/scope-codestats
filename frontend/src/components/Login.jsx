@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -163,8 +163,28 @@ const Carousel = () => {
   );
 };
 
-const Login = () => {
+/**
+ * Sign-in page. Two entry points share it:
+ *   - variant "student" (/login): the normal page.
+ *   - variant "teacher" (/teacher-login): the same Google sign-in, started from the
+ *     teacher route. New teacher accounts then ask an admin for teacher access.
+ * Both end in the same callback and get the same JWT.
+ */
+const Login = ({ variant = 'student' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isTeacher = variant === 'teacher';
+
+  // Why a previous sign-in attempt ended, passed back in the URL by the server
+  const params = new URLSearchParams(location.search);
+  const errorParam = params.get('error');
+  const signInProblem = errorParam
+    ? /^(google-)?auth-failed$/.test(errorParam)
+      ? 'Sign in failed. Please try again.'
+      : errorParam
+    : params.get('sessionExpired')
+    ? 'You were signed out because this account signed in on another device.'
+    : '';
 
   // Hide navbar and set dark background
   useEffect(() => {
@@ -194,8 +214,8 @@ const Login = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     
-    // Redirect directly to Google OAuth
-    window.location.href = `${apiUrl}/auth/google`;
+    // Redirect directly to Google OAuth (the teacher page uses its own start route)
+    window.location.href = `${apiUrl}/auth/google${isTeacher ? '/teacher' : ''}`;
   };
 
   return (
@@ -310,7 +330,7 @@ const Login = () => {
                     lineHeight: 1.2,
                   }}
                 >
-                  Welcome Back to
+                  {isTeacher ? 'Teacher sign in to' : 'Welcome Back to'}
                 </Typography>
                 <Typography
                   variant="h3"
@@ -341,23 +361,49 @@ const Login = () => {
                 lineHeight: 1.5,
               }}
             >
-              Sign in with your <b>MLRIT college email</b> to track your competitive programming progress.
+              {isTeacher ? (
+                <>
+                  Sign in with your <b>MLRIT college email</b>. If this is your first time, you will be
+                  asked to request teacher access, which an admin approves.
+                </>
+              ) : (
+                <>Sign in with your <b>MLRIT college email</b> to track your competitive programming progress.</>
+              )}
             </Typography>
+
+            {signInProblem && (
+              <Typography
+                role="alert"
+                sx={{
+                  color: 'white',
+                  bgcolor: 'rgba(0,0,0,0.25)',
+                  borderRadius: '4px',
+                  px: 2,
+                  py: 1,
+                  mb: 2,
+                  fontSize: '0.95rem',
+                }}
+              >
+                {signInProblem}
+              </Typography>
+            )}
             
-            {/* Already Registered */}
-            <Typography
-              variant="body1"
-              sx={{
-                mt: 3,
-                color: 'white',
-                mb: 2,
-                textAlign: 'left',
-                fontWeight: 400,
-                fontSize: '1rem',
-              }}
-            >
-              Not Yet Registered? <Link to="/register" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline' }}>Sign Up</Link>
-            </Typography>
+            {/* Already Registered (students) */}
+            {!isTeacher && (
+              <Typography
+                variant="body1"
+                sx={{
+                  mt: 3,
+                  color: 'white',
+                  mb: 2,
+                  textAlign: 'left',
+                  fontWeight: 400,
+                  fontSize: '1rem',
+                }}
+              >
+                Not Yet Registered? <Link to="/register" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline' }}>Sign Up</Link>
+              </Typography>
+            )}
             
             {/* Google Login Button */}
             <Button
@@ -389,6 +435,15 @@ const Login = () => {
             >
               Google
             </Button>
+
+            {/* The other entry point */}
+            <Typography sx={{ color: 'white', opacity: 0.85, fontSize: '0.95rem' }}>
+              {isTeacher ? (
+                <>Student? <Link to="/login" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline' }}>Sign in here</Link></>
+              ) : (
+                <>Faculty? <Link to="/teacher-login" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline' }}>Teacher sign in</Link></>
+              )}
+            </Typography>
           </Box>
         </Box>
       </Box>

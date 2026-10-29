@@ -1,0 +1,86 @@
+/*
+ * ProgressBar
+ *
+ * A pill track with a pill fill. The fill is as wide as the track and is moved left by the
+ * missing share (--pb-offset), so only transform changes, the track clips it, and the end of the
+ * fill stays round at every value. The slide-in on first appearance runs the same transform
+ * from fully hidden. Colours are --pb-* variables whose defaults are design tokens. See
+ * ProgressBar.jsx for the props.
+ */
+
+.pb {
+  --pb-fill: var(--ds-accent);
+  --pb-track: var(--ds-high);
+  --pb-text: var(--ds-text);
+  --pb-label: var(--ds-muted);
+  --pb-offset: -100%;
+
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.pb__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.pb__label {
+  min-width: 0;
+  color: var(--pb-label);
+  font: var(--ds-type-body-sm);
+}
+
+.pb__value {
+  flex: none;
+  color: var(--pb-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.pb__track {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--pb-track);
+}
+
+.pb[data-size='sm'] .pb__track {
+  height: 6px;
+}
+
+.pb__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--pb-fill);
+  transform: translateX(var(--pb-offset));
+  transition: transform var(--ds-duration-base) var(--ds-ease);
+}
+
+/* First appearance: the fill slides in from the left, slowly and with a soft landing */
+.pb[data-animate='true'] .pb__fill {
+  /* `backwards`: hidden during the delay, then back to the plain style, so later changes glide */
+  animation: pb-slide-in var(--cc-enter) var(--cc-ease) backwards;
+  animation-delay: var(--cc-delay);
+}
+
+@keyframes pb-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(var(--pb-offset));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb__fill {
+    transition: none;
+  }
+}

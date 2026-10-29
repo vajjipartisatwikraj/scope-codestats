@@ -1,0 +1,928 @@
+/*
+ * Public profile (route /public-profile/:username), prefix pp-
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css) and the
+ * custom charts. Nothing here belongs to one theme: the roles are published per theme.
+ *
+ * Cards are flat (24px, surface, no border, no shadow). One spotlight tile (the total score) and one
+ * accent surface (the band behind the picture). Inside a card nothing is a card: lists are separated
+ * by hairlines. Only floating layers (the detail panel and the share dialog, from the kit) cast a
+ * shadow.
+ *
+ * LAYOUT
+ *   under 600px     one column
+ *   600 to 999px    one column; the four small tiles fill the row as the width allows; the side
+ *                   cards sit in two columns
+ *   1000px and up   12 columns: hero 8 + score 4, the tiles across, then the main column 8 + side 4
+ */
+
+.pp {
+  --pp-pad: 16px;
+  --pp-gap: 12px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background-color: var(--ds-canvas);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 900px) {
+  .pp {
+    --pp-pad: 24px;
+    --pp-gap: 20px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .pp {
+    --pp-pad: 32px;
+  }
+}
+
+.pp *,
+.pp *::before,
+.pp *::after {
+  box-sizing: border-box;
+}
+
+/* ---- Top bar ------------------------------------------------------------------------------------ */
+
+.pp-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: var(--ds-canvas);
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.pp-top__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 1440px;
+  height: 64px;
+  margin: 0 auto;
+  padding: 0 var(--pp-pad);
+}
+
+.pp-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--ds-text);
+  text-decoration: none;
+  border-radius: var(--ds-radius-md);
+}
+
+.pp-brand:hover {
+  color: var(--ds-text);
+}
+
+.pp-brand:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.pp-brand__logo {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.pp-brand__name {
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.pp-top__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Under 420px the button keeps only its icon; the words stay for screen readers */
+@media (max-width: 419.95px) {
+  .pp-top__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+/* ---- Page frame and grid ------------------------------------------------------------------------ */
+
+.pp-main {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--pp-gap) var(--pp-pad) 40px;
+}
+
+.pp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--pp-gap);
+  align-items: start;
+}
+
+.pp-main-col,
+.pp-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pp-gap);
+  min-width: 0;
+}
+
+@media (min-width: 600px) and (max-width: 999.95px) {
+  .pp-aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (min-width: 1000px) {
+  .pp-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .pp-hero,
+  .pp-hero--skeleton {
+    grid-column: span 8;
+    align-self: stretch;
+  }
+
+  .pp-score-slot {
+    grid-column: span 4;
+    align-self: stretch;
+  }
+
+  .pp-tiles {
+    grid-column: 1 / -1;
+  }
+
+  .pp-main-col {
+    grid-column: span 8;
+  }
+
+  .pp-aside {
+    grid-column: span 4;
+  }
+}
+
+.pp-footer {
+  padding: 8px var(--pp-pad) 32px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-align: center;
+}
+
+.pp-footer p {
+  max-width: 64ch;
+  margin: 0 auto;
+}
+
+.pp-muted {
+  margin: 0;
+  color: var(--ds-muted);
+}
+
+/* ---- Hero ----------------------------------------------------------------------------------------- */
+
+.pp-hero {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.pp-hero__band {
+  flex: none;
+  height: 88px;
+  background-color: var(--ds-accent);
+}
+
+.pp-hero__body {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'avatar identity'
+    'actions actions';
+  align-content: start;
+  gap: 8px 16px;
+  padding: 0 16px 16px;
+}
+
+@media (min-width: 900px) {
+  .pp-hero__band {
+    height: 104px;
+  }
+
+  .pp-hero__body {
+    gap: 8px 24px;
+    padding: 0 24px 24px;
+  }
+}
+
+.pp-hero__avatar {
+  position: relative;
+  z-index: 1;
+  grid-area: avatar;
+  margin-top: -48px;
+  outline: 4px solid var(--ds-surface);
+}
+
+@media (min-width: 900px) {
+  .pp-hero__avatar {
+    margin-top: -56px;
+  }
+}
+
+.pp-hero__identity {
+  grid-area: identity;
+  min-width: 0;
+  padding-top: 12px;
+}
+
+.pp-hero__name {
+  margin: 0;
+  font: var(--ds-type-display);
+  letter-spacing: var(--ds-tracking-display);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 599.95px) {
+  .pp-hero__name {
+    font-size: 1.5rem;
+  }
+}
+
+.pp-hero__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: actions;
+  align-self: end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* On a phone the picture is smaller and the identity goes under it */
+@media (max-width: 479.95px) {
+  .pp-hero__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'avatar'
+      'identity'
+      'actions';
+  }
+
+  .pp-hero__avatar {
+    justify-self: start;
+  }
+
+  .pp-hero__identity {
+    padding-top: 0;
+  }
+
+  .pp-hero__actions .ui-button {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- Score tile and the four small tiles -------------------------------------------------------- */
+
+.pp-score-slot {
+  display: flex;
+  min-width: 0;
+}
+
+.pp-score-slot > .pp-score {
+  flex: 1 1 auto;
+}
+
+.pp-score {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pp-score .ui-stat__value {
+  font: var(--ds-type-numeral-xl);
+  letter-spacing: var(--ds-tracking-numeral-xl);
+}
+
+@media (max-width: 599.95px) {
+  .pp-score .ui-stat__value {
+    font: var(--ds-type-numeral-l);
+    letter-spacing: var(--ds-tracking-numeral-l);
+  }
+}
+
+.pp-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: var(--pp-gap);
+  min-width: 0;
+}
+
+/* Label and icon at the top, the figure with its picture in the middle, the context at the foot */
+.pp-tile {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pp-tile__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  min-width: 0;
+}
+
+.pp-tile__figure {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The ring of a rank and the donut of the problems sit in the same 96px slot at the right edge of
+   the tile, so the pictures of the three tiles line up on every screen */
+.pp-tile__visual {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-left: auto;
+}
+
+.pp-tile__visual > * {
+  margin: 0;
+}
+
+.pp-tile__visual .pc {
+  width: 96px;
+}
+
+.pp-tile__sub {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-tile__donut {
+  flex: none;
+}
+
+/* The easy, medium and hard counts under the total, each with its colour and its word */
+.pp-mix {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 8px 0 0;
+  padding: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  list-style: none;
+}
+
+.pp-mix li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pp-mix strong {
+  color: var(--ds-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-mix__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.pp-dial__gauge {
+  display: grid;
+  place-items: center;
+  min-height: 104px;
+}
+
+.pp-dial__value {
+  display: block;
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.pp-dial__unit {
+  display: block;
+  margin-top: 2px;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+/* ---- Cards ---------------------------------------------------------------------------------------- */
+
+.pp-card .ui-card__header {
+  align-items: center;
+}
+
+.pp-card .ui-card__actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pp-heat {
+  min-width: 0;
+}
+
+.pp-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 16px 0 0;
+}
+
+.pp-figures > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--ds-line);
+}
+
+.pp-figures > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.pp-figures dt {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-figures dd {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-breakdown {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  min-height: 240px;
+}
+
+.pp-breakdown > * {
+  width: 100%;
+}
+
+/* ---- Coding platforms: tabs, figures and blocks, as in the dashboard's problems view ---------------- */
+
+.pp-synced {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* The card is a container, so its figures and blocks follow the width of the card, not the window */
+.pp-plat {
+  container-type: inline-size;
+}
+
+.pp-plat__tabs {
+  max-width: 100%;
+  margin: 0 0 20px;
+}
+
+.pp-plat__panel {
+  min-width: 0;
+}
+
+.pp-plat__content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.pp-plat__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.pp-plat__caption p {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+/* A row of figures divided by hairlines; the first is the one the visitor came for */
+.pp-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 0;
+  margin: 0;
+}
+
+.pp-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 28px;
+  border-left: 1px solid var(--ds-line);
+}
+
+.pp-kpi:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.pp-kpi__label,
+.pp-kpi__note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-kpi__value {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pp-kpi[data-lead='true'] .pp-kpi__value {
+  font: var(--ds-type-numeral-xl);
+  letter-spacing: var(--ds-tracking-numeral-xl);
+}
+
+@container (max-width: 700px) {
+  .pp-kpi {
+    padding: 0 20px;
+  }
+
+  .pp-kpi[data-lead='true'] .pp-kpi__value {
+    font-size: 2.5rem;
+  }
+}
+
+@container (max-width: 520px) {
+  .pp-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 16px;
+  }
+
+  .pp-kpi,
+  .pp-kpi:first-child {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .pp-kpi[data-lead='true'] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Blocks are sections of the card under a hairline, two to a row */
+.pp-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 32px;
+}
+
+@container (max-width: 640px) {
+  .pp-blocks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pp-block[data-wide='true'] {
+    grid-column: auto;
+  }
+}
+
+.pp-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.pp-block[data-wide='true'] {
+  grid-column: 1 / -1;
+}
+
+.pp-block__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.pp-block__note {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.pp-block__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* A donut sits in the middle of its block, with its key at a comfortable measure */
+.pp-block__body > .pc {
+  align-content: center;
+}
+
+.pp-block__body > .pc .pc__legend {
+  max-width: 280px;
+}
+
+.pp-dial-block {
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+}
+
+/* Inside the rating dial the number is a step smaller, so a four digit rating stays within the ticks */
+.pp-dial-block .pp-dial__value {
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  line-height: 1.1;
+}
+
+/* ---- GitHub --------------------------------------------------------------------------------------- */
+
+.pp-github {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 20px 0;
+  margin: 0;
+}
+
+.pp-github > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 16px;
+  border-left: 1px solid var(--ds-line);
+}
+
+.pp-github > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.pp-github dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.pp-github dd {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Work and achievements ------------------------------------------------------------------------ */
+
+.pp-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-items > li + li {
+  border-top: 1px solid var(--ds-line);
+}
+
+.pp-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.pp-item:hover {
+  background-color: var(--ds-raised);
+}
+
+.pp-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-focus);
+}
+
+.pp-item__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pp-item__title {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.pp-item__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+/* The icon of a kind on a tonal circle */
+.pp-mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--pp-hue, var(--ds-accent)) 16%, var(--ds-surface));
+  color: var(--pp-hue, var(--ds-accent));
+}
+
+/* ---- Side cards ------------------------------------------------------------------------------------ */
+
+.pp-about {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-body-lg);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.pp-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pp-skills__name {
+  margin: 0 0 8px;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+.pp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-edu {
+  justify-content: space-between;
+}
+
+.pp-edu .ui-detail__step-text {
+  flex: 1 1 auto;
+}
+
+/* ---- States (loading, not found, rate limited, error) ---------------------------------------------- */
+
+.pp-state {
+  display: grid;
+  place-items: center;
+  min-height: 60dvh;
+}
+
+.pp-state__card {
+  width: 100%;
+  max-width: 520px;
+}
+
+.pp-state__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pp-state__actions .ui-button {
+  min-width: 180px;
+}
+
+.pp-state__timer {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Share dialog (drawn in a portal, so it stands on its own) -------------------------------------- */
+
+.pp-share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pp-share__qr svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--ds-radius-lg);
+}
+
+.pp-share__hint {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.pp-share__url {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.pp-share__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pp-share__status {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-align: center;
+}
+
+/* ---- Motion ------------------------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-item {
+    transition: none;
+  }
+}

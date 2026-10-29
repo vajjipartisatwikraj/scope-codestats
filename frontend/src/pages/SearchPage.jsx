@@ -195,7 +195,7 @@ const SearchPage = () => {
   const handleItemClick = (type, item) => {
     switch (type) {
       case 'user':
-        navigate(`/user-view/${item.username}`);
+        navigate(`/public-profile/${encodeURIComponent(item.username)}`);
         break;
       case 'cohort':
         navigate(`/cohorts/${item._id}`);

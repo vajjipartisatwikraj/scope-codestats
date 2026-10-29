@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -2143,7 +2144,7 @@ const CohortDetail = () => {
                         },
                       }}
                       dangerouslySetInnerHTML={{
-                        __html: moduleFormData.documentationUrl,
+                        __html: sanitizeHtml(moduleFormData.documentationUrl),
                       }}
                     />
                   </Paper>

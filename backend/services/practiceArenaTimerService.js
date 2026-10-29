@@ -14,6 +14,7 @@
 
 const PATest = require("../models/PATest");
 const PASubmission = require("../models/PASubmission");
+const log = require("../utils/logger").scope("PRACTICE-ARENA-TIMER");
 
 class PracticeArenaTimerService {
   constructor(io) {
@@ -43,7 +44,7 @@ class PracticeArenaTimerService {
 
       this.initialized = true;
     } catch (error) {
-      console.error("[PA Timer] ❌ Initialization failed:", error);
+      log.error("[PA Timer] ❌ Initialization failed:", error);
       throw error;
     }
   }
@@ -73,12 +74,12 @@ class PracticeArenaTimerService {
       const test = await PATest.findById(testId);
 
       if (!test) {
-        console.error(`[PA Timer] ❌ Test ${testId} not found`);
+        log.error(`[PA Timer] ❌ Test ${testId} not found`);
         return;
       }
 
       if (test.status !== "started") {
-        console.error(
+        log.error(
           `[PA Timer] ❌ Cannot start timer for test in ${test.status} status`
         );
         return;
@@ -109,7 +110,7 @@ class PracticeArenaTimerService {
         this.monitorTest(testId, userId);
       }
     } catch (error) {
-      console.error(
+      log.error(
         `[PA Timer] ❌ Error starting timer for test ${testId}:`,
         error
       );
@@ -143,7 +144,7 @@ class PracticeArenaTimerService {
           this.activeTimers.delete(testIdStr);
         }
       } catch (error) {
-        console.error(
+        log.error(
           `[PA Timer] ❌ Error monitoring test ${testIdStr}:`,
           error
         );
@@ -205,7 +206,7 @@ class PracticeArenaTimerService {
         this.activeTimers.delete(testIdStr);
       }
     } catch (error) {
-      console.error(`[PA Timer] ❌ Error completing test ${testId}:`, error);
+      log.error(`[PA Timer] ❌ Error completing test ${testId}:`, error);
     }
   }
 
@@ -237,7 +238,7 @@ class PracticeArenaTimerService {
         timeLimitMinutes: test.parameters.timeLimit,
       };
     } catch (error) {
-      console.error(
+      log.error(
         `[PA Timer] ❌ Error getting timer state for test ${testId}:`,
         error
       );
@@ -275,7 +276,7 @@ class PracticeArenaTimerService {
           // Timer updates broadcast to active tests
         }
       } catch (error) {
-        console.error("[PA Timer] ❌ Error in periodic broadcast:", error);
+        log.error("[PA Timer] ❌ Error in periodic broadcast:", error);
       }
     }, 60000); // Every 60 seconds (1 minute)
   }

@@ -1,0 +1,1139 @@
+/*
+ * speechX/setup: the pre-test flow (instructions, speaker check, audio check)
+ *
+ * Plain CSS on the design tokens (--ds-*), no Material UI, prefix sxs-. It sits on the shared
+ * speechX foundation (speechX.css: sx-page, sx-card, sx-sr, sx-divider and the --sx-* variables)
+ * and the ui kit. Rules: DESIGN.md and design/screens.md sections 11, 17 to 19, 21, 22.
+ * Cards are flat, nothing glows or blurs, fills are solid; every status carries an icon and a
+ * word; motion is 150 to 240ms on transform, opacity and colour and is off or reduced to a fade
+ * under prefers-reduced-motion.
+ *
+ * The app's global `* { transition }` rule (index.css) would make every child ease its colours a
+ * second time, so a component that animates its own colours resets its children with
+ * `transition: none` and names the one thing it animates.
+ *
+ * Breakpoints: phones under 600, 600 to 899, 900 to 1199, 1200 and up.
+ */
+
+/* ---- Flow ----------------------------------------------------------------------------------- */
+
+.sxs-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  /* The flow fills the room between the top bar and the footer (the page padding is inside the
+     stage), so a step can sit in the middle of it or stretch to its edges */
+  min-height: calc(var(--sx-stage) - 2 * var(--sx-pad));
+}
+
+/* The instructions fit the window exactly on a desktop-sized screen: nothing scrolls on the page,
+   the summary card scrolls inside itself if the window is short */
+@media (min-width: 900px) and (min-height: 620px) {
+  .sxs-flow--instructions {
+    height: calc(var(--sx-stage) - 2 * var(--sx-pad));
+    min-height: 0;
+  }
+
+  .sxs-flow--instructions .sxs-instructions {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+.sxs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.sxs-head__text {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.sxs-head__title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+  overflow-wrap: anywhere;
+}
+
+.sxs-head__sub {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* Room for the focus rings at the edges, which the sideways clip would otherwise cut */
+.sxs-viewport {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  margin: -4px;
+  padding: 4px;
+  overflow-x: clip;
+}
+
+/* The speaker check and the audio check sit in the vertical middle of the window */
+.sxs-flow--speaker .sxs-step,
+.sxs-flow--audio .sxs-step {
+  justify-content: center;
+}
+
+[data-step-heading]:focus {
+  outline: none;
+}
+
+.sxs-section-title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxs-section-text {
+  margin: 4px 0 16px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxs-reason {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Step transition -------------------------------------------------------------------------- */
+
+@keyframes sxs-step-forward {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sxs-step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* "backwards": nothing is left on the element afterwards, so no transform becomes a containing block */
+.sxs-step {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  animation: sxs-step-forward 240ms var(--ds-ease-enter) backwards;
+}
+
+.sxs-step[data-dir='back'] {
+  animation-name: sxs-step-back;
+}
+
+.sxs-step[data-animate='false'] {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxs-step,
+  .sxs-step[data-dir='back'] {
+    animation: sx-fade 150ms linear backwards;
+  }
+
+  .sxs-step[data-animate='false'] {
+    animation: none;
+  }
+}
+
+/* ---- Step 1: instructions --------------------------------------------------------------------- */
+
+.sxs-instructions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sx-gap);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .sxs-instructions {
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.sxs-instructions__summary {
+  min-width: 0;
+}
+
+.sxs-instructions__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The tips sit in the vertical middle of the column, level with the middle of the summary card;
+   the acknowledge card stays at the bottom, level with the bottom of the summary card */
+@media (min-width: 900px) {
+  .sxs-instructions__main .sxs-tips {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .sxs-instructions__main .sxs-ack-card {
+    flex: none;
+    margin-top: auto;
+  }
+
+  .sxs-instructions__summary .sxs-summary > .sx-card__body {
+    overflow-y: auto;
+  }
+}
+
+/* The summary card's heading strip is the platform blue (the darker blue keeps white text above 4.5:1) */
+.sxs-summary {
+  overflow: hidden;
+}
+
+.sxs-summary.sx-card > .sx-banner {
+  border-bottom: 0;
+  background-color: var(--ds-accent-press);
+  color: var(--ds-on-accent);
+}
+
+.sxs-summary .sx-banner__label,
+.sxs-summary .sx-banner__title,
+.sxs-summary .sx-banner__description {
+  color: var(--ds-on-accent);
+}
+
+/* The acknowledge card: the teacher's note (when there is one), a notice when the test is not
+   open, and the checkbox with its button */
+.sxs-ack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+@media (min-width: 600px) {
+  .sxs-ack-card {
+    padding: 20px 24px;
+  }
+}
+
+.sxs-teacher {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.sxs-teacher__title {
+  margin: 0 0 4px;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxs-teacher__text {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sxs-ack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.sxs-ack__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  margin-left: auto;
+}
+
+@media (max-width: 599.95px) {
+  .sxs-ack__action {
+    flex: 1 1 100%;
+    flex-direction: column;
+    align-items: stretch;
+    margin-left: 0;
+  }
+
+  .sxs-ack__action .ui-button {
+    width: 100%;
+  }
+}
+
+/* Summary card */
+.sxs-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.sxs-figure {
+  display: flex;
+  flex-direction: column-reverse; /* the figure above its label; the label comes first in the markup */
+  gap: 2px;
+  min-width: 0;
+}
+
+.sxs-figure__label {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxs-figure__value {
+  margin: 0;
+  font: var(--ds-type-title);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.sxs-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sxs-skills__label {
+  margin: 0 0 8px;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxs-skills__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Tips carousel ---------------------------------------------------------------------------- */
+
+.sxs-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sxs-carousel__view {
+  position: relative;
+  padding: 4px 0;
+  border-radius: var(--ds-radius-xl);
+  overflow: hidden;
+  outline: none;
+}
+
+.sxs-carousel__view:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-canvas),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* The active card is centred: the track starts at the middle of the view and slides back by the
+   cards before it and half of its own width */
+.sxs-carousel__track {
+  --sxs-gap: 16px;
+
+  display: flex;
+  align-items: stretch;
+  gap: var(--sxs-gap);
+  width: max-content;
+  margin-left: 50%;
+  transform: translateX(calc(var(--sxs-index) * (var(--sxs-tip-w) + var(--sxs-gap)) * -1 - var(--sxs-tip-w) / 2));
+  transition: transform var(--ds-duration-base) var(--ds-ease-enter);
+}
+
+.sxs-tip {
+  box-sizing: border-box;
+  flex: 0 0 var(--sxs-tip-w);
+  width: var(--sxs-tip-w);
+  padding: 24px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  cursor: pointer;
+  transform: scale(0.94);
+  transition:
+    transform var(--ds-duration-base) var(--ds-ease),
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxs-tip *,
+.sxs-tip *::before,
+.sxs-tip *::after {
+  transition: none;
+}
+
+.sxs-tip:hover {
+  background-color: var(--ds-raised);
+}
+
+/* The one spotlight tile of the screen */
+.sxs-tip[data-active='true'] {
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+  cursor: default;
+  transform: none;
+}
+
+.sxs-tip__mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.sxs-tip[data-active='true'] .sxs-tip__mark {
+  background-color: var(--ds-on-spotlight);
+  color: var(--ds-spotlight);
+}
+
+.sxs-tip__count {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxs-tip__title {
+  margin: 4px 0 8px;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxs-tip__text {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-lg);
+}
+
+.sxs-tip[data-active='true'] .sxs-tip__count,
+.sxs-tip[data-active='true'] .sxs-tip__text {
+  color: var(--ds-on-spotlight-muted);
+}
+
+.sxs-carousel__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+}
+
+.sxs-dots {
+  display: flex;
+  align-items: center;
+}
+
+.sxs-dot {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sxs-dot:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-canvas),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxs-dot__bar {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-bar-muted);
+  transition:
+    width var(--ds-duration-base) var(--ds-ease),
+    background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxs-dot:hover .sxs-dot__bar {
+  background-color: var(--ds-muted);
+}
+
+.sxs-dot[data-active='true'] .sxs-dot__bar,
+.sxs-dot[data-active='true']:hover .sxs-dot__bar {
+  width: 24px;
+  background-color: var(--ds-accent);
+}
+
+@media (max-width: 899.95px), (pointer: coarse) {
+  .sxs-dot {
+    width: 44px;
+  }
+}
+
+@media (max-width: 599.95px) {
+  .sxs-dots {
+    flex: 1 1 100%;
+    order: -1;
+    justify-content: center;
+  }
+
+  .sxs-carousel__controls .ui-button {
+    flex: 1 1 0;
+  }
+}
+
+/* ---- Steps 2 and 3: shared pieces -------------------------------------------------------------- */
+
+.sxs-narrow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.sxs-stepcard > .sx-card__body,
+.sxs-recorder > .sx-card__body,
+.sxs-checkscard > .sx-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 600px) {
+  .sxs-stepcard > .sx-card__body {
+    padding: 32px;
+  }
+}
+
+.sxs-stephead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.sxs-stephead[data-align='start'] {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.sxs-stephead__title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.sxs-stephead__text {
+  max-width: 52ch;
+  margin: -4px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-lg);
+}
+
+/* The controls in the middle of a check: button, caption, wave */
+.sxs-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.sxs-caption {
+  min-height: 22px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.sxs-quote {
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.sxs-question {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.sxs-question__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxs-question__answers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sxs-answer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  margin: 0;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxs-answer:hover {
+  background-color: var(--ds-high);
+}
+
+.sxs-answer[data-selected='true'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.sxs-answer[data-tone='negative'][data-selected='true'] {
+  background-color: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+.sxs-answer:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+@media (max-width: 599.95px) {
+  .sxs-question__answers,
+  .sxs-question__answers .sxs-answer {
+    width: 100%;
+  }
+}
+
+/* The row of Back and the main action under a step */
+.sxs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.sxs-nav__next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.sxs-nav__next .sxs-reason {
+  max-width: 44ch;
+  text-align: right;
+}
+
+@media (max-width: 599.95px) {
+  /* The reason on top, then Back and the main action side by side */
+  .sxs-nav__next {
+    display: contents;
+  }
+
+  .sxs-nav .sxs-reason {
+    flex: 1 1 100%;
+    order: -1;
+    max-width: none;
+    text-align: left;
+  }
+
+  .sxs-nav > .ui-button {
+    flex: 0 0 auto;
+  }
+
+  .sxs-nav__next .ui-button {
+    flex: 1 1 0;
+  }
+}
+
+/* ---- Record button ------------------------------------------------------------------------------ */
+
+.sxs-record {
+  --sxs-bg: var(--ds-accent);
+  --sxs-fg: var(--ds-on-accent);
+  --sxs-hover: var(--ds-accent-hover);
+
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--sxs-record-size, 72px);
+  height: var(--sxs-record-size, 72px);
+}
+
+.sxs-record[data-tone='danger'] {
+  --sxs-bg: var(--ds-danger);
+  --sxs-fg: var(--ds-surface);
+  --sxs-hover: color-mix(in srgb, var(--ds-danger) 88%, var(--ds-text));
+}
+
+.sxs-record__button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--sxs-bg);
+  color: var(--sxs-fg);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxs-record__button *,
+.sxs-record__button *::before,
+.sxs-record__button *::after {
+  transition: none;
+}
+
+.sxs-record__button:hover:not(:disabled) {
+  background-color: var(--sxs-hover);
+  transform: scale(1.04);
+}
+
+.sxs-record__button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Disabled is the high fill with a subtle icon; a running action keeps its own colours */
+.sxs-record__button:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.sxs-record[data-active='true'] .sxs-record__button:disabled {
+  background-color: var(--sxs-bg);
+  color: var(--sxs-fg);
+}
+
+.sxs-record__button[aria-busy='true'] {
+  cursor: progress;
+}
+
+.sxs-record__button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--ds-surface),
+    0 0 0 5px var(--ds-focus);
+}
+
+@keyframes sxs-ring {
+  from {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.sxs-record__ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--sxs-bg);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sxs-ring 2s var(--ds-ease) infinite;
+}
+
+.sxs-record__ring--late {
+  animation-delay: 1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* One still ring says "running" without any movement */
+  .sxs-record__ring {
+    opacity: 1;
+    transform: scale(1.14);
+    animation: none;
+  }
+
+  .sxs-record__ring--late {
+    display: none;
+  }
+
+  .sxs-record__button:hover:not(:disabled),
+  .sxs-record__button:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ---- Step 3: audio check -------------------------------------------------------------------------- */
+
+.sxs-audio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+}
+
+.sxs-audio__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sx-gap);
+}
+
+@media (min-width: 900px) {
+  .sxs-audio__grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.sxs-timer {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-numeral-m);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-numeral-m);
+}
+
+.sxs-timer__limit {
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  letter-spacing: 0;
+}
+
+.sxs-wave {
+  width: 100%;
+  max-width: 440px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.sxs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+@media (max-width: 599.95px) {
+  .sxs-actions .ui-button {
+    flex: 1 1 100%;
+  }
+}
+
+.sxs-transcript {
+  padding: 16px 20px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  text-align: left;
+}
+
+.sxs-transcript__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.sxs-transcript__title {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.sxs-transcript__quote {
+  margin: 0;
+  font: var(--ds-type-title);
+  font-weight: 500;
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.sxs-transcript__text {
+  margin: 0;
+  font: var(--ds-type-body-lg);
+}
+
+.sxs-transcript__issues {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+/* ---- Checklist ----------------------------------------------------------------------------------- */
+
+.sxs-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sxs-checks__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sxs-checks__count {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxs-checks__figure {
+  color: var(--ds-text);
+  font: var(--ds-type-numeral-m);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-numeral-m);
+}
+
+.sxs-checks__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxs-check {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.sxs-check + .sxs-check {
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxs-check__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--ds-subtle);
+}
+
+.sxs-check[data-status='pass'] .sxs-check__icon {
+  color: var(--ds-success);
+}
+
+.sxs-check[data-status='warn'] .sxs-check__icon {
+  color: var(--ds-warning);
+}
+
+.sxs-check[data-status='fail'] .sxs-check__icon {
+  color: var(--ds-danger);
+}
+
+.sxs-check[data-status='active'] .sxs-check__icon {
+  color: var(--ds-accent-text);
+}
+
+.sxs-check__main {
+  min-width: 0;
+}
+
+.sxs-check__title {
+  margin: 0;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.sxs-check__detail {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxs-check__meter {
+  margin-top: 8px;
+}
+
+.sxs-check__badge {
+  align-self: start;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+/* The "how to fix" explanation of a check that needs attention */
+.sxs-fix {
+  grid-column: 2 / -1;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.sxs-fix__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.sxs-fix__steps,
+.sxs-fix__issues {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxs-fix__issues {
+  margin-bottom: 8px;
+}
+
+.sxs-fix__steps li,
+.sxs-fix__issues li {
+  padding-left: 4px;
+}
+
+.sxs-fix__steps li + li,
+.sxs-fix__issues li + li {
+  margin-top: 4px;
+}
+
+@media (max-width: 479.95px) {
+  .sxs-check {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .sxs-check__badge {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 0;
+  }
+
+  .sxs-fix {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- Loading and error ----------------------------------------------------------------------------- */
+
+.sxs-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sxs-skeleton__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sxs-skeleton__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sx-gap);
+}
+
+@media (min-width: 900px) {
+  .sxs-skeleton__grid {
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  }
+}
+
+.sxs-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---- Reduced motion --------------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sxs-carousel__track,
+  .sxs-tip,
+  .sxs-dot__bar {
+    transition: none;
+  }
+}

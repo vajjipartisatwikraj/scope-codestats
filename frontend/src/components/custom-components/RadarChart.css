@@ -1,0 +1,214 @@
+/*
+ * RadarChart
+ *
+ * An SVG web drawn in real pixels (RadarChart.jsx measures its own box), so labels keep their
+ * 12px size at every width. Colours are --rc-* variables whose defaults are design tokens. The
+ * first series has a soft 18% fill and a solid line, the second a dashed line and no fill. See
+ * RadarChart.jsx for the props.
+ */
+
+.rc {
+  --rc-fill: var(--ds-accent);
+  --rc-compare: var(--ds-muted);
+  --rc-grid: var(--ds-line);
+  --rc-label: var(--ds-subtle);
+  --rc-text: var(--ds-text);
+  --rc-dot-ring: var(--ds-surface);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.rc *,
+.rc *::before,
+.rc *::after {
+  transition: none;
+}
+
+.rc__canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+/* Fill mode: the canvas takes the room the parent leaves and the web is drawn to it */
+.rc[data-fill='true'] {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.rc[data-fill='true'] .rc__canvas {
+  flex: 1 1 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.rc__svg {
+  display: block;
+  overflow: visible;
+}
+
+.rc__empty {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  text-align: center;
+}
+
+.rc__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* ---- Marks ----------------------------------------------------------------------------- */
+
+.rc__ring {
+  fill: none;
+  stroke: var(--rc-grid);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.rc__spoke {
+  stroke: var(--rc-grid);
+  stroke-width: 1;
+}
+
+.rc__label {
+  fill: var(--rc-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.rc__shape {
+  stroke-linejoin: round;
+}
+
+.rc__shape--main {
+  fill: var(--rc-fill);
+  fill-opacity: 0.18;
+  stroke: var(--rc-fill);
+  stroke-width: 2;
+}
+
+.rc__shape--compare {
+  fill: none;
+  stroke: var(--rc-compare);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.rc__dot {
+  fill: var(--rc-fill);
+  stroke: var(--rc-dot-ring);
+  stroke-width: 2;
+}
+
+/* ---- Keyboard and pointer targets ------------------------------------------------------ */
+
+.rc__hits {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rc__hit {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: default;
+  pointer-events: auto;
+}
+
+.rc__hit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* ---- Legend ---------------------------------------------------------------------------- */
+
+.rc__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rc__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.rc__swatch-line {
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.rc__swatch-line--main {
+  stroke: var(--rc-fill);
+}
+
+.rc__swatch-line--compare {
+  stroke: var(--rc-compare);
+  stroke-dasharray: 4 3;
+}
+
+/* ---- Entrance -------------------------------------------------------------------------- */
+
+/*
+ * The grid and the labels fade in, then each shape grows out of the middle (the transform origin
+ * is set inline, in px) and the dots pop in last. Timing comes from shared.css.
+ */
+.rc[data-animate='true'] .rc__web {
+  animation: cc-fade-in 420ms var(--cc-ease) both;
+  animation-delay: var(--cc-start);
+}
+
+.rc[data-animate='true'] .rc__shape {
+  animation: rc-grow var(--cc-enter) var(--cc-ease) backwards;
+  animation-delay: calc(var(--cc-start) + 120ms + var(--i, 0) * 80ms);
+}
+
+.rc[data-animate='true'] .rc__dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cc-pop-in 360ms var(--cc-ease) backwards;
+  animation-delay: calc(var(--cc-start) + 480ms);
+}
+
+.rc[data-animate='true'] .rc__legend {
+  animation: cc-rise-in 420ms var(--cc-ease) backwards;
+  animation-delay: calc(var(--cc-start) + 320ms);
+}
+
+@keyframes rc-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

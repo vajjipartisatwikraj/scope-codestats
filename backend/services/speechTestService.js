@@ -24,6 +24,7 @@ const SpeechTestAnswer = require("../models/SpeechTestAnswer");
 const speechJudge = require("./speechJudgeClient");
 const { buildQuestionAnalysis } = require("./speechAnalysis");
 const { averageSkills } = require("./speechAnalysis/skills");
+const log = require("../utils/logger").scope("SPEECH-TEST");
 
 const { ObjectId } = mongoose.Types;
 
@@ -206,7 +207,7 @@ async function submitSection(attemptId, sectionId, { auto = false, now = new Dat
     // Start scoring straight away instead of waiting for the next sweep.
     setImmediate(() => {
       dispatchSection(attemptId, sectionId).catch((err) =>
-        console.error("[SpeechTest] immediate dispatch failed:", err.message)
+        log.error("[SpeechTest] immediate dispatch failed:", err.message)
       );
     });
   }
@@ -232,7 +233,7 @@ async function retrySection(attemptId, sectionId) {
   if (changed) {
     setImmediate(() => {
       dispatchSection(attemptId, sectionId).catch((err) =>
-        console.error("[SpeechTest] retry dispatch failed:", err.message)
+        log.error("[SpeechTest] retry dispatch failed:", err.message)
       );
     });
   }
@@ -398,7 +399,7 @@ async function dispatchSection(attemptId, sectionId, now = new Date()) {
         lockedUntil: null,
         lastError: error.message,
       });
-      console.error(`[SpeechTest] section ${sectionId} failed to dispatch: ${error.message}`);
+      log.error(`[SpeechTest] section ${sectionId} failed to dispatch: ${error.message}`);
       return false;
     }
 
@@ -409,7 +410,7 @@ async function dispatchSection(attemptId, sectionId, now = new Date()) {
       lockedUntil: new Date(now.getTime() + delayMs),
       lastError: error.message,
     });
-    console.warn(
+    log.warn(
       `[SpeechTest] judge unavailable for section ${sectionId} (attempt ${attemptNumber}): ${error.message}`
     );
     return false;
@@ -459,7 +460,7 @@ async function completeSection(attemptId, section, fromStatus, judgeResults, ans
         answer: answerByQuestion.get(String(question._id)),
       });
     } catch (error) {
-      console.error(`[SpeechTest] could not build the breakdown for ${question._id}: ${error.message}`);
+      log.error(`[SpeechTest] could not build the breakdown for ${question._id}: ${error.message}`);
     }
 
     return {
@@ -636,7 +637,7 @@ async function runLimited(tasks, limit) {
       try {
         await task();
       } catch (error) {
-        console.error("[SpeechTest] sweep task failed:", error.message);
+        log.error("[SpeechTest] sweep task failed:", error.message);
       }
     }
   };
@@ -717,13 +718,13 @@ async function runSweep(now = new Date()) {
 function startSpeechTestSweeper({ intervalMs = SWEEP_INTERVAL_MS } = {}) {
   if (sweepTimer) return sweepTimer;
 
-  runSweep().catch((err) => console.error("[SpeechTest] sweep (initial) failed:", err.message));
+  runSweep().catch((err) => log.error("[SpeechTest] sweep (initial) failed:", err.message));
   sweepTimer = setInterval(() => {
-    runSweep().catch((err) => console.error("[SpeechTest] sweep failed:", err.message));
+    runSweep().catch((err) => log.error("[SpeechTest] sweep failed:", err.message));
   }, intervalMs);
   if (typeof sweepTimer.unref === "function") sweepTimer.unref();
 
-  console.log(`🎙️  Speech test sweeper started (every ${Math.round(intervalMs / 1000)}s)`);
+  log.ready(`sweeper every ${Math.round(intervalMs / 1000)}s`);
   return sweepTimer;
 }
 

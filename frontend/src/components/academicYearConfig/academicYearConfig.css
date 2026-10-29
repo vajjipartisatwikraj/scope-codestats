@@ -1,0 +1,235 @@
+/*
+ * Academic year configuration
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). One
+ * card: the current year (the one inverted tile of the screen) with the start month, the mapping
+ * table, a note on what a change does to students, and a sticky action footer.
+ * design/screens.md sections 16 and 19.
+ */
+
+.ay-card.ui-card {
+  --ay-pad: 16px;
+
+  padding: var(--ay-pad);
+}
+
+@media (min-width: 900px) {
+  .ay-card.ui-card {
+    --ay-pad: 24px;
+  }
+}
+
+/* ---- Current year and start month ---------------------------------------------------------- */
+
+.ay-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .ay-top {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 24px;
+  }
+}
+
+.ay-current {
+  padding: 20px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+}
+
+.ay-current__label,
+.ay-current__context {
+  margin: 0;
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ay-current__value {
+  margin: 4px 0;
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ay-start {
+  max-width: 420px;
+}
+
+.ay-rule {
+  height: 0;
+  margin: 24px 0 20px;
+  border: 0;
+  border-top: 1px solid var(--ds-line);
+}
+
+/* ---- Mappings ------------------------------------------------------------------------------- */
+
+.ay-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: 0 0 12px;
+}
+
+.ay-section-title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.ay-section-text {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ay-table-wrap .ui-table {
+  min-width: 520px;
+}
+
+.ay-year-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ay-year {
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ay-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+/* Rows on a phone */
+.ay-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 72px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ay-item:last-child {
+  border-bottom: 0;
+}
+
+.ay-item__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1;
+}
+
+.ay-item__text {
+  display: flex;
+  flex-direction: column;
+  grid-column: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.ay-item .ui-table__actions {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+}
+
+/* ---- What a change does to students ---------------------------------------------------------- */
+
+.ay-changes {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.ay-changes__icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ay-changes__title {
+  margin: 0;
+  font: var(--ds-type-label);
+}
+
+.ay-changes__list {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  font: var(--ds-type-body);
+}
+
+.ay-changes__list li + li {
+  margin-top: 4px;
+}
+
+/* ---- Sticky action footer --------------------------------------------------------------------- */
+
+.ay-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: 24px calc(var(--ay-pad) * -1) calc(var(--ay-pad) * -1);
+  padding: 16px var(--ay-pad);
+  border-top: 1px solid var(--ds-line);
+  border-radius: 0 0 var(--ds-radius-xl) var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.ay-footer__status {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ay-footer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 599.95px) {
+  .ay-footer__status {
+    flex-basis: 100%;
+  }
+
+  .ay-footer__actions {
+    flex: 1 1 100%;
+  }
+
+  .ay-footer__actions .ui-button {
+    flex: 1 1 0;
+  }
+}
+
+/* ---- Dialog form ------------------------------------------------------------------------------- */
+
+.ay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

@@ -1,0 +1,104 @@
+/*
+ * ChartTip
+ *
+ * A small white card, drawn in a portal on <body> (outside every chart), so it has its own
+ * variables. It carries data-theme="daylight", so every --ds-* inside it is a Daylight colour:
+ * white with dark text on both themes. It has no shadow; a hairline edge keeps it apart from the
+ * white card behind it. The position is set in ChartTip.jsx.
+ */
+
+.cc-tip {
+  --cc-tip: var(--ds-surface);
+  --cc-tip-text: var(--ds-text);
+  --cc-tip-muted: var(--ds-muted);
+
+  position: fixed;
+  z-index: 1500;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--cc-tip);
+  color: var(--cc-tip-text);
+  font-family: var(--ds-font);
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* A title and rows: a little taller, so the corners are softer than a capsule's */
+.cc-tip[data-variant='list'] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 132px;
+  padding: 8px 12px 9px;
+  border-radius: var(--ds-radius-md);
+}
+
+.cc-tip[data-ready='true'] {
+  visibility: visible;
+  animation: cc-tip-in var(--ds-duration-fast) var(--ds-ease) both;
+}
+
+.cc-tip__title {
+  color: var(--cc-tip-muted);
+  font: var(--ds-type-caption);
+  font-weight: 500;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.cc-tip__value {
+  color: var(--cc-tip-text);
+  font: var(--ds-type-caption);
+  font-weight: 800;
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-tip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cc-tip__swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--ds-bar-muted);
+}
+
+.cc-tip__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--cc-tip-text);
+  font: var(--ds-type-caption);
+  font-weight: 500;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.cc-tip__row .cc-tip__value {
+  text-align: right;
+}
+
+@keyframes cc-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-tip[data-ready='true'] {
+    animation: none;
+  }
+}

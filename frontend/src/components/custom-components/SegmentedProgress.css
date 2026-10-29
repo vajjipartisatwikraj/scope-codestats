@@ -1,0 +1,93 @@
+/*
+ * SegmentedProgress
+ *
+ * Pill segments in a row. Each state has its own shape as well as its own colour: a solid fill
+ * (done, current), an empty track (todo), a tinted fill with an outline (review) and a dashed
+ * outline (later). Colours are --sp-* variables whose defaults are design tokens. See
+ * SegmentedProgress.jsx for the props.
+ */
+
+.sp {
+  --sp-done: var(--ds-success);
+  --sp-on-done: var(--ds-surface);
+  --sp-current: var(--ds-accent);
+  --sp-track: var(--ds-high);
+  --sp-review: var(--ds-warning);
+  --sp-review-soft: var(--ds-warning-soft);
+  --sp-later: var(--ds-field-border);
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp__segment {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 8px;
+  height: 8px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--sp-track);
+  color: var(--sp-on-done);
+  transition:
+    background-color var(--ds-duration-base) var(--ds-ease),
+    box-shadow var(--ds-duration-base) var(--ds-ease);
+}
+
+.sp[data-size='md'] .sp__segment {
+  height: 24px;
+}
+
+.sp__segment[data-state='done'] {
+  background-color: var(--sp-done);
+}
+
+.sp__segment[data-state='current'] {
+  background-color: var(--sp-current);
+}
+
+/* The current step is the tallest, so it stands out without colour */
+.sp[data-size='sm'] .sp__segment[data-state='current'] {
+  height: 12px;
+}
+
+.sp[data-size='md'] .sp__segment[data-state='current'] {
+  height: 28px;
+}
+
+.sp__segment[data-state='review'] {
+  background-color: var(--sp-review-soft);
+  color: var(--sp-review);
+  box-shadow: inset 0 0 0 2px var(--sp-review);
+}
+
+.sp__segment[data-state='later'] {
+  background-color: transparent;
+  color: var(--ds-subtle);
+  /* A dashed outline: a border (all four sides) with no fill */
+  border: 1.5px dashed var(--sp-later);
+}
+
+.sp[data-size='sm'] .sp__segment[data-state='later'] {
+  border-width: 1px;
+}
+
+/* ---- Entrance -------------------------------------------------------------------------- */
+
+.sp[data-animate='true'] .sp__segment {
+  animation: cc-fade-in var(--cc-enter) var(--cc-ease) backwards;
+  animation-delay: var(--cc-delay);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp__segment {
+    transition: none;
+  }
+}

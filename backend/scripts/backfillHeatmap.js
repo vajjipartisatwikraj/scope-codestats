@@ -1,9 +1,8 @@
 /**
- * One-time backfill: seed the new sparse ActivityHeatmap for all existing
- * users from their historical DailyStats snapshots.
+ * One-time backfill: seed the sparse ActivityHeatmap for all existing users
+ * from their cohort solve history.
  *
- * After this runs once, live triggers (cohort/practice submissions + the
- * daily profile-sync external-delta trigger) keep the heatmap current.
+ * After this runs once, the live cohort-submission trigger keeps the heatmap current.
  *
  * Usage:
  *   node backend/scripts/backfillHeatmap.js            # all active users

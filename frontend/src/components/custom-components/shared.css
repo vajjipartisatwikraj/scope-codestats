@@ -1,0 +1,117 @@
+/*
+ * Rules shared by every component in this folder.
+ *
+ * The components here are generic building blocks. None of them knows which page uses it:
+ * data comes in through props (and accessor functions), colours default to the --ds-* design
+ * tokens, and every component also exposes its own --xx-* CSS variables (and matching `colors`
+ * props) so a caller can restyle it without touching this folder. See the header comment of
+ * each component for its props.
+ *
+ * Class prefixes: .cc (all), .bc BarChart, .mb MiniBars, .ga Gauge, .hm Heatmap, .lc LineChart,
+ * .tc TrendChart, .pc PieChart, .cl ChartLegend, .cc-tip ChartTip, .pt PillTabs, .aw AudioWaveform,
+ * .wb WaveformBars, .lm LevelMeter, .sb SignalBars, .rc RadarChart, .sr StarRating,
+ * .an AnimatedNumber, .pb ProgressBar, .sp SegmentedProgress, .sring ScoreRing, .ac AnimatedCheck,
+ * .acp AudioClipPlayer.
+ */
+
+.cc,
+.cc *,
+.cc *::before,
+.cc *::after {
+  box-sizing: border-box;
+}
+
+.cc {
+  font-family: var(--ds-font);
+}
+
+/* Visually hidden but still read by screen readers: the text equivalent of a chart. The data
+   table sits inside a hidden box (a table ignores overflow, so on its own it would still take
+   its full height and lengthen any scrolling parent). */
+.cc-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Entrance animations (see the data-animate flag of each component).
+ *
+ * One timing for all of them, so a dashboard of charts moves as one family:
+ *   --cc-enter   how long each mark takes (the design token --ds-duration-enter)
+ *   --cc-ease    a long soft landing (--ds-ease-enter)
+ *   --cc-start   a short wait, so the card is there before its chart starts
+ *   --cc-delay   when THIS mark starts: its index (--i) times a step, where the step shrinks as
+ *                the number of marks (--n) grows, so the whole wave stays within about 400ms
+ * A component sets --n on its root and --i on each mark. Only transform and opacity (and, for
+ * line drawing and the dial ticks, stroke) change.
+ */
+.cc {
+  --cc-enter: var(--ds-duration-enter, 560ms);
+  --cc-ease: var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+  /* A parent can push every chart's entrance later by setting --cc-wait (a panel that is still
+     opening, for example) */
+  --cc-start: var(--cc-wait, 80ms);
+}
+
+/* Declared on every descendant so that each one reads its OWN --i */
+.cc,
+.cc * {
+  --cc-delay: calc(var(--cc-start, 80ms) + var(--i, 0) * min(40ms, calc(400ms / var(--n, 1))));
+}
+
+@keyframes cc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cc-grow-up {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* Slides up from a few pixels below while it fades in */
+@keyframes cc-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Appears from a point, a little smaller than its final size */
+@keyframes cc-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc *,
+  .cc *::before,
+  .cc *::after {
+    animation: none !important;
+  }
+}

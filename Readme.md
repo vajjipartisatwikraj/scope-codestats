@@ -1136,30 +1136,23 @@ Score = min(150 × 10, 1000) + (100 × 5)
 
 #### **ScopeCodestats Score (Internal Platform)**
 ```javascript
-// File: platformAPIs.js → calculateScopeCodestatsScore()
+// File: backend/services/platformScraper/scopecodestats.js → calculateScopeCodestatsScore()
 
 Formula:
-Score = TotalCohortScore + (ConsistencyIndex × 10) + (PracticeArenaContests × 10)
+Score = TotalCohortScore
 
 Components:
 - Total Cohort Score: Cumulative score from all cohort problems
-- Consistency Index: Daily activity streak metric (0-100)
-- Practice Arena Contests: Mock tests completed
+- Practice Arena Contests: shown, but they do not add to the score
 
-Weighted Points:
-- Cohort Score: 1:1 (direct score from cohort submissions)
-- Consistency Index: 10 points per index point
-- Contest Completed: 10 points each
-
-Example Calculation:
-Student Profile:
-- Total Cohort Score: 1200 (from solving cohort problems)
-- Consistency Index: 45 (out of 100)
-- Practice Arena Tests: 8
-
-Score = 1200 + (45 × 10) + (8 × 10)
-      = 1200 + 450 + 80
-      = 1730 SCOPE Points
+Consistency Index and Score Change (last 7 days):
+// File: backend/services/weeklyActivity/weeklyActivityService.js
+- Both come from the student's TOTAL score history (today and the 6 days before it, IST)
+- Active day: a day on which the total score changed
+- Score Change: total score now minus total score 7 days ago
+- Consistency Index (0-5) from the number of active days:
+    6 or 7 days → 5,  5 → 4,  4 → 3,  3 → 2,  2 → 1,  0 or 1 → 0
+- Worked out after every profile sync; stored on User.weeklyActivity
 
 Special Feature: Lifetime Score Preservation
 - Uses max(currentCohortScore, lifetimeScore)

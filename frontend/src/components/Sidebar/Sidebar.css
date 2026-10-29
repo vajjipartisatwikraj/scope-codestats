@@ -1,0 +1,471 @@
+/*
+ * Sidebar (the rail)
+ *
+ * Plain CSS on the design tokens. ThemeContext publishes the --ds-* variables for Midnight and
+ * Daylight (theme/applyTheme.js), so nothing in this file is specific to one theme. The rules
+ * come from DESIGN.md and design/screens.md section 2.
+ *
+ * Layout: the page reserves 75px for the rail (App.jsx, Navbar.jsx and Footer.jsx hard-code it).
+ * The rail is a floating card inside that slot. On desktop it opens OVER the page, so nothing
+ * on the page reflows while it animates; it only ever reports itself collapsed to the shell.
+ *
+ * Motion, in the order things happen when the rail opens:
+ *   1. the card grows and gains its shadow,
+ *   2. each pill grows to fit its label (a grid track going from 0fr to 1fr, so it follows the
+ *      label's real width without measuring anything),
+ *   3. labels, headings and the brand name fade and slide in a beat after the card starts.
+ * Closing takes the labels out first and faster, so text is never clipped half way.
+ *
+ * The current page is ONE highlight (.ds-sidebar__indicator) that slides to the new link and
+ * resizes to fit it (useSlidingIndicator.js sets its position and width). The links themselves
+ * only change their text and icon, timed to land just as the highlight arrives under them.
+ */
+
+/* ---- The slot the shell reserves ------------------------------------------------------- */
+
+.ds-sidebar-slot {
+  flex: none;
+  width: 75px;
+}
+
+/* ---- The card -------------------------------------------------------------------------- */
+
+.ds-sidebar {
+  --sb-ease: var(--ds-ease);
+  --sb-travel-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --sb-open: 320ms;
+  --sb-close: 240ms;
+
+  position: fixed;
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  /* The level of the Material UI drawer this replaces, so the Navbar and dialogs keep their order. */
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  width: 60px; /* collapsed: 8px, a 44px pill, 8px */
+  padding: 20px 8px 12px;
+  overflow: hidden;
+  /* The card is its own layout and paint island: animating it never touches the page. */
+  contain: layout paint;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  box-shadow: 0 16px 40px transparent;
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  transition:
+    width var(--sb-close) var(--sb-ease),
+    box-shadow var(--sb-close) var(--sb-ease);
+}
+
+/* Open: it floats over the page, so it casts the shadow of a floating layer */
+.ds-sidebar[data-open="true"] {
+  width: 256px;
+  box-shadow: var(--ds-shadow-float-md);
+  transition-duration: var(--sb-open);
+}
+
+/*
+ * Only the elements named below animate. Everything else must not pick up the page-wide
+ * `* { transition: color ... }` rule in index.css: a child that eases its own colour while it
+ * inherits an easing colour from its parent doubles the delay and makes the rail feel late.
+ */
+.ds-sidebar *,
+.ds-sidebar *::before,
+.ds-sidebar *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+/* ---- Brand ----------------------------------------------------------------------------- */
+
+.ds-sidebar__brand {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  margin: 0 0 4px 4px; /* centres the mark over the icon column */
+}
+
+.ds-sidebar__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.ds-sidebar__brand-name,
+.ds-sidebar__group-title {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 120ms var(--sb-ease),
+    transform 200ms var(--sb-ease);
+}
+
+.ds-sidebar[data-open="true"] .ds-sidebar__brand-name,
+.ds-sidebar[data-open="true"] .ds-sidebar__group-title {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 220ms var(--sb-ease) 80ms,
+    transform 320ms var(--sb-ease) 40ms;
+}
+
+.ds-sidebar__brand-name {
+  font: var(--ds-type-title);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-title);
+  white-space: nowrap;
+}
+
+/* ---- Groups and links ------------------------------------------------------------------ */
+
+.ds-sidebar__nav {
+  position: relative; /* the highlight is positioned against this */
+  isolation: isolate;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Reaches the card edge so the focus ring is never clipped */
+  margin: 0 -8px;
+  padding: 0 8px 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ds-sidebar[data-open="false"] .ds-sidebar__nav {
+  scrollbar-width: none;
+}
+
+.ds-sidebar[data-open="false"] .ds-sidebar__nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* The sliding highlight. Behind the links, in front of the card. Its position and size are set
+   from script, so a change of page can travel and the rail opening can track the link exactly. */
+.ds-sidebar__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 0;
+  height: 44px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-spotlight);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition: opacity 160ms var(--sb-ease);
+}
+
+/* While it travels to a new link (script sets data-travel and the two variables) */
+.ds-sidebar__nav[data-travel="true"] .ds-sidebar__indicator {
+  transition:
+    transform var(--ind-duration, 340ms) var(--sb-travel-ease),
+    width var(--ind-duration, 340ms) var(--sb-travel-ease),
+    opacity 160ms var(--sb-ease);
+}
+
+.ds-sidebar__group-title {
+  margin: 0;
+  padding: 20px 0 8px 10px; /* lines the heading up with the icons */
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+  color: var(--ds-subtle);
+  white-space: nowrap;
+}
+
+.ds-sidebar__list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-sidebar__list > li {
+  display: flex;
+  max-width: 100%;
+}
+
+.ds-nav-item {
+  position: relative;
+  z-index: 1; /* above the sliding highlight */
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  max-width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0 10px; /* a 24px icon in a 44px circle when collapsed */
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-weight: 500;
+  letter-spacing: var(--ds-tracking-label);
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 160ms var(--sb-ease),
+    color 200ms var(--sb-ease),
+    transform 140ms var(--sb-ease),
+    box-shadow 160ms var(--sb-ease);
+}
+
+.ds-nav-item:hover {
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.ds-nav-item:active {
+  transform: scale(0.97);
+}
+
+.ds-nav-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+}
+
+/* The current page: the highlight sits behind it, so the link itself stays clear */
+.ds-nav-item[data-active="true"],
+.ds-nav-item[data-active="true"]:hover {
+  background-color: transparent;
+  color: var(--ds-on-spotlight);
+}
+
+.ds-nav-item[data-active="true"]:active {
+  transform: none;
+}
+
+.ds-nav-item--danger:hover {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+/* While the highlight travels, the two links that change wait for it: the text turns dark just
+   as the pill arrives under it, and the old one lets go as the pill leaves.
+   Order: background-color, color, transform, box-shadow. */
+.ds-sidebar__nav[data-travel="true"] .ds-nav-item {
+  transition-delay: 0s, var(--ind-color-delay, 0s), 0s, 0s;
+}
+
+.ds-sidebar__nav[data-travel="true"] .ds-nav-item__glyph,
+.ds-sidebar__nav[data-travel="true"] .ds-nav-item__text {
+  transition-delay: var(--ind-color-delay, 0s);
+}
+
+/* Regular icon at rest, filled icon for the current page, crossfaded */
+.ds-nav-item__icon {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.ds-nav-item__glyph {
+  position: absolute;
+  inset: 0;
+  transition: opacity 200ms var(--sb-ease);
+}
+
+.ds-nav-item__glyph--active {
+  opacity: 0;
+}
+
+.ds-nav-item[data-active="true"] .ds-nav-item__glyph--active {
+  opacity: 1;
+}
+
+.ds-nav-item[data-active="true"] .ds-nav-item__glyph--rest {
+  opacity: 0;
+}
+
+/* The label sits in a grid track that runs from 0fr (collapsed) to 1fr (open). A track under a
+   shrink-to-fit parent is as wide as its content times that fraction, so the pill grows with
+   the rail to exactly the width of its label. The label stays in the DOM for screen readers. */
+.ds-nav-item__reveal {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns var(--sb-close) var(--sb-ease);
+}
+
+.ds-sidebar[data-open="true"] .ds-nav-item__reveal {
+  grid-template-columns: 1fr;
+  transition-duration: var(--sb-open);
+}
+
+/* The clip has no padding of its own, so it can shrink all the way to 0 */
+.ds-nav-item__clip {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ds-nav-item__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 120ms var(--sb-ease),
+    transform 200ms var(--sb-ease);
+}
+
+.ds-sidebar[data-open="true"] .ds-nav-item__label {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 220ms var(--sb-ease) 80ms,
+    transform 320ms var(--sb-ease) 40ms;
+}
+
+/* The current page is semibold. A hidden bold copy reserves the width, so the pill does not
+   twitch when the weight changes. */
+.ds-nav-item__text {
+  position: relative;
+  display: inline-block;
+  transition: font-weight 200ms var(--sb-ease);
+}
+
+.ds-nav-item__text::after {
+  content: attr(data-text);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  font-weight: 600;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ds-nav-item[data-active="true"] .ds-nav-item__text {
+  font-weight: 600;
+}
+
+/* Count on a link (pending teacher requests). A number, so it never relies on colour alone. */
+.ds-nav-item__badge,
+.ds-nav-item__dot {
+  display: inline-grid;
+  place-items: center;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font: var(--ds-type-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Collapsed: the count sits on the icon's corner and gives way to the inline one when open */
+.ds-nav-item__dot {
+  position: absolute;
+  top: 4px;
+  left: 24px;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 4px;
+  pointer-events: none;
+  transition: opacity 160ms var(--sb-ease) 140ms;
+}
+
+.ds-sidebar[data-open="true"] .ds-nav-item__dot {
+  opacity: 0;
+  transition-duration: 100ms;
+  transition-delay: 0s;
+}
+
+.ds-sidebar__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Footer ---------------------------------------------------------------------------- */
+
+.ds-sidebar__footer {
+  flex: none;
+  padding-top: 12px;
+}
+
+/* ---- Mobile drawer --------------------------------------------------------------------- */
+
+.ds-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  visibility: hidden;
+  pointer-events: none;
+  /* Stay visible until the slide-out has finished */
+  transition: visibility 0s linear var(--ds-duration-base);
+}
+
+.ds-sidebar-overlay[data-open="true"] {
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.ds-sidebar-scrim {
+  position: absolute;
+  inset: 0;
+  background-color: var(--ds-scrim);
+  opacity: 0;
+  transition: opacity var(--ds-duration-base) var(--ds-ease);
+}
+
+.ds-sidebar-overlay[data-open="true"] .ds-sidebar-scrim {
+  opacity: 1;
+}
+
+.ds-sidebar.ds-sidebar--drawer {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  z-index: auto;
+  width: min(264px, calc(100vw - 32px));
+  box-shadow: var(--ds-shadow-float-md);
+  transform: translateX(calc(-100% - 16px));
+  transition: transform var(--ds-duration-base) var(--ds-ease);
+}
+
+.ds-sidebar-overlay[data-open="true"] .ds-sidebar.ds-sidebar--drawer {
+  transform: none;
+}
+
+/* ---- Reduced motion -------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-sidebar,
+  .ds-sidebar *,
+  .ds-sidebar *::before,
+  .ds-sidebar *::after,
+  .ds-sidebar-overlay,
+  .ds-sidebar-scrim {
+    transition: none !important;
+  }
+}

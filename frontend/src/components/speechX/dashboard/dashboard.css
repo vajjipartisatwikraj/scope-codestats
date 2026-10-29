@@ -1,0 +1,148 @@
+/*
+ * Speech tests dashboard (route /speech-tests), prefix sxd-
+ *
+ * Plain CSS on the design tokens (--ds-*). A test is one flat container (name, time, status) that
+ * opens a drawer from the right with the details.
+ * Components: SpeechTestDashboard.jsx, TestCard.jsx, TestDetails.jsx.
+ */
+
+/* ---- The list ---------------------------------------------------------------------------------- */
+
+/* "Your tests" at the left, the status filter at the right; they wrap on a narrow screen */
+.sxd-list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.sxd-list__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--ui-gap, 12px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxd-cell {
+  display: flex;
+  min-width: 0;
+}
+
+/* ---- A test container -------------------------------------------------------------------------- */
+
+.sxd-item {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 20px 24px;
+  border: 0;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sxd-item:hover {
+  background-color: var(--ds-raised);
+}
+
+.sxd-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.sxd-item--skeleton {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+  cursor: default;
+}
+
+.sxd-item--skeleton:hover {
+  background-color: var(--ds-surface);
+}
+
+.sxd-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sxd-item__title {
+  overflow: hidden;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Start and end side by side when they fit, one under the other when they do not */
+.sxd-item__times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.sxd-item__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sxd-item__time > svg {
+  flex: none;
+}
+
+.sxd-item__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-muted);
+}
+
+/* ---- The line about timing in the detail panel (the panel itself is the ui DetailPanel) ---------- */
+
+.sxd-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxd-note[data-timed='true'] {
+  color: var(--ds-accent-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sxd-note > svg {
+  flex: none;
+}

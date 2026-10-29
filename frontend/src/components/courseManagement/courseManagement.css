@@ -1,0 +1,215 @@
+/*
+ * Course management (admin table page, compact).
+ *
+ * Built on the shared kit (components/ui/ui.css) and the --ds-* tokens, so Midnight and Daylight
+ * both work. This file only adds what that kit does not have: the picture mark, the title button,
+ * the drawer's form sections and the danger zone. Everything is prefixed cm-.
+ */
+
+.cm-page *,
+.cm-page *::before,
+.cm-page *::after {
+  box-sizing: border-box;
+}
+
+/* ---- Filter row ---------------------------------------------------------------------------- */
+
+.cm-toolbar {
+  margin: 0;
+  padding: 16px;
+}
+
+@media (max-width: 599.95px) {
+  .cm-toolbar .ui-field-inline {
+    flex: 1 1 140px;
+  }
+
+  .cm-toolbar .ui-select,
+  .cm-toolbar .ui-select[data-variant='pill'] .ui-select__control {
+    width: 100%;
+  }
+}
+
+.cm-notice {
+  padding: 16px 16px 0;
+}
+
+/* ---- Rows ----------------------------------------------------------------------------------- */
+
+.cm-row {
+  cursor: pointer;
+}
+
+.cm-cell-course {
+  width: 46%;
+  max-width: 0;
+}
+
+.cm-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 64px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-high);
+  color: var(--ds-muted);
+}
+
+.cm-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cm-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cm-open {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background-color: transparent;
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cm-open:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cm-open:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.ui-table__sort[data-align='end'] {
+  justify-content: flex-end;
+}
+
+.cm-sort-icon {
+  display: inline-flex;
+  color: var(--ds-subtle);
+}
+
+th[aria-sort='ascending'] .cm-sort-icon,
+th[aria-sort='descending'] .cm-sort-icon {
+  color: var(--ds-text);
+}
+
+/* index.css colours every a:hover; an icon link keeps its own colour */
+.cm-external,
+.cm-external:hover {
+  color: var(--ds-text);
+  text-decoration: none;
+}
+
+.cm-external:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.cm-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+@media (max-width: 899.95px) {
+  .cm-thumb {
+    width: 56px;
+    height: 40px;
+  }
+
+  .ui-list__row .cm-open {
+    min-height: 24px;
+  }
+}
+
+/* ---- Drawer form ----------------------------------------------------------------------------- */
+
+.cm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.cm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cm-section + .cm-section {
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.cm-section__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.cm-visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 24px;
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+}
+
+@media (max-width: 899.95px) {
+  .cm-visit {
+    min-height: 44px;
+  }
+}
+
+/* The danger zone: the one place a destructive action lives inside the form */
+.cm-danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-danger-soft);
+}
+
+.cm-danger__text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.cm-danger__title {
+  margin: 0;
+  color: var(--ds-danger);
+  font: var(--ds-type-label);
+}
+
+.cm-danger__body {
+  margin: 2px 0 0;
+  color: var(--ds-text);
+  font: var(--ds-type-body-sm);
+}

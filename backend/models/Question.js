@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const log = require("../utils/logger").scope("QUESTION");
 
 /**
  * ⚠️ CASCADE DELETE NOTICE:
@@ -398,7 +399,7 @@ questionSchema.methods.calculatePoints = function (
   // Check if scoring tiers are configured and valid
   if (!language.scoringTiers || language.scoringTiers.length === 0) {
     // No scoring tiers configured - use full marks for correct answer
-    console.log(
+    log.debug(
       `⚠️ No scoring tiers configured for ${languageName}, using full marks`
     );
     return { points: this.marks, tierIndex: -1 };
@@ -410,7 +411,7 @@ questionSchema.methods.calculatePoints = function (
 
     // Validate tier has required fields
     if (!tier.maxTime || tier.points === undefined) {
-      console.warn(`⚠️ Invalid tier at index ${i}, skipping`);
+      log.warn(`⚠️ Invalid tier at index ${i}, skipping`);
       continue;
     }
 

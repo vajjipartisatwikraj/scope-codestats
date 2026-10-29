@@ -1,0 +1,93 @@
+/*
+ * StarRating
+ *
+ * Phosphor stars: filled for the chosen ones, outlined for the rest. Interactive stars are 44px
+ * targets (the icon stays at its own size inside). Hover previews, press dips a little. Colours
+ * are --sr-* variables whose defaults are design tokens. See StarRating.jsx for the props.
+ */
+
+.sr {
+  --sr-size: 28px;
+  --sr-target: 44px;
+  --sr-fill: var(--ds-series-amber);
+  --sr-empty: var(--ds-field-border);
+  --sr-text: var(--ds-muted);
+
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: 100%;
+}
+
+.sr__row {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sr__star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sr-empty);
+}
+
+.sr__star[data-on='true'] {
+  color: var(--sr-fill);
+}
+
+/* Display only: no target, a tight row */
+.sr[data-readonly='true'] .sr__row {
+  gap: 2px;
+}
+
+/* ---- Interactive ----------------------------------------------------------------------- */
+
+.sr__star--button {
+  width: var(--sr-target);
+  height: var(--sr-target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: none;
+  cursor: pointer;
+  transition:
+    color var(--ds-duration-fast) var(--ds-ease),
+    transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+/* A previewed star lifts a little, the pressed one dips */
+.sr__star--button[data-preview='true'] {
+  transform: scale(1.08);
+}
+
+.sr__star--button:active {
+  transform: scale(0.92);
+}
+
+.sr__star--button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sr__word {
+  min-width: 5.5em;
+  color: var(--sr-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sr__star--button {
+    transition: color var(--ds-duration-fast) var(--ds-ease);
+  }
+
+  .sr__star--button[data-preview='true'],
+  .sr__star--button:active {
+    transform: none;
+  }
+}

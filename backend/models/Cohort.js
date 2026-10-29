@@ -24,10 +24,23 @@ const cohortSchema = new mongoose.Schema({
       ref: "Module",
     },
   ],
+  /**
+   * Everyone who may open and enroll in this cohort. Kept as a stored list because
+   * access checks and the student cohort list query it directly. Attach and detach
+   * user groups to change it (services/userGroups/cohortGroupService.js), do not
+   * edit it by hand.
+   */
   eligibleUsers: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+    },
+  ],
+  /** User groups attached to this cohort. Their members are part of eligibleUsers. */
+  userGroups: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserGroup",
     },
   ],
   videoResource: {
@@ -218,5 +231,8 @@ cohortSchema.pre("save", function (next) {
 
 // Sweeper query support: find exam cohorts whose window has closed.
 cohortSchema.index({ mode: 1, isActive: 1, examEndTime: 1 });
+
+// "Which cohorts use this user group?"
+cohortSchema.index({ userGroups: 1 });
 
 module.exports = mongoose.model("Cohort", cohortSchema);

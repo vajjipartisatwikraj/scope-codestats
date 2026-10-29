@@ -23,6 +23,7 @@
 const jwt = require("jsonwebtoken");
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+const log = require("../utils/logger").scope("SUBMISSION-RATE-LIMITER");
 
 // In-memory stores for different types of requests
 // Structure: { userId: lastRequestTimestamp }
@@ -62,7 +63,7 @@ function cleanupOldEntries() {
     }
   }
 
-  console.log(
+  log.debug(
     `[Rate Limiter] Cleanup: ${submissionTimestamps.size} submit cooldowns, ${runCodeTimestamps.size} run cooldowns`
   );
 }
@@ -89,7 +90,7 @@ function getUserIdentifier(req) {
       }
     } catch (err) {
       // Invalid token, fall through to IP-based tracking
-      console.log(
+      log.debug(
         "[Submission Rate Limiter] Invalid token, using IP-based tracking"
       );
     }
@@ -127,14 +128,14 @@ function createRateLimiter(timestampMap, cooldownMs, limitType) {
           user &&
           (user.userType === "admin" || user.userType === "teacher")
         ) {
-          console.log(
+          log.debug(
             `[${limitType} Rate Limiter] Skipping for ${user.userType}: ${decoded.userId}`
           );
           return next(); // Skip rate limiting for admin/teacher
         }
       } catch (err) {
         // Invalid token or DB error, apply rate limiting
-        console.log(
+        log.debug(
           `[${limitType} Rate Limiter] Error checking user type, applying rate limit:`,
           err.message
         );
@@ -165,7 +166,7 @@ function applyRateLimit(req, res, next, timestampMap, cooldownMs, limitType) {
 
       if (remainingCooldown > 0) {
         // Still in cooldown period
-        console.log(
+        log.debug(
           `[${limitType} Rate Limiter] Blocked: ${userIdentifier} - ${remainingCooldown}ms remaining`
         );
 
@@ -192,7 +193,7 @@ function applyRateLimit(req, res, next, timestampMap, cooldownMs, limitType) {
       }
     } else {
       // Within grace period - allow but don't update timestamp
-      console.log(
+      log.debug(
         `[${limitType} Rate Limiter] Concurrent request within grace period: ${userIdentifier} - ${timeSinceLastRequest}ms since last`
       );
       next();
@@ -204,7 +205,7 @@ function applyRateLimit(req, res, next, timestampMap, cooldownMs, limitType) {
   timestampMap.set(userIdentifier, now);
 
   // Log for monitoring
-  console.log(
+  log.debug(
     `[${limitType} Rate Limiter] Allowed: ${userIdentifier} - request permitted`
   );
 

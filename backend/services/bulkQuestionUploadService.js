@@ -344,6 +344,7 @@ async function prepareBulkQuestionUpload(payload, { moduleId, createdBy }) {
 }
 
 const { isTransactionsUnavailableError } = require("../utils/mongoTransaction");
+const log = require("../utils/logger").scope("BULK-QUESTION-UPLOAD");
 
 function buildQuestionProgress(questionIds) {
   return questionIds.map((question) => ({
@@ -434,7 +435,7 @@ async function persistBulkWithoutTransaction({ documents, moduleId, relatedCohor
     });
     if (compensationFailures.length > 0) {
       error.compensationFailed = true;
-      console.error(
+      log.error(
         "CRITICAL: Bulk upload compensation was incomplete:",
         compensationFailures
       );
@@ -463,7 +464,7 @@ async function persistBulkQuestions({ documents, moduleId, relatedCohortIds }) {
       try {
         await session.abortTransaction();
       } catch (abortError) {
-        console.error("Error aborting bulk upload transaction:", abortError);
+        log.error("Error aborting bulk upload transaction:", abortError);
       }
     }
     if (!transactionsUnavailable) throw error;
@@ -473,7 +474,7 @@ async function persistBulkQuestions({ documents, moduleId, relatedCohortIds }) {
   }
 
   if (requiresStandaloneFallback) {
-    console.warn(
+    log.warn(
       "MongoDB transactions are unavailable; bulk upload is using compensating rollback protection."
     );
     return persistBulkWithoutTransaction({ documents, moduleId, relatedCohortIds });

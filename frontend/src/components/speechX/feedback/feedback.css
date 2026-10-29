@@ -1,0 +1,263 @@
+/*
+ * Test feedback (route /speech-tests/:id/feedback), prefix sxf-
+ *
+ * Plain CSS on the design tokens (--ds-*), built on the speechX shared kit. Two flat cards side by
+ * side from 900px: the confirmation with the final score (the one spotlight tile) on the left, the
+ * form on the right; stacked on a phone. The one filled button is Submit feedback (or Back to the
+ * test once it is sent). Components: SpeechTestFeedbackPage.jsx, CompletionPanel.jsx,
+ * FeedbackForm.jsx, ScaleRow.jsx, ThankYou.jsx.
+ */
+
+.sxf-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sx-gap);
+  align-items: start;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .sxf-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.sxf-complete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+  min-width: 0;
+}
+
+.sxf-title {
+  margin: 20px 0 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.sxf-lead {
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxf-facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxf-side {
+  display: flex;
+  min-width: 0;
+}
+
+.sxf-side > .sx-card {
+  flex: 1 1 auto;
+}
+
+/* ---- The form ----------------------------------------------------------------------------------- */
+
+.sxf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sxf-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sxf-form__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxf-form__lead {
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxf-scales {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* A question: the label (and the answer in words) above the five segments; side by side from 600px */
+.sxf-scale {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 16px;
+  align-items: center;
+}
+
+@media (min-width: 600px) {
+  .sxf-scale {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+}
+
+.sxf-scale__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin: 0;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.sxf-scale__value {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 600px) {
+  .sxf-scale__label {
+    display: block;
+  }
+
+  .sxf-scale__value {
+    display: block;
+  }
+}
+
+.sxf-scale__steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sxf-step {
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+/* Filling ripples to the right; emptying is immediate */
+.sxf-step[data-on='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+  transition-delay: calc(var(--sxf-i, 1) * 25ms), 0ms;
+}
+
+/* The chosen segment: a ring and a heavier number, so the answer is not colour alone */
+.sxf-step[data-chosen='true'] {
+  box-shadow: inset 0 0 0 2px var(--ds-accent-text);
+  font-weight: 800;
+}
+
+.sxf-step:hover:not(:disabled) {
+  background-color: var(--ds-high);
+}
+
+.sxf-step[data-on='true']:hover:not(:disabled) {
+  background-color: var(--ds-accent-soft);
+}
+
+.sxf-step:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxf-step[data-chosen='true']:focus-visible {
+  box-shadow:
+    inset 0 0 0 2px var(--ds-accent-text),
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxf-step:disabled {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sxf-step[data-on='true'] {
+    transition-delay: 0ms;
+  }
+}
+
+.sxf-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sxf-why {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-align: right;
+}
+
+.sxf-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 599.95px) {
+  .sxf-why {
+    text-align: left;
+  }
+
+  .sxf-buttons > .ui-button {
+    flex: 1 1 140px;
+  }
+}
+
+/* ---- Thank you ------------------------------------------------------------------------------------ */
+
+.sxf-thanks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 320px;
+  text-align: center;
+}
+
+.sxf-thanks > .sx-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sxf-thanks__title {
+  margin: 8px 0 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.sxf-thanks__text {
+  margin: 4px 0 24px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}

@@ -7,6 +7,7 @@ const UserCohort = require("../models/UserCohort");
 const Note = require("../models/Note");
 const QuestionReport = require("../models/QuestionReport");
 const CohortFeedback = require("../models/CohortFeedback");
+const log = require("../utils/logger").scope("COHORT-CASCADE");
 
 /**
  * ============================================================================
@@ -54,7 +55,7 @@ async function getRelatedCohorts(cohortId) {
         cloneGroupId: cohort.cloneGroupId,
       }).select("_id title modules");
 
-      console.log(
+      log.debug(
         `[CascadeService] Found ${relatedCohorts.length} related cohorts via cloneGroupId "${cohort.cloneGroupId}"`
       );
 
@@ -68,7 +69,7 @@ async function getRelatedCohorts(cohortId) {
     // FALLBACK DETECTION: Find cohorts with identical module sets
     // Handle case where cohort has no modules and no cloneGroupId
     if (!cohort.modules || cohort.modules.length === 0) {
-      console.log(
+      log.debug(
         `[CascadeService] Cohort "${cohort.title}" has no modules and no cloneGroupId - returning only self`
       );
       return [{ _id: cohort._id, title: cohort.title, modules: [] }];
@@ -88,7 +89,7 @@ async function getRelatedCohorts(cohortId) {
       return JSON.stringify(moduleIds) === JSON.stringify(cModuleIds);
     });
 
-    console.log(
+    log.debug(
       `[CascadeService] Found ${relatedCohorts.length} related cohorts via module comparison for "${cohort.title}"`
     );
 
@@ -98,7 +99,7 @@ async function getRelatedCohorts(cohortId) {
       modules: c.modules,
     }));
   } catch (err) {
-    console.error("[CascadeService] Error finding related cohorts:", err);
+    log.error("[CascadeService] Error finding related cohorts:", err);
     throw err;
   }
 }
@@ -155,7 +156,7 @@ async function addOrUpdateFeedback(
   try {
     const cloneGroupId = await getCloneGroupId(cohortId);
 
-    console.log(
+    log.debug(
       `[CascadeService] Adding/updating feedback for clone group "${cloneGroupId}"`
     );
 
@@ -175,7 +176,7 @@ async function addOrUpdateFeedback(
       existingFeedback.cohort = cohortId; // Update reference to current cohort
       feedback = await existingFeedback.save({ session });
 
-      console.log(
+      log.debug(
         `[CascadeService] Updated existing feedback for user ${userId}`
       );
     } else {
@@ -189,7 +190,7 @@ async function addOrUpdateFeedback(
       });
       await feedback.save({ session });
 
-      console.log(`[CascadeService] Created new feedback for user ${userId}`);
+      log.debug(`[CascadeService] Created new feedback for user ${userId}`);
     }
 
     // Update average rating in all related cohorts
@@ -197,7 +198,7 @@ async function addOrUpdateFeedback(
 
     return feedback;
   } catch (err) {
-    console.error("[CascadeService] Error adding/updating feedback:", err);
+    log.error("[CascadeService] Error adding/updating feedback:", err);
     throw err;
   }
 }
@@ -230,13 +231,13 @@ async function updateAverageRatingForCloneGroup(cloneGroupId, session = null) {
       { session }
     );
 
-    console.log(
+    log.debug(
       `[CascadeService] Updated average rating (${averageRating}) for clone group "${cloneGroupId}"`
     );
 
     return averageRating;
   } catch (err) {
-    console.error("[CascadeService] Error updating average rating:", err);
+    log.error("[CascadeService] Error updating average rating:", err);
     throw err;
   }
 }
@@ -259,7 +260,7 @@ async function getFeedbackForCloneGroup(cohortId, session = null) {
 
     return feedbacks;
   } catch (err) {
-    console.error("[CascadeService] Error getting feedback:", err);
+    log.error("[CascadeService] Error getting feedback:", err);
     throw err;
   }
 }
@@ -286,14 +287,14 @@ async function deleteFeedback(cohortId, feedbackId, session = null) {
       );
     }
 
-    console.log(`[CascadeService] Deleted feedback ${feedbackId}`);
+    log.debug(`[CascadeService] Deleted feedback ${feedbackId}`);
 
     // Update average rating for all cohorts in clone group
     await updateAverageRatingForCloneGroup(cloneGroupId, session);
 
     return feedback;
   } catch (err) {
-    console.error("[CascadeService] Error deleting feedback:", err);
+    log.error("[CascadeService] Error deleting feedback:", err);
     throw err;
   }
 }
@@ -319,7 +320,7 @@ async function getUserFeedbackForCloneGroup(cohortId, userId, session = null) {
 
     return feedback;
   } catch (err) {
-    console.error("[CascadeService] Error getting user feedback:", err);
+    log.error("[CascadeService] Error getting user feedback:", err);
     throw err;
   }
 }
@@ -346,7 +347,7 @@ async function syncFeedbackAcrossRelatedCohorts(
   try {
     const relatedCohorts = await getRelatedCohorts(cohortId);
 
-    console.log(
+    log.debug(
       `[CascadeService] Syncing feedback across ${relatedCohorts.length} cohorts`
     );
 
@@ -363,9 +364,9 @@ async function syncFeedbackAcrossRelatedCohorts(
 
     await Promise.all(updatePromises);
 
-    console.log(`[CascadeService] Feedback synced successfully`);
+    log.debug(`[CascadeService] Feedback synced successfully`);
   } catch (err) {
-    console.error("[CascadeService] Error syncing feedback:", err);
+    log.error("[CascadeService] Error syncing feedback:", err);
     throw err;
   }
 }
@@ -392,7 +393,7 @@ async function addFeedbackToRelatedCohorts(
   try {
     const relatedCohorts = await getRelatedCohorts(cohortId);
 
-    console.log(
+    log.debug(
       `[CascadeService] Adding feedback to ${relatedCohorts.length} cohorts`
     );
 
@@ -405,9 +406,9 @@ async function addFeedbackToRelatedCohorts(
 
     await Promise.all(updatePromises);
 
-    console.log(`[CascadeService] Feedback added successfully`);
+    log.debug(`[CascadeService] Feedback added successfully`);
   } catch (err) {
-    console.error("[CascadeService] Error adding feedback:", err);
+    log.error("[CascadeService] Error adding feedback:", err);
     throw err;
   }
 }
@@ -425,7 +426,7 @@ async function updateFeedbackInRelatedCohorts(
   try {
     const relatedCohorts = await getRelatedCohorts(cohortId);
 
-    console.log(
+    log.debug(
       `[CascadeService] Updating feedback in ${relatedCohorts.length} cohorts`
     );
 
@@ -441,9 +442,9 @@ async function updateFeedbackInRelatedCohorts(
 
     await Promise.all(updatePromises);
 
-    console.log(`[CascadeService] Feedback updated successfully`);
+    log.debug(`[CascadeService] Feedback updated successfully`);
   } catch (err) {
-    console.error("[CascadeService] Error updating feedback:", err);
+    log.error("[CascadeService] Error updating feedback:", err);
     throw err;
   }
 }
@@ -460,7 +461,7 @@ async function deleteFeedbackFromRelatedCohorts(
   try {
     const relatedCohorts = await getRelatedCohorts(cohortId);
 
-    console.log(
+    log.debug(
       `[CascadeService] Deleting feedback from ${relatedCohorts.length} cohorts`
     );
 
@@ -473,9 +474,9 @@ async function deleteFeedbackFromRelatedCohorts(
 
     await Promise.all(updatePromises);
 
-    console.log(`[CascadeService] Feedback deleted successfully`);
+    log.debug(`[CascadeService] Feedback deleted successfully`);
   } catch (err) {
-    console.error("[CascadeService] Error deleting feedback:", err);
+    log.error("[CascadeService] Error deleting feedback:", err);
     throw err;
   }
 }
@@ -497,7 +498,7 @@ async function deleteModuleFromRelatedCohorts(
     const relatedCohorts = await getRelatedCohorts(cohortId);
     const cohortIds = relatedCohorts.map((c) => c._id);
 
-    console.log(
+    log.debug(
       `[CascadeService] Deleting module from ${relatedCohorts.length} cohorts`
     );
 
@@ -526,7 +527,7 @@ async function deleteModuleFromRelatedCohorts(
       ),
     ]);
 
-    console.log(`[CascadeService] Deleted user data:`, {
+    log.debug(`[CascadeService] Deleted user data:`, {
       submissions: deletionResults[0].deletedCount,
       notes: deletionResults[1].deletedCount,
       reports: deletionResults[2].deletedCount,
@@ -537,7 +538,7 @@ async function deleteModuleFromRelatedCohorts(
       { module: moduleId },
       { session }
     );
-    console.log(
+    log.debug(
       `[CascadeService] Deleted ${questionDeletion.deletedCount} questions`
     );
 
@@ -554,7 +555,7 @@ async function deleteModuleFromRelatedCohorts(
     // Delete the module itself
     await Module.findByIdAndDelete(moduleId, { session });
 
-    console.log(
+    log.debug(
       `[CascadeService] Module deleted from ${relatedCohorts.length} cohorts`
     );
 
@@ -566,7 +567,7 @@ async function deleteModuleFromRelatedCohorts(
       deletedReports: deletionResults[2].deletedCount,
     };
   } catch (err) {
-    console.error("[CascadeService] Error deleting module:", err);
+    log.error("[CascadeService] Error deleting module:", err);
     throw err;
   }
 }
@@ -588,7 +589,7 @@ async function deleteQuestionFromRelatedCohorts(
     const relatedCohorts = await getRelatedCohorts(cohortId);
     const cohortIds = relatedCohorts.map((c) => c._id);
 
-    console.log(
+    log.debug(
       `[CascadeService] Deleting question from ${relatedCohorts.length} cohorts`
     );
 
@@ -619,7 +620,7 @@ async function deleteQuestionFromRelatedCohorts(
       ),
     ]);
 
-    console.log(`[CascadeService] Deleted user data:`, {
+    log.debug(`[CascadeService] Deleted user data:`, {
       submissions: deletionResults[0].deletedCount,
       notes: deletionResults[1].deletedCount,
       reports: deletionResults[2].deletedCount,
@@ -635,7 +636,7 @@ async function deleteQuestionFromRelatedCohorts(
     // Delete the question itself
     await Question.findByIdAndDelete(questionId, { session });
 
-    console.log(
+    log.debug(
       `[CascadeService] Question deleted from ${relatedCohorts.length} cohorts`
     );
 
@@ -646,7 +647,7 @@ async function deleteQuestionFromRelatedCohorts(
       deletedReports: deletionResults[2].deletedCount,
     };
   } catch (err) {
-    console.error("[CascadeService] Error deleting question:", err);
+    log.error("[CascadeService] Error deleting question:", err);
     throw err;
   }
 }
@@ -678,7 +679,7 @@ async function deleteCohortWithCascade(cohortId, session = null) {
     const relatedCohorts = await getRelatedCohorts(cohortId);
     const isLast = relatedCohorts.length === 1;
 
-    console.log(
+    log.debug(
       `[CascadeService] Deleting cohort "${cohort.title}" (${
         isLast ? "LAST in group" : `${relatedCohorts.length} in group`
       })`
@@ -703,7 +704,7 @@ async function deleteCohortWithCascade(cohortId, session = null) {
 
     if (isLast) {
       // LAST COHORT: Delete EVERYTHING globally
-      console.log("[CascadeService] Last cohort - performing global cleanup");
+      log.debug("[CascadeService] Last cohort - performing global cleanup");
 
       const [submissions, notes, reports, questions, modules, userProgress] =
         await Promise.all([
@@ -735,7 +736,7 @@ async function deleteCohortWithCascade(cohortId, session = null) {
       deletionStats.userProgressDeleted = userProgress.deletedCount;
     } else {
       // NOT LAST: Only delete user data for THIS cohort
-      console.log(
+      log.debug(
         `[CascadeService] Not last cohort - deleting only cohort-specific user data`
       );
 
@@ -770,11 +771,11 @@ async function deleteCohortWithCascade(cohortId, session = null) {
     // Delete the cohort itself
     await Cohort.findByIdAndDelete(cohortId, { session });
 
-    console.log("[CascadeService] Cohort deletion complete:", deletionStats);
+    log.debug("[CascadeService] Cohort deletion complete:", deletionStats);
 
     return deletionStats;
   } catch (err) {
-    console.error("[CascadeService] Error deleting cohort:", err);
+    log.error("[CascadeService] Error deleting cohort:", err);
     throw err;
   }
 }
@@ -789,7 +790,7 @@ async function deleteCohortWithCascade(cohortId, session = null) {
  */
 async function removeUserDataFromCohort(cohortId, userId, session = null) {
   try {
-    console.log(
+    log.debug(
       `[CascadeService] Removing user ${userId} data from cohort ${cohortId}`
     );
 
@@ -849,11 +850,11 @@ async function removeUserDataFromCohort(cohortId, userId, session = null) {
       userProgressDeleted: userProgress.deletedCount,
     };
 
-    console.log(`[CascadeService] User data removed:`, deletionStats);
+    log.debug(`[CascadeService] User data removed:`, deletionStats);
 
     return deletionStats;
   } catch (err) {
-    console.error("[CascadeService] Error removing user data:", err);
+    log.error("[CascadeService] Error removing user data:", err);
     throw err;
   }
 }
@@ -867,7 +868,7 @@ async function removeMultipleUsersDataFromCohort(
   session = null
 ) {
   try {
-    console.log(
+    log.debug(
       `[CascadeService] Removing ${userIds.length} users' data from cohort ${cohortId}`
     );
 
@@ -893,14 +894,14 @@ async function removeMultipleUsersDataFromCohort(
       }
     );
 
-    console.log(
+    log.debug(
       `[CascadeService] Multiple users data removed:`,
       aggregatedStats
     );
 
     return aggregatedStats;
   } catch (err) {
-    console.error("[CascadeService] Error removing multiple users data:", err);
+    log.error("[CascadeService] Error removing multiple users data:", err);
     throw err;
   }
 }
@@ -931,13 +932,13 @@ async function linkCohortsToCloneGroup(cohortIds) {
       { $set: { cloneGroupId: cloneGroupId } }
     );
 
-    console.log(
+    log.debug(
       `[CascadeService] Linked ${cohortIds.length} cohorts to clone group ${cloneGroupId}`
     );
 
     return cloneGroupId;
   } catch (err) {
-    console.error("[CascadeService] Error linking cohorts:", err);
+    log.error("[CascadeService] Error linking cohorts:", err);
     throw err;
   }
 }
@@ -954,11 +955,11 @@ async function unlinkCohortFromCloneGroup(cohortId) {
       $unset: { cloneGroupId: "" },
     });
 
-    console.log(
+    log.debug(
       `[CascadeService] Unlinked cohort ${cohortId} from clone group`
     );
   } catch (err) {
-    console.error("[CascadeService] Error unlinking cohort:", err);
+    log.error("[CascadeService] Error unlinking cohort:", err);
     throw err;
   }
 }

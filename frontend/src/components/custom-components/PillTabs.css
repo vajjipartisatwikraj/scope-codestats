@@ -1,0 +1,116 @@
+/*
+ * PillTabs
+ *
+ * A pill container with a single highlight that slides under the items. Colours are --pt-*
+ * variables whose defaults are design tokens (the highlight is the spotlight colour, like the
+ * active item of the sidebar). See PillTabs.jsx for the props.
+ */
+
+.pt {
+  --pt-bg: var(--ds-raised);
+  --pt-text: var(--ds-muted);
+  --pt-active: var(--ds-spotlight);
+  --pt-active-text: var(--ds-on-spotlight);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--pt-bg);
+  scrollbar-width: none;
+}
+
+.pt::-webkit-scrollbar {
+  display: none;
+}
+
+.pt__indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: var(--pt-w, 0px);
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--pt-active);
+  transform: translateX(var(--pt-x, 0px));
+  pointer-events: none;
+}
+
+/* The slide: transform for the move, width for the resize. Switched on after the first paint. */
+.pt__indicator[data-ready='true'] {
+  transition:
+    transform 320ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
+    width 320ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.pt__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: none;
+  color: var(--pt-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 200ms var(--ds-ease);
+}
+
+.pt[data-size='sm'] .pt__item {
+  height: 32px;
+  padding: 0 14px;
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.pt__item:hover {
+  color: var(--ds-text);
+}
+
+.pt__item[data-selected='true'],
+.pt__item[data-selected='true']:hover {
+  color: var(--pt-active-text);
+}
+
+.pt__item:disabled {
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.pt__item:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--pt-bg),
+    0 0 0 4px var(--ds-focus);
+}
+
+.pt__icon {
+  display: inline-flex;
+}
+
+@media (pointer: coarse) {
+  .pt__item,
+  .pt[data-size='sm'] .pt__item {
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pt__indicator[data-ready='true'] {
+    transition: none;
+  }
+}

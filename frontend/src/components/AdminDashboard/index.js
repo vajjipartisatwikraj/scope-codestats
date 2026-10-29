@@ -27,10 +27,9 @@ import {
   Code,
   PieChart as PieChartIcon,
   Leaderboard as LeaderboardIcon,
-  BarChart as BarChartIcon,
   CalendarToday as CalendarIcon,
   Sync as SyncIcon,
-  Timer as TimerIcon,
+  Insights as InsightsIcon,
 } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import axios from "axios";
@@ -39,11 +38,10 @@ import { useAuth } from "../../contexts/AuthContext";
 
 // Import modular components
 import {
-  ProblemAnalytics,
   DepartmentStats,
   UserRegistrations,
   ProfileSync,
-  DailyStatsCron,
+  PerformanceAnalytics,
 } from "./components";
 
 import { apiUrl } from "../../config/apiConfig";
@@ -65,7 +63,6 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
-  const [leaderboardData, setLeaderboardData] = useState([]);
   const [isMounted, setIsMounted] = useState(false);
 
   // Fetch admin stats
@@ -84,19 +81,6 @@ const AdminDashboard = () => {
 
       if (response.data) {
         setStats(response.data);
-
-        // Fetch leaderboard data for export
-        try {
-          const leaderboardResponse = await axios.get(`${apiUrl}/leaderboard`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-          setLeaderboardData(leaderboardResponse.data || []);
-        } catch (leaderboardError) {
-          console.error("Failed to fetch leaderboard:", leaderboardError);
-        }
       }
     } catch (error) {
       const errorMessage =
@@ -273,11 +257,6 @@ const AdminDashboard = () => {
             codingProfiles.scopecodestats?.practiceArenaScore ||
             platformData.scopecodestats?.practiceArenaScore ||
             0,
-          "ScopeCodeStats Consistency Score":
-            platforms.scopecodestats?.consistencyScore ||
-            codingProfiles.scopecodestats?.consistencyScore ||
-            platformData.scopecodestats?.consistencyScore ||
-            0,
           "ScopeCodeStats Problems Solved":
             getPlatformProblems("scopecodestats"),
           "ScopeCodeStats PA Contests":
@@ -285,11 +264,10 @@ const AdminDashboard = () => {
             codingProfiles.scopecodestats?.totalPracticeArenaContests ||
             platformData.scopecodestats?.totalPracticeArenaContests ||
             0,
-          "ScopeCodeStats Current Consistency Index":
-            platforms.scopecodestats?.consistencyIndex ||
-            codingProfiles.scopecodestats?.consistencyIndex ||
-            platformData.scopecodestats?.consistencyIndex ||
-            0,
+
+          // The last 7 days of the total score (services/weeklyActivity)
+          "Consistency Index (7 days)": Number(user.consistencyIndex) || 0,
+          "Score Change (7 days)": Number(user.scoreChange) || 0,
 
           // LeetCode data
           "LeetCode Username": getPlatformUsername("leetcode"),
@@ -1476,11 +1454,6 @@ const AdminDashboard = () => {
             }}
           >
             <Tab
-              label="Problem Analytics"
-              icon={<BarChartIcon />}
-              iconPosition={isMobile ? "top" : "start"}
-            />
-            <Tab
               label="Department Stats"
               icon={<PieChartIcon />}
               iconPosition={isMobile ? "top" : "start"}
@@ -1496,16 +1469,15 @@ const AdminDashboard = () => {
               iconPosition={isMobile ? "top" : "start"}
             />
             <Tab
-              label="Daily Stats Cron"
-              icon={<TimerIcon />}
+              label="Student Performance"
+              icon={<InsightsIcon />}
               iconPosition={isMobile ? "top" : "start"}
             />
           </Tabs>
         </Paper>
 
         {/* Tab Content */}
-        {activeTab === 0 && <ProblemAnalytics />}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <DepartmentStats
             stats={stats}
             loading={loading}
@@ -1513,7 +1485,7 @@ const AdminDashboard = () => {
             setError={setError}
           />
         )}
-        {activeTab === 2 && (
+        {activeTab === 1 && (
           <UserRegistrations
             token={token}
             loading={loading}
@@ -1521,7 +1493,7 @@ const AdminDashboard = () => {
             setError={setError}
           />
         )}
-        {activeTab === 3 && (
+        {activeTab === 2 && (
           <ProfileSync
             token={token}
             loading={loading}
@@ -1529,14 +1501,7 @@ const AdminDashboard = () => {
             setError={setError}
           />
         )}
-        {activeTab === 4 && (
-          <DailyStatsCron
-            token={token}
-            loading={loading}
-            setLoading={setLoading}
-            setError={setError}
-          />
-        )}
+        {activeTab === 3 && <PerformanceAnalytics />}
       </Container>
     </Box>
   );

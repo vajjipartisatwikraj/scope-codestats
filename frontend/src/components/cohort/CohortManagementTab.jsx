@@ -49,9 +49,6 @@ import {
   Save as SaveIcon,
   Close as CloseIcon,
   Group as GroupIcon,
-  AddCircle as AddCircleIcon,
-  DeleteForever as DeleteForeverIcon,
-  Remove as RemoveIcon,
   CalendarToday as CalendarTodayIcon,
   DateRange as DateRangeIcon,
   Create as CreateIcon,
@@ -61,15 +58,14 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   RateReview as RateReviewIcon,
-  FilterList as FilterListIcon,
   Search as SearchIcon,
-  VerifiedUser as VerifiedUserIcon,
 } from "@mui/icons-material";
 import axios from "axios";
 import { apiUrl } from "../../config/apiConfig";
 import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
-import RollNumberCsvImport from "./RollNumberCsvImport";
+import AttachedUserGroupsDialog from "../userGroupManagement/AttachedUserGroupsDialog";
+import { cohortUserGroupApi } from "../../services/userGroupApi";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
@@ -111,21 +107,8 @@ const CohortManagementTab = () => {
   const [duplicateProgress, setDuplicateProgress] = useState("");
   const [duplicatingCohort, setDuplicatingCohort] = useState(null);
 
-  // User Management Dialog State
-  const [userManagementOpen, setUserManagementOpen] = useState(false);
-  const [ineligibleUsers, setIneligibleUsers] = useState([]);
-  const [eligibleUsers, setEligibleUsers] = useState([]);
-  const [loading_users, setLoadingUsers] = useState(false);
-
-  // User Removal Preview Dialog State
-  const [removalPreviewOpen, setRemovalPreviewOpen] = useState(false);
-  const [removalPreviewData, setRemovalPreviewData] = useState(null);
-  const [removingUser, setRemovingUser] = useState(null);
-  const [isRemovingAll, setIsRemovingAll] = useState(false);
-
-  // Conflict Dialog State
-  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
-  const [conflictData, setConflictData] = useState(null);
+  // User groups dialog: the cohort whose attached user groups are being managed
+  const [userGroupsCohort, setUserGroupsCohort] = useState(null);
 
   // Reviews Management State
   const [allReviews, setAllReviews] = useState([]);
@@ -138,16 +121,6 @@ const CohortManagementTab = () => {
   });
   const [selectedReviews, setSelectedReviews] = useState([]);
   const [deleteReviewsDialogOpen, setDeleteReviewsDialogOpen] = useState(false);
-
-  // Filter state for department/section/class filtering
-  const [filterDepartment, setFilterDepartment] = useState("");
-  const [filterSection, setFilterSection] = useState("");
-  const [filterGraduatingYear, setFilterGraduatingYear] = useState("");
-
-  // Search state - email only
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [eligibleSearchQuery, setEligibleSearchQuery] = useState("");
 
   // Form state for creating/editing cohort
   const [formData, setFormData] = useState({
@@ -278,8 +251,13 @@ const CohortManagementTab = () => {
   const handleOpenDeleteDialog = async (cohort) => {
     setSelectedCohort(cohort);
     setOpenDeleteDialog(true);
-    setLoadingDeletionImpact(true);
     setDeletionImpact(null);
+    await loadDeletionImpact(cohort);
+  };
+
+  // Ask the server what deleting a cohort would remove, and which user groups are still attached
+  const loadDeletionImpact = async (cohort) => {
+    setLoadingDeletionImpact(true);
 
     try {
       // Fetch deletion impact information
@@ -298,6 +276,12 @@ const CohortManagementTab = () => {
     } finally {
       setLoadingDeletionImpact(false);
     }
+  };
+
+  // After user groups were attached or detached: refresh the counts, and the delete check if it is open
+  const handleUserGroupsChanged = () => {
+    fetchCohorts();
+    if (openDeleteDialog && selectedCohort) loadDeletionImpact(selectedCohort);
   };
 
   // Close the delete dialog
@@ -528,7 +512,11 @@ const CohortManagementTab = () => {
       handleCloseDeleteDialog();
     } catch (error) {
       console.error("Error deleting cohort:", error);
-      toast.error("Failed to delete cohort");
+      toast.error(error.response?.data?.message || "Failed to delete cohort");
+      // Someone may have attached a group meanwhile
+      if (error.response?.data?.reason === "user_groups_attached") {
+        loadDeletionImpact(selectedCohort);
+      }
     } finally {
       setLoading(false);
     }
@@ -795,515 +783,6 @@ const CohortManagementTab = () => {
     window.location.href = `/admin/cohorts/${cohort._id}`;
   };
 
-  // Open User Management Dialog
-  const handleOpenUserManagement = async (cohort) => {
-    setSelectedCohort(cohort);
-    setUserManagementOpen(true);
-
-    // Reset filters
-    setFilterDepartment("");
-    setFilterSection("");
-    setFilterGraduatingYear("");
-    setSearchQuery("");
-
-    // Load initial eligible users and pass them directly to fetchFilteredUsers
-    // (state updates are async, so eligibleUsers would be stale otherwise)
-    const currentEligible = await fetchEligibleUsers(cohort._id);
-
-    // Load all users based on current filters, excluding already-eligible users
-    await fetchFilteredUsers(currentEligible);
-  };
-
-  // Fetch eligible users for the cohort (returns the users array for immediate use)
-  const fetchEligibleUsers = async (cohortId) => {
-    setLoadingUsers(true);
-    try {
-      const response = await axios.get(
-        `${apiUrl}/cohorts/${cohortId}/eligible-users`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.data && response.data.users) {
-        const users = response.data.users.map((user) => ({
-          _id: user._id,
-          name: user.name || "Unknown",
-          email: user.email || "No email",
-          department: user.department || "",
-          section: user.section || "",
-          graduatingYear: user.graduatingYear || "",
-        }));
-        setEligibleUsers(users);
-        return users;
-      } else {
-        setEligibleUsers([]);
-        return [];
-      }
-    } catch (error) {
-      console.error("Error fetching eligible users:", error);
-      toast.error("Failed to fetch eligible users");
-      setEligibleUsers([]);
-      return [];
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  // Fetch filtered users based on current filters and search
-  // currentEligible: optional array of eligible users to use instead of stale state
-  const fetchFilteredUsers = async (currentEligible) => {
-    setLoadingUsers(true);
-    try {
-      let url = `${apiUrl}/users/search`;
-      const params = new URLSearchParams();
-
-      // Always load all users (backend returns empty without this flag when no filters)
-      params.append("all", "true");
-      params.append("limit", "5000");
-
-      // Apply filters
-      if (filterDepartment) params.append("department", filterDepartment);
-      if (filterSection) params.append("section", filterSection);
-      if (filterGraduatingYear)
-        params.append("graduatingYear", filterGraduatingYear);
-
-      // Apply search by email
-      if (searchQuery.trim()) {
-        params.append("email", searchQuery.trim());
-      }
-
-      url += `?${params.toString()}`;
-
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.data && response.data.users) {
-        const allUsers = response.data.users.map((user) => ({
-          _id: user._id,
-          name: user.name || "Unknown",
-          email: user.email || "No email",
-          department: user.department || "",
-          section: user.section || "",
-          graduatingYear: user.graduatingYear || "",
-        }));
-
-        // Filter out users who are already eligible
-        // Use passed-in array if available (avoids stale state on initial load)
-        const currentEligibleList = currentEligible || eligibleUsers;
-        const eligibleIds = currentEligibleList.map((u) => u._id);
-        const ineligible = allUsers.filter(
-          (user) => !eligibleIds.includes(user._id)
-        );
-
-        setIneligibleUsers(ineligible);
-      } else {
-        setIneligibleUsers([]);
-      }
-    } catch (error) {
-      console.error("Error fetching filtered users:", error);
-
-      if (error.response?.status === 404) {
-        toast.error("Search endpoint not found. Please check backend server.");
-      } else if (error.response?.status === 403) {
-        toast.error("Access denied. Admin privileges required.");
-      } else if (error.response?.status === 401) {
-        toast.error("Authentication failed. Please login again.");
-      } else {
-        toast.error("Failed to search users.");
-      }
-
-      setIneligibleUsers([]);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  // Apply current filters
-  const handleApplyFilters = () => {
-    fetchFilteredUsers();
-  };
-
-  // Clear all filters
-  const handleClearFilters = () => {
-    setFilterDepartment("");
-    setFilterSection("");
-    setFilterGraduatingYear("");
-    setSearchQuery("");
-    fetchFilteredUsers();
-  };
-
-  // Handle search input change
-  const handleSearchInputChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  // Search users by email
-  const handleSearchByEmail = () => {
-    if (searchQuery.trim().length >= 3) {
-      fetchFilteredUsers();
-    } else {
-      toast.warning("Please enter at least 3 characters to search");
-    }
-  };
-
-  // Add user to cohort
-  const handleAddUserToCohort = async (user) => {
-    if (!selectedCohort) return;
-
-    try {
-      // Add the user to eligible users list
-      const updatedEligibleUsers = [...eligibleUsers, user];
-      const userIds = updatedEligibleUsers.map((u) => u._id);
-
-      // Update the cohort's eligible users
-      await axios.put(
-        `${apiUrl}/cohorts/${selectedCohort._id}/eligible-users`,
-        { userIds },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Update local state
-      setEligibleUsers(updatedEligibleUsers);
-      setIneligibleUsers(ineligibleUsers.filter((u) => u._id !== user._id));
-
-      toast.success(`${user.name} added to cohort successfully`);
-    } catch (error) {
-      console.error("Error adding user to cohort:", error);
-
-      // ✅ Handle eligibility conflicts (409) - already eligible in related cohort
-      if (
-        error.response?.status === 409 &&
-        error.response?.data?.conflictsByCohort
-      ) {
-        setConflictData({
-          type: "eligibility",
-          conflictsByCohort: error.response.data.conflictsByCohort,
-          totalConflicts: error.response.data.totalConflicts,
-          hint: error.response.data.hint,
-          attemptedAction: "add user",
-        });
-        setConflictDialogOpen(true);
-      }
-      // ✅ Handle enrollment conflicts (409) - already enrolled in related cohort
-      else if (
-        error.response?.status === 409 &&
-        error.response?.data?.conflicts
-      ) {
-        // Convert old format to new format for consistency
-        const conflictsByCohort = {};
-        error.response.data.conflicts.forEach((conflict) => {
-          if (!conflictsByCohort[conflict.enrolledInCohort]) {
-            conflictsByCohort[conflict.enrolledInCohort] = {
-              cohortTitle: conflict.enrolledInCohort,
-              cohortId: conflict.enrolledInCohortId,
-              users: [],
-            };
-          }
-          conflictsByCohort[conflict.enrolledInCohort].users.push({
-            userName: conflict.userName,
-            userEmail: conflict.userEmail,
-            rollNumber: conflict.rollNumber,
-            status: "enrolled",
-          });
-        });
-
-        setConflictData({
-          type: "enrollment",
-          conflictsByCohort: Object.values(conflictsByCohort),
-          totalConflicts: error.response.data.conflicts.length,
-          hint: "Users can only be enrolled in one cohort from related cohorts (original + clones).",
-          attemptedAction: "add user",
-        });
-        setConflictDialogOpen(true);
-      } else {
-        toast.error(
-          error.response?.data?.message || "Failed to add user to cohort"
-        );
-      }
-    }
-  };
-
-  // Remove user from cohort with preview
-  const handleRemoveUserFromCohort = async (user) => {
-    if (!selectedCohort) return;
-
-    try {
-      setLoadingUsers(true);
-
-      // Remove the user from eligible users list
-      const updatedEligibleUsers = eligibleUsers.filter(
-        (u) => u._id !== user._id
-      );
-      const userIds = updatedEligibleUsers.map((u) => u._id);
-
-      // 📋 STEP 1: Preview what data will be deleted
-      const previewResponse = await axios.put(
-        `${apiUrl}/cohorts/${selectedCohort._id}/eligible-users?preview=true`,
-        { userIds },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Show preview dialog with deletion details
-      if (previewResponse.data.preview && previewResponse.data.userDetails) {
-        const userToRemove = previewResponse.data.userDetails.find(
-          (u) => u.userId === user._id
-        );
-
-        if (userToRemove) {
-          setRemovingUser(user);
-          setRemovalPreviewData(previewResponse.data);
-          setIsRemovingAll(false);
-          setRemovalPreviewOpen(true);
-          setLoadingUsers(false);
-          return; // Wait for user confirmation in dialog
-        }
-      }
-
-      setLoadingUsers(false);
-    } catch (error) {
-      console.error("Error previewing user removal:", error);
-      setLoadingUsers(false);
-      toast.error(
-        error.response?.data?.message || "Failed to preview user removal"
-      );
-    }
-  };
-
-  // Confirm and execute user removal
-  const confirmRemoveUser = async () => {
-    if (!selectedCohort || (!removingUser && !isRemovingAll)) return;
-
-    try {
-      setLoadingUsers(true);
-
-      const userIds = isRemovingAll
-        ? []
-        : eligibleUsers
-            .filter((u) => u._id !== removingUser._id)
-            .map((u) => u._id);
-
-      // 🗑️ Perform actual deletion
-      await axios.put(
-        `${apiUrl}/cohorts/${selectedCohort._id}/eligible-users`,
-        { userIds },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Update local state
-      if (isRemovingAll) {
-        setEligibleUsers([]);
-        await fetchFilteredUsers();
-        toast.success("All users removed from cohort successfully");
-      } else {
-        const updatedEligibleUsers = eligibleUsers.filter(
-          (u) => u._id !== removingUser._id
-        );
-        setEligibleUsers(updatedEligibleUsers);
-
-        // Add back to ineligible list if it matches current filters
-        const matchesFilters =
-          (!filterDepartment || removingUser.department === filterDepartment) &&
-          (!filterSection || removingUser.section === filterSection) &&
-          (!filterGraduatingYear ||
-            removingUser.graduatingYear === filterGraduatingYear) &&
-          (!searchQuery.trim() ||
-            removingUser.email
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()));
-
-        if (matchesFilters) {
-          setIneligibleUsers([...ineligibleUsers, removingUser]);
-        }
-
-        toast.success(`${removingUser.name} removed from cohort successfully`);
-      }
-
-      // Close preview dialog
-      setRemovalPreviewOpen(false);
-      setRemovingUser(null);
-      setRemovalPreviewData(null);
-      setIsRemovingAll(false);
-      setLoadingUsers(false);
-    } catch (error) {
-      console.error("Error removing user from cohort:", error);
-      setLoadingUsers(false);
-      toast.error(
-        error.response?.data?.message || "Failed to remove user from cohort"
-      );
-    }
-  };
-
-  // Add all filtered users to cohort
-  const handleAddAllUsers = async () => {
-    if (!selectedCohort || ineligibleUsers.length === 0) return;
-
-    const confirmed = window.confirm(
-      `Add all ${ineligibleUsers.length} filtered users to this cohort?`
-    );
-    if (!confirmed) return;
-
-    try {
-      setLoadingUsers(true);
-
-      // Combine eligible users with all ineligible users
-      const updatedEligibleUsers = [...eligibleUsers, ...ineligibleUsers];
-      const userIds = updatedEligibleUsers.map((u) => u._id);
-
-      // Update the cohort's eligible users in one API call
-      await axios.put(
-        `${apiUrl}/cohorts/${selectedCohort._id}/eligible-users`,
-        { userIds },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Update local state
-      setEligibleUsers(updatedEligibleUsers);
-      setIneligibleUsers([]);
-
-      toast.success(
-        `Successfully added all ${ineligibleUsers.length} users to the cohort!`
-      );
-    } catch (error) {
-      console.error("Error adding all users:", error);
-
-      // ✅ Handle eligibility conflicts (409) - already eligible in related cohorts
-      if (
-        error.response?.status === 409 &&
-        error.response?.data?.conflictsByCohort
-      ) {
-        setConflictData({
-          type: "eligibility",
-          conflictsByCohort: error.response.data.conflictsByCohort,
-          totalConflicts: error.response.data.totalConflicts,
-          hint: error.response.data.hint,
-          attemptedAction: "add all users",
-        });
-        setConflictDialogOpen(true);
-      }
-      // ✅ Handle enrollment conflicts (409) - already enrolled in related cohorts
-      else if (
-        error.response?.status === 409 &&
-        error.response?.data?.conflicts
-      ) {
-        // Convert old format to new format for consistency
-        const conflictsByCohort = {};
-        error.response.data.conflicts.forEach((conflict) => {
-          if (!conflictsByCohort[conflict.enrolledInCohort]) {
-            conflictsByCohort[conflict.enrolledInCohort] = {
-              cohortTitle: conflict.enrolledInCohort,
-              cohortId: conflict.enrolledInCohortId,
-              users: [],
-            };
-          }
-          conflictsByCohort[conflict.enrolledInCohort].users.push({
-            userName: conflict.userName,
-            userEmail: conflict.userEmail,
-            rollNumber: conflict.rollNumber,
-            status: "enrolled",
-          });
-        });
-
-        setConflictData({
-          type: "enrollment",
-          conflictsByCohort: Object.values(conflictsByCohort),
-          totalConflicts: error.response.data.conflicts.length,
-          hint: "Users can only be enrolled in one cohort from related cohorts (original + clones).",
-          attemptedAction: "add all users",
-        });
-        setConflictDialogOpen(true);
-      } else {
-        toast.error(
-          error.response?.data?.message ||
-            "Failed to add users. Please try again."
-        );
-      }
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  // Remove all users from cohort with preview
-  const handleRemoveAllUsers = async () => {
-    if (!selectedCohort || eligibleUsers.length === 0) return;
-
-    try {
-      setLoadingUsers(true);
-
-      // 📋 Preview what data will be deleted for all users
-      const previewResponse = await axios.put(
-        `${apiUrl}/cohorts/${selectedCohort._id}/eligible-users?preview=true`,
-        { userIds: [] }, // Empty array = remove all
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Show preview dialog
-      if (previewResponse.data.preview) {
-        setRemovingUser(null);
-        setRemovalPreviewData(previewResponse.data);
-        setIsRemovingAll(true);
-        setRemovalPreviewOpen(true);
-        setLoadingUsers(false);
-      }
-    } catch (error) {
-      console.error("Error previewing removal of all users:", error);
-      setLoadingUsers(false);
-      toast.error("Failed to preview user removal");
-    }
-  };
-
-  // Close user management dialog
-  const handleCloseUserManagement = () => {
-    setUserManagementOpen(false);
-    setIneligibleUsers([]);
-    setEligibleUsers([]);
-    setFilterDepartment("");
-    setFilterSection("");
-    setFilterGraduatingYear("");
-    setSearchQuery("");
-    setEligibleSearchQuery("");
-
-    // Refresh cohorts to show updated counts
-    fetchCohorts();
-  };
-
-  // Update eligible users and close dialog
-  const handleUpdateEligibleUsers = () => {
-    handleCloseUserManagement();
-  };
-
   // Format date for display
   const formatDate = (dateString) => {
     try {
@@ -1503,7 +982,8 @@ const CohortManagementTab = () => {
                             sx={{ mr: 1, fontSize: "0.9rem" }}
                           />
                           <Typography variant="body2" color="text.secondary">
-                            Eligible Users: {cohort.eligibleUsersCount || 0}
+                            Eligible Users: {cohort.eligibleUsersCount || 0} · User groups:{" "}
+                            {cohort.userGroupsCount || 0}
                           </Typography>
                         </Box>
                         <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -1588,11 +1068,11 @@ const CohortManagementTab = () => {
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={() => handleOpenUserManagement(cohort)}
+                          onClick={() => setUserGroupsCohort(cohort)}
                           startIcon={<PeopleIcon />}
                           sx={{ mr: 1 }}
                         >
-                          Manage Users
+                          User Groups
                         </Button>
                         <Button
                           variant="contained"
@@ -1715,7 +1195,8 @@ const CohortManagementTab = () => {
                               sx={{ mr: 1, fontSize: "0.9rem" }}
                             />
                             <Typography variant="body2" color="text.secondary">
-                              Eligible Users: {cohort.eligibleUsersCount || 0}
+                              Eligible Users: {cohort.eligibleUsersCount || 0} · User groups:{" "}
+                            {cohort.userGroupsCount || 0}
                             </Typography>
                           </Box>
                         </Box>
@@ -1781,11 +1262,11 @@ const CohortManagementTab = () => {
                           <Button
                             variant="outlined"
                             size="small"
-                            onClick={() => handleOpenUserManagement(cohort)}
+                            onClick={() => setUserGroupsCohort(cohort)}
                             startIcon={<PeopleIcon />}
                             sx={{ mr: 1 }}
                           >
-                            Manage Users
+                            User Groups
                           </Button>
                           <Button
                             variant="contained"
@@ -2617,6 +2098,30 @@ const CohortManagementTab = () => {
             <strong>{selectedCohort?.title}</strong>"?
           </Typography>
 
+          {deletionImpact?.userGroups?.length > 0 && (
+            <Alert
+              severity="warning"
+              sx={{ mt: 2 }}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => setUserGroupsCohort(selectedCohort)}
+                >
+                  Detach groups
+                </Button>
+              }
+            >
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Detach the user groups first
+              </Typography>
+              <Typography variant="body2">
+                This cohort cannot be deleted while these user groups are attached:{" "}
+                {deletionImpact.userGroups.map((group) => group.name).join(", ")}.
+              </Typography>
+            </Alert>
+          )}
+
           {loadingDeletionImpact ? (
             <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
               <CircularProgress size={40} />
@@ -2714,7 +2219,11 @@ const CohortManagementTab = () => {
             color="error"
             variant="contained"
             startIcon={<DeleteIcon />}
-            disabled={loading || loadingDeletionImpact}
+            disabled={
+              loading ||
+              loadingDeletionImpact ||
+              deletionImpact?.canDelete === false
+            }
           >
             {loading
               ? "Deleting..."
@@ -2725,744 +2234,15 @@ const CohortManagementTab = () => {
         </DialogActions>
       </Dialog>
 
-      {/* User Management Dialog */}
-      <Dialog
-        open={userManagementOpen}
-        onClose={handleCloseUserManagement}
-        maxWidth="xl"
-        fullWidth
-        PaperProps={{
-          sx: { height: "90vh" },
-        }}
-      >
-        <DialogTitle>
-          Manage Users: {selectedCohort?.title}
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseUserManagement}
-            sx={{
-              position: "absolute",
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent
-          dividers
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            height: "80vh",
-            overflow: "auto",
-          }}
-        >
-          {/* Bulk import by roll number. Resolving is read-only, so the admin
-              sees who exists and who is missing before anything is added. */}
-          {selectedCohort && (
-            <Box sx={{ flexShrink: 0 }}>
-              <RollNumberCsvImport
-                cohortId={selectedCohort._id}
-                currentEligibleIds={eligibleUsers.map((u) => u._id)}
-                onUsersAdded={async () => {
-                  const refreshed = await fetchEligibleUsers(selectedCohort._id);
-                  await fetchFilteredUsers(refreshed);
-                }}
-              />
-            </Box>
-          )}
-
-          {/* Filters Section */}
-          <Paper sx={{ p: 2, flexShrink: 0 }}>
-            <Typography variant="h6" gutterBottom>
-              Filters & Search
-            </Typography>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Department</InputLabel>
-                  <Select
-                    value={filterDepartment}
-                    label="Department"
-                    onChange={(e) => setFilterDepartment(e.target.value)}
-                  >
-                    <MenuItem value="">All Departments</MenuItem>
-                    <MenuItem value="CSE">CSE</MenuItem>
-                    <MenuItem value="CSC">CSC</MenuItem>
-                    <MenuItem value="CSD">CSD</MenuItem>
-                    <MenuItem value="CSM">CSM</MenuItem>
-                    <MenuItem value="CSIT">CSIT</MenuItem>
-                    <MenuItem value="IT">IT</MenuItem>
-                    <MenuItem value="ECE">ECE</MenuItem>
-                    <MenuItem value="EEE">EEE</MenuItem>
-                    <MenuItem value="MECH">MECH</MenuItem>
-                    <MenuItem value="AERO">AERO</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Section</InputLabel>
-                  <Select
-                    value={filterSection}
-                    label="Section"
-                    onChange={(e) => setFilterSection(e.target.value)}
-                  >
-                    <MenuItem value="">All Sections</MenuItem>
-                    {["A", "B", "C", "D", "E", "F", "G", "H"].map((section) => (
-                      <MenuItem key={section} value={section}>
-                        {section}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Year</InputLabel>
-                  <Select
-                    value={filterGraduatingYear}
-                    label="Year"
-                    onChange={(e) => setFilterGraduatingYear(e.target.value)}
-                  >
-                    <MenuItem value="">All Years</MenuItem>
-                    <MenuItem value="2025">2025</MenuItem>
-                    <MenuItem value="2026">2026</MenuItem>
-                    <MenuItem value="2027">2027</MenuItem>
-                    <MenuItem value="2028">2028</MenuItem>
-                    <MenuItem value="2029">2029</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Search by Email"
-                  value={searchQuery}
-                  onChange={handleSearchInputChange}
-                  placeholder="Enter email address..."
-                />
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleApplyFilters}
-                    disabled={loading_users}
-                    fullWidth
-                  >
-                    Apply
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleClearFilters}
-                    disabled={loading_users}
-                    fullWidth
-                  >
-                    Clear
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          {/* Two Lists */}
-          <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-            {/* Ineligible Users List */}
-            <Grid item xs={12} md={6}>
-              <Paper
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  p: 2,
-                  overflow: "hidden",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    mb: 1,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography variant="h6" color="error">
-                    Ineligible Users ({ineligibleUsers.length})
-                  </Typography>
-                  {ineligibleUsers.length > 0 && !loading_users && (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddAllUsers}
-                      disabled={loading_users}
-                    >
-                      Add All
-                    </Button>
-                  )}
-                </Box>
-
-                {loading_users ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                ) : ineligibleUsers.length === 0 ? (
-                  <Alert severity="info" sx={{ flex: 1 }}>
-                    No ineligible users found with current filters.
-                  </Alert>
-                ) : (
-                  <Box
-                    sx={{
-                      flex: 1,
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column",
-                      minHeight: 0,
-                    }}
-                  >
-                    <TableContainer
-                      sx={{ flex: 1, maxHeight: "50vh", overflow: "auto" }}
-                    >
-                      <Table size="small" stickyHeader>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Email</TableCell>
-                            <TableCell>Dept</TableCell>
-                            <TableCell>Sec</TableCell>
-                            <TableCell>Year</TableCell>
-                            <TableCell>Action</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {ineligibleUsers.map((user) => (
-                            <TableRow key={user._id}>
-                              <TableCell>{user.name}</TableCell>
-                              <TableCell>{user.email}</TableCell>
-                              <TableCell>{user.department}</TableCell>
-                              <TableCell>{user.section}</TableCell>
-                              <TableCell>{user.graduatingYear}</TableCell>
-                              <TableCell>
-                                <Tooltip title="Add to cohort">
-                                  <IconButton
-                                    size="small"
-                                    color="success"
-                                    onClick={() => handleAddUserToCohort(user)}
-                                  >
-                                    <AddIcon />
-                                  </IconButton>
-                                </Tooltip>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                )}
-              </Paper>
-            </Grid>
-
-            {/* Eligible Users List */}
-            <Grid item xs={12} md={6}>
-              <Paper
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  p: 2,
-                  overflow: "hidden",
-                  border: (theme) =>
-                    `1px solid ${
-                      theme.palette.mode === "dark"
-                        ? "rgba(46, 125, 50, 0.3)"
-                        : "rgba(46, 125, 50, 0.2)"
-                    }`,
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 1,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography variant="h6" color="success.main">
-                    Eligible Users ({eligibleUsers.length})
-                  </Typography>
-                  {eligibleUsers.length > 0 && (
-                    <Button
-                      size="small"
-                      onClick={handleRemoveAllUsers}
-                      color="error"
-                      variant="outlined"
-                    >
-                      Remove All
-                    </Button>
-                  )}
-                </Box>
-
-                {/* Search within eligible users */}
-                {eligibleUsers.length > 0 && (
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Search eligible users by name or email..."
-                    value={eligibleSearchQuery}
-                    onChange={(e) => setEligibleSearchQuery(e.target.value)}
-                    sx={{ mb: 1, flexShrink: 0 }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                )}
-
-                {loading_users ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                ) : eligibleUsers.length === 0 ? (
-                  <Alert severity="info" sx={{ flex: 1 }}>
-                    No users are currently eligible for this cohort.
-                  </Alert>
-                ) : (
-                  <Box
-                    sx={{
-                      flex: 1,
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column",
-                      minHeight: 0,
-                    }}
-                  >
-                    {(() => {
-                      const filteredEligible = eligibleSearchQuery.trim()
-                        ? eligibleUsers.filter(
-                            (u) =>
-                              u.name
-                                .toLowerCase()
-                                .includes(
-                                  eligibleSearchQuery.toLowerCase()
-                                ) ||
-                              u.email
-                                .toLowerCase()
-                                .includes(
-                                  eligibleSearchQuery.toLowerCase()
-                                )
-                          )
-                        : eligibleUsers;
-
-                      if (filteredEligible.length === 0) {
-                        return (
-                          <Alert severity="info" sx={{ flex: 1 }}>
-                            No eligible users match your search.
-                          </Alert>
-                        );
-                      }
-
-                      return (
-                        <>
-                          {eligibleSearchQuery.trim() && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ mb: 0.5 }}
-                            >
-                              Showing {filteredEligible.length} of{" "}
-                              {eligibleUsers.length} eligible users
-                            </Typography>
-                          )}
-                          <TableContainer
-                            sx={{
-                              flex: 1,
-                              maxHeight: "50vh",
-                              overflow: "auto",
-                            }}
-                          >
-                            <Table size="small" stickyHeader>
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Name</TableCell>
-                                  <TableCell>Email</TableCell>
-                                  <TableCell>Dept</TableCell>
-                                  <TableCell>Sec</TableCell>
-                                  <TableCell>Year</TableCell>
-                                  <TableCell>Action</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {filteredEligible.map((user) => (
-                                  <TableRow key={user._id}>
-                                    <TableCell>{user.name}</TableCell>
-                                    <TableCell>{user.email}</TableCell>
-                                    <TableCell>{user.department}</TableCell>
-                                    <TableCell>{user.section}</TableCell>
-                                    <TableCell>
-                                      {user.graduatingYear}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Tooltip title="Remove from cohort">
-                                        <IconButton
-                                          size="small"
-                                          color="error"
-                                          onClick={() =>
-                                            handleRemoveUserFromCohort(user)
-                                          }
-                                        >
-                                          <RemoveIcon />
-                                        </IconButton>
-                                      </Tooltip>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </>
-                      );
-                    })()}
-                  </Box>
-                )}
-              </Paper>
-            </Grid>
-          </Grid>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleCloseUserManagement} color="inherit">
-            Close
-          </Button>
-          <Button
-            onClick={handleUpdateEligibleUsers}
-            color="primary"
-            variant="contained"
-            disabled={loading_users}
-          >
-            Done
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Conflict Dialog for Eligibility/Enrollment Issues */}
-      <Dialog
-        open={conflictDialogOpen}
-        onClose={() => setConflictDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          <Typography variant="h6" component="span" color="error">
-            ⚠️ Cannot {conflictData?.attemptedAction || "add users"}
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          {conflictData && (
-            <Box>
-              <Alert severity="error" sx={{ mb: 3 }}>
-                <strong>{conflictData.totalConflicts}</strong> user(s) are
-                already{" "}
-                {conflictData.type === "eligibility"
-                  ? "eligible in"
-                  : "enrolled in"}{" "}
-                related cohort(s).
-              </Alert>
-
-              {conflictData.conflictsByCohort.map((cohortConflict, index) => (
-                <Box key={index} sx={{ mb: 3 }}>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: "bold", mb: 1 }}
-                  >
-                    {cohortConflict.cohortTitle}
-                  </Typography>
-                  <TableContainer
-                    component={Paper}
-                    variant="outlined"
-                    sx={{ mb: 2 }}
-                  >
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>
-                            <strong>Name</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Email</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Roll Number</strong>
-                          </TableCell>
-                          {conflictData.type === "enrollment" && (
-                            <TableCell>
-                              <strong>Status</strong>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {cohortConflict.users.map((user, userIndex) => (
-                          <TableRow key={userIndex}>
-                            <TableCell>{user.userName}</TableCell>
-                            <TableCell>{user.userEmail}</TableCell>
-                            <TableCell>{user.rollNumber || "N/A"}</TableCell>
-                            {conflictData.type === "enrollment" && (
-                              <TableCell>
-                                <Chip
-                                  label={user.status}
-                                  color="warning"
-                                  size="small"
-                                />
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              ))}
-
-              <Alert severity="info">
-                <Typography variant="body2">
-                  <strong>Hint:</strong> {conflictData.hint}
-                </Typography>
-              </Alert>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setConflictDialogOpen(false)}
-            variant="contained"
-            color="primary"
-          >
-            OK, I Understand
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* User Removal Preview Dialog */}
-      <Dialog
-        open={removalPreviewOpen}
-        onClose={() => !loading_users && setRemovalPreviewOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          <Typography variant="h6" component="span" color="error">
-            ⚠️ Confirm User Removal
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          {removalPreviewData && (
-            <Box>
-              {isRemovingAll ? (
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  You are about to remove{" "}
-                  <strong>{removalPreviewData.usersToRemove}</strong> user(s)
-                  from this cohort.
-                </Alert>
-              ) : (
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  You are about to remove <strong>{removingUser?.name}</strong>{" "}
-                  from this cohort.
-                </Alert>
-              )}
-
-              {removalPreviewData.totalDataToDelete && (
-                <>
-                  {(removalPreviewData.totalDataToDelete.submissions > 0 ||
-                    removalPreviewData.totalDataToDelete.notes > 0 ||
-                    removalPreviewData.totalDataToDelete.reports > 0 ||
-                    removalPreviewData.totalDataToDelete.userProgress > 0) && (
-                    <>
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: "bold", mb: 2 }}
-                      >
-                        The following data will be{" "}
-                        <strong style={{ color: theme.palette.error.main }}>
-                          permanently deleted
-                        </strong>
-                        :
-                      </Typography>
-
-                      <TableContainer
-                        component={Paper}
-                        variant="outlined"
-                        sx={{ mb: 2 }}
-                      >
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>
-                                <strong>Data Type</strong>
-                              </TableCell>
-                              <TableCell align="right">
-                                <strong>Count</strong>
-                              </TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <TableRow>
-                              <TableCell>Submissions</TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  label={
-                                    removalPreviewData.totalDataToDelete
-                                      .submissions
-                                  }
-                                  color={
-                                    removalPreviewData.totalDataToDelete
-                                      .submissions > 0
-                                      ? "error"
-                                      : "default"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Notes</TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  label={
-                                    removalPreviewData.totalDataToDelete.notes
-                                  }
-                                  color={
-                                    removalPreviewData.totalDataToDelete.notes >
-                                    0
-                                      ? "error"
-                                      : "default"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Reports</TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  label={
-                                    removalPreviewData.totalDataToDelete.reports
-                                  }
-                                  color={
-                                    removalPreviewData.totalDataToDelete
-                                      .reports > 0
-                                      ? "error"
-                                      : "default"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Progress Records</TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  label={
-                                    removalPreviewData.totalDataToDelete
-                                      .userProgress
-                                  }
-                                  color={
-                                    removalPreviewData.totalDataToDelete
-                                      .userProgress > 0
-                                      ? "error"
-                                      : "default"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-
-                      <Alert severity="error" sx={{ mb: 2 }}>
-                        <strong>Warning:</strong> This action cannot be undone.
-                        All user data for this cohort will be permanently
-                        deleted.
-                      </Alert>
-                    </>
-                  )}
-
-                  {removalPreviewData.totalDataToDelete.submissions === 0 &&
-                    removalPreviewData.totalDataToDelete.notes === 0 &&
-                    removalPreviewData.totalDataToDelete.reports === 0 &&
-                    removalPreviewData.totalDataToDelete.userProgress === 0 && (
-                      <Alert severity="info">
-                        No user data will be deleted. The user has no
-                        submissions, notes, or progress in this cohort.
-                      </Alert>
-                    )}
-                </>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setRemovalPreviewOpen(false);
-              setRemovingUser(null);
-              setRemovalPreviewData(null);
-              setIsRemovingAll(false);
-            }}
-            disabled={loading_users}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={confirmRemoveUser}
-            color="error"
-            variant="contained"
-            disabled={loading_users}
-            startIcon={
-              loading_users ? (
-                <CircularProgress size={20} />
-              ) : (
-                <DeleteForeverIcon />
-              )
-            }
-          >
-            {loading_users
-              ? "Removing..."
-              : isRemovingAll
-              ? "Remove All Users"
-              : "Remove User"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* User groups attached to a cohort (decide who is eligible) */}
+      <AttachedUserGroupsDialog
+        open={Boolean(userGroupsCohort)}
+        target={userGroupsCohort}
+        api={cohortUserGroupApi}
+        entityLabel="cohort"
+        onClose={() => setUserGroupsCohort(null)}
+        onChanged={handleUserGroupsChanged}
+      />
 
       {/* Duplication Progress Dialog */}
       <Dialog

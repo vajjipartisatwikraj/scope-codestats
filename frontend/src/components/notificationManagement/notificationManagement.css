@@ -1,0 +1,413 @@
+/*
+ * Notification management (route /admin/notifications)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Both
+ * themes work because only theme roles are used. Cards are flat; the one inverted tile is the
+ * "students you can reach" figure; the primary button is the only accent fill.
+ */
+
+.nm-page {
+  --nm-pad: 16px;
+}
+
+@media (min-width: 900px) {
+  .nm-page {
+    --nm-pad: 24px;
+  }
+}
+
+/* ---- Summary -------------------------------------------------------------------------------- */
+
+.nm-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-gap);
+  margin: 0 0 var(--ui-gap);
+}
+
+@media (min-width: 900px) {
+  .nm-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.nm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+@media (min-width: 900px) {
+  .nm-stat {
+    padding: 20px 24px;
+  }
+}
+
+.nm-stat[data-spotlight='true'] {
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+}
+
+.nm-stat__label,
+.nm-stat__context {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.nm-stat__context {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.nm-stat[data-spotlight='true'] .nm-stat__label,
+.nm-stat[data-spotlight='true'] .nm-stat__context {
+  color: var(--ds-on-spotlight-muted);
+}
+
+.nm-stat__value {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.nm-stat[data-spotlight='true'] .nm-stat__value {
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+}
+
+/* ---- Compose: the form and its preview ------------------------------------------------------- */
+
+.nm-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-gap);
+  align-items: start;
+  margin: 0 0 var(--ui-gap);
+}
+
+@media (min-width: 1100px) {
+  .nm-compose {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+
+  .nm-preview {
+    position: sticky;
+    top: 88px;
+  }
+}
+
+.nm-form__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.nm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nm-section + .nm-section {
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.nm-section__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.nm-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nm-locked {
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.nm-locked__value {
+  margin: 0;
+  font: var(--ds-type-label);
+}
+
+.nm-locked__hint {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* The action footer stays in view while the form is longer than the window */
+.nm-form__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: 24px calc(var(--nm-pad) * -1) calc(var(--nm-pad) * -1);
+  padding: 16px var(--nm-pad);
+  border-top: 1px solid var(--ds-line);
+  border-radius: 0 0 var(--ds-radius-xl) var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.nm-form__summary {
+  flex: 1 1 200px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.nm-form__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 599.95px) {
+  .nm-form__buttons {
+    flex: 1 1 100%;
+  }
+
+  .nm-form__buttons .ui-button {
+    flex: 1 1 auto;
+  }
+}
+
+/* The datetime picker follows the theme (its calendar icon too) */
+.nm-form input[type='datetime-local'] {
+  color-scheme: inherit;
+}
+
+/* ---- Preview ---------------------------------------------------------------------------------- */
+
+.nm-preview__item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.nm-preview__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.nm-preview__content {
+  min-width: 0;
+}
+
+.nm-preview__content > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.nm-preview__title {
+  font: var(--ds-type-label);
+}
+
+.nm-preview__message {
+  margin-top: 2px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  white-space: pre-wrap;
+}
+
+.nm-preview__title[data-empty='true'],
+.nm-preview__message[data-empty='true'] {
+  color: var(--ds-subtle);
+}
+
+.nm-preview__time {
+  margin-top: 8px;
+  color: var(--ds-subtle);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.nm-preview__dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background-color: var(--ds-accent);
+}
+
+.nm-facts {
+  margin: 16px 0 0;
+}
+
+.nm-facts__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.nm-facts__row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.nm-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.nm-facts dt svg {
+  flex: none;
+  align-self: center;
+}
+
+.nm-facts dd {
+  margin: 0;
+  font: var(--ds-type-label);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.nm-facts__meta {
+  display: block;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Confirmation ----------------------------------------------------------------------------- */
+
+.nm-confirm {
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.nm-confirm__title,
+.nm-confirm__message {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.nm-confirm__title {
+  font: var(--ds-type-label);
+}
+
+.nm-confirm__message {
+  max-height: 160px;
+  margin-top: 4px;
+  overflow-y: auto;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  white-space: pre-wrap;
+}
+
+/* ---- History ---------------------------------------------------------------------------------- */
+
+.nm-history {
+  margin: 0;
+}
+
+.nm-state {
+  padding: 0 16px 16px;
+}
+
+.nm-table__main {
+  width: 42%;
+  max-width: 0;
+}
+
+.nm-table__audience {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.nm-table__date {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nm-never {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.nm-row {
+  align-items: start;
+}
+
+.nm-row[data-editing='true'] {
+  background-color: var(--ds-accent-soft);
+}
+
+.nm-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nm-row__main > p {
+  margin: 0;
+}
+
+.nm-row__title {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.nm-row__message {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.nm-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.nm-row__detail {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}

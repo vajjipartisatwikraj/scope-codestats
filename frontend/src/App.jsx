@@ -30,34 +30,38 @@ import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { AcademicYearProvider } from "./contexts/AcademicYearContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import axios from "./utils/axiosConfig";
 
-import Navbar from "./components/Navbar";
-import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar/Navbar";
+import Sidebar from "./components/Sidebar/Sidebar";
 import Footer from "./components/Footer";
 import Login from "./components/Login";
 import MultiStepRegister from "./components/MultiStepRegister";
-import Dashboard from "./components/Dashboard";
+import StudentDashboard from "./components/StudentDashboard";
+import DeprecatedDashboard from "./components/deprecated/deprecated_Dashboard";
 import AdminDashboard from "./components/AdminDashboard";
-import Leaderboard from "./components/Leaderboard";
-import Courses from "./components/Courses";
-import Opportunities from "./components/Opportunities";
+import Leaderboard from "./components/leaderboard";
+import Courses from "./components/courses";
+import Opportunities from "./components/opportunities";
 import Landing from "./components/Landing";
-import Profile from "./components/Profile";
+import ProfilePage from "./components/profilePage";
 import PrivateRoute from "./components/PrivateRoute";
 import About from "./pages/About";
 import Docs from "./pages/Docs";
 import Contact from "./pages/Contact";
-import CourseManagement from "./components/CourseManagement";
-import OpportunityManagement from "./components/OpportunityManagement";
-import NotificationManagement from "./components/NotificationManagement";
-import ManageUsers from "./components/ManageUsers";
-import AcademicYearConfigAdmin from "./components/Admin/AcademicYearConfig";
-import UserView from "./components/UserView";
-import PublicUserView from "./components/PublicUserView";
+import CourseManagement from "./components/courseManagement";
+import OpportunityManagement from "./components/opportunityManagement";
+import NotificationManagement from "./components/notificationManagement";
+import ManageUsers from "./components/manageUsers";
+import UserGroups from "./components/userGroupManagement";
+import TeacherRequests from "./components/teacherRequests";
+import TeacherAccess from "./components/TeacherAccess";
+import AcademicYearConfigAdmin from "./components/academicYearConfig";
+import PublicProfile, { PublicProfileRedirect } from "./components/publicProfile";
 import ConditionalDashboard from "./components/ConditionalDashboard";
-import CodePad from "./components/CodePad";
+import CodePad from "./components/CodePad/index.js";
 import TestGoogleImage from "./components/TestGoogleImage";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 import NotificationPage from "./pages/NotificationPage";
@@ -75,19 +79,17 @@ import PARandomTestForm from "./components/PracticeArena/PARandomTestForm";
 import PATestResults from "./components/PracticeArena/PATestResults";
 
 // Import speech (communication) test components
-import SpeechTestDashboard from "./components/SpeechTest/SpeechTestDashboard";
-import SpeechTestOverview from "./components/SpeechTest/overview/SpeechTestOverview";
-import SpeechTestSetup from "./components/SpeechTest/setup/SpeechTestSetup";
-import SpeechSectionRunner from "./components/SpeechTest/runner/SectionRunner";
-import SectionResultsPage from "./components/SpeechTest/results/SectionResultsPage";
-import SpeechTestFeedbackPage from "./components/SpeechTest/feedback/SpeechTestFeedbackPage";
-import SpeechTestLeaderboardPage from "./components/SpeechTest/SpeechTestLeaderboardPage";
-import CommunicationTestManagement from "./components/SpeechTest/CommunicationTestManagement";
-import CommunicationTestEditor from "./components/SpeechTest/CommunicationTestEditor";
+import { SpeechTestDashboard } from "./components/speechX/dashboard";
+import { SpeechTestOverview } from "./components/speechX/overview";
+import { SpeechTestSetup } from "./components/speechX/setup";
+import SpeechSectionRunner from "./components/speechX/runner";
+import { SectionResultsPage } from "./components/speechX/results";
+import { SpeechTestFeedbackPage } from "./components/speechX/feedback";
+import { SpeechTestLeaderboardPage } from "./components/speechX/leaderboard";
+import { CommunicationTestManagement, CommunicationTestEditor } from "./components/speechX/admin";
 
 // Import resume builder components
-import ResumeList from "./components/resume/ResumeList";
-import ResumeEditor from "./components/resume/ResumeEditor";
+import { ResumeList, ResumeEditor } from "./components/resumeBuilder";
 
 // Import cohort components
 import CohortList from "./components/cohort/CohortList";
@@ -147,9 +149,12 @@ const MainContent = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  // Check if current path is an auth page
+  // Check if current path is an auth page (the teacher access page is a full-screen
+  // waiting room, so it has no navbar, sidebar or footer either)
   const isAuthPage =
     location.pathname === "/login" ||
+    location.pathname === "/teacher-login" ||
+    location.pathname === "/teacher-access" ||
     location.pathname === "/register" ||
     location.pathname.startsWith("/register");
 
@@ -230,6 +235,8 @@ const MainContent = () => {
     isResumeEditorPage ||
     isLandingPage || // Landing pages have their own footer
     location.pathname === "/codepad" ||
+    // The student dashboard is one screen that fits the window; a footer below it would make it scroll
+    location.pathname === "/dashboard" ||
     isCohortPage || // All cohort pages (list, detail, admin)
     isTestPage;
 
@@ -240,6 +247,8 @@ const MainContent = () => {
     "/docs",
     "/contact",
     "/login",
+    "/teacher-login",
+    "/teacher-access",
     "/register",
     "/dashboard",
     "/admin",
@@ -258,6 +267,8 @@ const MainContent = () => {
     "/admin/opportunities",
     "/admin/notifications",
     "/admin/manage-users",
+    "/admin/user-groups",
+    "/admin/teacher-requests",
     "/practice-arena",
     "/cohorts",
     "/admin/practice-arena",
@@ -496,6 +507,15 @@ const MainContent = () => {
                     }
                   />
                 <Route path="/login" element={<Login />} />
+                <Route path="/teacher-login" element={<Login variant="teacher" />} />
+                <Route
+                  path="/teacher-access"
+                  element={
+                    <PrivateRoute>
+                      <TeacherAccess />
+                    </PrivateRoute>
+                  }
+                />
                 <Route path="/register" element={<MultiStepRegister />} />
                 <Route
                   path="/search"
@@ -531,7 +551,11 @@ const MainContent = () => {
                   path="/dashboard"
                   element={
                     <PrivateRoute>
-                      <ConditionalDashboard />
+                      {/* StudentDashboard is the student home. The old dashboard still
+                          serves ?view=platforms and ?view=progress until they are rebuilt. */}
+                      <ConditionalDashboard legacy={<DeprecatedDashboard />}>
+                        <StudentDashboard />
+                      </ConditionalDashboard>
                     </PrivateRoute>
                   }
                 />
@@ -607,7 +631,7 @@ const MainContent = () => {
                   path="/profile"
                   element={
                     <PrivateRoute>
-                      <Profile />
+                      <ProfilePage />
                     </PrivateRoute>
                   }
                 />
@@ -676,6 +700,24 @@ const MainContent = () => {
                   }
                 />
                 <Route
+                  path="/admin/teacher-requests"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <TeacherRequests />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/user-groups"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <MobileRestrictedRoute pageName="User Groups">
+                        <UserGroups />
+                      </MobileRestrictedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
                   path="/admin/academic-year-config"
                   element={
                     <PrivateRoute adminOnly={true}>
@@ -683,11 +725,9 @@ const MainContent = () => {
                     </PrivateRoute>
                   }
                 />
-                <Route path="/user-view/:username" element={<UserView />} />
-                <Route
-                  path="/public-profile/:username"
-                  element={<PublicUserView />}
-                />
+                {/* The one profile page. /user-view/ is its old address. */}
+                <Route path="/public-profile/:username" element={<PublicProfile />} />
+                <Route path="/user-view/:username" element={<PublicProfileRedirect />} />
                 <Route
                   path="/test/google-image"
                   element={
@@ -979,9 +1019,11 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <ThemeProvider>
-            <NotificationProvider>
-              <MainContent />
-            </NotificationProvider>
+            <AcademicYearProvider>
+              <NotificationProvider>
+                <MainContent />
+              </NotificationProvider>
+            </AcademicYearProvider>
           </ThemeProvider>
         </AuthProvider>
       </Router>

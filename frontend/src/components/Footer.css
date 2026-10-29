@@ -1,0 +1,85 @@
+/*
+ * Footer of the app shell
+ *
+ * Plain CSS on the design tokens (--ds-*), no Material UI. It follows the page above it:
+ *   - it leaves room for the sidebar rail (--ds-footer-rail, set by Footer.jsx)
+ *   - its side padding (16px, 24px from 900px, 32px from 1200px) and its 1440px limit are those of
+ *     the page content (leaderboard.css), so the bar is exactly as wide as the cards above it
+ * The bar is a flat surface card like the others: 24px corners, no border, no shadow, no blur.
+ */
+
+.ds-footer {
+  --ds-footer-pad: 16px;
+
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  margin: auto 0 0 var(--ds-footer-rail, 0px);
+  padding: 8px 0 16px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ds-footer *,
+.ds-footer *::before,
+.ds-footer *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+@media (min-width: 900px) {
+  .ds-footer {
+    --ds-footer-pad: 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .ds-footer {
+    --ds-footer-pad: 32px;
+  }
+}
+
+.ds-footer__inner {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--ds-footer-pad);
+}
+
+.ds-footer__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  min-height: 56px;
+  padding: 12px 24px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.ds-footer__logo {
+  display: block;
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.ds-footer__text {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-align: center;
+}
+
+.ds-footer__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

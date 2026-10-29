@@ -1,0 +1,44 @@
+/*
+ * LevelMeter
+ *
+ * Rounded bars that rise in height from left to right. Each bar is a track with a fill of the
+ * same shape inside it; the fill slides up from below the track, so the track clips it and the
+ * ends stay round at every level. Only transform changes. Colours are --lm-* variables whose
+ * defaults are design tokens. See LevelMeter.jsx for the props.
+ */
+
+.lm {
+  --lm-fill: var(--ds-accent);
+  --lm-track: var(--ds-high);
+  --lm-height: 32px;
+
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: var(--lm-height);
+}
+
+.lm__bar {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 4px;
+  max-width: 8px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--lm-track);
+}
+
+.lm__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--lm-fill);
+  transition: transform 100ms linear;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm__fill {
+    transition: none;
+  }
+}

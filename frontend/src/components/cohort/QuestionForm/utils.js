@@ -130,38 +130,16 @@ export const validateFillInBlankMarkers = (code) => {
 };
 
 /**
- * Direct code execution API calls to backend simpleCodeExecutionService
+ * Code execution calls for the question editor (the backend runs them on Judge0 through CodeJudge)
  */
 export const codeExecutionApi = {
-  /**
-   * Execute code with custom input (RUN mode)
-   */
-  runCode: async (language, source_code, input = '') => {
-    try {
-      const response = await axios.post(
-        `${apiUrl}/courses/run-code`,
-        { language, source_code, input },
-        {
-          headers: {
-            Authorization: `Bearer ${getAuthToken()}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error running code:', error);
-      throw new Error(error.response?.data?.error || error.message || 'Failed to run code');
-    }
-  },
-
   /**
    * Submit code against test cases using combined stdin (online-judge style)
    */
   submitCodeCombined: async (language, source_code, testCases, options = {}) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/courses/submit-code-combined`,
+        `${apiUrl}/cohorts/submit-code-combined`,
         { language, source_code, testCases, options },
         {
           headers: {

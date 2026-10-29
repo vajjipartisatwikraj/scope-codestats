@@ -1,0 +1,72 @@
+/*
+ * SignalBars
+ *
+ * Four rounded bars that grow in height. A lit bar is a solid fill, an unlit one only an
+ * outline, so the count is readable in any colour vision. Sizes follow --sb-size. Colours are
+ * --sb-* variables whose defaults are design tokens. See SignalBars.jsx for the props.
+ */
+
+.sb {
+  --sb-size: 18px;
+  --sb-fill: var(--ds-success);
+  --sb-off: var(--ds-field-border);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-muted);
+  vertical-align: middle;
+}
+
+.sb__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: calc(var(--sb-size) * 0.14);
+  height: var(--sb-size);
+}
+
+.sb__bar {
+  box-sizing: border-box;
+  flex: none;
+  width: calc(var(--sb-size) * 0.22);
+  min-width: 3px;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--sb-off);
+  transition:
+    background-color var(--ds-duration-base) var(--ds-ease),
+    box-shadow var(--ds-duration-base) var(--ds-ease);
+}
+
+.sb__bar:nth-child(1) {
+  height: 34%;
+}
+
+.sb__bar:nth-child(2) {
+  height: 56%;
+}
+
+.sb__bar:nth-child(3) {
+  height: 78%;
+}
+
+.sb__bar:nth-child(4) {
+  height: 100%;
+}
+
+.sb__bar[data-lit='true'] {
+  background-color: var(--sb-fill);
+  box-shadow: inset 0 0 0 1.5px var(--sb-fill);
+}
+
+.sb__text {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb__bar {
+    transition: none;
+  }
+}

@@ -1,20 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, useMediaQuery } from '@mui/material';
-import { useTheme } from '../contexts/ThemeContext';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import useMediaQuery from '../hooks/useMediaQuery';
+import './Footer.css';
 
+/**
+ * The footer of the app shell (App.jsx), plain CSS on the design tokens (Footer.css).
+ *
+ * It lines up with the page above it: the same room for the sidebar rail, the same side padding
+ * and the same 1440px limit as the page content (the leaderboard is the reference), so the bar
+ * ends exactly where the cards above it end.
+ *
+ * The rail is read from the body classes that Sidebar.jsx sets (sidebar-expanded and
+ * sidebar-collapsed). On a screen under 900px, and on pages without the sidebar, nothing is reserved.
+ */
 const Footer = () => {
-  const { darkMode, theme } = useTheme();
+  const { darkMode } = useTheme();
   const { token } = useAuth();
   const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const narrow = useMediaQuery('(max-width: 899.95px)');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  // Check if current path is an auth page or public page
-  const isAuthPage = location.pathname === '/login' || 
-                    location.pathname === '/register' || 
-                    location.pathname.startsWith('/register');
+
+  // Pages that run without the sidebar
+  const isAuthPage =
+    location.pathname === '/login' ||
+    location.pathname === '/teacher-login' ||
+    location.pathname === '/teacher-access' ||
+    location.pathname === '/register' ||
+    location.pathname.startsWith('/register');
   const isPublicPage = location.pathname.startsWith('/public-profile/');
   const isCohortProblemPage = /^\/cohorts\/[^/]+\/modules\/[^/]+\/questions\/[^/]+$/.test(location.pathname);
   const isTestPage = location.pathname.startsWith('/practice-arena/tests/');
@@ -22,104 +36,34 @@ const Footer = () => {
   const isSpeechTestFlowPage = /^\/speech-tests\/[^/]+(\/setup|\/feedback|\/sections\/[^/]+(\/results)?)?$/.test(
     location.pathname
   );
-  
-  // Determine if navigation is shown
-  const shouldShowNavigation = token && !isAuthPage && !isCohortProblemPage && !isTestPage && !isPublicPage && !isSpeechTestFlowPage;
-  
-  // Listen to sidebar state changes through body classes
+
+  const shouldShowNavigation =
+    token && !isAuthPage && !isCohortProblemPage && !isTestPage && !isPublicPage && !isSpeechTestFlowPage;
+
+  // Follow the sidebar through the classes it puts on the body
   useEffect(() => {
-    const checkSidebarState = () => {
-      const isExpanded = document.body.classList.contains('sidebar-expanded');
-      setSidebarOpen(isExpanded);
-    };
-    
-    // Initial check
-    checkSidebarState();
-    
-    // Listen for class changes
-    const observer = new MutationObserver(checkSidebarState);
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
-    
+    const check = () => setSidebarOpen(document.body.classList.contains('sidebar-expanded'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
-  
-  // Calculate sidebar width
-  const sidebarWidth = isMobile ? 0 : (sidebarOpen ? 280 : 75);
-  
-  // Theme-aware colors
-  const themeColors = {
-    footerBg: darkMode ? '#000000' : '#ffffff',
-    text: darkMode ? '#ffffff' : '#191919',
-    border: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
-  };
+
+  const rail = shouldShowNavigation && !narrow ? (sidebarOpen ? 280 : 75) : 0;
 
   return (
-    <Box 
-      component="footer" 
-      sx={{
-        position: 'relative',
-        background: themeColors.footerBg,
-        backdropFilter: 'blur(10px)',
-        width: shouldShowNavigation && !isMobile ? `calc(100% - ${sidebarWidth}px)` : '100%',
-        ml: shouldShowNavigation && !isMobile ? `${sidebarWidth}px` : 0,
-        mt: 'auto',
-        py: 1.5, // Reduced height
-        borderTop: `1px solid ${themeColors.border}`,
-        zIndex: 10,
-        transition: 'all 0.25s ease',
-      }}
-    >
-      <Container 
-        maxWidth={false}
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 1.5, // Reduced gap
-          px: 2, // Add some padding
-        }}
-      >
-        {/* Logo Section */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          justifyContent: 'center', 
-        }}>
-          {/* SCOPE Club Logo */}
-          <img 
-            src={darkMode ? "/footer-dark.png" : "/footer-light.png"} 
-            alt="SCOPE Club" 
-            style={{ 
-              height: '32px', // Reduced from 40px to 32px
-              width: 'auto',
-              objectFit: 'contain'
-            }} 
-          />
-        </Box>
-        
-        {/* Copyright Section */}
-        <Typography 
-          variant="body2" 
-          component="div"
-          sx={{ 
-            color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)',
-            fontSize: '0.85rem', // Slightly smaller text
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            fontWeight: 500,
-          }}
-        >
-          <Box component="span" sx={{ fontSize: '0.9rem', lineHeight: 1 }}>©</Box>
-          2025 SCOPE club, All rights Reserved
-        </Typography>
-      </Container>
-    </Box>
+    <footer className="ds-footer" style={{ '--ds-footer-rail': `${rail}px` }}>
+      <div className="ds-footer__inner">
+        <div className="ds-footer__bar">
+          <img className="ds-footer__logo" src={darkMode ? '/footer-dark.png' : '/footer-light.png'} alt="SCOPE Club" />
+          <p className="ds-footer__text">
+            <span aria-hidden="true">&copy;</span>
+            <span className="ds-footer__sr"> Copyright</span> 2025 SCOPE club, All rights Reserved
+          </p>
+        </div>
+      </div>
+    </footer>
   );
 };
 
-export default Footer; 
+export default Footer;

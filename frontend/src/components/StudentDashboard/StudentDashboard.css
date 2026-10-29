@@ -1,0 +1,928 @@
+/*
+ * Student dashboard
+ *
+ * Plain CSS on the design tokens (--ds-*), like the Sidebar and the Navbar. Nothing here is
+ * specific to one theme. The rules come from DESIGN.md and design/screens.md section 5, with the
+ * layout and the card tones of the reference design:
+ *
+ *   surface   the normal card (heatmap, platform scores)
+ *   ink       the dark card (overall score, college rank)
+ *   accent    the blue card (consistency index)
+ *
+ * The ink cards carry data-theme="midnight" (Card.jsx). applyTheme.js publishes the colour
+ * variables per [data-theme], so inside such a card every --ds-* variable is the Midnight one:
+ * light text, light-green badges, light-blue links. Only the card's own fill is chosen here:
+ * the near-black Midnight canvas on Daylight, and a lifted tone on Midnight, where a card
+ * darker than the page would look like a hole.
+ *
+ * LAYOUT
+ *  From 1000px wide the screen is one fixed-height composition that fills the window below the
+ *  navbar and never scrolls:
+ *
+ *      +-------------------------------------+---------+
+ *      | greeting                            |  tile   |
+ *      +-------------------------------------+---------+
+ *      | daily activity                      |  tile   |
+ *      +-------------------------------------+---------+
+ *      | platform-wise problems solved       |  tile   |
+ *      +-------------------------------------+---------+
+ *
+ *  The three tiles on the right share the height: each is --sd-rail tall, a third of the height
+ *  that is left (minus the two gaps), and 1.2 times that wide (--sd-rail-w), like the
+ *  reference design. The rows on the left share the rest of the height, and the charts inside
+ *  them stretch to fill their card (the `fill` mode of the custom components). Type inside the
+ *  tiles is sized from --sd-rail, so the tiles look the same on a laptop and on a big monitor.
+ *  The composition also keeps its proportions on very wide screens: its width is capped at 1.95 times
+ *  its height, centred, so extra width becomes side padding rather than stretched cards.
+ *  If the window is too short for the smallest square the page scrolls instead of squashing.
+ *
+ *  Below 1000px everything stacks, the numbers first, and the page scrolls.
+ *
+ * Shell contract: the navbar is fixed and 64px tall, and the shell's main pads its top by that
+ * much (App.jsx), so --sd-top is 64px. The Container around the page already pads 16px below
+ * 900px, so side padding is added from 900px up only. The footer is not shown on this page
+ * (App.jsx), or the window would have to scroll to reach it.
+ */
+
+.sd {
+  --sd-top: 64px;
+  --sd-gap: 16px;
+  --sd-pad-x: 24px;
+  --sd-bottom: 16px;
+  --sd-card-pad: 20px;
+  /* The side of the right-hand tiles. Fixed here for the stacked layout, computed below. */
+  --sd-rail: 200px;
+
+  position: relative; /* the panel a card opens into is placed against it */
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 2200px;
+  margin: 0 auto;
+  padding: 4px var(--sd-pad-x) 32px;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sd *,
+.sd *::before,
+.sd *::after {
+  box-sizing: border-box;
+}
+
+.sd-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Stacked layout (below 1000px): numbers first, the page scrolls --------------------- */
+
+.sd {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sd-gap);
+  align-content: start;
+}
+
+/* The wrappers vanish so every card can be placed in the one grid */
+.sd-left,
+.sd-rail {
+  display: contents;
+}
+
+.sd-header,
+.sd-card--activity,
+.sd-card--platforms {
+  grid-column: 1 / -1;
+}
+
+.sd-header {
+  order: 0;
+  margin: 0 0 4px;
+}
+.sd-card--overall {
+  order: 1;
+}
+.sd-card--consistency {
+  order: 2;
+}
+.sd-card--rank {
+  order: 3;
+}
+.sd-card--platforms {
+  order: 4;
+}
+.sd-card--activity {
+  order: 5;
+}
+
+/* Cards that stretch charts need some height of their own when nothing gives them one */
+.sd-card--activity {
+  min-height: 230px;
+}
+.sd-card--platforms {
+  min-height: 340px;
+}
+.sd-rail > .sd-card {
+  min-height: 200px;
+}
+.sd-dial {
+  min-height: 110px;
+}
+
+@media (max-width: 899.95px) {
+  .sd {
+    --sd-pad-x: 0px;
+    --sd-gap: 12px;
+  }
+}
+
+/*
+ * Phones: one tile per row, as wide as the screen. A tile's text and charts are sized from
+ * --sd-rail (a little bigger than on a tablet, because the tile is wider than it is tall), so
+ * every tile keeps the proportions it has everywhere else and nothing has to be squeezed.
+ */
+@media (max-width: 699.95px) {
+  .sd {
+    --sd-rail: 208px;
+    --sd-gap: 12px;
+
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sd-header {
+    margin-bottom: 4px;
+  }
+
+  .sd-rail > .sd-card {
+    grid-column: 1 / -1;
+    min-height: 224px;
+  }
+}
+@media (max-width: 599.95px) {
+  .sd {
+    --sd-card-pad: 16px;
+  }
+
+  .sd-card--platforms {
+    min-height: 0;
+  }
+}
+/* ---- Page header ----------------------------------------------------------------------- */
+
+.sd-header__title {
+  margin: 0;
+  font: var(--ds-type-display);
+  font-size: clamp(1.5rem, 1.1rem + 1.1vw, 2.25rem);
+  letter-spacing: var(--ds-tracking-display);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.sd-header__meta {
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+/* ---- Cards ----------------------------------------------------------------------------- */
+
+.sd-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: var(--sd-card-pad);
+  overflow: hidden;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+/* Evaluated inside the card's own Midnight scope, so --ds-canvas is the near-black one */
+html[data-theme='daylight'] .sd-card--ink {
+  --sd-ink: var(--ds-canvas);
+}
+
+html[data-theme='midnight'] .sd-card--ink {
+  --sd-ink: var(--ds-high);
+}
+
+.sd-card--ink {
+  background-color: var(--sd-ink);
+}
+
+/* ---- A card that opens into its own view -------------------------------------------------- */
+
+/* The whole card is the target. Hovering steps its tone one way, so it reads as pressable. */
+.sd-card--expandable {
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sd-card--ink.sd-card--expandable:hover {
+  background-color: color-mix(in srgb, var(--ds-text) 7%, var(--sd-ink));
+}
+
+.sd-card--surface.sd-card--expandable:hover {
+  background-color: var(--ds-raised);
+}
+
+/* The keyboard button inside is invisible, so the card shows the focus ring for it */
+.sd-card--expandable:has(.sd-card__open:focus-visible) {
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 2px;
+}
+
+/* ---- While a panel covers the dashboard ----------------------------------------------------- */
+
+/*
+ * The cards around the one that opened fade away as the window grows, quickly, since they leave.
+ * They come back a little after the window starts to shrink, more slowly, as they arrive.
+ * (useExpand.js sets data-expand to opening, open, closing or closed.)
+ */
+.sd[data-expand='opening'] .sd-left > *,
+.sd[data-expand='opening'] .sd-rail > *,
+.sd[data-expand='open'] .sd-left > *,
+.sd[data-expand='open'] .sd-rail > * {
+  opacity: 0;
+  transition: opacity 240ms var(--ds-ease);
+}
+
+.sd[data-expand='closing'] .sd-left > *,
+.sd[data-expand='closing'] .sd-rail > * {
+  opacity: 1;
+  transition: opacity 320ms var(--ds-ease) 120ms;
+}
+
+/* A stack that scrolls has no card to grow from: the panel takes the stack's place */
+@media (max-width: 999.95px) {
+  .sd[data-expand='opening'] > .sd-left,
+  .sd[data-expand='opening'] > .sd-rail,
+  .sd[data-expand='open'] > .sd-left,
+  .sd[data-expand='open'] > .sd-rail {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd[data-expand] .sd-left > *,
+  .sd[data-expand] .sd-rail > * {
+    transition-duration: 1ms;
+    transition-delay: 0s;
+  }
+}
+
+.sd-card--accent {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.sd-card__header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.sd-card__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.sd-card__heading {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.sd-card__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sd-card__subtitle {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sd-card__action {
+  flex: none;
+  margin-left: auto;
+}
+
+.sd-card__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A chart that takes the height its card leaves */
+.sd-fill {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Small labels that sit above a figure */
+.sd-label {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  white-space: nowrap;
+}
+
+/* The secondary text of a tile on the right (its name, the line under a title, the last line)
+   is light and soft, so the figure and the title lead. It is a solid tone, not an opacity:
+   the Midnight `muted` role on a dark tile and a tint of white on the blue one. */
+.sd-card--ink {
+  --sd-soft: var(--ds-muted);
+}
+
+.sd-card--accent {
+  --sd-soft: color-mix(in srgb, var(--ds-on-accent) 84%, var(--ds-accent));
+}
+
+/* The name of a tile on the right (smaller than a card title) */
+.sd-rail .sd-label:not(.sd-label--title) {
+  color: var(--sd-soft);
+  font-size: 0.8125rem;
+  font-weight: 300;
+}
+
+/* "Overall score" is set on two lines, as in the reference design */
+.sd-card--overall .sd-label {
+  max-width: 5em;
+}
+
+/* A tile's title, when it is the main line of the tile (the blue one) */
+.sd-label--title {
+  color: var(--ds-text);
+  font: var(--ds-type-title-sm);
+  font-size: clamp(0.9375rem, calc(var(--sd-rail) * 0.085), 1.25rem);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sd-hint {
+  margin: 0;
+  color: var(--sd-soft, var(--ds-muted));
+  font: var(--ds-type-caption);
+  font-size: clamp(0.75rem, calc(var(--sd-rail) * 0.065), 0.9375rem);
+  font-weight: 300;
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+.sd-card--accent .sd-label--title,
+.sd-card--accent .sd-empty__text {
+  color: var(--ds-on-accent);
+}
+
+/* The top row of a tile on the right: the name on the left, the main figure on the right */
+.sd-top {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sd-top .sd-label {
+  min-width: 0;
+  white-space: normal;
+}
+
+/* The line of plain text at the foot of a tile: one thing on the left, one on the right */
+.sd-foot-row {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font: var(--ds-type-caption);
+  font-size: clamp(0.75rem, calc(var(--sd-rail) * 0.045), 0.9375rem);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A last line that is light and soft, like the names above the figures */
+.sd-foot-row--soft {
+  color: var(--sd-soft);
+  font-weight: 300;
+}
+
+.sd-foot-row > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sd-card--accent .sd-foot-row:not(.sd-foot-row--soft) {
+  color: var(--ds-on-accent);
+}
+
+/* Words that appear only when the tile is wide enough for the whole line (a line of 12px text
+   needs about 220px). A tile is a container; the widths are those of its content box. */
+.sd-long,
+.sd-wide {
+  display: none;
+}
+
+@container (min-width: 232px) {
+  .sd-long,
+  .sd-wide {
+    display: inline;
+  }
+
+  .sd-short {
+    display: none;
+  }
+}
+
+/* ---- A figure: a big number with its unit ---------------------------------------------- */
+
+.sd-figure {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+}
+
+.sd-figure__value {
+  font: var(--ds-type-numeral-l);
+  font-size: clamp(1.375rem, calc(var(--sd-rail) * 0.15), 2.75rem);
+  letter-spacing: var(--ds-tracking-numeral-l);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.sd-figure__unit {
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-size: 0.8125rem;
+}
+
+/* ---- Buttons --------------------------------------------------------------------------- */
+
+.sd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+/* The buttons are also links, and index.css gives every `a:hover` its own colour. Each state
+   names its text colour so a link-styled button never turns light blue on hover. */
+.sd-btn--accent,
+.sd-btn--accent:hover,
+.sd-btn--accent:active {
+  color: var(--ds-on-accent);
+}
+
+.sd-btn--accent {
+  background-color: var(--ds-accent);
+}
+
+.sd-btn--accent:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+.sd-btn--accent:active {
+  background-color: var(--ds-accent-press);
+}
+
+.sd-btn--secondary,
+.sd-btn--secondary:hover,
+.sd-btn--secondary:active {
+  color: var(--ds-text);
+}
+
+.sd-btn--secondary {
+  background-color: var(--ds-raised);
+}
+
+.sd-btn--secondary:hover {
+  background-color: var(--ds-high);
+}
+
+.sd-btn--ghost,
+.sd-btn--ghost:hover,
+.sd-btn--ghost:active {
+  color: var(--ds-accent-text);
+}
+
+.sd-btn--ghost {
+  padding: 0 16px;
+  background-color: transparent;
+}
+
+.sd-btn--ghost:hover {
+  background-color: var(--ds-accent-soft);
+}
+
+.sd-circle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sd-circle,
+.sd-circle:hover,
+.sd-circle:active {
+  color: var(--ds-text);
+}
+
+.sd-circle:hover {
+  background-color: var(--ds-high);
+}
+
+/* On Midnight the dark card is itself the `high` tone, so hovering steps down instead of up */
+html[data-theme='midnight'] .sd-card--ink .sd-circle:hover,
+html[data-theme='midnight'] .sd-card--ink .sd-btn--secondary:hover {
+  background-color: var(--ds-canvas);
+}
+
+.sd-btn:focus-visible,
+.sd-circle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* On the blue card the ring is white */
+.sd-card--accent .sd-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-accent),
+    0 0 0 4px var(--ds-on-accent);
+}
+
+/* ---- Loading, error, empty ------------------------------------------------------------- */
+
+.sd-skeleton {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.sd-skeleton--fill {
+  flex: 1 1 0;
+  min-height: 48px;
+}
+
+.sd-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--ds-high), transparent);
+  transform: translateX(-100%);
+  animation: sd-shimmer 1.4s var(--ds-ease) infinite;
+}
+
+.sd-card--accent .sd-skeleton {
+  background-color: var(--ds-accent-hover);
+}
+
+.sd-card--accent .sd-skeleton::after {
+  background: linear-gradient(90deg, transparent, var(--ds-accent-press), transparent);
+}
+
+@keyframes sd-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.sd-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.sd-notice__text {
+  flex: 1 1 120px;
+  margin: 0;
+  color: inherit;
+  font: var(--ds-type-body-sm);
+}
+
+.sd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 0;
+}
+
+.sd-empty__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sd-empty__text {
+  max-width: 46ch;
+  margin: 0 0 6px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Platform scores ------------------------------------------------------------------- */
+
+.sd-platforms {
+  display: flex;
+  flex: 1 1 0;
+  gap: 20px;
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (max-width: 699.95px) {
+  .sd-platforms {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sd-platforms .sd-fill {
+    min-height: 220px;
+  }
+}
+
+.sd-stats {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  margin: 0;
+}
+
+.sd-stats dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sd-stats dd {
+  margin: 2px 0 0;
+  font: var(--ds-type-numeral-m);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A name is set smaller and lighter than the figure above it */
+.sd-stats dd.sd-stats__name {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+@media (max-width: 699.95px) {
+  .sd-stats {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 32px;
+  }
+}
+
+/* ---- The three tiles on the right ------------------------------------------------------- */
+
+/* Each tile is a container, so its last line can use longer words when the tile is wide */
+.sd-rail > .sd-card {
+  container-type: inline-size;
+}
+
+/* ---- Overall score --------------------------------------------------------------------- */
+
+/* The strip of bars is the electric blue on the dark tile, whatever the theme */
+.sd-card--overall {
+  --sd-bars: var(--ds-accent);
+}
+
+/* ---- Consistency ----------------------------------------------------------------------- */
+
+/* The dial is as big as the space between the title and the last line allows (cqw and cqh are
+   the width and the height of this box). The text in its middle is sized from the same box. */
+.sd-dial {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  container-type: size;
+}
+
+.sd-gauge__value {
+  display: block;
+  font: var(--ds-type-numeral-xl);
+  font-size: max(1.25rem, min(17.5cqw, 33cqh));
+  letter-spacing: var(--ds-tracking-numeral-xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sd-gauge__unit {
+  display: block;
+  margin-top: 2px;
+  font: var(--ds-type-caption);
+  font-size: max(0.75rem, min(6cqw, 11.4cqh));
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* ---- College rank ---------------------------------------------------------------------- */
+
+.sd-rank__value {
+  font: var(--ds-type-numeral-xl);
+  font-size: clamp(1.625rem, calc(var(--sd-rail) * 0.2), 3.5rem);
+  letter-spacing: var(--ds-tracking-numeral-xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sd .sd-rank__chart {
+  margin: 0 -2px;
+}
+
+/* ---- Fixed composition (1000px and up) -------------------------------------------------- */
+
+@media (min-width: 1000px) {
+  .sd {
+    /* A third of what is left once the navbar, the page padding and the two gaps are taken away */
+    --sd-rail: clamp(160px, calc((100vh - var(--sd-top) - var(--sd-bottom) - 4px - 2 * var(--sd-gap)) / 3), 460px);
+
+    --sd-card-pad: 16px;
+
+    /* The tiles on the right are a little wider than they are tall (6 to 5, as in the reference design) */
+    --sd-rail-w: calc(var(--sd-rail) * 1.2);
+
+    /* The composition keeps its shape: it is never wider than 1.95 times its own height (the three
+       squares and their gaps), which is the proportion of the reference design. Any width beyond that
+       becomes equal padding on both sides, on a laptop as much as on an ultrawide monitor. */
+    /* ...but a small laptop keeps at least 1240px, or the cards would be too cramped to read */
+    max-width: max(calc((3 * var(--sd-rail) + 2 * var(--sd-gap)) * 1.95 + 2 * var(--sd-pad-x)), min(100%, 1240px));
+    height: calc(100vh - var(--sd-top));
+    min-height: 532px;
+    padding: 4px var(--sd-pad-x) var(--sd-bottom);
+    grid-template-columns: minmax(0, 1fr) var(--sd-rail-w);
+    grid-template-rows: minmax(0, 1fr);
+    align-content: stretch;
+    overflow: hidden;
+  }
+
+  @supports (height: 100dvh) {
+    .sd {
+      --sd-rail: clamp(160px, calc((100dvh - var(--sd-top) - var(--sd-bottom) - 4px - 2 * var(--sd-gap)) / 3), 460px);
+
+      height: calc(100dvh - var(--sd-top));
+    }
+  }
+
+  .sd-left {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 3.8fr) minmax(0, 4.2fr);
+    gap: var(--sd-gap);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .sd-rail {
+    display: grid;
+    grid-template-rows: repeat(3, var(--sd-rail));
+    align-content: start;
+    gap: var(--sd-gap);
+    min-width: 0;
+  }
+
+  /* Everything is placed by position now, not by `order` */
+  .sd-header,
+  .sd-card--overall,
+  .sd-card--consistency,
+  .sd-card--rank,
+  .sd-card--platforms,
+  .sd-card--activity {
+    order: 0;
+    min-height: 0;
+  }
+
+  .sd-header {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    margin: 0;
+  }
+
+  .sd-card--activity {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .sd-card--platforms {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  /* The three tiles */
+  .sd-rail > .sd-card {
+    grid-column: auto;
+    width: var(--sd-rail-w);
+    height: var(--sd-rail);
+    min-height: 0;
+    gap: 8px;
+  }
+
+  .sd-dial {
+    min-height: 0;
+  }
+
+  /* A desktop pointer can use smaller controls than a finger (DESIGN.md: compact 36px) */
+  .sd-card__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--ds-radius-sm);
+  }
+
+  .sd-card__title {
+    font: var(--ds-type-title-sm);
+    letter-spacing: var(--ds-tracking-title-sm);
+  }
+}
+
+@media (min-width: 1000px) and (pointer: fine) {
+  .sd-btn {
+    height: 34px;
+    padding: 0 16px;
+  }
+
+  .sd-btn--ghost {
+    padding: 0 12px;
+  }
+
+  .sd-circle {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ---- Motion preferences ---------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-skeleton::after {
+    animation: none;
+  }
+}

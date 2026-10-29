@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const log = require("../utils/logger").scope("PRACTICE-ARENA-LIMITER");
 
 /**
  * Middleware to check if user has exceeded daily practice arena test limit
@@ -55,7 +56,7 @@ const checkDailyTestLimit = async (req, res, next) => {
     req.userData = user;
     next();
   } catch (error) {
-    console.error('Error in practice arena limiter:', error);
+    log.error('Error in practice arena limiter:', error);
     res.status(500).json({ message: 'Error checking daily limit', error: error.message });
   }
 };
@@ -103,7 +104,7 @@ const incrementDailyTestCount = async (userId) => {
       remainingTests: 3 - user.practiceArenaDailyLimit.testsStartedToday
     };
   } catch (error) {
-    console.error('Error incrementing daily test count:', error);
+    log.error('Error incrementing daily test count:', error);
     throw error;
   }
 };
@@ -161,7 +162,7 @@ const getRemainingTests = async (userId) => {
       resetTime: getNextResetTime()
     };
   } catch (error) {
-    console.error('Error getting remaining tests:', error);
+    log.error('Error getting remaining tests:', error);
     throw error;
   }
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -496,7 +497,7 @@ const PATestResults = () => {
                         },
                         '& li': { marginBottom: '0.25em' }
                       }}
-                      dangerouslySetInnerHTML={{ __html: question.description }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(question.description) }}
                     />
                   </Box>
 

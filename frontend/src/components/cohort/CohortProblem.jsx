@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -90,7 +91,7 @@ const IS_MAC =
   /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 const MOD_KEY = IS_MAC ? "⌘" : "Ctrl";
 
-// Direct code execution API calls to backend simpleCodeExecutionService
+// Code execution calls (the backend runs them on Judge0 through CodeJudge)
 const codeExecutionApi = {
   // Secure endpoint that fetches test cases from database
   // This prevents hidden test cases from being exposed to frontend
@@ -119,6 +120,24 @@ const codeExecutionApi = {
         error.response?.data?.error || error.message || "Failed to execute code"
       );
     }
+  },
+
+  // Submit a programming answer. The server runs the code ONCE on Judge0, grades it, saves the
+  // submission and returns both the saved submission and the test results to display
+  // (`execution`, with hidden test cases withheld). The axios error is not wrapped, so the
+  // caller can read `error.response`.
+  submitProgramming: async (cohortId, moduleId, questionId, { code, language }) => {
+    const response = await axios.post(
+      `${apiUrl}/cohorts/${cohortId}/modules/${moduleId}/questions/${questionId}/submit`,
+      { code, language, submissionType: "programming" },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
   },
 
   // Simple code execution with custom stdin input (no test case comparison)
@@ -328,6 +347,8 @@ const CohortProblem = () => {
   const runCodeRef = useRef(null);
   const submitSolutionRef = useRef(null);
   const shortcutStateRef = useRef({});
+  // The server's answer to the last programming submit: the saved submission and its progress.
+  const savedSubmissionRef = useRef(null);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -743,17 +764,19 @@ const CohortProblem = () => {
 
     try {
       if (submitSolution) {
-        // SUBMIT MODE: Use secure endpoint that fetches ALL test cases from database
-        // This prevents hidden test cases from being exposed to frontend
-        // Call new secure endpoint - no test cases sent from frontend!
-        // Backend will use question's constraints (timeLimit, memoryLimit)
-        const result = await codeExecutionApi.executeWithQuestion(
+        // SUBMIT MODE: one request. The server runs ALL test cases (including hidden ones, which
+        // it never sends back) once, grades and saves the submission, and returns the results to
+        // show. No test cases are sent from the frontend.
+        const saved = await codeExecutionApi.submitProgramming(cohortId, moduleId, questionId, {
+          code: codeToSubmit, // Use cleaned code
           language,
-          codeToSubmit, // Use cleaned code
-          questionId,
-          "submit", // This tells backend to execute ALL test cases (including hidden)
-          {} // Empty options - let backend use question's constraints
-        );
+        });
+        savedSubmissionRef.current = saved;
+        const result = saved.execution || {
+          success: false,
+          error: "The server returned no test results",
+          results: [],
+        };
 
         // Check for compilation or runtime errors in multiple ways:
         // 1. Backend returns success: false with error message
@@ -941,6 +964,16 @@ const CohortProblem = () => {
         setRunning(false);
         navigate(`/cohorts`);
         return null;
+      }
+
+      // A submit that did not reach the server, or was refused (for example the 5 second
+      // cooldown), must not look like nothing happened.
+      if (submitSolution) {
+        toast.error(
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            "Submission failed"
+        );
       }
 
       setRunning(false);
@@ -1195,7 +1228,9 @@ const CohortProblem = () => {
       setSubmitting(true);
 
       try {
-        // Run ALL test cases to get results
+        // One request: the server runs the code once, grades it, saves the submission and
+        // returns the test results, which runTestCases puts on screen.
+        savedSubmissionRef.current = null;
         const testResults = await runTestCases(true); // true = submit mode (all test cases)
 
         if (!testResults) {
@@ -1203,65 +1238,17 @@ const CohortProblem = () => {
           return;
         }
 
-        // Code execution done — clear the submitting state so the button resets
-        // and the rocket animation can transition to success/failure.
-        // The backend save below is just bookkeeping.
+        // The result is on screen and the submission is saved: clear the submitting state
+        // so the button resets and the rocket animation can transition to success/failure.
         setSubmitting(false);
 
-        // Calculate overall execution time and memory usage
-        const maxExecutionTime =
-          testResults.length > 0
-            ? Math.max(
-                ...testResults.map((r) =>
-                  typeof r.executionTime === "number" ? r.executionTime : 0
-                )
-              )
-            : 0;
-        const maxMemoryUsed =
-          testResults.length > 0
-            ? Math.max(
-                ...testResults.map((r) =>
-                  typeof r.memoryUsed === "number" ? r.memoryUsed : 0
-                )
-              )
-            : 0;
-
-        // Code to submit — strip fill-in-the-blank markers so the server
-        // executes the actual solution (the backend re-grades authoritatively).
-        let codeToSubmit = code;
-        if (
-          question?.fillInTheBlank &&
-          codeEditorRef.current?.getCodeForSubmission
-        ) {
-          codeToSubmit = codeEditorRef.current.getCodeForSubmission();
-        }
-
-        // Prepare submission data for backend.
-        // NOTE: correctness/score are decided by the SERVER (it re-runs all
-        // test cases). The fields below are informational only.
-        const submission = {
-          code: codeToSubmit,
-          language,
-          submissionType: "programming",
-          executionTime: maxExecutionTime,
-          memoryUsed: maxMemoryUsed,
-        };
-
-        // Submit to backend
-        const response = await axios.post(
-          `${apiUrl}/cohorts/${cohortId}/modules/${moduleId}/questions/${questionId}/submit`,
-          submission,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        // The saved submission came back with the results (see submitProgramming).
+        const saved = savedSubmissionRef.current;
+        savedSubmissionRef.current = null;
 
         // Update submissions state directly instead of refetching everything
-        // Backend returns { submission, isCorrect, userProgress }
-        const newSubmission = response.data.submission;
+        // The server returns { submission, isCorrect, summary, execution, userProgress }
+        const newSubmission = saved?.submission;
 
         if (newSubmission) {
           // Add the new submission to the existing submissions array
@@ -2602,7 +2589,7 @@ const CohortProblem = () => {
                           borderBottomRightRadius: "7px",
                         },
                       }}
-                      dangerouslySetInnerHTML={{ __html: question.description }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(question.description) }}
                     />
 
                     {/* Hints section */}
@@ -3484,7 +3471,7 @@ const CohortProblem = () => {
                             ...mathContentStyles(darkMode),
                           }}
                           dangerouslySetInnerHTML={{
-                            __html: question.editorial,
+                            __html: sanitizeHtml(question.editorial),
                           }}
                         />
                       ) : (

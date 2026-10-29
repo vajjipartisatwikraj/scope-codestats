@@ -1,0 +1,28 @@
+/*
+ * ScoreRing
+ *
+ * Only the text in the middle of the Gauge is styled here: the ring itself is Gauge.css. The
+ * number scales with the ring (30% of its diameter) but never goes below 14px. See ScoreRing.jsx
+ * for the props.
+ */
+
+.sring__value {
+  color: var(--ga-text);
+  font: var(--ds-type-numeral-m);
+  font-size: max(0.875rem, calc(var(--sring-size, 56px) * 0.3));
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.sring__caption {
+  max-width: 100%;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--ga-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

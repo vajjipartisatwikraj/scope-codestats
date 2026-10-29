@@ -1,5 +1,4 @@
-// Shared option lists for the profile editors (EditProfile dialog + inline
-// section editing on the profile page).
+// Shared option lists for the profile page (components/profilePage): the editors and the setup.
 
 export const skillOptions = [
   "JavaScript",

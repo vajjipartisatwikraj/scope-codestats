@@ -22,7 +22,8 @@ const engine = require("../services/speechTestService");
 const { buildSectionReport } = require("../services/speechTestReport");
 const SpeechTestFeedback = require("../models/SpeechTestFeedback");
 const feedbackService = require("../services/speechTestFeedback");
-const { resolveRollNumbers, RollResolveError } = require("../utils/resolveRollNumbers");
+const userGroupController = require("../controllers/speechTestUserGroupController");
+const log = require("../utils/logger").scope("SPEECH-TESTS");
 
 const router = express.Router();
 const { ObjectId } = mongoose.Types;
@@ -41,14 +42,14 @@ const asyncRoute = (handler) => (req, res) =>
   Promise.resolve(handler(req, res)).catch((error) => handleError(res, error));
 
 function handleError(res, error) {
-  if (error instanceof speechJudge.SpeechJudgeError || error instanceof RollResolveError) {
+  if (error instanceof speechJudge.SpeechJudgeError) {
     return res.status(error.status || 400).json({ message: error.message, code: error.code });
   }
   if (error?.name === "ValidationError") {
     const first = Object.values(error.errors || {})[0];
     return res.status(400).json({ message: first?.message || error.message });
   }
-  console.error("[SpeechTest] route error:", error);
+  log.error("[SpeechTest] route error:", error);
   return res.status(500).json({ message: "Server error", error: error.message });
 }
 
@@ -593,63 +594,16 @@ router.get(
   })
 );
 
-// ----- eligible students ----------------------------------------------------
+// ----- eligible students (through user groups) ------------------------------
 
-router.get(
-  "/admin/:id/eligible-users",
-  [auth, adminAuth],
-  route(async (req, res) => {
-    if (!isValidId(req.params.id)) throw new HttpError(404, "Test not found");
-    const test = await SpeechTest.findById(req.params.id)
-      .select("eligibleUsers")
-      .populate("eligibleUsers", "name email department section graduatingYear rollNumber");
-    if (!test) throw new HttpError(404, "Test not found");
-
-    res.json({ users: test.eligibleUsers || [], totalCount: test.eligibleUsers?.length || 0 });
-  })
-);
-
-router.put(
-  "/admin/:id/eligible-users",
-  [auth, adminAuth],
-  route(async (req, res) => {
-    if (!isValidId(req.params.id)) throw new HttpError(404, "Test not found");
-    const { userIds } = req.body || {};
-    if (!Array.isArray(userIds) || !userIds.every(isValidId)) {
-      throw new HttpError(400, "userIds must be an array of user ids");
-    }
-
-    const test = await SpeechTest.findById(req.params.id);
-    if (!test) throw new HttpError(404, "Test not found");
-
-    // Only real student accounts can be eligible.
-    const students = await User.find({
-      _id: { $in: [...new Set(userIds)] },
-      userType: { $nin: ["admin", "teacher"] },
-    }).select("_id");
-
-    test.eligibleUsers = students.map((u) => u._id);
-    await test.save();
-
-    res.json({ message: "Eligible students updated", totalCount: test.eligibleUsers.length });
-  })
-);
-
-router.post(
-  "/admin/:id/eligible-users/resolve-rolls",
-  [auth, adminAuth],
-  route(async (req, res) => {
-    if (!isValidId(req.params.id)) throw new HttpError(404, "Test not found");
-    const test = await SpeechTest.findById(req.params.id).select("title eligibleUsers");
-    if (!test) throw new HttpError(404, "Test not found");
-
-    const eligibleIds = new Set((test.eligibleUsers || []).map((id) => id.toString()));
-    const resolved = await resolveRollNumbers(req.body?.rollNumbers, eligibleIds);
-
-    res.json({ testId: test._id, testTitle: test.title, ...resolved });
-  })
-);
-
+// The groups attached to a test
+router.get("/admin/:id/user-groups", [auth, adminAuth], userGroupController.listTestUserGroups);
+// Add students who joined the attached groups since they were attached. Never removes anyone
+router.post("/admin/:id/user-groups/sync", [auth, adminAuth], userGroupController.syncUserGroups);
+// Attach a group: its students become eligible
+router.put("/admin/:id/user-groups/:groupId", [auth, adminAuth], userGroupController.attachUserGroup);
+// Detach a group. Students no other group covers lose access; ?preview=true shows who
+router.delete("/admin/:id/user-groups/:groupId", [auth, adminAuth], userGroupController.detachUserGroup);
 // ----- results --------------------------------------------------------------
 
 /**
@@ -1181,7 +1135,7 @@ router.post(
       });
     } catch (error) {
       if (error instanceof speechJudge.SpeechJudgeError) {
-        console.warn(`[SpeechTest] audio check unavailable: ${error.message}`);
+        log.warn(`[SpeechTest] audio check unavailable: ${error.message}`);
         return res.json({ available: false });
       }
       throw error;
@@ -1316,7 +1270,7 @@ router.use((err, _req, res, _next) => {
   if (err?.status && err.status < 500) {
     return res.status(err.status).json({ message: err.message });
   }
-  console.error("[SpeechTest] unhandled router error:", err);
+  log.error("[SpeechTest] unhandled router error:", err);
   return res.status(500).json({ message: "Server error", error: err.message });
 });
 

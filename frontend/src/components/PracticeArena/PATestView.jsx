@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -35,12 +36,12 @@ import axios from "axios";
 import { apiUrl } from "../../config/apiConfig";
 import { toast } from "react-toastify";
 
-// Direct code execution API calls to backend simpleCodeExecutionService
+// Code execution calls (the backend runs them on Judge0 through CodeJudge)
 const codeExecutionApi = {
   runCode: async (language, source_code, input = "") => {
     try {
       const response = await axios.post(
-        `${apiUrl}/courses/run-code`,
+        `${apiUrl}/practice-arena/run-code`,
         { language, source_code, input },
         {
           headers: {
@@ -1386,7 +1387,7 @@ const PATestView = () => {
                   }`,
                 },
               }}
-              dangerouslySetInnerHTML={{ __html: currentQuestion.description }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQuestion.description) }}
             />
 
             {/* Examples */}

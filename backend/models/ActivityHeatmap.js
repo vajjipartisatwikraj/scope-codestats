@@ -6,12 +6,11 @@ const mongoose = require("mongoose");
  * Design (GitHub / LeetCode style):
  *   - One document per (user, calendar day) — sparse. Days with no activity
  *     simply have no document (the frontend renders them as empty cells).
- *   - `count` = number of problems the user solved that day.
- *   - `sources` breaks the count down by origin, for debugging / analytics:
- *       cohort     → in-app cohort problem newly solved
- *       practice   → in-app practice-arena problem newly solved
- *       leetcode / codechef / codeforces / hackerrank / github → external
- *         platform gains detected by the daily profile-sync cron.
+ *   - `count` = number of cohort problems the user solved that day. Only cohort
+ *     solves are counted: Practice Arena and external platforms (LeetCode,
+ *     CodeChef, ...) do not contribute.
+ *   - `sources.cohort` holds the same number. It stays an object so another
+ *     source could be added later without changing the document shape.
  *
  * The day is anchored to the IST calendar (Asia/Kolkata) so it lines up with
  * the platform's midnight cron. `dateKey` is the canonical "YYYY-MM-DD" IST
@@ -38,7 +37,7 @@ const activityHeatmapSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    // Total problems solved on this day (never negative)
+    // Total cohort problems solved on this day (never negative)
     count: {
       type: Number,
       default: 0,
@@ -47,12 +46,6 @@ const activityHeatmapSchema = new mongoose.Schema(
     // Per-source breakdown (all non-negative)
     sources: {
       cohort: { type: Number, default: 0 },
-      practice: { type: Number, default: 0 },
-      leetcode: { type: Number, default: 0 },
-      codechef: { type: Number, default: 0 },
-      codeforces: { type: Number, default: 0 },
-      hackerrank: { type: Number, default: 0 },
-      github: { type: Number, default: 0 },
     },
   },
   { timestamps: true }
@@ -63,14 +56,7 @@ activityHeatmapSchema.index({ userId: 1, dateKey: 1 }, { unique: true });
 // Range scans for the rolling window read
 activityHeatmapSchema.index({ userId: 1, date: 1 });
 
-const EXTERNAL_SOURCES = [
-  "leetcode",
-  "codechef",
-  "codeforces",
-  "hackerrank",
-  "github",
-];
-const VALID_SOURCES = ["cohort", "practice", ...EXTERNAL_SOURCES];
+const VALID_SOURCES = ["cohort"];
 
 /**
  * Map a raw problem count to a 0-4 intensity bucket (GitHub-style).
@@ -99,11 +85,12 @@ activityHeatmapSchema.statics.getISTDayInfo = function (when = new Date()) {
 /**
  * Atomically add solved-problem counts for a user on a given day.
  * Negative or zero contributions are ignored (caller must clamp deltas).
+ * Sources other than the valid ones are ignored.
  *
  * @param {ObjectId|string} userId
- * @param {Object} sourceCounts  e.g. { cohort: 1 } or { leetcode: 3, github: 2 }
+ * @param {Object} sourceCounts  e.g. { cohort: 1 }
  * @param {Date}  [when]         defaults to now (IST day resolved internally)
- * @returns {Promise<Object|null>} the bulk write result, or null if nothing to add
+ * @returns {Promise<Object|null>} the write result, or null if nothing to add
  */
 activityHeatmapSchema.statics.recordActivity = async function (
   userId,
@@ -150,38 +137,6 @@ activityHeatmapSchema.statics.incrementActivity = function (
 };
 
 /**
- * Compute safe per-platform external deltas between two profile snapshots.
- *
- * Only counts POSITIVE growth, and ONLY when the platform username is
- * unchanged. This defeats the "fake profile → real profile" swap problem:
- *   - a lower new count (fake had more) yields a negative delta → clamped to 0
- *   - a username change resets the baseline → delta skipped entirely
- *     (so a bigger real profile does NOT register as a one-day spike)
- *   - the first ever snapshot (no previous username) establishes the baseline
- *     and contributes nothing
- *
- * @param {Object} prev  map of platform → { count, username }
- * @param {Object} next  map of platform → { count, username }
- * @returns {Object} sourceCounts suitable for recordActivity (positive only)
- */
-activityHeatmapSchema.statics.computeExternalDeltas = function (prev, next) {
-  const deltas = {};
-  for (const platform of EXTERNAL_SOURCES) {
-    const before = prev?.[platform];
-    const after = next?.[platform];
-    if (!after) continue;
-
-    // No prior baseline, or username changed → don't count (baseline reset).
-    if (!before || before.username == null) continue;
-    if (before.username !== after.username) continue;
-
-    const delta = (after.count || 0) - (before.count || 0);
-    if (delta > 0) deltas[platform] = delta;
-  }
-  return deltas;
-};
-
-/**
  * Read a rolling window of daily activity for the heatmap UI.
  * @param {ObjectId|string} userId
  * @param {number} [days=365]
@@ -220,17 +175,10 @@ activityHeatmapSchema.statics.getHeatmap = async function (
 };
 
 /**
- * Rebuild a user's heatmap ACCURATELY from durable in-app solve events.
- *
- * Sources (both persist real per-problem solve timestamps, unlike raw
- * Submission records which are pruned to the last 5 per question):
- *   - Cohort:   UserCohort.questionProgress[].solvedAt  (first-solve date)
- *   - Practice: PASubmission accepted programming submissions (submittedAt)
- *
- * External-platform history is intentionally NOT reconstructed here — only
- * daily snapshots ever existed for those, which is exactly what produced the
- * inflated/incorrect old heatmaps. External activity accrues going forward via
- * the live profile-sync delta trigger.
+ * Rebuild a user's heatmap from the durable cohort solve events:
+ * UserCohort.questionProgress[].solvedAt (the first-solve date of each question).
+ * Raw Submission records are not used because they are pruned to the last 5 per
+ * question.
  *
  * This REPLACES all existing heatmap docs for the user (full fresh rebuild).
  *
@@ -242,48 +190,31 @@ activityHeatmapSchema.statics.rebuildFromEvents = async function (
   days = 365
 ) {
   const UserCohort = require("./UserCohort");
-  const PASubmission = require("./PASubmission");
 
   const { dateKey: todayKey } = this.getISTDayInfo();
   const windowStart = new Date(`${todayKey}T00:00:00.000Z`);
   windowStart.setUTCDate(windowStart.getUTCDate() - (days - 1));
 
-  // dateKey -> { dateKey, dateUTC, cohort, practice }
+  // dateKey -> { dateKey, dateUTC, cohort }
   const dayMap = new Map();
-  const bump = (when, source) => {
-    if (!when) return;
-    const d = new Date(when);
-    if (isNaN(d.getTime())) return;
-    const { dateKey, dateUTC } = this.getISTDayInfo(d);
-    if (dateUTC < windowStart) return;
-    let entry = dayMap.get(dateKey);
-    if (!entry) {
-      entry = { dateKey, dateUTC, cohort: 0, practice: 0 };
-      dayMap.set(dateKey, entry);
-    }
-    entry[source] += 1;
-  };
 
-  // Cohort solves — one count per solved question (matches the live trigger).
   const userCohorts = await UserCohort.find({ user: userId })
     .select("questionProgress.solved questionProgress.solvedAt")
     .lean();
   for (const uc of userCohorts) {
     for (const qp of uc.questionProgress || []) {
-      if (qp.solved && qp.solvedAt) bump(qp.solvedAt, "cohort");
+      if (!qp.solved || !qp.solvedAt) continue;
+      const when = new Date(qp.solvedAt);
+      if (isNaN(when.getTime())) continue;
+      const { dateKey, dateUTC } = this.getISTDayInfo(when);
+      if (dateUTC < windowStart) continue;
+      let entry = dayMap.get(dateKey);
+      if (!entry) {
+        entry = { dateKey, dateUTC, cohort: 0 };
+        dayMap.set(dateKey, entry);
+      }
+      entry.cohort += 1;
     }
-  }
-
-  // Practice Arena solves — accepted programming submissions.
-  const paSubs = await PASubmission.find({
-    user: userId,
-    isCorrect: true,
-    submissionType: "programming",
-  })
-    .select("submittedAt createdAt")
-    .lean();
-  for (const s of paSubs) {
-    bump(s.submittedAt || s.createdAt, "practice");
   }
 
   await this.deleteMany({ userId });
@@ -293,15 +224,14 @@ activityHeatmapSchema.statics.rebuildFromEvents = async function (
     userId,
     dateKey: e.dateKey,
     date: e.dateUTC,
-    count: e.cohort + e.practice,
-    sources: { cohort: e.cohort, practice: e.practice },
+    count: e.cohort,
+    sources: { cohort: e.cohort },
   }));
 
   await this.insertMany(docs, { ordered: false });
   return { inserted: docs.length };
 };
 
-activityHeatmapSchema.statics.EXTERNAL_SOURCES = EXTERNAL_SOURCES;
 activityHeatmapSchema.statics.levelForCount = levelForCount;
 
 module.exports = mongoose.model("ActivityHeatmap", activityHeatmapSchema);

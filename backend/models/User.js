@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const log = require("../utils/logger").scope("USER");
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,6 +16,15 @@ const userSchema = new mongoose.Schema(
     profileCompleted: {
       type: Boolean,
       default: false,
+    },
+    // Which sign-in page the account was created from. "teacher" accounts skip the
+    // student profile form and stay regular users (userType "user") until an admin
+    // approves their teacher access request (see TeacherRequest). Set once, only by
+    // the Google sign-in, never from a request body.
+    signupIntent: {
+      type: String,
+      enum: ["student", "teacher"],
+      default: "student",
     },
     name: {
       type: String,
@@ -90,177 +100,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    profiles: {
-      geeksforgeeks: {
-        type: String,
-        default: "",
-      },
-      codechef: {
-        type: String,
-        default: "",
-      },
-      codeforces: {
-        type: String,
-        default: "",
-      },
-      leetcode: {
-        type: String,
-        default: "",
-      },
-      hackerrank: {
-        type: String,
-        default: "",
-      },
-      github: {
-        type: String,
-        default: "",
-      },
-    },
-    platformData: {
-      codechef: {
-        username: String,
-        global_rank: Number,
-        country_rank: Number,
-        problemsSolved: Number,
-        contestsParticipated: Number,
-        rating: Number,
-        score: Number,
-        lastUpdated: Date,
-      },
-      codeforces: {
-        username: String,
-        rating: Number,
-        rank: String,
-        maxRating: Number,
-        contestsParticipated: Number,
-        problemsSolved: Number,
-        score: Number,
-        lastUpdated: Date,
-      },
-      leetcode: {
-        username: String,
-        ranking: Number,
-        totalSolved: Number,
-        easySolved: Number,
-        mediumSolved: Number,
-        hardSolved: Number,
-        score: Number,
-        rating: Number,
-        lastUpdated: Date,
-      },
-      geeksforgeeks: {
-        username: String,
-        codingScore: Number,
-        problemsSolved: Number,
-        instituteRank: Number,
-        score: Number,
-        lastUpdated: Date,
-      },
-      hackerrank: {
-        username: String,
-        problemsSolved: Number,
-        badges: Number,
-        certificates: Number,
-        score: Number,
-        lastUpdated: Date,
-      },
-      scopecodestats: {
-        username: String,
-        totalCohortsCompleted: Number,
-        totalCohortProblemsolved: Number,
-        problemsSolved: Number,
-        totalCohortScore: Number, // Current active cohorts score (can decrease if cohorts deleted)
-        lifetimeScore: Number, // All-time maximum score (never decreases)
-        consistencyIndex: Number,
-        consistencyScore: Number,
-        totalPracticeArenaContests: Number,
-        rating: Number, // Practice Arena rating
-        maxRating: Number, // Maximum Practice Arena rating achieved
-        rank: mongoose.Schema.Types.Mixed, // Can be "unrated" or number
-        score: Number,
-        lastUpdated: Date,
-      },
-    },
-    platformScores: {
-      type: Map,
-      of: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-    githubStats: {
-      totalCommits: {
-        type: Number,
-        default: 0,
-      },
-      publicRepos: {
-        type: Number,
-        default: 0,
-      },
-      starsReceived: {
-        type: Number,
-        default: 0,
-      },
-      followers: {
-        type: Number,
-        default: 0,
-      },
-      contributionsLastYear: {
-        type: Number,
-        default: 0,
-      },
-      lastUpdated: {
-        type: Date,
-        default: null,
-      },
-    },
-    contestStats: {
-      totalContestsParticipated: {
-        type: Number,
-        default: 0,
-      },
-      bestRank: {
-        type: Number,
-        default: 0,
-      },
-      lastContestDate: {
-        type: Date,
-        default: null,
-      },
-      contestsByPlatform: {
-        codeforces: { type: Number, default: 0 },
-        codechef: { type: Number, default: 0 },
-        leetcode: { type: Number, default: 0 },
-        hackerrank: { type: Number, default: 0 },
-        geeksforgeeks: { type: Number, default: 0 },
-      },
-    },
-    totalScore: {
-      type: Number,
-      default: 0,
-    },
-    // Lifetime Scope-CodeStats score - NEVER decreases, preserves points even after cohort deletion
-    lifetimeScopeScore: {
-      type: Number,
-      default: 0,
-      min: 0,
-      index: true, // Index for leaderboard queries
-    },
-    // Lifetime Scope-CodeStats problems solved - NEVER decreases, cumulative count of all cohort problems
-    lifetimeCohortProblemsSolved: {
-      type: Number,
-      default: 0,
-      min: 0,
-      index: true, // Index for tracking cumulative progress
-    },
-    totalProblemsSolved: {
-      type: Number,
-      default: 0,
-    },
-    problemStats: {
-      totalSolved: { type: Number, default: 0 },
-      easySolved: { type: Number, default: 0 },
-      mediumSolved: { type: Number, default: 0 },
-      hardSolved: { type: Number, default: 0 },
-    },
     // Ranking fields for competitive performance tracking
     rankingInfo: {
       overallRank: {
@@ -301,10 +140,6 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: 0, // Percentile ranking (0-100)
       },
-    },
-    lastProfileSync: {
-      type: Date,
-      default: null,
     },
     // Education history, one entry per level, e.g.
     // [{ level: "Engineering", name: "MLRIT", startDate: "2022-08",
@@ -369,34 +204,16 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    problemsSolved: {
-      type: Number,
-      default: 0,
-    },
-    // Consistency index based on score trends over last 7 days (0-5 scale)
-    consistencyIndex: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5,
-      validate: {
-        validator: function (value) {
-          return value >= 0 && value <= 5;
-        },
-        message: "Consistency index must be between 0 and 5",
-      },
-    },
-    // Score from exactly 7 days ago for tracking weekly progress
-    sevenDayScore: {
-      type: Number,
-      default: 0,
-      min: 0,
-      validate: {
-        validator: function (value) {
-          return value >= 0;
-        },
-        message: "Seven day score must be non-negative",
-      },
+    // The last 7 days of the student's total score, worked out from the score history after
+    // every profile sync (services/weeklyActivity). Filled by that service only.
+    weeklyActivity: {
+      // Days (of the last 7) on which the total score changed
+      activeDays: { type: Number, default: 0, min: 0, max: 7 },
+      // 0-5 from activeDays: 6-7 days = 5, 5 = 4, 4 = 3, 3 = 2, 2 = 1, 0-1 = 0
+      consistencyIndex: { type: Number, default: 0, min: 0, max: 5 },
+      // Total score now minus total score 7 days ago (negative when it fell)
+      scoreChange: { type: Number, default: 0 },
+      calculatedAt: { type: Date, default: null },
     },
     createdAt: {
       type: Date,
@@ -522,7 +339,7 @@ userSchema.pre(
   async function () {
     try {
       const userId = this._id;
-      console.log(`🗑️ Starting cascade deletion for user: ${userId}`);
+      log.debug(`🗑️ Starting cascade deletion for user: ${userId}`);
 
       // Delete all related documents across different collections
       // Each deleteMany operation targets documents that reference this user
@@ -539,14 +356,14 @@ userSchema.pre(
         // Resume data - resumes built with the resume builder
         mongoose.model("Resume").deleteMany({ user: userId }),
 
-        // Rank history data - daily performance tracking
-        mongoose.model("RankHistory").deleteMany({ userId: userId }),
-
-        // Daily stats data - comprehensive daily statistics and analytics
-        mongoose.model("DailyStats").deleteMany({ userId: userId }),
-
         // Activity heatmap data - sparse per-day problem-solved counts
         mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+
+        // Platform history - daily snapshots of coding platform stats
+        mongoose.model("PlatformSnapshot").deleteMany({ userId: userId }),
+
+        // Score and rank history
+        mongoose.model("ScoreHistory").deleteMany({ userId: userId }),
 
         // Submission data - cohort programming submissions
         mongoose.model("Submission").deleteMany({ user: userId }),
@@ -575,10 +392,10 @@ userSchema.pre(
         (sum, result) => sum + result.deletedCount,
         0
       );
-      console.log(`✅ Cascade deletion completed for user: ${userId}`);
-      console.log(`📊 Total related documents deleted: ${totalDeleted}`);
+      log.debug(`✅ Cascade deletion completed for user: ${userId}`);
+      log.debug(`📊 Total related documents deleted: ${totalDeleted}`);
     } catch (error) {
-      console.error("❌ Error in cascade deletion:", error);
+      log.error("❌ Error in cascade deletion:", error);
       throw error; // This will prevent the user deletion if cascade fails
     }
   }
@@ -596,7 +413,7 @@ userSchema.pre("findOneAndDelete", async function () {
     if (!user) return;
 
     const userId = user._id;
-    console.log(
+    log.debug(
       `🗑️ Starting cascade deletion for user: ${userId} (${user.name})`
     );
 
@@ -614,14 +431,14 @@ userSchema.pre("findOneAndDelete", async function () {
       // Resume data - resumes built with the resume builder
       mongoose.model("Resume").deleteMany({ user: userId }),
 
-      // Rank history data - daily performance tracking
-      mongoose.model("RankHistory").deleteMany({ userId: userId }),
-
-      // Daily stats data - comprehensive daily statistics and analytics
-      mongoose.model("DailyStats").deleteMany({ userId: userId }),
-
       // Activity heatmap data - sparse per-day problem-solved counts
       mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+
+      // Platform history - daily snapshots of coding platform stats
+      mongoose.model("PlatformSnapshot").deleteMany({ userId: userId }),
+
+      // Score and rank history
+      mongoose.model("ScoreHistory").deleteMany({ userId: userId }),
 
       // Submission data - cohort programming submissions
       mongoose.model("Submission").deleteMany({ user: userId }),
@@ -650,12 +467,12 @@ userSchema.pre("findOneAndDelete", async function () {
       (sum, result) => sum + result.deletedCount,
       0
     );
-    console.log(
+    log.debug(
       `✅ Cascade deletion completed for user: ${userId} (${user.name})`
     );
-    console.log(`📊 Total related documents deleted: ${totalDeleted}`);
+    log.debug(`📊 Total related documents deleted: ${totalDeleted}`);
   } catch (error) {
-    console.error("❌ Error in cascade deletion:", error);
+    log.error("❌ Error in cascade deletion:", error);
     throw error;
   }
 });
@@ -667,7 +484,7 @@ userSchema.pre("findOneAndDelete", async function () {
 userSchema.pre("findByIdAndDelete", async function () {
   try {
     const userId = this.getQuery()._id;
-    console.log(`🗑️ Starting cascade deletion for user: ${userId}`);
+    log.debug(`🗑️ Starting cascade deletion for user: ${userId}`);
 
     // Delete all related documents across different collections
     const deletionResults = await Promise.all([
@@ -683,14 +500,14 @@ userSchema.pre("findByIdAndDelete", async function () {
       // Resume data - resumes built with the resume builder
       mongoose.model("Resume").deleteMany({ user: userId }),
 
-      // Rank history data - daily performance tracking
-      mongoose.model("RankHistory").deleteMany({ userId: userId }),
-
-      // Daily stats data - comprehensive daily statistics and analytics
-      mongoose.model("DailyStats").deleteMany({ userId: userId }),
-
       // Activity heatmap data - sparse per-day problem-solved counts
       mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+
+      // Platform history - daily snapshots of coding platform stats
+      mongoose.model("PlatformSnapshot").deleteMany({ userId: userId }),
+
+      // Score and rank history
+      mongoose.model("ScoreHistory").deleteMany({ userId: userId }),
 
       // Submission data - cohort programming submissions
       mongoose.model("Submission").deleteMany({ user: userId }),
@@ -719,10 +536,10 @@ userSchema.pre("findByIdAndDelete", async function () {
       (sum, result) => sum + result.deletedCount,
       0
     );
-    console.log(`✅ Cascade deletion completed for user: ${userId}`);
-    console.log(`📊 Total related documents deleted: ${totalDeleted}`);
+    log.debug(`✅ Cascade deletion completed for user: ${userId}`);
+    log.debug(`📊 Total related documents deleted: ${totalDeleted}`);
   } catch (error) {
-    console.error("❌ Error in cascade deletion:", error);
+    log.error("❌ Error in cascade deletion:", error);
     throw error;
   }
 });
@@ -739,7 +556,7 @@ userSchema.pre("deleteMany", async function () {
 
     if (userIds.length === 0) return;
 
-    console.log(
+    log.debug(
       `🗑️ Starting bulk cascade deletion for ${userIds.length} users`
     );
 
@@ -757,14 +574,14 @@ userSchema.pre("deleteMany", async function () {
       // Resume data - resumes built with the resume builder
       mongoose.model("Resume").deleteMany({ user: { $in: userIds } }),
 
-      // Rank history data - daily performance tracking
-      mongoose.model("RankHistory").deleteMany({ userId: { $in: userIds } }),
-
-      // Daily stats data - comprehensive daily statistics and analytics
-      mongoose.model("DailyStats").deleteMany({ userId: { $in: userIds } }),
-
       // Activity heatmap data - sparse per-day problem-solved counts
       mongoose.model("ActivityHeatmap").deleteMany({ userId: { $in: userIds } }),
+
+      // Platform history - daily snapshots of coding platform stats
+      mongoose.model("PlatformSnapshot").deleteMany({ userId: { $in: userIds } }),
+
+      // Score and rank history
+      mongoose.model("ScoreHistory").deleteMany({ userId: { $in: userIds } }),
 
       // Submission data - cohort programming submissions
       mongoose.model("Submission").deleteMany({ user: { $in: userIds } }),
@@ -793,12 +610,12 @@ userSchema.pre("deleteMany", async function () {
       (sum, result) => sum + result.deletedCount,
       0
     );
-    console.log(
+    log.debug(
       `✅ Bulk cascade deletion completed for ${userIds.length} users`
     );
-    console.log(`📊 Total related documents deleted: ${totalDeleted}`);
+    log.debug(`📊 Total related documents deleted: ${totalDeleted}`);
   } catch (error) {
-    console.error("❌ Error in bulk cascade deletion:", error);
+    log.error("❌ Error in bulk cascade deletion:", error);
     throw error;
   }
 });
@@ -810,7 +627,7 @@ userSchema.pre("deleteMany", async function () {
  */
 userSchema.statics.safeDelete = async function (userId) {
   try {
-    console.log(`🔍 Starting safe deletion analysis for user: ${userId}`);
+    log.debug(`🔍 Starting safe deletion analysis for user: ${userId}`);
 
     // Get user info for logging
     const user = await this.findById(userId);
@@ -823,8 +640,6 @@ userSchema.statics.safeDelete = async function (userId) {
       profileCount,
       notificationCount,
       achievementCount,
-      rankHistoryCount,
-      dailyStatsCount,
       submissionCount,
       paSubmissionCount,
       userCohortCount,
@@ -836,8 +651,6 @@ userSchema.statics.safeDelete = async function (userId) {
       mongoose.model("Profile").countDocuments({ userId: userId }),
       mongoose.model("Notification").countDocuments({ userId: userId }),
       mongoose.model("Achievement").countDocuments({ user: userId }),
-      mongoose.model("RankHistory").countDocuments({ userId: userId }),
-      mongoose.model("DailyStats").countDocuments({ userId: userId }),
       mongoose.model("Submission").countDocuments({ user: userId }),
       mongoose.model("PASubmission").countDocuments({ user: userId }),
       mongoose.model("UserCohort").countDocuments({ user: userId }),
@@ -847,24 +660,22 @@ userSchema.statics.safeDelete = async function (userId) {
       mongoose.model("Question").countDocuments({ createdBy: userId }),
     ]);
 
-    console.log(`📊 User ${user.name} (${user.email}) has:`);
-    console.log(`   📱 ${profileCount} platform profiles`);
-    console.log(`   🔔 ${notificationCount} notifications`);
-    console.log(`   🏆 ${achievementCount} achievements`);
-    console.log(`   📈 ${rankHistoryCount} rank history records`);
-    console.log(`   📊 ${dailyStatsCount} daily statistics records`);
-    console.log(`   📝 ${submissionCount} cohort submissions`);
-    console.log(`   🎯 ${paSubmissionCount} practice arena submissions`);
-    console.log(`   👥 ${userCohortCount} cohort memberships`);
-    console.log(`   📄 ${noteCount} notes`);
-    console.log(`   🚨 ${questionReportCount} question reports`);
-    console.log(`   🧪 ${paTestCount} practice tests created`);
-    console.log(`   ❓ ${questionCount} questions created`);
+    log.debug(`📊 User ${user.name} (${user.email}) has:`);
+    log.debug(`   📱 ${profileCount} platform profiles`);
+    log.debug(`   🔔 ${notificationCount} notifications`);
+    log.debug(`   🏆 ${achievementCount} achievements`);
+    log.debug(`   📝 ${submissionCount} cohort submissions`);
+    log.debug(`   🎯 ${paSubmissionCount} practice arena submissions`);
+    log.debug(`   👥 ${userCohortCount} cohort memberships`);
+    log.debug(`   📄 ${noteCount} notes`);
+    log.debug(`   🚨 ${questionReportCount} question reports`);
+    log.debug(`   🧪 ${paTestCount} practice tests created`);
+    log.debug(`   ❓ ${questionCount} questions created`);
 
     // Delete the user (will trigger cascade deletion middleware)
     const deletedUser = await this.findByIdAndDelete(userId);
 
-    console.log(
+    log.debug(
       `✅ Successfully deleted user and all related data for: ${user.name}`
     );
 
@@ -875,7 +686,6 @@ userSchema.statics.safeDelete = async function (userId) {
         profiles: profileCount,
         notifications: notificationCount,
         achievements: achievementCount,
-        rankHistory: rankHistoryCount,
         submissions: submissionCount,
         paSubmissions: paSubmissionCount,
         userCohorts: userCohortCount,
@@ -887,7 +697,6 @@ userSchema.statics.safeDelete = async function (userId) {
           profileCount +
           notificationCount +
           achievementCount +
-          rankHistoryCount +
           submissionCount +
           paSubmissionCount +
           userCohortCount +
@@ -898,9 +707,13 @@ userSchema.statics.safeDelete = async function (userId) {
       },
     };
   } catch (error) {
-    console.error("❌ Error in safe user deletion:", error);
+    log.error("❌ Error in safe user deletion:", error);
     throw error;
   }
 };
 
 module.exports = mongoose.model("User", userSchema);
+
+// Registered here so the cascade deletion above can always find it.
+require("./PlatformSnapshot");
+require("./ScoreHistory");

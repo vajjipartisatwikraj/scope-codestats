@@ -1,48 +1,16 @@
-import axios from "axios";
-
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-// Cache for academic year configuration
-let cachedConfig = null;
-let cacheTime = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+/**
+ * Pure helpers for the academic year configuration. They do not call the
+ * server: the configuration is loaded once by contexts/AcademicYearContext
+ * (use the `useAcademicYear` hook in components).
+ *
+ * Every helper falls back to a configuration worked out from today's date
+ * when it is given none.
+ */
 
 /**
- * Fetch academic year configuration from backend
+ * Default configuration (used until the server answers, and if it fails)
  */
-export const getAcademicYearConfig = async (token) => {
-  try {
-    // Return cached config if still valid
-    if (cachedConfig && cacheTime && Date.now() - cacheTime < CACHE_DURATION) {
-      return cachedConfig;
-    }
-
-    const response = await axios.get(
-      `${apiUrl}/leaderboard/academic-year-config`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-
-    if (response.data.success) {
-      cachedConfig = response.data.config;
-      cacheTime = Date.now();
-      return cachedConfig;
-    }
-
-    throw new Error("Failed to fetch academic year configuration");
-  } catch (error) {
-    console.error("Error fetching academic year config:", error);
-
-    // Return default configuration if API fails
-    return getDefaultConfig();
-  }
-};
-
-/**
- * Get default configuration (fallback)
- */
-const getDefaultConfig = () => {
+export const getDefaultConfig = () => {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -136,12 +104,4 @@ export const getAllAcademicYears = (config) => {
   });
 
   return Array.from(years);
-};
-
-/**
- * Clear the cache (useful when config is updated)
- */
-export const clearConfigCache = () => {
-  cachedConfig = null;
-  cacheTime = null;
 };

@@ -1,0 +1,1198 @@
+/*
+ * speechX/results: the section results page (route /speech-tests/:id/sections/:sectionId/results)
+ *
+ * Plain CSS on the design tokens (--ds-*), prefix sxe-. Read mode: a flat details band, then a
+ * scrolling area with the score tile (the one spotlight), the breakdown cards and the
+ * question-by-question analysis. From 900px the page is a stage that does not scroll (top bar,
+ * band and footer stay put) and only the area under the band scrolls, so the band can fold; under
+ * 900px the page scrolls as a whole and nothing folds. Cards are flat (24px, no border, no
+ * shadow); status is a word and an icon besides its colour; motion is 220ms on size, and the
+ * charts bring their own entrance.
+ *
+ * The app's global `* { transition }` (index.css) would ease colours a second time, so every
+ * element below that animates names its transition itself.
+ */
+
+/* ---- Stage and scrolling area ----------------------------------------------------------------- */
+.sxe-stage {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sxe-stage *,
+.sxe-stage *::before,
+.sxe-stage *::after {
+  box-sizing: border-box;
+}
+
+.sxe-scroll {
+  min-width: 0;
+}
+
+/*
+ * From 900px the page is a stage that does not scroll: the top bar, the details band and the app
+ * footer stay where they are, and only the area under the band scrolls. Scrolling it folds the band
+ * to a slim strip (useCollapseOnScroll), and scrolling back up opens it again. Under 900px the page
+ * scrolls as a whole and the band never folds.
+ */
+@media (min-width: 900px) {
+  .sxe-stage {
+    height: var(--sx-stage);
+    overflow: hidden;
+  }
+
+  .sxe-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+.sxe-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: calc(1280px + 2 * var(--sx-pad));
+  margin: 0 auto;
+  padding: var(--sx-pad);
+}
+
+@media (min-width: 900px) {
+  .sxe-content {
+    gap: 32px;
+  }
+}
+
+/* A Reveal that lets the card inside it fill the grid cell */
+.sxe-slot {
+  display: flex;
+  min-width: 0;
+}
+
+.sxe-slot > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---- Top bar slot ------------------------------------------------------------------------------- */
+.sxe-nav__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Details band ------------------------------------------------------------------------------- */
+.sxe-ribbon {
+  flex: none;
+  border-bottom: 1px solid var(--ds-line);
+  background-color: var(--ds-surface);
+}
+
+.sxe-ribbon__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: calc(1280px + 2 * var(--sx-pad));
+  margin: 0 auto;
+  padding: 16px var(--sx-pad);
+  transition: padding var(--ds-duration-base) var(--ds-ease);
+}
+
+.sxe-ribbon__lead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sxe-ribbon__title {
+  min-width: 0;
+}
+
+.sxe-ribbon__kicker {
+  margin: 0 0 4px;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxe-ribbon__name {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+  overflow-wrap: anywhere;
+  transition:
+    font-size var(--ds-duration-base) var(--ds-ease),
+    line-height var(--ds-duration-base) var(--ds-ease);
+}
+
+.sxe-ribbon__when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  padding-top: 12px;
+}
+
+.sxe-ribbon__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  min-width: 0;
+}
+
+@media (min-width: 600px) {
+  .sxe-ribbon__lead {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .sxe-ribbon__stats {
+    grid-template-columns: repeat(4, minmax(0, auto));
+    justify-content: start;
+  }
+}
+
+@media (min-width: 900px) {
+  .sxe-ribbon__inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    padding-block: 20px;
+  }
+
+  .sxe-ribbon__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sxe-ribbon__stats {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0;
+  }
+
+  .sxe-ribbon__fold .sxe-ribbon__stat {
+    margin-left: 24px;
+    padding-left: 24px;
+    border-left: 1px solid var(--ds-line);
+  }
+
+  /* Folded: the band becomes a slim strip and the name steps down a size */
+  .sxe-ribbon[data-collapsed='true'] .sxe-ribbon__inner {
+    padding-block: 8px;
+  }
+
+  .sxe-ribbon[data-collapsed='true'] .sxe-ribbon__name {
+    font: var(--ds-type-title);
+    letter-spacing: var(--ds-tracking-title);
+  }
+}
+
+/* Caption over a value */
+.sxe-item {
+  min-width: 0;
+}
+
+.sxe-item__label {
+  display: block;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxe-item__value {
+  display: block;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxe-item[data-large='true'] .sxe-item__value {
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  white-space: nowrap;
+  transition:
+    font-size var(--ds-duration-base) var(--ds-ease),
+    line-height var(--ds-duration-base) var(--ds-ease);
+}
+
+.sxe-item[data-compact='true'] .sxe-item__value {
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+/* The folding space: a grid track from 1fr to 0fr, so neighbours slide into place */
+.sxe-fold {
+  display: grid;
+  min-width: 0;
+  transition:
+    grid-template-rows var(--ds-duration-base) var(--ds-ease),
+    grid-template-columns var(--ds-duration-base) var(--ds-ease);
+}
+
+.sxe-fold[data-axis='y'] {
+  grid-template-rows: 1fr;
+}
+
+.sxe-fold[data-axis='y'][data-open='false'] {
+  grid-template-rows: 0fr;
+}
+
+.sxe-fold[data-axis='x'] {
+  grid-template-columns: 1fr;
+}
+
+.sxe-fold[data-axis='x'][data-open='false'] {
+  grid-template-columns: 0fr;
+}
+
+.sxe-fold__inner {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Under 900px the page scrolls as a whole and the band never folds */
+@media (max-width: 899.95px) {
+  .sxe-fold[data-axis='y'][data-open='false'] {
+    grid-template-rows: 1fr;
+  }
+
+  .sxe-fold[data-axis='x'][data-open='false'] {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Overview grid --------------------------------------------------------------------------------- */
+.sxe-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sx-gap);
+}
+
+/* The section score, the skill profile and the score summary share one row */
+@media (min-width: 900px) {
+  .sxe-overview {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+/* The three top panels are wide, low rectangles: the heading is one line and the chart is compact */
+.sxe-card__head {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  flex-wrap: wrap;
+}
+
+.sxe-card__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxe-card__caption {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxe-card > .sx-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+}
+
+.sxe-card__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* The score tile: the one spotlight of the page */
+.sxe-score {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 20px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+}
+
+.sxe-score__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.sxe-score__label {
+  margin: 0;
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxe-score__ring {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  min-width: 0;
+}
+
+.sxe-score__ring .ga {
+  --ga-text: var(--ds-on-spotlight);
+  --ga-label: var(--ds-on-spotlight-muted);
+  --ga-track: color-mix(in srgb, var(--ds-on-spotlight) 16%, var(--ds-spotlight));
+}
+
+/* The figure the student came for, in Numeral XL */
+.sxe-score .sring__value {
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+}
+
+.sxe-score__context {
+  margin: 0;
+  color: var(--ds-on-spotlight-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* Questions by band: the donut alone, in the middle of its card */
+.sxe-bands {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sxe-bands__chart {
+  flex: 0 1 188px;
+  min-width: 152px;
+}
+
+.sxe-bands__legend {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* Skill profile: the radar, centred in its card (no bars) */
+.sxe-profile {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+.sxe-profile > * {
+  width: 100%;
+  max-width: 460px;
+}
+
+/* Fewer than three skills: no shape to draw, so they are listed */
+.sxe-skill-list {
+  margin: 0;
+}
+
+.sxe-skill-list__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.sxe-skill-list__row + .sxe-skill-list__row {
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxe-skill-list dt {
+  font: var(--ds-type-label);
+}
+
+.sxe-skill-list dd {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Question-wise scores */
+.sxe-qbars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ---- Question analysis ---------------------------------------------------------------------------- */
+.sxe-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sxe-analysis__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxe-analysis__hint {
+  max-width: 72ch;
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxe-qlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxe-qlist > li {
+  min-width: 0;
+}
+
+/* A question row is a ui Disclosure; the title row keeps the verdict badge on the same line */
+.sxe-q .ui-disclosure__trigger {
+  min-height: 64px;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxe-q .ui-disclosure__trigger:hover {
+  background-color: var(--ds-raised);
+}
+
+.sxe-q .ui-disclosure__title-row {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sxe-q .ui-disclosure__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sxe-q .ui-disclosure__badge {
+  flex: none;
+}
+
+.sxe-q .ui-disclosure__description {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 599.95px) {
+  .sxe-q .ui-disclosure__title-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+.sxe-q__title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sxe-q__num {
+  flex: none;
+  min-width: 2.25em;
+  color: var(--ds-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxe-q__text {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+/* A question that cannot open: not answered, or no analysis */
+.sxe-q--static {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+@media (min-width: 900px) {
+  .sxe-q--static {
+    padding-inline: 24px;
+  }
+}
+
+.sxe-q--static .sxe-q__title {
+  flex: 1 1 240px;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxe-q__aside {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+
+.sxe-q__hint {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Open question ---------------------------------------------------------------------------------- */
+.sxe-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxe-qhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.sxe-qhead__length {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxe-qtabs {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sxe-detail__panel {
+  min-width: 0;
+  padding-top: 4px;
+  border-radius: var(--ds-radius-md);
+  outline: none;
+}
+
+.sxe-detail__panel:focus-visible,
+.sxe-scrollx:focus-visible,
+.sxe-transcript:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxe-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.sxe-tab__intro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sxe-tab__heading {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxe-tab__note {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.sxe-tab__intro .sxe-tab__note {
+  margin-top: 2px;
+}
+
+.sxe-muted {
+  color: var(--ds-muted);
+  font-weight: 400;
+}
+
+/*
+ * The three scores of an answer on one horizontal line: each is a gauge with its name and reason
+ * beside it, and a thin line separates one from the next. On a phone they stack, with the line
+ * between them running across.
+ */
+.sxe-gauges {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxe-gauge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 0;
+}
+
+.sxe-gauge + .sxe-gauge {
+  border-top: 1px solid var(--ds-line);
+}
+
+/* The gauge keeps its own width, so the text sits right beside it */
+.sxe-gauge > :first-child {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.sxe-gauge__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sxe-gauge__name {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxe-gauge__note {
+  max-width: 34ch;
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+@media (min-width: 720px) {
+  .sxe-gauges {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sxe-gauge {
+    padding: 4px 24px;
+  }
+
+  .sxe-gauge:first-child {
+    padding-left: 0;
+  }
+
+  .sxe-gauge:last-child {
+    padding-right: 0;
+  }
+
+  .sxe-gauge + .sxe-gauge {
+    border-top: 0;
+    border-left: 1px solid var(--ds-line);
+  }
+}
+
+/* The score beside a tab heading ("Fluency score 100 / 100"), in words rather than a gauge */
+.sxe-tab__score {
+  margin-left: 12px;
+  color: var(--ds-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Criteria as plain rows: a name, its score and one sentence, divided by hairlines */
+.sxe-criteria-list {
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxe-criteria {
+  min-width: 0;
+  padding: 12px 0;
+}
+
+.sxe-criteria + .sxe-criteria {
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxe-criteria__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sxe-criteria__name {
+  font: var(--ds-type-label);
+}
+
+.sxe-criteria__score {
+  font: var(--ds-type-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxe-criteria__note {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+/* Feedback lines */
+.sxe-feedback__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxe-feedback__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sxe-feedback__item p {
+  max-width: 72ch;
+  margin: 0;
+  font: var(--ds-type-body);
+}
+
+.sxe-feedback__icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.sxe-feedback__item[data-tone='good'] .sxe-feedback__icon {
+  color: var(--ds-success);
+}
+
+.sxe-feedback__item[data-tone='warn'] .sxe-feedback__icon {
+  color: var(--ds-warning);
+}
+
+/* Delivery figures: ui StatTiles on a raised fill inside the open card */
+.sxe-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: var(--sx-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxe-metrics > li {
+  display: flex;
+  min-width: 0;
+}
+
+.sxe-metrics > li > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Figures sit directly on the open question: no tile inside the card */
+.sxe-metric.ui-stat {
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.sxe-metric__unit {
+  margin-left: 4px;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+.sxe-metric__ideal {
+  flex-basis: 100%;
+}
+
+.sxe-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sxe-timeline__title {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tables (pronunciation, word comparison) -------------------------------------------------------- */
+.sxe-scrollx {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--ds-radius-md);
+}
+
+.sxe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--ds-type-body);
+}
+
+.sxe-table th,
+.sxe-table td {
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.sxe-table__num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sxe-table--sounds {
+  min-width: 560px;
+}
+
+.sxe-table--sounds thead th {
+  border-bottom: 1px solid var(--ds-line);
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxe-table--sounds thead th.sxe-table__num {
+  text-align: right;
+}
+
+.sxe-table--sounds tbody tr + tr {
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxe-table--sounds tbody th {
+  font: var(--ds-type-label);
+}
+
+.sxe-phonemes {
+  font-family: var(--ds-font);
+  white-space: nowrap;
+}
+
+.sxe-phoneme + .sxe-phoneme {
+  margin-left: 0.3em;
+}
+
+.sxe-phoneme[data-wrong='true'] {
+  color: var(--ds-warning);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Word by word: one column per word, the row names stay in view */
+.sxe-table--align {
+  width: auto;
+  border-collapse: separate;
+  border-spacing: 8px;
+}
+
+.sxe-table--align th,
+.sxe-table--align td {
+  padding: 0;
+}
+
+.sxe-table--align th[scope='row'] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding-right: 12px;
+  background-color: var(--ds-surface);
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  white-space: nowrap;
+}
+
+.sxe-table--align td {
+  text-align: center;
+  --sx-reveal-y: 8px;
+  animation: sx-rise 220ms var(--ds-ease-enter) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.sxe-word {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  font: var(--ds-type-label);
+  white-space: nowrap;
+}
+
+.sxe-word[data-empty='true'] {
+  color: var(--ds-muted);
+}
+
+.sxe-word[data-differs='true'] {
+  background-color: var(--ds-warning-soft);
+  color: var(--ds-warning);
+  font-weight: 700;
+}
+
+.sxe-transcription {
+  gap: 24px;
+}
+
+.sxe-transcription__main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sxe-transcription__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+}
+
+.sxe-transcription__side .ui-stats {
+  flex: 1 1 320px;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  margin: 0;
+}
+
+/* A transcript or an email: a card at reading width */
+/* A transcript is text at reading width on the open question, not a box inside it */
+.sxe-transcript {
+  max-width: 72ch;
+  padding: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+}
+
+.sxe-transcript--scroll {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.sxe-transcript__text {
+  margin: 8px 0 0;
+  font: var(--ds-type-body-lg);
+  overflow-wrap: anywhere;
+}
+
+.sxe-transcript--scroll .sxe-transcript__text {
+  margin-top: 0;
+}
+
+.sxe-pre {
+  white-space: pre-wrap;
+}
+
+/* ---- Typed and chosen answers ---------------------------------------------------------------------------- */
+.sxe-answer {
+  max-width: 760px;
+  gap: 12px;
+}
+
+.sxe-answer-line {
+  padding: 12px 0;
+}
+
+.sxe-answer-line + .sxe-answer-line {
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxe-answer-line__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sxe-answer-line__label {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+.sxe-answer-line__value {
+  margin: 0;
+  font: var(--ds-type-body-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sxe-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxe-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 0;
+}
+
+/* The right and the chosen-but-wrong options carry a soft tint (and a word) to stand out */
+.sxe-option[data-state='right'],
+.sxe-option[data-state='wrong'] {
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-md);
+}
+
+.sxe-option[data-state='right'] {
+  background-color: var(--ds-success-soft);
+}
+
+.sxe-option[data-state='wrong'] {
+  background-color: var(--ds-warning-soft);
+}
+
+.sxe-option__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--ds-high);
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  font-weight: 700;
+}
+
+.sxe-option[data-state='right'] .sxe-option__mark {
+  background-color: var(--ds-success);
+  color: var(--ds-surface);
+}
+
+.sxe-option[data-state='wrong'] .sxe-option__mark {
+  background-color: var(--ds-warning);
+  color: var(--ds-surface);
+}
+
+.sxe-option__text {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sxe-option__text[data-strong='true'] {
+  font-weight: 600;
+}
+
+/* ---- Loading and problems ----------------------------------------------------------------------------- */
+.sxe-live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sx-gap);
+  min-width: 0;
+}
+
+.sxe-skeleton-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sx-gap);
+}
+
+@media (min-width: 900px) {
+  .sxe-skeleton-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+
+.sxe-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+.sxe-problem__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 12px;
+}
+
+.sxe-loading-line {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+/* ---- Reduced motion ----------------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .sxe-ribbon__inner,
+  .sxe-ribbon__name,
+  .sxe-item[data-large='true'] .sxe-item__value,
+  .sxe-fold {
+    transition: none;
+  }
+
+  .sxe-table--align td {
+    animation: none;
+  }
+}

@@ -1,0 +1,136 @@
+/*
+ * Gauge
+ *
+ * A dial drawn as SVG. The geometry is in dial units (radius 100) and the SVG scales with its
+ * container, so line widths stay in proportion at every size. Colours are --ga-* variables whose
+ * defaults are design tokens. See Gauge.jsx for the props.
+ *
+ * The ticks that are lit up one after another on mount change colour only.
+ */
+
+.ga {
+  --ga-size: 240px;
+
+  --ga-fill: var(--ds-accent);
+  --ga-track: var(--ds-high);
+  --ga-text: var(--ds-text);
+  --ga-label: var(--ds-muted);
+
+  position: relative;
+  width: 100%;
+  max-width: var(--ga-size);
+  margin-inline: auto;
+  color: var(--ga-text);
+}
+
+.ga *,
+.ga *::before,
+.ga *::after {
+  transition: none;
+}
+
+.ga__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.ga__tick,
+.ga__track,
+.ga__fill {
+  fill: none;
+}
+
+.ga[data-round='true'] .ga__tick,
+.ga[data-round='true'] .ga__track,
+.ga[data-round='true'] .ga__fill {
+  stroke-linecap: round;
+}
+
+.ga__tick {
+  stroke: var(--ga-track);
+}
+
+.ga__tick[data-lit='true'] {
+  stroke: var(--ga-fill);
+}
+
+.ga__track {
+  stroke: var(--ga-track);
+}
+
+.ga__fill {
+  stroke: var(--ga-fill);
+}
+
+/* ---- The middle ------------------------------------------------------------------------ */
+
+.ga__content {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 70%;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+/* A half dial has its centre on the bottom edge, so the content sits above that point */
+.ga__content[data-anchor='bottom'] {
+  transform: translate(-50%, -100%);
+}
+
+.ga__value {
+  color: var(--ga-text);
+  font: var(--ds-type-numeral-l);
+  letter-spacing: var(--ds-tracking-numeral-l);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Entrance -------------------------------------------------------------------------- */
+
+@keyframes ga-tick-on {
+  from {
+    stroke: var(--ga-track);
+  }
+  to {
+    stroke: var(--ga-fill);
+  }
+}
+
+/*
+ * The dial appears, then its lit ticks fill in one after another along the arc in a single
+ * smooth sweep (about 0.75s however many ticks are lit), and the figure in the middle rises
+ * in as the sweep passes. Timing comes from shared.css.
+ */
+.ga[data-animate='true'] .ga__svg {
+  animation: cc-fade-in 360ms var(--cc-ease) both;
+}
+
+.ga[data-animate='true'] .ga__tick[data-lit='true'] {
+  animation: ga-tick-on 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 200ms + var(--i, 0) * (760ms / var(--n, 1)));
+}
+
+.ga[data-animate='true'] .ga__fill {
+  animation: cc-fade-in var(--cc-enter) var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 200ms);
+}
+
+.ga[data-animate='true'] .ga__content {
+  animation: ga-content-in calc(var(--cc-enter) * 0.9) var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 280ms);
+}
+
+/* The middle is placed with a transform, so it rises with the separate `translate` property */
+@keyframes ga-content-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}

@@ -1,0 +1,865 @@
+/*
+ * Navbar (the top bar)
+ *
+ * Plain CSS on the design tokens, like the Sidebar. ThemeContext publishes the --ds-* variables
+ * for Midnight and Daylight (theme/applyTheme.js), so nothing here is specific to one theme.
+ * The rules come from DESIGN.md and design/screens.md section 2.
+ *
+ * The bar is a solid strip in the page background colour with floating controls on it: a search
+ * pill, a theme toggle and a notifications circle, and the account pill. Because the strip is
+ * opaque, the page scrolls cleanly underneath it.
+ *
+ * Hover: each control fills with the spotlight colour (near-black in Daylight, near-white in
+ * Midnight) as a circle that grows from one point: the search icon, the avatar, or the middle of
+ * a round button. The circle is a radial gradient whose radius is the registered property
+ * --nb-fill, so it has a crisp edge and always ends exactly at the farthest corner whatever the
+ * control's width. The easing starts and ends gently, and every colour change is timed to the
+ * moment the edge passes that icon or word: on the way in the ones near the start turn first,
+ * on the way out the ones far from it turn back first.
+ *
+ * Layout contract with the shell: the page reserves 64px at the top for it (App.jsx), and the
+ * rail takes the first 75px on the left (Sidebar.css). Below 900px the rail is a drawer and the
+ * menu button that App.jsx floats at the top left needs room, hence the extra left padding.
+ */
+
+/* How far the hover fill has grown, as a share of the way to the farthest corner */
+@property --nb-fill {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.ds-navbar,
+.ds-navbar *,
+.ds-navbar *::before,
+.ds-navbar *::after {
+  box-sizing: border-box;
+}
+
+/* Only the elements named below animate. See the note in Sidebar.css about the page-wide
+   `* { transition }` rule in index.css. */
+.ds-navbar *,
+.ds-navbar *::before,
+.ds-navbar *::after {
+  transition: none;
+}
+
+/* ---- The bar --------------------------------------------------------------------------- */
+
+.ds-navbar {
+  --nb-ease: var(--ds-ease);
+  /* The fill grows with a gentle start and a long soft landing, and withdraws a little quicker */
+  --nb-fill-in-ease: cubic-bezier(0.45, 0, 0.15, 1);
+  --nb-fill-out-ease: cubic-bezier(0.4, 0, 0.25, 1);
+  --nb-color-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 75px;
+  /* One below the sidebar, so the rail floats over it; above the page; below dialogs. */
+  z-index: 1199;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 64px;
+  padding: 12px 20px 8px 12px;
+  background-color: var(--ds-canvas);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ds-navbar--public {
+  left: 0;
+  padding-left: 20px;
+}
+
+.ds-navbar__search-slot {
+  flex: 0 1 420px;
+  min-width: 0;
+}
+
+.ds-navbar__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.ds-navbar__menu {
+  position: relative;
+  flex: none;
+}
+
+@media (max-width: 899.95px) {
+  .ds-navbar {
+    left: 0;
+    padding: 12px 12px 8px 64px;
+  }
+
+  .ds-navbar--public {
+    padding-left: 12px;
+  }
+}
+
+/* ---- The hover fill, shared by the search pill, the circles and the account pill -------- */
+
+.ds-navbar__icon-button,
+.ds-navbar__account,
+.ds-search__field {
+  --fill-x: 50%; /* where the circle starts, from the control's left edge */
+  --fill-in: 520ms;
+  --fill-out: 400ms;
+
+  background-color: var(--ds-surface);
+  background-image: radial-gradient(
+    circle farthest-corner at var(--fill-x) 50%,
+    var(--ds-spotlight) calc(var(--nb-fill) - 1px),
+    transparent var(--nb-fill)
+  );
+}
+
+/* ---- Circles --------------------------------------------------------------------------- */
+
+.ds-navbar__icon-button {
+  --nb-ring: var(--ds-surface);
+
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--ds-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* Leaving: the icon sits where the circle withdraws to, so it turns back once the edge has
+     pulled away from it. */
+  transition:
+    --nb-fill var(--fill-out) var(--nb-fill-out-ease),
+    color 240ms var(--nb-color-ease) 110ms,
+    transform 180ms var(--nb-ease),
+    box-shadow 160ms var(--nb-ease);
+}
+
+.ds-navbar__icon-button:active {
+  transform: scale(0.95);
+}
+
+.ds-navbar__icon-button:focus-visible,
+.ds-navbar__account:focus-visible,
+.ds-navbar__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-canvas), 0 0 0 4px var(--ds-focus);
+}
+
+/* Unread: a dot on the bell's corner, ringed in whatever is behind it */
+.ds-navbar__dot {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--ds-accent);
+  box-shadow: 0 0 0 2px var(--nb-ring);
+  transition: box-shadow 200ms var(--nb-color-ease) 140ms;
+}
+
+/* Theme toggle: the icon of the theme you are in. Both are drawn and the other turns out of
+   view, so the swap is a short turn rather than a cut. */
+.ds-navbar__theme-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transition:
+    transform 320ms var(--nb-ease),
+    opacity 200ms var(--nb-ease);
+}
+
+.ds-navbar__theme-toggle[data-mode="dark"] .ds-navbar__theme-icon--moon,
+.ds-navbar__theme-toggle[data-mode="light"] .ds-navbar__theme-icon--sun {
+  opacity: 1;
+  transform: none;
+}
+
+.ds-navbar__theme-toggle[data-mode="dark"] .ds-navbar__theme-icon--sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+
+.ds-navbar__theme-toggle[data-mode="light"] .ds-navbar__theme-icon--moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
+/* Hovering needs a pointer that can hover: a tap on a phone must not leave a control filled */
+@media (hover: hover) {
+  .ds-navbar__icon-button:hover {
+    --nb-fill: 112%;
+    --nb-ring: var(--ds-spotlight);
+
+    color: var(--ds-on-spotlight);
+    /* Entering: the icon turns as the circle's edge passes over it. */
+    transition:
+      --nb-fill var(--fill-in) var(--nb-fill-in-ease),
+      color 280ms var(--nb-color-ease) 40ms,
+      transform 180ms var(--nb-ease),
+      box-shadow 160ms var(--nb-ease);
+  }
+
+  .ds-navbar__icon-button:hover .ds-navbar__dot {
+    transition: box-shadow 200ms var(--nb-color-ease) 40ms;
+  }
+}
+
+/* ---- Account pill ---------------------------------------------------------------------- */
+
+.ds-navbar__account {
+  --fill-x: 22px; /* the middle of the avatar */
+  --fill-in: 640ms;
+  --fill-out: 480ms;
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 44px;
+  padding: 4px 16px 4px 4px;
+  border-radius: var(--ds-radius-pill);
+  color: var(--ds-text);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    --nb-fill var(--fill-out) var(--nb-fill-out-ease),
+    transform 180ms var(--nb-ease),
+    box-shadow 160ms var(--nb-ease);
+}
+
+.ds-navbar__account:active {
+  transform: scale(0.98);
+}
+
+.ds-navbar__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+  font: var(--ds-type-caption);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ds-navbar__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ds-navbar__avatar--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.ds-navbar__account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+/* The text is away from where the circle starts: it turns back early on the way out and turns
+   late on the way in. */
+.ds-navbar__account-name {
+  max-width: 180px;
+  overflow: hidden;
+  font: var(--ds-type-label);
+  font-size: 0.8125rem;
+  color: var(--ds-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 260ms var(--nb-color-ease) 90ms;
+}
+
+.ds-navbar__account-detail {
+  font: var(--ds-type-caption);
+  color: var(--ds-muted);
+  white-space: nowrap;
+  transition: color 260ms var(--nb-color-ease) 110ms;
+}
+
+@media (hover: hover) {
+  .ds-navbar__account:hover {
+    --nb-fill: 112%;
+
+    transition:
+      --nb-fill var(--fill-in) var(--nb-fill-in-ease),
+      transform 180ms var(--nb-ease),
+      box-shadow 160ms var(--nb-ease);
+  }
+
+  .ds-navbar__account:hover .ds-navbar__account-name {
+    color: var(--ds-on-spotlight);
+    transition: color 320ms var(--nb-color-ease) 140ms;
+  }
+
+  .ds-navbar__account:hover .ds-navbar__account-detail {
+    color: var(--ds-on-spotlight-muted);
+    transition: color 320ms var(--nb-color-ease) 170ms;
+  }
+}
+
+@media (max-width: 899.95px) {
+  .ds-navbar__account {
+    padding: 4px;
+  }
+
+  .ds-navbar__account-text {
+    display: none;
+  }
+}
+
+/* ---- Sign-in links (signed out) -------------------------------------------------------- */
+
+.ds-navbar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 160ms var(--nb-ease),
+    transform 140ms var(--nb-ease),
+    box-shadow 160ms var(--nb-ease);
+}
+
+.ds-navbar__button:hover {
+  background-color: var(--ds-high);
+}
+
+.ds-navbar__button:active {
+  transform: scale(0.97);
+}
+
+.ds-navbar__button--primary {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.ds-navbar__button--primary:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+.ds-navbar__button--primary:active {
+  background-color: var(--ds-accent-press);
+}
+
+/* ---- Floating panels ------------------------------------------------------------------- */
+
+/* A panel stays in the page and fades and drops in, so it can also animate out. */
+.ds-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  overflow: hidden;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-float-sm);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top right;
+  transition:
+    opacity 140ms var(--nb-ease),
+    transform 180ms var(--nb-ease),
+    visibility 0s linear 180ms;
+}
+
+.ds-popover[data-open="true"] {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 180ms var(--nb-ease),
+    transform 240ms var(--nb-ease);
+}
+
+.ds-popover--start {
+  right: auto;
+  left: 0;
+  transform-origin: top left;
+}
+
+/* ---- Search ---------------------------------------------------------------------------- */
+
+.ds-search {
+  position: relative;
+}
+
+/* The pill fills from the search icon. It stays filled while it has focus, so the text you type
+   is never on a surface that flips back under it; the fill is also the focus indicator. */
+.ds-search__field {
+  --fill-x: 28px; /* the middle of the search icon */
+  --fill-in: 860ms;
+  --fill-out: 600ms;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border-radius: var(--ds-radius-pill);
+  color: var(--ds-subtle);
+  cursor: text;
+  /* Leaving: the icon sits where the circle withdraws to, so it turns back last. */
+  transition:
+    --nb-fill var(--fill-out) var(--nb-fill-out-ease),
+    color 200ms var(--nb-color-ease) 440ms;
+}
+
+.ds-search__field svg {
+  flex: none;
+}
+
+.ds-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  letter-spacing: var(--ds-tracking-body);
+  /* Leaving: the far end of the text is uncovered first */
+  transition: color 260ms var(--nb-color-ease) 200ms;
+}
+
+.ds-search__input::placeholder {
+  color: var(--ds-subtle);
+  opacity: 1;
+  transition: color 260ms var(--nb-color-ease) 200ms;
+}
+
+.ds-search__field:hover,
+.ds-search__field:focus-within {
+  --nb-fill: 112%;
+
+  color: var(--ds-on-spotlight);
+  /* Entering: the icon turns first, the text once the edge has reached it. */
+  transition:
+    --nb-fill var(--fill-in) var(--nb-fill-in-ease),
+    color 240ms var(--nb-color-ease);
+}
+
+.ds-search__field:hover .ds-search__input,
+.ds-search__field:focus-within .ds-search__input {
+  color: var(--ds-on-spotlight);
+  transition: color 340ms var(--nb-color-ease) 140ms;
+}
+
+.ds-search__field:hover .ds-search__input::placeholder,
+.ds-search__field:focus-within .ds-search__input::placeholder {
+  color: var(--ds-on-spotlight-muted);
+  transition: color 340ms var(--nb-color-ease) 140ms;
+}
+
+.ds-search__panel {
+  right: 0;
+  max-height: min(60vh, 480px);
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.ds-search__group-title {
+  margin: 0;
+  padding: 8px 12px 4px;
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+  color: var(--ds-subtle);
+}
+
+.ds-search__option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-md);
+  cursor: pointer;
+  transition: background-color 120ms var(--nb-ease);
+}
+
+.ds-search__option[data-active="true"] {
+  background-color: var(--ds-raised);
+}
+
+.ds-search__option-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.ds-search__option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ds-search__option-title {
+  overflow: hidden;
+  font: var(--ds-type-body);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-search__option-detail {
+  overflow: hidden;
+  font: var(--ds-type-caption);
+  color: var(--ds-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-search__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+}
+
+.ds-search__empty-image {
+  display: block;
+  width: 96px;
+  height: auto;
+}
+
+.ds-search__empty-text {
+  margin: 0;
+  font: var(--ds-type-body-sm);
+  color: var(--ds-muted);
+  text-align: center;
+}
+
+/* ---- Notifications --------------------------------------------------------------------- */
+
+.ds-notices {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100vh - 96px);
+}
+
+@media (max-width: 599.95px) {
+  /* On a phone the panel spans the screen instead of hanging off the bell */
+  .ds-notices {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+.ds-notices__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 12px;
+}
+
+.ds-notices__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.ds-notices__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms var(--nb-ease), color 160ms var(--nb-ease);
+}
+
+.ds-notices__ghost:hover:not(:disabled) {
+  background-color: var(--ds-accent-soft);
+}
+
+.ds-notices__ghost:disabled {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .ds-notices__ghost {
+    height: 44px;
+  }
+}
+
+.ds-notices__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 420px;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ds-notices__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-notice {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 140ms var(--nb-ease),
+    box-shadow 160ms var(--nb-ease);
+}
+
+.ds-notice:hover {
+  background-color: var(--ds-raised);
+}
+
+.ds-notice:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+}
+
+.ds-notice__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.ds-notice__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ds-notice__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ds-notice__title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font: var(--ds-type-body);
+  font-weight: 500;
+  color: var(--ds-muted);
+}
+
+.ds-notice[data-unread="true"] .ds-notice__title {
+  font-weight: 600;
+  color: var(--ds-text);
+}
+
+.ds-notice__dot {
+  flex: none;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--ds-accent);
+}
+
+.ds-notice__time {
+  flex: none;
+  font: var(--ds-type-caption);
+  color: var(--ds-subtle);
+  white-space: nowrap;
+}
+
+.ds-notice__message {
+  display: -webkit-box;
+  overflow: hidden;
+  font: var(--ds-type-body-sm);
+  color: var(--ds-muted);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.ds-notices__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.ds-notices__state-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+}
+
+.ds-notices__state-title,
+.ds-notices__state-text {
+  margin: 0;
+}
+
+.ds-notices__state-title {
+  font: var(--ds-type-label);
+}
+
+.ds-notices__state-text {
+  font: var(--ds-type-body-sm);
+  color: var(--ds-muted);
+}
+
+.ds-notices__footer {
+  flex: none;
+  padding: 8px 12px 12px;
+}
+
+.ds-notices__settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--nb-ease),
+    transform 140ms var(--nb-ease),
+    box-shadow 160ms var(--nb-ease);
+}
+
+.ds-notices__settings:hover {
+  background-color: var(--ds-high);
+}
+
+.ds-notices__settings:active {
+  transform: scale(0.98);
+}
+
+.ds-notices__settings:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+}
+
+/* ---- Small things ---------------------------------------------------------------------- */
+
+.ds-spin {
+  flex: none;
+  animation: ds-spin 800ms linear infinite;
+}
+
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ds-navbar__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Reduced motion -------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-navbar,
+  .ds-navbar *,
+  .ds-navbar *::before,
+  .ds-navbar *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -2,33 +2,41 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Box, CircularProgress, Typography } from '@mui/material';
+import { getDashboardPath, isPendingTeacher } from '../utils/userHelpers';
 
-const PrivateRoute = ({ children, adminOnly = false }) => {
+// adminOnly lets admins and teachers in; strictAdmin lets only admins in.
+const PrivateRoute = ({ children, adminOnly = false, strictAdmin = false }) => {
   const auth = useAuth();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   
+  const refreshUserData = auth.refreshUserData;
+  const hasToken = Boolean(auth.token);
+  const needsUserData = hasToken && (!auth.user || auth.user.userType === undefined);
+
+  // The spinner is for the first check only. It used to switch back on whenever the auth
+  // context changed (a profile save, for example), which unmounted the page and lost its state.
   useEffect(() => {
+    if (!auth.isInitialized) return undefined;
+
+    let cancelled = false;
     const checkAccess = async () => {
-      setIsLoading(true);
-      
-      // If we need to check for admin access and user type is missing or undefined
-      if (auth.token && (!auth.user || auth.user.userType === undefined)) {
+      // The user record is missing its role, so fetch it before deciding where to send them
+      if (needsUserData) {
         try {
-          // Wait for user data to be fetched
-          await auth.refreshUserData();
+          await refreshUserData();
         } catch (error) {
           // Silent error handling
         }
       }
-      
-      setIsLoading(false);
+      if (!cancelled) setIsLoading(false);
     };
-    
-    if (auth.isInitialized) {
-      checkAccess();
-    }
-  }, [auth, location.pathname, adminOnly]);
+
+    checkAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.isInitialized, needsUserData, refreshUserData]);
 
   // If auth is still initializing or we're loading user data, show loading indicator
   if (!auth.isInitialized || isLoading) {
@@ -50,6 +58,20 @@ const PrivateRoute = ({ children, adminOnly = false }) => {
   // No auth token, redirect to login
   if (!auth.token) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Someone who signed in from the teacher page and is waiting for approval can only see
+  // the teacher access page. Once approved, that page is no longer theirs to open.
+  if (isPendingTeacher(auth.user) && location.pathname !== '/teacher-access') {
+    return <Navigate to="/teacher-access" replace />;
+  }
+  if (!isPendingTeacher(auth.user) && location.pathname === '/teacher-access') {
+    return <Navigate to={getDashboardPath(auth.user)} replace />;
+  }
+
+  // Pages only admins may open (teachers are sent back to their dashboard)
+  if (strictAdmin && auth.user?.userType !== 'admin') {
+    return <Navigate to={getDashboardPath(auth.user)} replace />;
   }
 
   // Check for admin access - explicit userType check (allow both admin and teacher)

@@ -1,0 +1,312 @@
+/*
+ * Build my resume: the list page
+ *
+ * Plain CSS on the design tokens (--ds-*). Nothing here belongs to one theme: ThemeContext
+ * publishes the Midnight and Daylight roles as variables. The rules come from DESIGN.md and
+ * design/screens.md sections 13 (resume builder), 17 (dialogs) and 18 (system states).
+ *
+ *   the page     the kit's Page, a Display h1 with one primary button
+ *   a card       flat, 24px, a button with a live thumbnail of the paper, the name and the time; it opens the detail panel
+ *   the dialog   a name field and a gallery of template tiles with previews
+ *
+ * The paper itself (the thumbnails) is styled by templates/resumePaper.css, always Daylight.
+ */
+
+/* ---- The grid ---------------------------------------------------------------------------------- */
+
+.rbl-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rbl-grid__item {
+  display: flex;
+  min-width: 0;
+}
+
+.rbl-toolbar {
+  justify-content: space-between;
+}
+
+.rbl-quota {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.rbl-quota__num {
+  color: var(--ds-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rbl-search {
+  max-width: 320px;
+}
+
+.rbl-limit {
+  margin: 0 0 var(--ui-gap);
+}
+
+/* ---- A resume card -------------------------------------------------------------------------------- */
+
+/* The whole card is a button that opens the detail panel */
+.rbl-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.rbl-card:hover {
+  background-color: var(--ds-raised);
+}
+
+.rbl-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.rbl-card__thumb {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.rbl-card:hover .rbl-card__thumb {
+  background-color: var(--ds-high);
+}
+
+.rbl-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rbl-card__title {
+  overflow: hidden;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rbl-card__edited {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* The larger preview at the top of the detail panel */
+.rbl-detail__preview {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.rbl-detail__preview .rbl-thumb {
+  max-width: 320px;
+}
+/* ---- The thumbnail: a real sheet scaled down into a fixed A4 frame ----------------------------------- */
+
+.rbl-thumb {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  overflow: hidden;
+  background-color: var(--ds-high);
+  /* The paper floats above its backdrop */
+  box-shadow: var(--ds-shadow-float-sm);
+}
+
+.rbl-thumb__sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.rbl-thumb__blank {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ds-subtle);
+}
+
+.rbl-skeleton-sheet {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 794 / 1123;
+}
+
+/* ---- Empty and nothing-found states -------------------------------------------------------------------- */
+
+.rbl-empty,
+.rbl-none {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.rbl-none {
+  padding: 40px 24px;
+}
+
+.rbl-empty__title {
+  margin: 16px 0 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.rbl-empty__text {
+  max-width: 44ch;
+  margin: 4px 0 24px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.rbl-mark__disc {
+  fill: var(--ds-raised);
+}
+
+.rbl-mark__sheet {
+  fill: var(--ds-surface);
+}
+
+.rbl-mark__ink {
+  fill: var(--ds-muted);
+}
+
+.rbl-mark__line {
+  fill: var(--ds-high);
+}
+
+.rbl-mark__badge {
+  fill: var(--ds-accent);
+}
+
+.rbl-mark__plus {
+  stroke: var(--ds-on-accent);
+}
+
+/* ---- The new resume dialog ----------------------------------------------------------------------------------- */
+
+.rbl-new {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rbl-new__templates {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rbl-new__legend {
+  margin: 0 0 8px;
+  padding: 0;
+  font: var(--ds-type-label);
+}
+
+.rbl-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+}
+
+.rbl-tile {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.rbl-tile__face {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.rbl-tile:hover .rbl-tile__face {
+  background-color: var(--ds-high);
+}
+
+.rbl-tile__face[data-selected='true'],
+.rbl-tile:hover .rbl-tile__face[data-selected='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.rbl-tile input:focus-visible + .rbl-tile__face {
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.rbl-tile__preview {
+  display: grid;
+  place-items: center;
+}
+
+.rbl-tile__preview .rbl-thumb {
+  max-width: 120px;
+}
+
+.rbl-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 28px;
+}
+
+.rbl-tile__name {
+  font: var(--ds-type-label);
+}
+
+.rbl-tile__category {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.rbl-tile__face[data-selected='true'] .rbl-tile__category {
+  color: var(--ds-accent-text);
+}
+
+.rbl-tile__check {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+}

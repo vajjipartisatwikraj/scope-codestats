@@ -1,0 +1,172 @@
+/*
+ * TrendChart
+ *
+ * An SVG chart drawn in real pixels (TrendChart.jsx measures its own box). Colours are --tc-*
+ * variables whose defaults are design tokens; series colours come from the `series` prop.
+ * See TrendChart.jsx for the props.
+ */
+
+.tc {
+  --tc-grid: var(--ds-line);
+  --tc-label: var(--ds-subtle);
+  --tc-cross: var(--ds-bar-muted);
+  --tc-ring: var(--ds-surface);
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+}
+
+.tc *,
+.tc *::before,
+.tc *::after {
+  transition: none;
+}
+
+.tc__canvas {
+  position: relative;
+  width: 100%;
+}
+
+/* Fill mode: the canvas takes the height the parent leaves and the chart is drawn to it */
+.tc[data-fill='true'] {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.tc[data-fill='true'] .tc__canvas {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tc__svg {
+  display: block;
+  overflow: visible;
+}
+
+.tc__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 96px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  text-align: center;
+}
+
+/* ---- Axes ------------------------------------------------------------------------------ */
+
+.tc__grid {
+  stroke: var(--tc-grid);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.tc__zero {
+  stroke: var(--tc-grid);
+  stroke-width: 1;
+}
+
+.tc__tick {
+  fill: var(--tc-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Marks ----------------------------------------------------------------------------- */
+
+.tc__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tc__dot {
+  stroke: var(--tc-ring);
+  stroke-width: 2;
+}
+
+/* The series under the legend entry stays; the others step back (by tone, not by hiding) */
+.tc__series[data-dim='true'] {
+  opacity: 0.28;
+}
+
+.tc__series {
+  transition: opacity var(--ds-duration-fast) var(--ds-ease);
+}
+
+.tc__cross {
+  stroke: var(--tc-cross);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.tc__point {
+  stroke: var(--tc-ring);
+  stroke-width: 2;
+}
+
+.tc__hit {
+  cursor: crosshair;
+}
+
+/* ---- Entrance -------------------------------------------------------------------------- */
+
+/*
+ * Lines draw themselves from the left (pathLength is 1 in TrendChart.jsx), areas fade in under
+ * them, bars rise from the baseline in a soft wave, and the dot on the latest point pops in when
+ * the line gets there. Timing comes from shared.css.
+ */
+.tc[data-animate='true'] .tc__line {
+  stroke-dasharray: 1;
+  animation: tc-draw calc(var(--cc-enter) * 1.6) var(--cc-ease) both;
+  animation-delay: var(--cc-start);
+}
+
+.tc[data-animate='true'] .tc__line[data-dashed='true'] {
+  /* a dashed line cannot be drawn by sliding its dash, so it fades in as it is drawn */
+  stroke-dasharray: 5 5;
+  animation: cc-fade-in calc(var(--cc-enter) * 1.2) var(--cc-ease) both;
+}
+
+.tc[data-animate='true'] .tc__area {
+  animation: cc-fade-in calc(var(--cc-enter) * 1.4) var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 200ms);
+}
+
+.tc[data-animate='true'] .tc__bar {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: cc-grow-up var(--cc-enter) var(--cc-ease) both;
+  animation-delay: var(--cc-delay);
+}
+
+.tc[data-animate='true'] .tc__bar[data-negative='true'] {
+  transform-origin: center top;
+}
+
+.tc[data-animate='true'] .tc__dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cc-pop-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + var(--cc-enter) * 1.4);
+}
+
+.tc[data-animate='true'] .tc__legend {
+  animation: cc-rise-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 200ms);
+}
+
+@keyframes tc-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

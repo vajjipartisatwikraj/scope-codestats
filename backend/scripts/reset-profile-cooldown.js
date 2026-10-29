@@ -2,8 +2,8 @@
  * Clears the 6-hour profile-update cooldown for one user, so a platform profile
  * can be re-saved immediately while testing.
  *
- * The cooldown is derived from `Profile.lastUpdateAttempt`
- * (`services/rateLimiter.js`), so resetting it only means unsetting that
+ * The cooldown is derived from `Profile.lastUpdated` (last successful sync)
+ * (`Profile.cooldownEndsAt`), so resetting it only means unsetting that
  * timestamp. Scores, usernames and every other field are left untouched.
  *
  * Scoped to a single user on purpose: it takes an identifier and refuses to run
@@ -78,7 +78,7 @@ async function main() {
 
   const filter = { userId: user._id, ...(platform ? { platform } : {}) };
   const profiles = await Profile.find(filter).select(
-    "platform username lastUpdateAttempt updateAttempts"
+    "platform username lastUpdated updateAttempts"
   );
 
   if (profiles.length === 0) {
@@ -90,15 +90,15 @@ async function main() {
   console.log("\nBefore:");
   profiles.forEach((p) => {
     console.log(
-      `  ${p.platform.padEnd(11)} lastUpdateAttempt=${
-        p.lastUpdateAttempt ? p.lastUpdateAttempt.toISOString() : "null"
+      `  ${p.platform.padEnd(11)} lastUpdated=${
+        p.lastUpdated ? p.lastUpdated.toISOString() : "null"
       }`
     );
   });
 
   // Unsetting the timestamp is all the limiter checks; nothing else is modified.
   const result = await Profile.updateMany(filter, {
-    $set: { lastUpdateAttempt: null },
+    $set: { lastUpdated: null },
   });
 
   const changed = result.modifiedCount ?? result.nModified ?? 0;

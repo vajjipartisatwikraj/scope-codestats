@@ -1,0 +1,378 @@
+/*
+ * BarChart
+ *
+ * Generic rounded bars. Everything that has a colour reads a --bc-* variable whose default is a
+ * design token, so the chart follows Midnight and Daylight on its own and a caller can restyle it
+ * by setting the variables (or the `colors` prop, which sets them). See BarChart.jsx for the props.
+ *
+ * Motion: the bars grow in once, using transform only. The value pills fade in behind them.
+ */
+
+.bc {
+  --bc-height: 240px;
+  --bc-gap: 12px;
+  --bc-radius: var(--ds-radius-xl);
+  --bc-max-bar: 84px;
+  --bc-min-col: 52px;
+  --bc-count: 1;
+  --bc-gutter: 0px;
+  --bc-top-room: 0px;
+
+  --bc-bar: var(--ds-high);
+  --bc-bar-highlight: var(--ds-spotlight);
+  --bc-bar-highlight-text: var(--ds-on-spotlight);
+  --bc-value: var(--ds-surface);
+  --bc-value-text: var(--ds-text);
+  --bc-value-highlight: var(--ds-accent);
+  --bc-value-highlight-text: var(--ds-on-accent);
+  --bc-label: var(--ds-muted);
+  --bc-sublabel: var(--ds-subtle);
+  --bc-ref: var(--ds-subtle);
+  --bc-ref-tag: var(--ds-success);
+  --bc-ref-tag-text: var(--ds-surface);
+
+  display: block;
+  min-width: 0;
+  margin: 0;
+  color: var(--ds-text);
+}
+
+/* The surface colour is nearly black on Midnight, so the tag needs a dark label there */
+[data-theme='midnight'] .bc {
+  --bc-ref-tag-text: var(--ds-canvas);
+}
+
+.bc *,
+.bc *::before,
+.bc *::after {
+  transition: none;
+}
+
+.bc__empty {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  text-align: center;
+}
+
+/* ---- Layout ---------------------------------------------------------------------------- */
+
+/* Too many bars for the width: scroll sideways rather than squeeze the value pills */
+.bc__scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-top: var(--bc-top-room);
+}
+
+.bc__inner {
+  min-width: calc(
+    var(--bc-count) * var(--bc-min-col) + (var(--bc-count) - 1) * var(--bc-gap) + var(--bc-gutter)
+  );
+}
+
+.bc__plot {
+  position: relative;
+  height: var(--bc-height);
+}
+
+/* Fill mode: every level hands the height it is given to the plot */
+.bc[data-fill='true'] {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bc[data-fill='true'] .bc__scroll,
+.bc[data-fill='true'] .bc__inner {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bc[data-fill='true'] .bc__plot {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+
+.bc[data-fill='true'] .bc__labels {
+  margin-top: 8px;
+}
+
+/* The columns and the labels share one grid definition, so each label sits under its bar */
+.bc__cols,
+.bc__labels {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: var(--bc-gap);
+}
+
+.bc__cols {
+  position: absolute;
+  top: 0;
+  right: var(--bc-gutter);
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  /* One row as tall as the plot, so every column can use a percentage height */
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.bc__labels {
+  margin-top: 12px;
+  padding-right: var(--bc-gutter);
+}
+
+.bc__col {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+button.bc__col {
+  cursor: pointer;
+}
+
+button.bc__col:focus-visible {
+  outline: none;
+}
+
+button.bc__col:focus-visible .bc__fill {
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* ---- A bar ----------------------------------------------------------------------------- */
+
+.bc__bar {
+  position: relative;
+  flex: none;
+  width: var(--bc-bar-width, min(100%, var(--bc-max-bar)));
+  min-height: 4px;
+}
+
+.bc__bar[data-empty='true'] {
+  min-height: 0;
+}
+
+.bc__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--bc-radius);
+  background-color: var(--bc-item-fill, var(--bc-bar));
+  transform-origin: bottom;
+}
+
+.bc__bar[data-empty='true'] .bc__fill {
+  display: none;
+}
+
+.bc__col[data-highlight='true'] .bc__fill {
+  background-color: var(--bc-item-fill, var(--bc-bar-highlight));
+}
+
+/* ---- The value pill -------------------------------------------------------------------- */
+
+.bc__value {
+  position: absolute;
+  left: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--bc-value);
+  color: var(--bc-value-text);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-label);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.bc__value[data-placement='inside'] {
+  top: 8px;
+}
+
+.bc__value[data-placement='above'] {
+  bottom: calc(100% + 6px);
+}
+
+.bc__col[data-highlight='true'] .bc__value {
+  background-color: var(--bc-value-highlight);
+  color: var(--bc-value-highlight-text);
+}
+
+/* A value that is only a number, with no pill behind it */
+.bc[data-shape='text'] .bc__value,
+.bc[data-shape='text'] .bc__col[data-highlight='true'] .bc__value {
+  min-width: 0;
+  padding: 0;
+  background: none;
+  color: var(--bc-value-text);
+}
+
+/* Inside a highlighted bar the number sits on the highlight colour, not on the page */
+.bc[data-shape='text'] .bc__col[data-highlight='true'] .bc__value[data-placement='inside'] {
+  color: var(--bc-bar-highlight-text);
+}
+
+/* ---- Labels ---------------------------------------------------------------------------- */
+
+.bc__caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  text-align: center;
+}
+
+.bc[data-sublabel='inline'] .bc__caption {
+  flex-flow: row wrap;
+  justify-content: center;
+  gap: 0 6px;
+}
+
+.bc__label {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--bc-label);
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bc__sublabel {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--bc-sublabel);
+  font: var(--ds-type-caption);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Reference line (a goal or an average) -------------------------------------------- */
+
+.bc__ref {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  height: 0;
+}
+
+.bc__ref-line {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 0;
+  border-top: 2px dashed var(--bc-ref);
+}
+
+.bc__ref-tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--bc-ref-tag);
+  color: var(--bc-ref-tag-text);
+  font: var(--ds-type-caption);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+/* ---- Entrance -------------------------------------------------------------------------- */
+
+/*
+ * Each bar rises from the baseline (it slides up out of the floor, so its rounded top is never
+ * squashed), the value pill follows when the bar is about half way up, then the names under the
+ * bars, and last the reference line draws from left to right and its tag appears. Timing comes
+ * from shared.css (--cc-enter, --cc-ease, --cc-delay).
+ */
+.bc[data-animate='true'] .bc__col {
+  /* Cut at the baseline only; the pills above a bar and the sides stay free */
+  clip-path: inset(-80px -16px 0 -16px);
+}
+
+.bc[data-animate='true'] .bc__fill {
+  animation: bc-rise var(--cc-enter) var(--cc-ease) both;
+  animation-delay: var(--cc-delay);
+}
+
+.bc[data-animate='true'] .bc__value {
+  animation: bc-value-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-delay) + var(--cc-enter) * 0.5);
+}
+
+.bc[data-animate='true'] .bc__caption {
+  animation: cc-rise-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-delay) + 160ms);
+}
+
+.bc[data-animate='true'] .bc__ref-line {
+  animation: bc-ref-draw calc(var(--cc-enter) * 1.5) var(--cc-ease) both;
+  animation-delay: 160ms;
+}
+
+.bc[data-animate='true'] .bc__ref-tag {
+  animation: cc-fade-in 420ms var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + var(--cc-enter) * 1.1);
+}
+
+@keyframes bc-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* The pill is centred with a transform, so its fade has to keep that transform */
+@keyframes bc-value-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Reveals the dashed line from its left end */
+@keyframes bc-ref-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 import {
   Box,
   TextField,
@@ -416,7 +417,7 @@ Example:
           <style>{predefinedStyles}</style>
           <Box 
             className="question-description"
-            dangerouslySetInnerHTML={{ __html: value }} 
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }} 
             sx={{ 
               minHeight: '200px',
               p: 2,

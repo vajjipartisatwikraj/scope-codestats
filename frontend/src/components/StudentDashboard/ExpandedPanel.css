@@ -1,0 +1,571 @@
+/*
+ * The panel a dashboard card opens into, and the three views inside it (scores, ranks, problems
+ * solved).
+ *
+ * The panel is a card like the others (24px radius, flat, no border, no shadow) that covers the
+ * whole dashboard. It takes the tone of the card it came from: the dark ink of the score and rank
+ * tiles (it carries data-theme="midnight", so every --ds-* inside it is a Midnight colour and the
+ * charts need no theme code), or the plain surface of the problems card. The motion that opens it
+ * is in useExpand.js (a clip-path window that grows from the card) and the fading of the cards
+ * around it is in StudentDashboard.css.
+ *
+ * Inside it nothing is a card: a view is a header, a row of figures, and sections of charts
+ * separated by hairlines. Sections are not boxes, because a box inside a box adds nothing.
+ */
+
+.sd-panel {
+  --sd-panel-pad: 24px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: var(--sd-panel-pad);
+  overflow: hidden;
+  border-radius: var(--ds-radius-xl);
+  --sd-panel-bg: var(--ds-surface);
+  background-color: var(--sd-panel-bg);
+  color: var(--ds-text);
+  container-type: inline-size;
+}
+
+/* The ink tone: near-black on Daylight, a lifted tone on Midnight (the same fills as the tiles) */
+html[data-theme='daylight'] .sd-panel--ink {
+  --sd-ink: var(--ds-canvas);
+}
+
+html[data-theme='midnight'] .sd-panel--ink {
+  --sd-ink: var(--ds-high);
+}
+
+.sd-panel--ink {
+  --sd-panel-bg: var(--sd-ink);
+  background-color: var(--sd-ink);
+}
+
+/* The ring around a hovered point is the colour of the panel, so a dot sits on it cleanly */
+.sd-panel--ink .tc {
+  --tc-ring: var(--sd-ink);
+}
+
+@media (max-width: 599.95px) {
+  .sd-panel {
+    --sd-panel-pad: 16px;
+  }
+}
+
+/* On the fixed composition the panel covers exactly the area the cards covered */
+@media (min-width: 1000px) {
+  .sd-panel {
+    position: absolute;
+    top: 4px;
+    right: var(--sd-pad-x);
+    bottom: var(--sd-bottom);
+    left: var(--sd-pad-x);
+  }
+}
+
+/* What is inside arrives a beat after the window starts to open, and leaves first */
+.sd-panel__inner {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  animation: sd-panel-in 380ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) 140ms both;
+}
+
+.sd-panel[data-phase='closing'] .sd-panel__inner {
+  animation: sd-panel-out 140ms var(--ds-ease) both;
+}
+
+@keyframes sd-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sd-panel-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---- Header ---------------------------------------------------------------------------- */
+
+/* The header and the tabs under it */
+.sd-view__top {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sd-view__header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+/*
+ * The way back: a 44px circle with the arrow in it, black on the plain surface and the raised tone
+ * on the dark panels (where black would vanish). Hover turns it the accent blue.
+ */
+.sd-panel--surface {
+  --sd-back-bg: var(--ds-text);
+  --sd-back-fg: var(--ds-surface);
+}
+
+/* The Midnight surface is dark, so the near-black there is the canvas, with a light arrow */
+html[data-theme='midnight'] .sd-panel--surface {
+  --sd-back-bg: var(--ds-canvas);
+  --sd-back-fg: var(--ds-text);
+}
+
+.sd-panel--ink {
+  --sd-back-bg: var(--ds-raised);
+  --sd-back-fg: var(--ds-text);
+}
+
+.sd-view__back {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--sd-back-bg);
+  color: var(--sd-back-fg);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sd-view__back:hover {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.sd-view__back:active {
+  background-color: var(--ds-accent-press);
+  color: var(--ds-on-accent);
+}
+
+.sd-view__back:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--sd-panel-bg, var(--ds-surface)),
+    0 0 0 4px var(--ds-focus);
+}
+.sd-view__heading {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.sd-view__title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.sd-view__title:focus {
+  outline: none;
+}
+
+.sd-view__note {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sd-view__controls {
+  flex: none;
+  margin-left: auto;
+}
+
+.sd-view__tabs {
+  flex: none;
+  max-width: 100%;
+}
+
+.sd-view__caption {
+  flex: none;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Body ------------------------------------------------------------------------------ */
+
+.sd-view__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  margin-right: -8px;
+  padding-right: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* The page scrolls instead when the dashboard is a stack */
+@media (max-width: 999.95px) {
+  .sd-view__body {
+    flex: none;
+    margin-right: 0;
+    padding-right: 0;
+    overflow: visible;
+  }
+}
+
+.sd-view__tabpanel {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  animation: sd-tab-in 260ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes sd-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sd-view__content {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 20px;
+  transition: opacity 200ms var(--ds-ease);
+}
+
+/* A new period is loading: the old charts stay, a little quieter, until the new ones replace them */
+.sd-view__content[data-refreshing='true'] {
+  opacity: 0.6;
+}
+
+.sd-view__empty {
+  padding: 8px 0 24px;
+}
+
+.sd-view__skeleton {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sd-view__skeleton-kpis {
+  flex: none;
+  height: 88px;
+}
+
+.sd-view__skeleton-grid {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 32px;
+}
+
+.sd-view__skeleton-grid .sd-skeleton {
+  min-height: 200px;
+}
+
+/* ---- Figures ---------------------------------------------------------------------------- */
+
+.sd-kpis {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 16px 0;
+  margin: 0;
+  padding: 4px 0 4px;
+}
+
+.sd-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 28px;
+  border-left: 1px solid var(--ds-line);
+}
+
+.sd-kpi:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.sd-kpi__label,
+.sd-kpi__note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sd-kpi__note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-kpi__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.14;
+}
+
+/* The figure the student came for */
+.sd-kpi[data-lead='true'] .sd-kpi__value {
+  font: var(--ds-type-numeral-xl);
+  letter-spacing: var(--ds-tracking-numeral-xl);
+  line-height: 1.07;
+}
+
+.sd-kpi__unit {
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  letter-spacing: 0;
+}
+
+@container (max-width: 700px) {
+  .sd-kpi {
+    padding: 0 20px;
+  }
+
+  .sd-kpi[data-lead='true'] .sd-kpi__value {
+    font-size: 2.5rem;
+  }
+}
+
+@container (max-width: 520px) {
+  .sd-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 16px;
+  }
+
+  .sd-kpi,
+  .sd-kpi:first-child {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .sd-kpi[data-lead='true'] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* A change: the arrow and the sign carry the direction, the colour only agrees with them */
+.sd-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-trend[data-trend='up'] {
+  color: var(--ds-success);
+}
+
+.sd-trend[data-trend='down'] {
+  color: var(--ds-danger);
+}
+
+.sd-trend[data-trend='flat'] {
+  color: var(--ds-muted);
+}
+
+/* ---- Charts ----------------------------------------------------------------------------- */
+
+.sd-grid {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 32px;
+  min-height: 0;
+}
+
+@container (max-width: 760px) {
+  .sd-grid,
+  .sd-view__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sd-block[data-wide='true'] {
+    grid-column: auto;
+  }
+}
+
+.sd-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.sd-block[data-wide='true'] {
+  grid-column: 1 / -1;
+}
+
+.sd-block__header {
+  flex: none;
+}
+
+.sd-block__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sd-block__note {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/*
+ * The grid (ExpandedParts.jsx) says how tall a chart is at least, so that the rows fill the panel.
+ * A block that is stretched to a taller row (because its neighbour is a donut with a key) hands
+ * the extra height to its chart, so no chart is left squeezed beside a tall block.
+ */
+.sd-block__chart {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: var(--sd-chart-h, 240px);
+}
+
+/* A block of a chart that does not stretch (the donut and its key) is as tall as the chart needs,
+   so its key can never run into the block below */
+.sd-block__chart[data-natural='true'] {
+  flex: none;
+}
+
+/* A chart that does not stretch (the donut) sits in the middle of its block */
+.sd-block__chart > .pc {
+  flex: 1 1 auto;
+  align-content: center;
+}
+
+/* The key of a donut is at most a comfortable measure wide */
+.sd-block__chart > .pc .pc__legend {
+  max-width: 280px;
+}
+
+/* ---- Phones and small tablets: the panel replaces the stack and the page scrolls ------------- */
+
+@media (max-width: 999.95px) {
+  /* Nothing is cut at the corners any more (no window is animated), so the top can stick */
+  .sd-panel {
+    overflow: visible;
+  }
+
+  /* The way back and the tabs stay under the navbar while the charts scroll past */
+  .sd-view__top {
+    position: sticky;
+    top: var(--sd-top, 64px);
+    z-index: 5;
+    margin: calc(var(--sd-panel-pad) * -1) calc(var(--sd-panel-pad) * -1) 0;
+    padding: var(--sd-panel-pad) var(--sd-panel-pad) 12px;
+    border-radius: var(--ds-radius-xl) var(--ds-radius-xl) 0 0;
+    background-color: var(--sd-panel-bg);
+  }
+
+  /* The panel is as tall as its content here. Its inner box must not start from a height of zero,
+     or the content overflows the panel and the background stays behind. */
+  .sd-panel__inner {
+    flex: none;
+    gap: 12px;
+    min-height: auto;
+  }
+}
+
+@container (max-width: 640px) {
+  .sd-view__header {
+    gap: 12px;
+  }
+
+  .sd-view__title {
+    font-size: 1.25rem;
+  }
+
+  /* The period control takes its own row, its three choices sharing it equally */
+  .sd-view__controls {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .sd-view__controls .pt {
+    display: flex;
+    width: 100%;
+  }
+
+  .sd-view__controls .pt__item {
+    flex: 1 1 0;
+    padding: 0 8px;
+  }
+
+  .sd-view__content {
+    gap: 16px;
+  }
+
+  .sd-grid {
+    gap: 20px;
+  }
+
+  .sd-block {
+    padding-top: 14px;
+  }
+
+  .sd-kpi__value {
+    font-size: 1.5rem;
+  }
+
+  .sd-kpi[data-lead='true'] .sd-kpi__value {
+    font-size: 2.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-panel__inner,
+  .sd-panel[data-phase='closing'] .sd-panel__inner,
+  .sd-view__tabpanel {
+    animation: none;
+  }
+
+  .sd-view__content {
+    transition: none;
+  }
+}

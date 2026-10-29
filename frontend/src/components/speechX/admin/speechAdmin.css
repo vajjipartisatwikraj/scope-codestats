@@ -1,0 +1,774 @@
+/*
+ * Communication tests, staff side (speechX/admin)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css) and
+ * speechX/shared/speechX.css. Prefix sxa-. Cards are flat (24px, no border, no shadow); hairlines
+ * separate rows; a status is a tint plus an icon plus a word. Rules: DESIGN.md and
+ * design/screens.md sections 10, 16 and 17.
+ *
+ * Layout in short
+ *   Management  a grid of test cards: one column on a phone, then as many 380px+ columns as fit.
+ *   Editor      the stepper, then the step at the left and a summary rail at the right from 1100px
+ *               (hidden below it; the Review step shows the same summary inline), then a sticky footer.
+ */
+
+/* The page-wide transition rule in index.css would make every child ease its colours a second time;
+   the kit resets it inside .ui-page and .ui-overlay, and the pieces below name what they animate. */
+
+.sxa-skeleton-gap {
+  display: block;
+  margin-top: 12px;
+}
+
+/* ---- Management: the grid of tests -------------------------------------------------------------- */
+
+.sxa-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: var(--ui-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxa-grid__item {
+  display: flex;
+  min-width: 0;
+}
+
+.sxa-grid__item > .sxa-test {
+  flex: 1 1 auto;
+}
+
+.sxa-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sxa-judge {
+  margin: 0 0 var(--ui-gap);
+}
+
+.sxa-toolbar-count {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxa-delete-name {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+/* ---- A test card ------------------------------------------------------------------------------------ */
+
+.sxa-test {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sxa-test__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sxa-test__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sxa-test__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.sxa-test__desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.sxa-test__when {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxa-test__when svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.sxa-test__live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxa-test__feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sxa-test__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxa-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxa-type-chip__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sxa-test__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxa-test__more {
+  margin-left: auto;
+}
+
+/* ---- Figures and facts (cards, summary, review) ------------------------------------------------------ */
+
+.sxa-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.sxa-figures[data-cols='4'] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+@media (max-width: 479.95px) {
+  .sxa-figures[data-cols='4'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sxa-figure {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.sxa-figure dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxa-figure dd {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sxa-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.sxa-fact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.sxa-facts[data-wide='true'] .sxa-fact {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.sxa-fact dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxa-fact dd {
+  margin: 0;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.sxa-fact .sxa-fact__long {
+  font: var(--ds-type-body);
+  white-space: pre-wrap;
+}
+
+/* ---- Editor: layout --------------------------------------------------------------------------------- */
+
+.sxa-editor-page .ui-stepper {
+  scroll-margin-top: 96px;
+  margin: 0;
+}
+
+.sxa-editor__notice {
+  margin: 0 0 var(--ui-gap);
+}
+
+.sxa-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+  margin-top: var(--ui-gap);
+}
+
+.sxa-editor__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-gap);
+  align-items: start;
+}
+
+.sxa-editor__main {
+  min-width: 0;
+  outline: none;
+}
+
+.sxa-editor__layout[data-rail='false'] .sxa-editor__main {
+  max-width: 880px;
+}
+
+.sxa-editor__rail {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .sxa-editor__layout[data-rail='true'] {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .sxa-editor__rail {
+    position: sticky;
+    top: 88px;
+    display: block;
+  }
+}
+
+.sxa-footer__start {
+  display: flex;
+  margin-right: auto;
+}
+
+@media (max-width: 599.95px) {
+  .sxa-footer__start {
+    flex: 1 1 100%;
+    margin-right: 0;
+  }
+
+  .sxa-footer__start .ui-button {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- Editor: summary --------------------------------------------------------------------------------- */
+
+.sxa-summary__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sxa-summary__note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Editor: sections --------------------------------------------------------------------------------- */
+
+.sxa-sections__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.sxa-sections__text {
+  min-width: 0;
+}
+
+.sxa-sections__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxa-sections__count {
+  color: var(--ds-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sxa-sections__hint {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxa-sections__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sxa-section__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sxa-section__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sxa-section__index {
+  margin-right: 6px;
+  color: var(--ds-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sxa-section__locked {
+  margin: 0 0 16px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxa-section__add {
+  margin-top: 4px;
+}
+
+.ui-form-grid + .sxa-section__add {
+  margin-top: 20px;
+}
+
+.sxa-questions {
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxa-questions__item {
+  padding: 20px 0;
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxa-questions__item:last-child {
+  padding-bottom: 8px;
+}
+
+/* ---- Editor: one question ------------------------------------------------------------------------------- */
+
+.sxa-question {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sxa-question__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sxa-question__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxa-q-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sxa-q-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+@media (min-width: 600px) {
+  .sxa-q-row {
+    grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.4fr) auto;
+  }
+}
+
+/* ---- Editor: multiple-choice options ---------------------------------------------------------------------- */
+
+.sxa-options {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sxa-options__legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0;
+  font: var(--ds-type-label);
+}
+
+.sxa-options__list {
+  clear: both;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxa-options__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sxa-options__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sxa-options__add {
+  margin: 8px 0 0 -16px;
+}
+
+.sxa-options__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxa-options__note svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.sxa-options__note[data-warn='true'] {
+  color: var(--ds-warning);
+}
+
+/* ---- Editor: radio buttons ------------------------------------------------------------------------------------ */
+
+.sxa-radios {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sxa-radios__legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 0;
+  font: var(--ds-type-label);
+}
+
+.sxa-radios__group {
+  clear: both;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+
+.sxa-radio,
+.sxa-radio * {
+  transition: none;
+}
+
+.sxa-radio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.sxa-radio__input {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.sxa-radio__dot {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 11px;
+  border: 2px solid var(--ds-field-border);
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+.sxa-radio__dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--ds-on-accent);
+  transform: scale(0);
+  transition: transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxa-radio__input:checked + .sxa-radio__dot {
+  border-color: var(--ds-accent);
+  background-color: var(--ds-accent);
+}
+
+.sxa-radio__input:checked + .sxa-radio__dot::after {
+  transform: scale(1);
+}
+
+.sxa-radio__input:focus-visible + .sxa-radio__dot {
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxa-radio__input:disabled + .sxa-radio__dot {
+  border-color: var(--ds-high);
+  background-color: var(--ds-high);
+}
+
+.sxa-radio__input:disabled:checked + .sxa-radio__dot::after {
+  background-color: var(--ds-subtle);
+}
+
+.sxa-radio__input:disabled ~ .sxa-radio__label {
+  color: var(--ds-subtle);
+}
+
+.sxa-radio__input:disabled,
+.sxa-radio:has(.sxa-radio__input:disabled) {
+  cursor: default;
+}
+
+.sxa-radio__label {
+  margin-left: -4px;
+  font: var(--ds-type-body);
+}
+
+/* ---- Section type picker ----------------------------------------------------------------------------------------- */
+
+.sxa-types {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 600px) {
+  .sxa-types {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+.sxa-types > li {
+  display: flex;
+  min-width: 0;
+}
+
+.sxa-type-tile,
+.sxa-type-tile * {
+  transition: none;
+}
+
+.sxa-type-tile {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxa-type-tile:hover {
+  background-color: var(--ds-high);
+}
+
+.sxa-type-tile:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.sxa-type-tile__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sxa-type-tile__label {
+  font: var(--ds-type-label);
+}
+
+.sxa-type-tile__hint {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Review ------------------------------------------------------------------------------------------------------------ */
+
+.sxa-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+}
+
+.sxa-review__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.sxa-review__problems li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.sxa-review__sections {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxa-review__section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.sxa-review__section:first-child {
+  padding-top: 0;
+}
+
+.sxa-review__section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.sxa-review__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sxa-review__title {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.sxa-review__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}

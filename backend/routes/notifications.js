@@ -5,6 +5,7 @@ const adminAuth = require("../middleware/adminAuth");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 const webPushUtil = require("../utils/webPushUtil");
+const log = require("../utils/logger").scope("NOTIFICATIONS");
 
 // Get all notifications for the current user
 router.get("/", auth, async (req, res) => {
@@ -23,7 +24,7 @@ router.get("/", auth, async (req, res) => {
       unreadCount,
     });
   } catch (error) {
-    console.error("Error fetching notifications:", error);
+    log.error("Error fetching notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -52,7 +53,7 @@ router.put("/:id/read", auth, async (req, res) => {
       res.json({ message: "Notification marked as read" });
     }
   } catch (error) {
-    console.error("Error handling notification:", error);
+    log.error("Error handling notification:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -87,7 +88,7 @@ router.put("/read-all", auth, async (req, res) => {
       markedAsRead: true,
     });
   } catch (error) {
-    console.error("Error processing notifications:", error);
+    log.error("Error processing notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -103,7 +104,7 @@ router.get("/admin/users", auth, adminAuth, async (req, res) => {
 
     res.json(users);
   } catch (error) {
-    console.error("Error fetching users for notifications:", error);
+    log.error("Error fetching users for notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -155,11 +156,11 @@ router.post("/admin/user/:userId", auth, adminAuth, async (req, res) => {
           autoDelete: notification.autoDelete,
           deletionTime: notification.deletionTime,
         });
-        console.log(
+        log.debug(
           `[Socket.io] ✅ Sent notification to ONLINE user:${userId} (${socketsInRoom.size} connection(s))`
         );
       } else {
-        console.log(
+        log.debug(
           `[Socket.io] ⚠️  User OFFLINE: ${userId} - notification saved, will receive on next login or via VAPID`
         );
       }
@@ -214,7 +215,7 @@ router.post("/admin/user/:userId", auth, adminAuth, async (req, res) => {
             }
           } catch (error) {
             // Unexpected error - keep subscription
-            console.error("[VAPID] Unexpected error:", error.message);
+            log.error("[VAPID] Unexpected error:", error.message);
             validSubscriptions.push(subscription);
             vapidErrors++;
           }
@@ -226,31 +227,31 @@ router.post("/admin/user/:userId", auth, adminAuth, async (req, res) => {
             user.pushSubscriptions.length - validSubscriptions.length;
           user.pushSubscriptions = validSubscriptions;
           await user.save();
-          console.log(
+          log.debug(
             `[VAPID] 🧹 Cleaned up ${removedCount} expired subscription(s) for user:${userId}`
           );
         }
 
         // Summary logging
         if (vapidSent > 0) {
-          console.log(
+          log.debug(
             `[VAPID] ✅ Sent push notification to ${vapidSent} active device(s) for user:${userId}`
           );
         }
         if (vapidExpired > 0 && vapidSent === 0) {
-          console.log(
+          log.debug(
             `[VAPID] ⚠️  No active VAPID subscriptions for user:${userId} - all ${vapidExpired} subscription(s) expired`
           );
         }
       } catch (vapidError) {
         // Catch any unexpected VAPID errors to prevent notification creation from failing
-        console.error(
+        log.error(
           "[VAPID] Unexpected error in push notification handler:",
           vapidError.message
         );
       }
     } else {
-      console.log(
+      log.debug(
         `[VAPID] ℹ️  User ${userId} has no push subscriptions registered`
       );
     }
@@ -260,7 +261,7 @@ router.post("/admin/user/:userId", auth, adminAuth, async (req, res) => {
       notification,
     });
   } catch (error) {
-    console.error("Error creating notification:", error);
+    log.error("Error creating notification:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -304,7 +305,7 @@ router.post("/admin/global", auth, adminAuth, async (req, res) => {
         });
       });
 
-      console.log(
+      log.debug(
         `[Socket.io] Sent global notification to ${notifications.length} users`
       );
     }
@@ -314,7 +315,7 @@ router.post("/admin/global", auth, adminAuth, async (req, res) => {
       count: notifications.length,
     });
   } catch (error) {
-    console.error("Error creating global notification:", error);
+    log.error("Error creating global notification:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -393,7 +394,7 @@ router.get("/admin/all", auth, adminAuth, async (req, res) => {
 
     res.json(allNotifications);
   } catch (error) {
-    console.error("Error fetching admin notifications:", error);
+    log.error("Error fetching admin notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -445,7 +446,7 @@ router.put("/admin/:id", auth, adminAuth, async (req, res) => {
       res.json({ message: "Notification updated" });
     }
   } catch (error) {
-    console.error("Error updating notification:", error);
+    log.error("Error updating notification:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -478,7 +479,7 @@ router.delete("/admin/:id", auth, adminAuth, async (req, res) => {
       res.json({ message: "Notification deleted" });
     }
   } catch (error) {
-    console.error("Error deleting notification:", error);
+    log.error("Error deleting notification:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -498,7 +499,7 @@ router.post("/cleanup", auth, adminAuth, async (req, res) => {
       deletedCount: result.deletedCount,
     });
   } catch (error) {
-    console.error("Error cleaning up expired notifications:", error);
+    log.error("Error cleaning up expired notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -514,12 +515,12 @@ const cleanupExpiredNotifications = async () => {
     });
 
     if (result.deletedCount > 0) {
-      console.log(
+      log.debug(
         `Auto-cleanup: Deleted ${result.deletedCount} expired notifications`
       );
     }
   } catch (error) {
-    console.error("Error during auto-cleanup of expired notifications:", error);
+    log.error("Error during auto-cleanup of expired notifications:", error);
   }
 };
 
@@ -549,8 +550,8 @@ const cleanupExpiredNotifications = async () => {
 // Uncomment the line below to enable cleanup on server startup
 // cleanupExpiredNotifications();
 
-console.log('⚠️  Notification auto-cleanup is DISABLED');
-console.log('💡 To enable: Uncomment setInterval and cleanupExpiredNotifications() calls in notifications.js');
+log.debug('⚠️  Notification auto-cleanup is DISABLED');
+log.debug('💡 To enable: Uncomment setInterval and cleanupExpiredNotifications() calls in notifications.js');
 
 // Push Notification Routes
 
@@ -604,7 +605,7 @@ router.post("/push/subscribe", auth, async (req, res) => {
       .status(201)
       .json({ message: "Push notification subscription saved successfully" });
   } catch (error) {
-    console.error("Error subscribing to push notifications:", error);
+    log.error("Error subscribing to push notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -635,7 +636,7 @@ router.post("/push/unsubscribe", auth, async (req, res) => {
       message: "Push notification subscription removed successfully",
     });
   } catch (error) {
-    console.error("Error unsubscribing from push notifications:", error);
+    log.error("Error unsubscribing from push notifications:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -657,7 +658,7 @@ router.get("/push/subscriptions", auth, async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error("Error retrieving push notification subscriptions:", error);
+    log.error("Error retrieving push notification subscriptions:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });

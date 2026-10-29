@@ -1,0 +1,89 @@
+/*
+ * MiniBars
+ *
+ * A compact strip of bars. Colours are --mb-* variables whose defaults are design tokens; the
+ * `colors` prop and any parent can replace them. See MiniBars.jsx for the props.
+ */
+
+.mb {
+  --mb-height: 56px;
+  --mb-gap: 4px;
+  --mb-min: 4px;
+  --mb-radius: 999px;
+
+  --mb-bar: var(--ds-bar-muted);
+  --mb-bar-highlight: var(--ds-spotlight);
+  --mb-negative: var(--ds-danger);
+  --mb-empty: var(--ds-high);
+
+  display: flex;
+  align-items: stretch;
+  gap: var(--mb-gap);
+  height: var(--mb-height);
+  min-width: 0;
+}
+
+.mb[data-fill='true'] {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.mb *,
+.mb *::before,
+.mb *::after {
+  transition: none;
+}
+
+.mb__item {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.mb[data-fixed='true'] .mb__item {
+  flex: 0 0 var(--mb-bar-width);
+}
+
+.mb__bar {
+  position: absolute;
+  right: 0;
+  left: 0;
+  min-height: var(--mb-min);
+  border-radius: var(--mb-radius);
+  background-color: var(--mb-bar);
+  transform-origin: bottom;
+}
+
+.mb__bar[data-negative='true'] {
+  background-color: var(--mb-negative);
+  transform-origin: top;
+}
+
+/* Centred bars grow from the middle, and a negative value is the same colour as the others */
+.mb[data-align='center'] .mb__bar {
+  transform-origin: center;
+}
+
+.mb[data-align='center'] .mb__bar[data-negative='true'] {
+  background-color: var(--mb-bar);
+}
+
+/* A bar with no length is a stub; keep it centred */
+.mb[data-align='center'] .mb__bar[data-empty='true'] {
+  margin-bottom: calc(var(--mb-min) / -2);
+}
+
+.mb__bar[data-empty='true'] {
+  background-color: var(--mb-empty);
+}
+
+.mb__bar[data-highlight='true'] {
+  background-color: var(--mb-bar-highlight);
+}
+
+/* The bars grow in a soft wave, bottom up (or from the middle when they are centred). Timing
+   comes from shared.css. */
+.mb[data-animate='true'] .mb__bar {
+  animation: cc-grow-up var(--cc-enter) var(--cc-ease) both;
+  animation-delay: var(--cc-delay);
+}

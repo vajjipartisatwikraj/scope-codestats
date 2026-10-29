@@ -13,8 +13,7 @@ class RollResolveError extends Error {
 /**
  * Resolves roll numbers (from a CSV or pasted text) into user accounts.
  *
- * Same behaviour and response shape as the cohort eligible-users import, so the
- * shared `RollNumberCsvImport` component works for both. Matching ignores case:
+ * Used by user groups (services/userGroups/rollNumberService.js). Matching ignores case:
  * an indexed `$in` over the obvious spellings first, then a `$toLower` fallback
  * only for the leftovers so a large class list never becomes a full scan.
  *

@@ -1,0 +1,143 @@
+/*
+ * The paper document
+ *
+ * A resume is a printed document, so this file is the one place in the resume builder that does
+ * not use the interface tokens: the sheet is always white with dark ink (the Daylight paper),
+ * whatever theme the interface is in, and the document fonts (Product Sans and the others the
+ * font picker offers) apply here only.
+ *
+ * Dynamic values (font sizes, template colours and spacing) are inline styles set by the template
+ * component. The Word export freezes the computed styles of this DOM onto each element, so it
+ * works with these classes; it also reads the data-resume-row and data-resume-cell attributes
+ * that ClassicTemplate.jsx puts on the rows it has to turn into tables.
+ */
+
+/* ---- The sheet (one A4 page) --------------------------------------------------------------- */
+
+.rbp-sheet {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background-color: #ffffff;
+  color: #000000;
+  color-scheme: light;
+}
+
+/* The printable area of a page: the content is shifted up by one page of content per page */
+.rbp-window {
+  position: absolute;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---- The document ---------------------------------------------------------------------------- */
+
+.rbp {
+  max-width: 100%;
+  background-color: transparent;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Page-wide rules (the global transition on *, Tailwind's list reset) must not reach the paper */
+.rbp,
+.rbp *,
+.rbp *::before,
+.rbp *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+.rbp * {
+  margin: 0;
+  padding: 0;
+}
+
+.rbp-center {
+  text-align: center;
+}
+
+.rbp-name {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.rbp-name[data-empty='true'],
+.rbp-empty {
+  color: #b0b0b0;
+}
+
+.rbp-empty {
+  font-style: italic;
+}
+
+.rbp-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+}
+
+/* \titleformat{\section}{\large\bfseries\color{sectionblue}}{}{0em}{}[\titlerule] */
+.rbp-heading {
+  font-weight: 700;
+}
+
+.rbp-overview {
+  text-align: justify;
+}
+
+.rbp-bold {
+  font-weight: 700;
+}
+
+.rbp-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.94em;
+}
+
+.rbp .rbp-link,
+.rbp .rbp-link:hover,
+.rbp .rbp-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* Left content with a right-aligned column, as \hfill does in LaTeX */
+.rbp-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rbp-cell {
+  min-width: 0;
+}
+
+.rbp-cell[data-side='right'] {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.rbp-sep {
+  margin: 0 6px;
+}
+
+.rbp-italic {
+  font-style: italic;
+}
+
+/* \setlist[itemize]{leftmargin=1.1em}. The markers are restored here because the page's CSS
+   reset strips them, and the paper must not depend on it. */
+.rbp .rbp-bullets {
+  padding-left: 1.1em;
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.rbp .rbp-bullets > li {
+  display: list-item;
+}

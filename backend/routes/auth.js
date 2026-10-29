@@ -5,8 +5,9 @@ const router = express.Router();
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User = require("../models/User");
-const Profile = require("../models/Profile");
+const { saveUsernames } = require("../services/profileSyncService");
 const { normalizeSkillSets } = require("../utils/skillSets");
+const log = require("../utils/logger").scope("AUTH");
 
 // Middleware to authenticate token
 const auth = async (req, res, next) => {
@@ -19,21 +20,30 @@ const auth = async (req, res, next) => {
         .json({ message: "No token, authorization denied" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     const user = await User.findById(decoded.userId);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // Same single active login rule as middleware/auth.js
+    if (user.sessionToken && decoded.sessionToken !== user.sessionToken) {
+      return res.status(401).json({
+        message: "Your session has been invalidated. You have logged in from another device.",
+        code: "SESSION_EXPIRED",
+        sessionExpired: true,
+      });
     }
 
     req.user = user;
     req.token = token;
     next();
   } catch (err) {
-    if (err.name === "JsonWebTokenError") {
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError" || err.name === "NotBeforeError") {
       return res.status(401).json({ message: "Invalid token" });
     }
-    console.error("Auth middleware error:", err);
+    log.error("Auth middleware error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -53,7 +63,6 @@ router.get("/user", auth, async (req, res) => {
       gender: req.user.gender,
       mobileNumber: req.user.mobileNumber,
       graduatingYear: req.user.graduatingYear,
-      profiles: req.user.profiles,
       skills: req.user.skills,
       interests: req.user.interests,
       about: req.user.about,
@@ -62,7 +71,7 @@ router.get("/user", auth, async (req, res) => {
 
     res.json(userData);
   } catch (err) {
-    console.error("Get user error:", err);
+    log.error("Get user error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -106,10 +115,18 @@ router.post("/login", (req, res) => {
   });
 });
 
-// Validate user details
-router.post("/validate", async (req, res) => {
+// Validate user details. Signed-in users only (it tells whether a roll number, mobile number
+// or email is taken), and every value must be a plain string, so a body such as
+// { "rollNumber": { "$ne": null } } can never reach the query.
+router.post("/validate", auth, async (req, res) => {
   try {
-    const { rollNumber, mobileNumber, email } = req.body;
+    const { rollNumber, mobileNumber, email } = req.body || {};
+
+    for (const value of [rollNumber, mobileNumber, email]) {
+      if (value !== undefined && value !== null && typeof value !== "string") {
+        return res.status(400).json({ message: "Values must be strings" });
+      }
+    }
 
     // Create validation results object
     const validationResults = {};
@@ -134,7 +151,7 @@ router.post("/validate", async (req, res) => {
 
     res.json(validationResults);
   } catch (err) {
-    console.error("Validation error:", err);
+    log.error("Validation error:", err);
     res.status(500).json({ message: "Server error during validation" });
   }
 });
@@ -148,7 +165,7 @@ router.post("/completeRegistration", auth, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    console.log(
+    log.debug(
       "Received completeRegistration request:",
       JSON.stringify(req.body, null, 2),
     );
@@ -198,11 +215,6 @@ router.post("/completeRegistration", auth, async (req, res) => {
     if (mobileNumber) user.mobileNumber = mobileNumber;
     if (phone) user.mobileNumber = phone; // Map phone to mobileNumber
     if (linkedinUrl !== undefined) user.linkedinUrl = linkedinUrl;
-    if (githubUrl !== undefined)
-      user.profiles = {
-        ...user.profiles,
-        github: githubUrl,
-      };
     if (about !== undefined) user.about = about;
     if (imageUrl !== undefined) user.profilePicture = imageUrl;
 
@@ -220,80 +232,13 @@ router.post("/completeRegistration", auth, async (req, res) => {
           : interests;
     }
 
-    // Update profiles
-    if (profiles) {
-      user.profiles = {
-        codechef: profiles.codechef || user.profiles?.codechef || "",
-        codeforces: profiles.codeforces || user.profiles?.codeforces || "",
-        leetcode: profiles.leetcode || user.profiles?.leetcode || "",
-        hackerrank: profiles.hackerrank || user.profiles?.hackerrank || "",
-        github: profiles.github || githubUrl || user.profiles?.github || "",
-      };
-
-      // Create/update platform profiles in the profiles collection
-      const platformsToUpdate = [
-        {
-          key: "codechef",
-          username: profiles.codechef || user.profiles?.codechef || "",
-        },
-        {
-          key: "codeforces",
-          username: profiles.codeforces || user.profiles?.codeforces || "",
-        },
-        {
-          key: "leetcode",
-          username: profiles.leetcode || user.profiles?.leetcode || "",
-        },
-        {
-          key: "hackerrank",
-          username: profiles.hackerrank || user.profiles?.hackerrank || "",
-        },
-        {
-          key: "github",
-          username: profiles.github || githubUrl || user.profiles?.github || "",
-        },
-      ];
-
-      // Process each platform that has a username
-      for (const platform of platformsToUpdate) {
-        if (platform.username && platform.username.trim() !== "") {
-          try {
-            // Check if profile already exists
-            let profile = await Profile.findOne({
-              userId: user._id,
-              platform: platform.key,
-            });
-
-            if (profile) {
-              // Update existing profile
-              profile.username = platform.username.trim();
-              await profile.save();
-              console.log(
-                `Updated ${platform.key} profile for user ${user._id}`,
-              );
-            } else {
-              // Create new profile with minimal fields
-              profile = new Profile({
-                userId: user._id,
-                platform: platform.key,
-                username: platform.username.trim(),
-                lastUpdateStatus: "pending",
-                lastUpdated: new Date(),
-              });
-              await profile.save();
-              console.log(
-                `Created new ${platform.key} profile for user ${user._id}`,
-              );
-            }
-          } catch (profileError) {
-            console.error(
-              `Error creating/updating ${platform.key} profile:`,
-              profileError,
-            );
-            // Continue with other platforms even if one fails
-          }
-        }
-      }
+    // Platform usernames live on the Profile collection (no fetch here; the first
+    // sync or the student's update from the dashboard loads the stats).
+    if (profiles || githubUrl) {
+      await saveUsernames(user._id, {
+        ...(profiles || {}),
+        github: profiles?.github || githubUrl,
+      });
     }
 
     // Mark registration as complete
@@ -304,7 +249,7 @@ router.post("/completeRegistration", auth, async (req, res) => {
       user.profileCompleted = Boolean(profileCompleted);
     }
 
-    console.log("Saving user with updated data:", {
+    log.debug("Saving user with updated data:", {
       name: user.name,
       department: user.department,
       section: user.section,
@@ -333,7 +278,7 @@ router.post("/completeRegistration", auth, async (req, res) => {
         },
       });
     } catch (saveError) {
-      console.error("Error saving user:", saveError);
+      log.error("Error saving user:", saveError);
 
       if (saveError.name === "ValidationError") {
         const validationErrors = {};
@@ -352,11 +297,11 @@ router.post("/completeRegistration", auth, async (req, res) => {
       throw saveError; // Pass to the outer catch block
     }
   } catch (err) {
-    console.error("Profile update error:", err);
+    log.error("Profile update error:", err);
 
     // Provide more detailed error for debugging
     if (err.name === "ValidationError") {
-      console.error("Validation error details:", err.errors);
+      log.error("Validation error details:", err.errors);
       return res.status(400).json({
         message: "Validation error",
         errors: Object.keys(err.errors).reduce((result, key) => {

@@ -1,0 +1,41 @@
+/*
+ * AudioWaveform
+ *
+ * A canvas in a box of the given height. The canvas cannot read CSS variables, so two hidden
+ * probe elements carry the colours: AudioWaveform.jsx reads their computed `color` (which is the
+ * resolved token) at mount and again whenever the theme changes. Colours are --aw-* variables
+ * whose defaults are design tokens. See AudioWaveform.jsx for the props.
+ */
+
+.aw {
+  --aw-color: var(--ds-danger);
+  --aw-idle: var(--ds-bar-muted);
+  --aw-height: 64px;
+
+  position: relative;
+  width: 100%;
+  height: var(--aw-height);
+  overflow: hidden;
+  line-height: 0;
+}
+
+.aw__canvas {
+  display: block;
+}
+
+.aw__probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.aw__probe--bar {
+  color: var(--aw-color);
+}
+
+.aw__probe--idle {
+  color: var(--aw-idle);
+}

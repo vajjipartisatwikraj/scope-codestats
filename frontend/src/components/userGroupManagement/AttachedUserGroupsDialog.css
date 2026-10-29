@@ -1,0 +1,194 @@
+/*
+ * Attached user groups drawer
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Only what
+ * the kit does not have lives here. design/screens.md sections 16 and 17.
+ */
+
+.ugd-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  outline: none;
+}
+
+/* ---- The figure: how many students are eligible ----------------------------------------------- */
+
+.ugd-stat {
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+}
+
+.ugd-stat p {
+  margin: 0;
+}
+
+.ugd-stat__label {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ugd-stat__value {
+  margin: 2px 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.ugd-stat__context {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ugd-stat__skeleton {
+  display: block;
+  margin-top: 12px;
+}
+
+/* ---- Sections ----------------------------------------------------------------------------------- */
+
+.ugd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ugd-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ugd-section__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.ugd-section__text {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* Pushes Sync to the end of the heading row; on a narrow drawer it wraps under the title */
+.ugd-sync {
+  margin-left: auto;
+}
+
+/* ---- Attach ------------------------------------------------------------------------------------- */
+
+.ugd-attach {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.ugd-attach .ui-button {
+  justify-self: stretch;
+}
+
+@media (min-width: 600px) {
+  .ugd-attach {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+/* ---- Attached groups ------------------------------------------------------------------------------ */
+
+.ugd-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ugd-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ugd-row:first-child {
+  padding-top: 0;
+}
+
+.ugd-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ugd-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ugd-row__name {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.ugd-row__description {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  overflow-wrap: anywhere;
+}
+
+.ugd-row__meta {
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ugd-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---- A clone conflict ------------------------------------------------------------------------------- */
+
+.ugd-conflict {
+  margin-top: 8px;
+}
+
+.ugd-conflict__title {
+  font-weight: 600;
+}
+
+.ugd-conflict__rolls {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ---- The detach question ------------------------------------------------------------------------------ */
+
+.ugd-detach {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ugd-detach__rolls {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+.ugd-detach__numbers {
+  font-variant-numeric: tabular-nums;
+}

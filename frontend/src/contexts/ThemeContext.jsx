@@ -1,392 +1,117 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { createTheme } from '@mui/material';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
+// Self-hosted font. The provider is mounted at the root, so importing it here loads it for the
+// whole app.
+import '@fontsource-variable/plus-jakarta-sans';
+import createAppTheme from '../theme/createAppTheme';
+import { applyTheme } from '../theme/applyTheme';
+import { themeForMode } from '../theme/tokens';
+
+// Same key and format as before ("true" for dark, "false" for light), so choices people have
+// already saved keep working. Nothing is written until a person picks a theme.
+const STORAGE_KEY = 'darkMode';
+
+const readStoredMode = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return typeof value === 'boolean' ? (value ? 'dark' : 'light') : null;
+  } catch {
+    return null;
+  }
+};
+
+// Midnight when the system asks for dark or gives no answer, Daylight when it asks for light.
+const readSystemMode = () => {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'dark';
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+  if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+  return 'dark';
+};
 
 // Create the theme context
 const ThemeContext = createContext();
 
-// Custom hook to use the theme context
+/**
+ * The theme, for any component.
+ *
+ *   mode         "dark" | "light"
+ *   themeName    "midnight" | "daylight": the active token set, also the data-theme value
+ *   tokens       the active design tokens (colours, series, shadows); see theme/tokens.js
+ *   setMode      choose a mode and remember it
+ *   toggleTheme  switch between the two and remember it
+ *   darkMode     mode === "dark", for screens written before the redesign
+ *   theme        the Material UI theme, for screens that still use Material UI
+ *
+ * Components that no longer use Material UI style themselves with the --ds-* CSS variables
+ * this provider publishes (see theme/applyTheme.js) and need the hook only for values they
+ * must read in JavaScript.
+ */
 export const useTheme = () => useContext(ThemeContext);
-
-// Common theme settings for both light and dark modes
-const commonThemeSettings = {
-  typography: {
-    fontFamily: [
-      'Nekst',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
-    h1: {
-      fontFamily: 'Nekst, sans-serif',
-      fontWeight: 700,
-      textShadow: 'none',
-    },
-    h2: {
-      fontFamily: 'Nekst, sans-serif',
-      fontWeight: 700,
-      textShadow: 'none',
-    },
-    h3: {
-      fontFamily: 'Nekst, sans-serif',
-      fontWeight: 600,
-      textShadow: 'none',
-    },
-    h4: {
-      fontFamily: 'Nekst, sans-serif',
-      fontWeight: 600,
-      textShadow: 'none',
-    },
-    h5: {
-      fontFamily: 'Nekst, sans-serif',
-      fontWeight: 500,
-      textShadow: 'none',
-    },
-    h6: {
-      fontFamily: 'Nekst, sans-serif',
-      fontWeight: 500,
-      textShadow: 'none',
-    },
-    subtitle1: {
-      fontFamily: 'Nekst, sans-serif',
-    },
-    subtitle2: {
-      fontFamily: 'Nekst, sans-serif',
-    },
-    body1: {
-      fontFamily: 'Nekst, sans-serif',
-    },
-    body2: {
-      fontFamily: 'Nekst, sans-serif',
-    },
-    button: {
-      fontFamily: 'Nekst, sans-serif',
-      textTransform: 'none',
-    },
-    caption: {
-      fontFamily: 'Nekst, sans-serif',
-    },
-    overline: {
-      fontFamily: 'Nekst, sans-serif',
-    },
-  },
-  shape: {
-    borderRadius: 4
-  }
-};
 
 // Theme provider component
 export const ThemeProvider = ({ children }) => {
-  // Check if dark mode is stored in localStorage, default to true (dark mode)
-  const [darkMode, setDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    return savedMode !== null ? JSON.parse(savedMode) : true;
-  });
+  // The person's saved choice. null until they pick one with the toggle.
+  const [storedMode, setStoredMode] = useState(readStoredMode);
+  const [systemMode, setSystemMode] = useState(readSystemMode);
 
-  // Create light and dark themes
-  const darkTheme = createTheme({
-    ...commonThemeSettings,
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#0088cc',
-        light: '#33a0d4',
-        dark: '#006699',
-        contrastText: '#ffffff',
-      },
-      secondary: {
-        main: '#1a1a1a',
-        light: '#333333',
-        dark: '#000000',
-        contrastText: '#ffffff',
-      },
-      background: {
-        default: '#000000',
-        paper: '#1a1a1a',
-        card: '#121212', // Darker background for cards
-      },
-      text: {
-        primary: '#ffffff',
-        secondary: 'rgba(255, 255, 255, 0.7)',
-        disabled: 'rgba(255, 255, 255, 0.5)',
-      },
-      divider: 'rgba(23, 23, 23, 0.45)',
-    },
-    components: {
-      // Ensure consistent card styling
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            backgroundColor: '#121212',
-            backgroundImage: 'none',
-            borderRadius: 12,
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          }
-        }
-      },
-      // Style Paper components consistently
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundColor: '#121212',
-            backgroundImage: 'none',
-            border: '1px solid rgba(23, 23, 23, 0.45)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          }
-        }
-      },
-      // Set consistent CardContent padding
-      MuiCardContent: {
-        styleOverrides: {
-          root: {
-            padding: 16,
-            '&:last-child': {
-              paddingBottom: 16,
-            }
-          }
-        }
-      },
-      // Ensure AppBar has translucent glass styling
-      MuiAppBar: {
-        styleOverrides: {
-          root: {
-            // Remove forced backgrounds to allow custom styling
-            backgroundColor: 'transparent',
-            backgroundImage: 'none',
-          }
-        }
-      },
-      // Apply Nekst font to buttons
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            fontFamily: 'Nekst, sans-serif',
-            textTransform: 'none',
-            borderRadius: '4px',
-          },
-        },
-      },
-      // Apply Nekst font to input labels
-      MuiInputLabel: {
-        styleOverrides: {
-          root: {
-            fontFamily: 'Nekst, sans-serif',
-          },
-        },
-      },
-      // Apply Nekst font to input text
-      MuiInputBase: {
-        styleOverrides: {
-          root: {
-            fontFamily: 'Nekst, sans-serif',
-          },
-        },
-      },
-      // Remove any gaussian blur from Typography components
-      MuiTypography: {
-        styleOverrides: {
-          root: {
-            textShadow: 'none',
-            backgroundImage: 'none',
-            filter: 'none',
-            color: '#ffffff',
-          },
-        },
-      },
-    },
-  });
+  // A first visit follows the operating system; a saved choice wins from then on.
+  const mode = storedMode ?? systemMode;
+  const tokens = themeForMode(mode);
 
-  const lightTheme = createTheme({
-    ...commonThemeSettings,
-    palette: {
-      mode: 'light',
-      primary: {
-        main: '#0a66c2', // LinkedIn blue
-        light: '#378fe9',
-        dark: '#004182',
-        contrastText: '#ffffff',
-      },
-      secondary: {
-        main: '#f3f2ef', // LinkedIn background color
-        light: '#ffffff',
-        dark: '#e6e6e6',
-        contrastText: '#000000',
-      },
-      background: {
-        default: '#f5f5f7', // iOS-style light gray background (like iPhone settings)
-        paper: '#ffffff',   // White background for components
-        card: '#ffffff',    // White for cards
-      },
-      text: {
-        primary: '#191919',  // LinkedIn primary text
-        secondary: 'rgba(0, 0, 0, 0.6)', // LinkedIn secondary text
-        disabled: 'rgba(0, 0, 0, 0.38)',
-      },
-      divider: 'rgba(0, 0, 0, 0.08)',
-    },
-    components: {
-      // Ensure consistent card styling
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            backgroundColor: '#ffffff',
-            backgroundImage: 'none',
-            borderRadius: 8,
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05)',
-          }
-        }
-      },
-      // Style Paper components consistently
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundColor: '#ffffff',
-            backgroundImage: 'none',
-            borderRadius: 4,
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05)',
-          }
-        }
-      },
-      // Set consistent CardContent padding
-      MuiCardContent: {
-        styleOverrides: {
-          root: {
-            padding: 16,
-            '&:last-child': {
-              paddingBottom: 16,
-            }
-          }
-        }
-      },
-      // Ensure AppBar has translucent glass styling
-      MuiAppBar: {
-        styleOverrides: {
-          root: {
-            // Remove forced backgrounds to allow custom styling
-            backgroundColor: 'transparent',
-            backgroundImage: 'none',
-          }
-        }
-      },
-      // Apply Nekst font to buttons
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            fontFamily: 'Nekst, sans-serif',
-            textTransform: 'none',
-            borderRadius: '4px',
-          },
-          containedPrimary: {
-            backgroundColor: '#0a66c2',
-            '&:hover': {
-              backgroundColor: '#004182',
-            }
-          },
-          outlinedPrimary: {
-            borderColor: '#0a66c2',
-            color: '#0a66c2',
-            '&:hover': {
-              backgroundColor: 'rgba(10, 102, 194, 0.04)',
-              borderColor: '#004182',
-            }
-          }
-        },
-      },
-      // Apply Nekst font to input labels
-      MuiInputLabel: {
-        styleOverrides: {
-          root: {
-            fontFamily: 'Nekst, sans-serif',
-          },
-        },
-      },
-      // Apply Nekst font to input text
-      MuiInputBase: {
-        styleOverrides: {
-          root: {
-            fontFamily: 'Nekst, sans-serif',
-          },
-        },
-      },
-      // Remove any gaussian blur from Typography components
-      MuiTypography: {
-        styleOverrides: {
-          root: {
-            textShadow: 'none',
-            backgroundImage: 'none',
-            filter: 'none',
-            color: '#191919',
-          },
-        },
-      },
-    },
-  });
+  // Keep following the operating system until a choice has been made.
+  useEffect(() => {
+    if (storedMode !== null || !window.matchMedia) return undefined;
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => setSystemMode(readSystemMode());
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, [storedMode]);
 
-  // Get the current theme based on dark mode state
-  const theme = darkMode ? darkTheme : lightTheme;
+  // The Material UI theme for the screens that still use it.
+  const theme = useMemo(() => createAppTheme(mode), [mode]);
+
+  // Publish the tokens before the browser paints, so a switch never shows a mixed frame.
+  useLayoutEffect(() => {
+    applyTheme(tokens);
+  }, [tokens]);
+
+  const setMode = useCallback((next) => {
+    const value = next === 'light' ? 'light' : 'dark';
+    setStoredMode(value);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(value === 'dark'));
+    } catch {
+      // Private browsing can refuse storage; the choice still applies for this visit.
+    }
+  }, []);
 
   // Toggle between dark and light mode
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-  };
-
-  // Update localStorage when dark mode changes
-  useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-    // Update body background color - iOS-style backgrounds
-    document.body.style.backgroundColor = darkMode ? '#000000' : '#f5f5f7';
-    document.body.style.color = darkMode ? '#ffffff' : '#191919';
-    
-    // Add global scrollbar styles
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = `
-      ::-webkit-scrollbar {
-        width: 8px;
-        background-color: ${darkMode ? '#000000' : '#f5f5f7'};
-      }
-      ::-webkit-scrollbar-thumb {
-        background-color: ${darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background-color: ${darkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.3)'};
-      }
-      ::-webkit-scrollbar-track {
-        background-color: ${darkMode ? '#000000' : '#f5f5f7'};
-      }
-      * {
-        scrollbar-width: thin;
-        scrollbar-color: ${darkMode ? 'rgba(255, 255, 255, 0.3) #000000' : 'rgba(0, 0, 0, 0.2) #f5f5f7'};
-      }
-    `;
-    
-    // Remove any previous scrollbar styles
-    const previousStyle = document.querySelector('style[data-scrollbar-styles]');
-    if (previousStyle) {
-      previousStyle.remove();
-    }
-    
-    // Add the new styles
-    styleSheet.setAttribute('data-scrollbar-styles', '');
-    document.head.appendChild(styleSheet);
-    
-    // Cleanup function
-    return () => {
-      styleSheet.remove();
-    };
-  }, [darkMode]);
-
-  return (
-    <ThemeContext.Provider value={{ theme, darkMode, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
+  const toggleTheme = useCallback(
+    () => setMode(mode === 'dark' ? 'light' : 'dark'),
+    [mode, setMode]
   );
+
+  const value = useMemo(
+    () => ({
+      theme,
+      darkMode: mode === 'dark',
+      toggleTheme,
+      mode,
+      themeName: tokens.name,
+      tokens,
+      setMode,
+    }),
+    [theme, mode, tokens, toggleTheme, setMode]
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
-export default ThemeProvider; 
+export default ThemeProvider;

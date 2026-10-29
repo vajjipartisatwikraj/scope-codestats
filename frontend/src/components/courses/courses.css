@@ -1,0 +1,150 @@
+/*
+ * Courses (route /courses)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit in components/ui/ui.css.
+ * Cards are flat (24px radius, surface, no border, no shadow). Hovering a card moves it one tone up
+ * (surface to raised); the neutral pieces inside it move up with it so they stay visible.
+ */
+
+.crs {
+  --crs-section-gap: 20px;
+}
+
+@media (max-width: 599.95px) {
+  .crs {
+    --crs-section-gap: 16px;
+  }
+}
+
+/* ---- Filter row ------------------------------------------------------------------------------------ */
+
+.crs-filters {
+  margin: 0 0 var(--crs-section-gap);
+}
+
+.crs-toolbar {
+  margin-bottom: 12px;
+}
+
+/* The search takes the room that is left on one line; on a phone it has a line to itself */
+.crs-toolbar .ui-toolbar__grow {
+  flex: 1 1 260px;
+  max-width: 440px;
+}
+
+/* ---- Grid -------------------------------------------------------------------------------------------- */
+
+.crs-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crs-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.crs-grid > li > .crs-card {
+  flex: 1 1 auto;
+}
+
+/* ---- Card ---------------------------------------------------------------------------------------------- */
+
+.crs-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crs-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+/* Named with .crs in front so it beats the kit's "no transition on children" rule whatever the load order */
+.crs .crs-card {
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.crs-card:hover,
+.crs-card:focus-within {
+  background-color: var(--ds-raised);
+}
+
+/* What is raised inside the card goes up a tone with it */
+.crs-card:hover .crs-thumb,
+.crs-card:focus-within .crs-thumb,
+.crs-card:hover .ui-badge[data-tone='neutral'],
+.crs-card:focus-within .ui-badge[data-tone='neutral'] {
+  background-color: var(--ds-high);
+}
+
+.crs-thumb {
+  flex: none;
+}
+
+.crs-thumb__mark {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ds-subtle);
+}
+
+.crs-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.crs-card__title {
+  flex: 1 1 auto;
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.crs-card__provider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.crs-card__provider-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Results ----------------------------------------------------------------------------------------------- */
+
+.crs-results {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crs .crs-card {
+    transition: none;
+  }
+}

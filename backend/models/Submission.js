@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const log = require("../utils/logger").scope("SUBMISSION");
 
 /**
  * ⚠️ CASCADE DELETE NOTICE:
@@ -157,7 +158,7 @@ submissionSchema.statics.enforceSubmissionLimit = async function(userId, questio
     
     if (oldest.length > 0) {
       await this.deleteMany({ _id: { $in: oldest.map(s => s._id) } });
-      console.log(`Deleted ${oldest.length} old submission(s) for user ${userId} on question ${questionId}`);
+      log.debug(`Deleted ${oldest.length} old submission(s) for user ${userId} on question ${questionId}`);
     }
   }
 };

@@ -1,0 +1,92 @@
+/*
+ * Restricted route notice
+ *
+ * Plain CSS on the design tokens (--ds-*), for both themes. A full-width card in the page, not a
+ * modal (design/screens.md section 19): flat, 24px radius, no border and no shadow. The primary
+ * button is the only accent fill.
+ */
+
+.rn {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  min-height: 60dvh;
+  padding: 16px;
+}
+
+.rn,
+.rn * {
+  box-sizing: border-box;
+}
+
+.rn__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 720px;
+  padding: 24px;
+  color: var(--ds-text);
+}
+
+.rn__mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.rn__title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.rn__text {
+  max-width: 56ch;
+  margin: -8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.rn__address {
+  width: 100%;
+}
+
+.rn__address .ui-input {
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+}
+
+.rn__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.rn__status {
+  min-height: 20px;
+  margin: -8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+@media (max-width: 599.95px) {
+  .rn {
+    padding: 0;
+  }
+
+  .rn__card {
+    padding: 20px 16px;
+  }
+
+  .rn__actions .ui-button {
+    flex: 1 1 100%;
+  }
+}

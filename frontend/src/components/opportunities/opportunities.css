@@ -1,0 +1,220 @@
+/*
+ * Opportunities (route /opportunities)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit in components/ui/ui.css.
+ * The list is one flat surface card of rows separated by hairlines (rows, not cards). A hovered
+ * row goes one tone up (surface to raised) and the neutral pieces inside it go up with it. The
+ * detail panel is the kit's DetailPanel; the few classes it needs here (.opp-place, .opp-detail__text)
+ * stand on their own because the panel is drawn in a portal outside the page.
+ */
+
+.opp {
+  --opp-section-gap: 20px;
+}
+
+@media (max-width: 599.95px) {
+  .opp {
+    --opp-section-gap: 16px;
+  }
+}
+
+/* ---- Filter row ------------------------------------------------------------------------------------ */
+
+.opp-filters {
+  margin: 0 0 var(--opp-section-gap);
+}
+
+.opp-toolbar {
+  margin-bottom: 12px;
+}
+
+.opp-toolbar .ui-toolbar__grow {
+  flex: 1 1 260px;
+  max-width: 440px;
+}
+
+.opp-results {
+  min-width: 0;
+}
+
+/* ---- Rows ---------------------------------------------------------------------------------------------- */
+
+.opp-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Mark, title with the organiser, then the type and the deadline. Under 600px the last two take a second line */
+.opp-row {
+  --ui-ring-gap: var(--ds-surface);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    'mark main'
+    '. meta';
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ds-line);
+  background-color: var(--ds-surface);
+}
+
+.opp-row:last-child {
+  border-bottom: 0;
+}
+
+.opp .opp-row {
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.opp-row:hover,
+.opp-row:focus-within {
+  --ui-ring-gap: var(--ds-raised);
+
+  background-color: var(--ds-raised);
+}
+
+/* What is raised inside a row goes up a tone with it, so it does not disappear */
+.opp-row:hover .ui-chip,
+.opp-row:focus-within .ui-chip,
+.opp-row:hover .ui-badge[data-tone='neutral'],
+.opp-row:focus-within .ui-badge[data-tone='neutral'] {
+  background-color: var(--ds-high);
+}
+
+.opp-row__mark {
+  grid-area: mark;
+  align-self: start;
+}
+
+.opp-row__main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.opp-row__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+/* The title is the one tab stop of the row; its ::after covers the whole row so a click anywhere opens the panel */
+.opp-row__open {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  color: var(--ds-text);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.opp-row__open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.opp-row__open:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ui-ring-gap),
+    0 0 0 4px var(--ds-focus);
+  border-radius: var(--ds-radius-xs);
+}
+
+/* Where :has() works the whole row carries the focus ring instead of the words of the title */
+@supports selector(:has(*)) {
+  .opp-row__open:focus-visible {
+    box-shadow: none;
+  }
+
+  .opp-row:has(.opp-row__open:focus-visible) {
+    box-shadow: inset 0 0 0 2px var(--ds-focus);
+  }
+}
+
+.opp-row__org {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opp-row__meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+/* From 600px a row is one line: mark, title, type, deadline */
+@media (min-width: 600px) {
+  .opp-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas: 'mark main meta';
+    gap: 16px;
+    padding: 12px 24px;
+    min-height: 72px;
+  }
+
+  .opp-row__mark,
+  .opp-row__main,
+  .opp-row__meta {
+    align-self: center;
+  }
+
+  .opp-row__open {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ---- Detail panel pieces ------------------------------------------------------------------------------------ */
+
+.opp-place {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.opp-place svg {
+  flex: none;
+}
+
+.opp-place__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The description: a comfortable measure, and the line breaks the organiser wrote */
+.opp-detail__text {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-body-lg);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opp .opp-row {
+    transition: none;
+  }
+}

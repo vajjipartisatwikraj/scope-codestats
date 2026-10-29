@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { sanitizeHtml } from "../../../utils/sanitizeHtml";
 import {
   Box,
   Typography,
@@ -316,7 +317,7 @@ const EditorialTab = ({ formData, onInputChange }) => {
                   fontStyle: "italic",
                 },
               }}
-              dangerouslySetInnerHTML={{ __html: formData.editorial }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(formData.editorial) }}
             />
           ) : (
             <Box

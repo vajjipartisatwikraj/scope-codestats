@@ -1,0 +1,254 @@
+/*
+ * AudioClipPlayer
+ *
+ * A raised row: play circle, waveform (a slider) with an optional title above it, and the time.
+ * The progress is a CSS variable (--wb-progress on the waveform, --acp-progress on the playhead)
+ * that AudioClipPlayer.jsx writes while the clip plays, so playing never renders React. Colours
+ * are --acp-* variables whose defaults are design tokens. See AudioClipPlayer.jsx for the props.
+ */
+
+.acp {
+  --acp-bg: var(--ds-raised);
+  --acp-button: var(--ds-accent);
+  --acp-on-button: var(--ds-on-accent);
+  --acp-wave: var(--ds-bar-muted);
+  --acp-played: var(--ds-accent-text);
+  --acp-text: var(--ds-text);
+  --acp-muted: var(--ds-muted);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 16px 10px 10px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--acp-bg);
+  color: var(--acp-text);
+}
+
+.acp .wb {
+  --wb-color: var(--acp-wave);
+  --wb-played: var(--acp-played);
+}
+
+/* Until the clip is known the waveform is a quiet track */
+.acp[data-state='loading'] .wb {
+  --wb-color: var(--ds-high);
+}
+
+/* ---- The play circle ------------------------------------------------------------------- */
+
+.acp__button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--acp-button);
+  color: var(--acp-on-button);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.acp__button:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+.acp__button:active {
+  background-color: var(--ds-accent-press);
+  transform: scale(0.96);
+}
+
+.acp__button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--acp-bg),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* Disabled: the high fill with a subtle icon, no hover and no opacity change */
+.acp__button[aria-disabled='true'] {
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.acp__button[aria-disabled='true']:active {
+  transform: none;
+}
+
+.acp__spin {
+  animation: acp-spin 900ms linear infinite;
+}
+
+@keyframes acp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Title and waveform ---------------------------------------------------------------- */
+
+.acp__main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.acp__title {
+  overflow: hidden;
+  color: var(--acp-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acp__wave {
+  position: relative;
+  height: 40px;
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+  /* A sideways drag seeks; a vertical one still scrolls the page */
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.acp__wave[aria-disabled='true'] {
+  cursor: default;
+}
+
+.acp__wave:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--acp-bg),
+    0 0 0 4px var(--ds-focus);
+}
+
+/*
+ * The playhead: a full width layer shifted left by the part that is still to play, so its
+ * right edge (the mark) sits at the progress. Only transform changes while the clip plays.
+ */
+.acp__head {
+  position: absolute;
+  inset: -2px 0;
+  display: flex;
+  justify-content: flex-end;
+  transform: translateX(calc((var(--acp-progress, 0) - 1) * 100%));
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.acp[data-started='true'] .acp__head {
+  visibility: visible;
+}
+
+.acp__head-mark {
+  width: 2px;
+  margin-right: -1px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--acp-text);
+}
+
+/* ---- Time ------------------------------------------------------------------------------ */
+
+.acp__time {
+  flex: none;
+  min-width: 5.5em;
+  color: var(--acp-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.acp__elapsed {
+  color: var(--acp-text);
+  font-weight: 600;
+}
+
+/* ---- Error ----------------------------------------------------------------------------- */
+
+.acp__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 40px;
+  color: var(--ds-danger);
+}
+
+.acp__error-text {
+  color: var(--acp-text);
+  font: var(--ds-type-body-sm);
+}
+
+.acp__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: none;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.acp__retry:hover {
+  background-color: var(--ds-high);
+}
+
+.acp__retry:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--acp-bg),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* There is no length to show for a clip that did not load */
+.acp[data-state='error'] .acp__time {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .acp__retry {
+    height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .acp__time {
+    min-width: 0;
+  }
+
+  .acp__sep,
+  .acp__time > span:last-child {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acp__button,
+  .acp__retry {
+    transition: none;
+  }
+
+  .acp__button:active {
+    transform: none;
+  }
+}

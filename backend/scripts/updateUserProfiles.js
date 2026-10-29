@@ -1,45 +1,46 @@
 /**
- * Cron Job: Update User Platform Profiles
+ * Job: update every student's coding platform profiles.
  *
- * This script updates all users' coding platform profiles at 1:40 PM IST
- * and logs comprehensive statistics about the update process.
+ * `updateAllUserProfiles` syncs each student's linked platforms through
+ * services/profileSyncService (which stores the stats or the failure on the
+ * Profile) and logs statistics about the run.
  *
- * This module can be used in three ways:
- * 1. Scheduled cron job (automatically runs at 1:40 PM IST)
- * 2. Manual execution via command line: node run-sync.js
- * 3. Admin-triggered via Admin Dashboard (using the sync-profiles endpoint)
+ * It can be started three ways:
+ * 1. On a schedule: cron-jobs.js runs it every night at 12:00 AM IST
+ * 2. From the command line: node scripts/updateUserProfiles.js
+ * 3. From the admin dashboard (controllers/dailyCronController.js)
  *
- * When triggered from the Admin Dashboard, the script accepts a progressState
- * object that is updated during execution to show real-time progress.
+ * When started from the admin dashboard it receives a progressState object
+ * that is updated while it runs, so the dashboard can show live progress.
  */
-const path = require("path");
 require("dotenv").config({
   path: require("path").resolve(__dirname, "../.env"),
 });
 const mongoose = require("mongoose");
-const cron = require("node-cron");
 const User = require("../models/User");
-const RankHistory = require("../models/RankHistory");
-const axios = require("axios");
+const { syncUser } = require("../services/profileSyncService");
+const { recordScoresAndRanks } = require("../services/rankings/scoreHistoryService");
 const connectDB = require("../config/db");
-const fs = require("fs");
+const appLogger = require("../utils/logger");
 
-// Set the base URL for API calls
-const API_BASE_URL = process.env.API_BASE_URL;
-const API_KEY = process.env.CRON_API_KEY;
+// Free-form messages (debug unless LOG_LEVEL=debug). The visible output of a run
+// is the job below: start, progress at 10% steps, one green completion line.
+const log = appLogger.scope("PROFILE-SYNC");
 
 // MongoDB Connection (with fallback)
 const connectToMongoDB = async () => {
+  // Inside the server the connection already exists; reconnecting is pointless.
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
   try {
     return await connectDB();
   } catch (error) {
-    console.log("Falling back to direct MongoDB connection");
+    log.warn("falling back to direct MongoDB connection");
     const mongoURI = process.env.MONGODB_URI;
     const conn = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("MongoDB Connected Successfully (fallback)");
+    appLogger.ready("DB", "connected (fallback)");
     return conn;
   }
 };
@@ -58,20 +59,14 @@ const setupLogging = () => {
   // Create a write stream for logging
   // const logStream = fs.createWriteStream(logFile, { flags: 'a' });
 
-  // Custom logger - only logs to console, no file logging
+  // Step-by-step details. Hidden unless LOG_LEVEL=debug: failures are counted
+  // and summarized by the job, so they are not printed one by one.
   const logger = {
     log: (message) => {
-      const timestamp = new Date().toISOString();
-      console.log(message);
-      // Removed: logStream.write(logMessage);
+      log.debug(message);
     },
     error: (message, error) => {
-      const timestamp = new Date().toISOString();
-      const errorMessage = error
-        ? `${message}: ${error.message}\n${error.stack}\n`
-        : `${message}\n`;
-      console.error(`ERROR: ${message}`, error);
-      // Removed: logStream.write(logMessage);
+      log.debug(message, error);
     },
     close: () => {
       // No-op - no stream to close
@@ -117,150 +112,84 @@ const rateLimitingTracker = {
 };
 
 /**
- * Update a single user's platform profiles
+ * Update a single user's platform profiles. The sync service fetches every
+ * linked platform and stores the stats (or the failure) on the Profile.
  * @param {Object} user - User document
  * @param {Object} logger - Logger instance
  * @param {Object} stats - Statistics object
+ * @param {"cron"|"admin"} source - who started the sync (stored on each Profile)
+ * @param {Object} [job] - logger.job of this run; a user with failed profiles is counted once
  * @returns {Object} Updated statistics
  */
-const updateUserPlatforms = async (user, logger, stats) => {
+const updateUserPlatforms = async (user, logger, stats, source = "cron", job = null) => {
+  const startTime = Date.now();
   try {
-    const startTime = Date.now();
     logger.log(`Starting update for user ${user.name} (${user.email})`);
 
-    // Call API to update user profiles
-    const response = await axios.put(
-      `${API_BASE_URL}/profiles/update-user/${user._id}`,
-      {},
-      {
-        headers: {
-          "X-API-Key": API_KEY,
-          "Content-Type": "application/json",
-        },
-        timeout: 120000, // 120 second timeout (increased from 60s)
-      },
-    );
-
+    const results = await syncUser(user._id, { source });
     const elapsedTime = Date.now() - startTime;
 
-    if (response.data.success) {
-      // Count successful and failed profile updates
-      const successfulProfiles = response.data.profiles.filter(
-        (p) => p.lastUpdateStatus === "success",
-      );
-      const failedProfiles = response.data.profiles.filter(
-        (p) => p.lastUpdateStatus === "error",
+    const successfulProfiles = results.filter((r) => r.ok);
+    const failedProfiles = results.filter((r) => !r.ok);
+
+    stats.updatedProfiles += successfulProfiles.length;
+    stats.failedProfiles += failedProfiles.length;
+    stats.totalProfiles += results.length;
+    stats.updatedUsers++;
+    stats.totalTime += elapsedTime;
+
+    // Track per-platform statistics
+    successfulProfiles.forEach((profile) => {
+      stats.profilesByPlatform[profile.platform] =
+        (stats.profilesByPlatform[profile.platform] || 0) + 1;
+    });
+
+    logger.log(
+      `Updated user ${user.name}: ${successfulProfiles.length} profiles ok, ` +
+        `${failedProfiles.length} failed. Took ${elapsedTime}ms`,
+    );
+
+    failedProfiles.forEach((profile) => {
+      const errorDetails = profile.error || "Unknown error";
+      const errorType = profile.errorType || "unknown";
+
+      log.debug(
+        `${profile.platform} failed for ${user.name} (${profile.username}): [${errorType}] ${errorDetails}`,
       );
 
-      stats.updatedProfiles += successfulProfiles.length;
-      stats.failedProfiles += failedProfiles.length;
-      stats.totalProfiles += response.data.profiles.length;
-      stats.updatedUsers++;
-      stats.totalTime += elapsedTime;
+      stats.failuresByPlatform[profile.platform] =
+        (stats.failuresByPlatform[profile.platform] || 0) + 1;
+      stats.errorsByType[errorType] = (stats.errorsByType[errorType] || 0) + 1;
 
-      // Track per-platform statistics
-      successfulProfiles.forEach((profile) => {
-        stats.profilesByPlatform[profile.platform] =
-          (stats.profilesByPlatform[profile.platform] || 0) + 1;
+      // Shown in the admin dashboard
+      stats.failedProfilesList.push({
+        userId: user._id.toString(),
+        userName: user.name,
+        userEmail: user.email,
+        userDepartment: user.department || "N/A",
+        userSection: user.section || "N/A",
+        userYear: user.graduatingYear || "N/A",
+        platform: profile.platform,
+        platformUsername: profile.username,
+        error: errorDetails,
+        errorCode: errorType,
+        timestamp: new Date().toISOString(),
       });
+    });
 
-      logger.log(
-        `Successfully updated user ${user.name} with ${successfulProfiles.length} profiles ` +
-          `(failed: ${failedProfiles.length}). Total score: ${response.data.totalScore}. ` +
-          `Took ${elapsedTime}ms`,
-      );
-
-      // Log any failed profiles with detailed error information
-      if (failedProfiles.length > 0) {
-        logger.error(
-          `${failedProfiles.length} profile updates failed for user ${user.name}:`,
-        );
-
-        failedProfiles.forEach((profile) => {
-          const errorDetails =
-            profile.lastUpdateError || profile.error || "Unknown error";
-          const errorCode = profile.errorCode || "UNKNOWN";
-
-          // Log to console with color for better visibility in terminal
-          console.error(
-            `\x1b[31m[ERROR]\x1b[0m ${profile.platform.toUpperCase()} for ${
-              user.name
-            } (${profile.username}): ${errorDetails}`,
-          );
-          // Log details to the log file as well
-          logger.error(
-            `Failed to update ${profile.platform} for ${user.name} (${profile.username}): [${errorCode}] ${errorDetails}`,
-          );
-
-          stats.failuresByPlatform[profile.platform] =
-            (stats.failuresByPlatform[profile.platform] || 0) + 1;
-
-          // Store the failed profile details in a list for display in the admin dashboard
-          if (!stats.failedProfilesList) {
-            stats.failedProfilesList = [];
-          }
-
-          stats.failedProfilesList.push({
-            userId: user._id.toString(),
-            userName: user.name,
-            userEmail: user.email,
-            userDepartment: user.department || "N/A",
-            userSection: user.section || "N/A",
-            userYear: user.graduatingYear || "N/A",
-            platform: profile.platform,
-            platformUsername: profile.username,
-            error: errorDetails,
-            errorCode: errorCode,
-            timestamp: new Date().toISOString(),
-          });
-        });
-
-        // Log platform-specific error counts
-        const failedPlatformCounts = Object.entries(stats.failuresByPlatform)
-          .map(([platform, count]) => `${platform}: ${count}`)
-          .join(", ");
-        console.error(
-          `\x1b[33m[SUMMARY]\x1b[0m Failed updates by platform: ${failedPlatformCounts}`,
-        );
-      }
-    } else {
-      stats.failedUsers++;
-      const errorMsg = response.data.message || "No error message provided";
-      console.error(
-        `\x1b[31m[ERROR]\x1b[0m Failed to update user ${user.name} (${user.email}): ${errorMsg}`,
-      );
-      logger.error(`Failed to update user ${user.name}`, new Error(errorMsg));
+    // The job counts the user once and groups the reasons ("github auth_failed").
+    if (job && failedProfiles.length > 0) {
+      const first = failedProfiles[0];
+      job.fail(user.name, `${first.platform} ${first.errorType || "unknown"}`);
     }
   } catch (error) {
     stats.failedUsers++;
-
-    // Enhanced error logging for network and timeout errors
-    const errorMsg =
-      error.response?.data?.message || error.message || "Unknown error";
-    const errorCode = error.code || "UNKNOWN_ERROR";
-    const statusCode = error.response?.status || "";
-    const statusText = error.response?.statusText || "";
-
-    // Log with color coding for terminal visibility
-    console.error(
-      `\x1b[31m[FATAL ERROR]\x1b[0m Error updating user ${user.name} (${user.email}): ${errorCode} ${statusCode} ${statusText}`,
-    );
-    console.error(`\x1b[31m[DETAILS]\x1b[0m ${errorMsg}`);
-
-    // Log to file with more details
+    job?.fail(user.name, error);
     logger.error(`Error updating user ${user.name} (${user.email})`, error);
-
-    // If it's a timeout error, add more context
-    if (error.code === "ECONNABORTED" || errorMsg.includes("timeout")) {
-      console.error(
-        `\x1b[33m[TIMEOUT]\x1b[0m Request timed out after 120 seconds for user ${user.name}`,
-      );
-    }
   }
 
   return stats;
 };
-
 /**
  * Delay execution based on platform rate limits with exponential backoff for rate-limited platforms
  * @param {string} platform - Platform name
@@ -283,14 +212,10 @@ const applyRateLimit = async (platform, wasRateLimited = false) => {
     // For CodeChef and Codeforces specifically, be extra cautious
     if (platform === "codechef" || platform === "codeforces") {
       requiredDelay = requiredDelay * 5; // 5x normal delay for these platforms when rate limited
-      console.log(
-        `\x1b[33m[RATE LIMIT BACKOFF]\x1b[0m Applying extended delay (${requiredDelay}ms) for ${platform} due to rate limiting`,
-      );
+      log.debug(`rate limit backoff ${requiredDelay}ms for ${platform}`);
     } else if (platform === "leetcode") {
       requiredDelay = requiredDelay * 3; // 3x normal delay for LeetCode when rate limited
-      console.log(
-        `\x1b[33m[RATE LIMIT BACKOFF]\x1b[0m Applying extended delay (${requiredDelay}ms) for ${platform} due to rate limiting`,
-      );
+      log.debug(`rate limit backoff ${requiredDelay}ms for ${platform}`);
     } else {
       requiredDelay = requiredDelay * 2; // 2x normal delay for other platforms
     }
@@ -303,9 +228,7 @@ const applyRateLimit = async (platform, wasRateLimited = false) => {
   if (activeRequests >= maxConcurrent) {
     // Wait for active requests to decrease
     const concurrencyDelayMs = 1000; // Wait 1 second and check again
-    console.log(
-      `\x1b[36m[CONCURRENCY]\x1b[0m Waiting for ${platform} active requests to decrease (${activeRequests}/${maxConcurrent})`,
-    );
+    log.debug(`waiting for ${platform} requests (${activeRequests}/${maxConcurrent})`);
     await new Promise((resolve) => setTimeout(resolve, concurrencyDelayMs));
     return applyRateLimit(platform, wasRateLimited); // Recursive call to check again
   }
@@ -314,11 +237,7 @@ const applyRateLimit = async (platform, wasRateLimited = false) => {
     const delayMs = requiredDelay - timeSinceLastRequest;
     if (delayMs > 1000) {
       // Only log delays longer than 1 second
-      console.log(
-        `\x1b[36m[RATE LIMIT]\x1b[0m Waiting ${(delayMs / 1000).toFixed(
-          1,
-        )}s before next ${platform} request`,
-      );
+      log.debug(`waiting ${(delayMs / 1000).toFixed(1)}s before next ${platform} request`);
     }
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
@@ -347,6 +266,7 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
   let logger = null;
   let dbConnection = null;
   let cleanupFunctions = [];
+  let job = null; // logger.job of this run, created once the user count is known
 
   // Helper to run cleanup functions
   const runCleanup = async () => {
@@ -356,7 +276,7 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
           await cleanup();
         }
       } catch (cleanupError) {
-        console.error("Error during cleanup:", cleanupError);
+        log.error("cleanup failed:", cleanupError);
       }
     }
   };
@@ -369,16 +289,12 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
         try {
           logger.close();
         } catch (e) {
-          console.error("Error closing logger:", e);
+          log.error("closing logger failed:", e);
         }
       }
     });
 
     logger.log("Starting profile update process");
-    console.log(
-      "\x1b[36m[START]\x1b[0m Starting profile update process at",
-      new Date().toISOString(),
-    );
 
     // Handle abort signal if provided
     if (signal) {
@@ -407,21 +323,16 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
     cleanupFunctions.push(async () => {
       try {
         // DO NOT close the main MongoDB connection - this will break other routes
-        // Instead, just log that we're keeping the connection open
-        console.log(
-          "Cleanup: Keeping MongoDB connection open for other operations",
-        );
-
         // If we're running in a test environment or standalone script, then close
         if (process.env.NODE_ENV === "test" || require.main === module) {
           if (mongoose.connection.readyState !== 0) {
             // 0 = disconnected
             await mongoose.connection.close();
-            console.log("MongoDB connection closed (test/standalone mode)");
+            log.debug("MongoDB connection closed (test/standalone mode)");
           }
         }
       } catch (e) {
-        console.error("Error during MongoDB cleanup:", e);
+        log.error("MongoDB cleanup failed:", e);
       }
     });
 
@@ -464,9 +375,8 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
     logger.log(
       `Found ${users.length} active users to process (excluding admin, teacher, and graduated)`,
     );
-    console.log(
-      `\x1b[36m[INFO]\x1b[0m Found ${users.length} active users to process (excluding admin, teacher, and graduated)`,
-    );
+
+    job = appLogger.job("profile-sync", { total: users.length });
 
     // Initialize statistics
     const stats = {
@@ -538,13 +448,15 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
 
           try {
             // Process the user
-            await updateUserPlatforms(user, logger, stats);
-          } catch (userError) {
-            console.error(
-              `\x1b[31m[USER ERROR]\x1b[0m Failed to process user ${
-                user.name || user.email || user._id
-              }: ${userError.message}`,
+            await updateUserPlatforms(
+              user,
+              logger,
+              stats,
+              progressState ? "admin" : "cron",
+              job,
             );
+          } catch (userError) {
+            job.fail(user.name || user.email || String(user._id), userError);
             logger.error(
               `Individual user error for ${
                 user.name || user.email || user._id
@@ -580,31 +492,18 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
                 // Add a lastUpdated timestamp to help detect stalled processes
                 progressState.lastUpdated = Date.now();
 
-                // Log more detailed progress information
-                console.log(
-                  `Progress state updated: ${processedCount}/${users.length} users (${percent}%), ` +
-                    `updated: ${stats.updatedProfiles}, failed: ${stats.failedProfiles}, ` +
-                    `at ${new Date().toISOString()}`,
+                log.debug(
+                  `progress state ${processedCount}/${users.length} (${percent}%), ` +
+                    `updated ${stats.updatedProfiles}, failed ${stats.failedProfiles}`,
                 );
               } catch (progressUpdateError) {
-                console.error(
-                  "Error updating progress state:",
-                  progressUpdateError,
-                );
+                log.error("updating progress state failed:", progressUpdateError);
                 // Continue processing even if progress update fails
               }
             }
 
-            // Log progress periodically
-            if (processedCount % 10 === 0 || processedCount === users.length) {
-              const percent = Math.round((processedCount / users.length) * 100);
-              logger.log(
-                `Progress: ${processedCount}/${users.length} users (${percent}%)`,
-              );
-              console.log(
-                `\x1b[32m[PROGRESS]\x1b[0m ${processedCount}/${users.length} users (${percent}%) completed`,
-              );
-            }
+            // The job prints at 10% steps (or every 15 s), not for every user.
+            job.progress(processedCount);
           }
         });
 
@@ -618,10 +517,8 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
           }),
         ]);
       } catch (batchError) {
-        console.error(
-          `\x1b[31m[BATCH ERROR]\x1b[0m Batch ${
-            Math.ceil(i / BATCH_SIZE) + 1
-          } failed: ${batchError.message}`,
+        log.warn(
+          `batch ${Math.ceil(i / BATCH_SIZE) + 1} failed: ${batchError.message}`,
         );
         logger.error(
           `Error processing batch ${Math.ceil(i / BATCH_SIZE) + 1}`,
@@ -658,13 +555,6 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
           users.length / BATCH_SIZE,
         )} completed in ${batchTime / 1000} seconds`,
       );
-      console.log(
-        `\x1b[36m[BATCH]\x1b[0m Batch ${
-          Math.ceil(i / BATCH_SIZE) + 1
-        }/${Math.ceil(users.length / BATCH_SIZE)} completed in ${(
-          batchTime / 1000
-        ).toFixed(2)} seconds`,
-      );
 
       // Add a small pause between batches
       if (i + BATCH_SIZE < users.length) {
@@ -681,6 +571,7 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
       }
 
       logger.log("Sync operation was aborted");
+      job.cancel();
       await runCleanup();
 
       return {
@@ -693,6 +584,7 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
 
     if (progressState && progressState.cancelled) {
       logger.log("Sync operation was cancelled by admin");
+      job.cancel();
 
       // Ensure progress state is updated
       progressState.inProgress = false;
@@ -718,220 +610,35 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
     const avgProfileTime =
       stats.updatedProfiles > 0 ? stats.totalTime / stats.updatedProfiles : 0;
 
-    // Log final statistics
-    console.log("\n\x1b[35m========= FINAL STATISTICS =========\x1b[0m");
-    console.log(
-      `\x1b[36m[STATS]\x1b[0m Total users processed: ${stats.totalUsers}`,
-    );
-    console.log(
-      `\x1b[32m[SUCCESS]\x1b[0m Users updated: ${stats.updatedUsers}`,
-    );
-    console.log(`\x1b[31m[FAILURE]\x1b[0m Users failed: ${stats.failedUsers}`);
-    console.log(
-      `\x1b[36m[STATS]\x1b[0m Total profiles attempted: ${stats.totalProfiles}`,
-    );
-    console.log(
-      `\x1b[32m[SUCCESS]\x1b[0m Profiles updated: ${stats.updatedProfiles}`,
-    );
-    console.log(
-      `\x1b[31m[FAILURE]\x1b[0m Profiles failed: ${stats.failedProfiles}`,
-    );
-    console.log(
-      `\x1b[36m[STATS]\x1b[0m Average time per profile: ${Math.round(
-        avgProfileTime,
-      )}ms`,
-    );
-    console.log(
-      `\x1b[36m[STATS]\x1b[0m Total execution time: ${totalTimeSeconds.toFixed(
-        2,
-      )} seconds`,
-    );
-
-    // Calculate and store daily ranks
+    // Every student's scores are final now: rank everyone and record the history. A
+    // problem here is reported in the summary but never fails the sync itself.
+    let rankingNote = "";
     try {
-      console.log(
-        "\n\x1b[35m========= CALCULATING DAILY RANKS =========\x1b[0m",
-      );
-      const rankStartTime = Date.now();
-
-      // Fetch all active users with their latest scores for ranking
-      // Exclude admin, teacher, and graduated users
-      const allUsers = await User.find({
-        userType: { $nin: ["admin", "teacher"] },
-        $or: [
-          { graduatingYear: { $exists: false } },
-          { graduatingYear: { $nin: graduatedYears } },
-        ],
-      })
-        .select(
-          "_id name department totalScore totalProblemsSolved platformScores",
-        )
-        .sort({ totalScore: -1 })
-        .lean();
-
-      console.log(
-        `\x1b[36m[RANKS]\x1b[0m Calculating ranks for ${allUsers.length} users`,
-      );
-
-      // Get yesterday's data for comparison
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-
-      const yesterdayRanks = await RankHistory.find({ date: yesterday }).lean();
-      const yesterdayRanksMap = {};
-      yesterdayRanks.forEach((rank) => {
-        yesterdayRanksMap[rank.userId.toString()] = rank;
+      const ranking = await recordScoresAndRanks({
+        source: progressState ? "admin" : "cron",
+        sync: {
+          totalProfiles: stats.totalProfiles,
+          updatedProfiles: stats.updatedProfiles,
+          failedProfiles: stats.failedProfiles,
+        },
       });
-
-      console.log(
-        `\x1b[36m[RANKS]\x1b[0m Found ${yesterdayRanks.length} records from yesterday for comparison`,
-      );
-
-      // Calculate overall ranks with platform data
-      const rankData = allUsers.map((user, index) => {
-        const yesterdayData = yesterdayRanksMap[user._id.toString()];
-        const platformData = {};
-
-        // Extract platform data and calculate changes
-        const platforms = [
-          "leetcode",
-          "codechef",
-          "codeforces",
-          "hackerrank",
-          "github",
-        ];
-        platforms.forEach((platform) => {
-          const currentPlatformData = user.platformScores?.[platform] || {};
-          const yesterdayPlatformData =
-            yesterdayData?.platformData?.[platform] || {};
-
-          const currentScore = currentPlatformData.score || 0;
-          const currentProblems = currentPlatformData.problemsSolved || 0;
-          const yesterdayScore = yesterdayPlatformData.score || 0;
-          const yesterdayProblems = yesterdayPlatformData.problemsSolved || 0;
-
-          platformData[platform] = {
-            score: currentScore,
-            problemsSolved: currentProblems,
-            scoreChange: currentScore - yesterdayScore,
-            problemsChange: currentProblems - yesterdayProblems,
-          };
-        });
-
-        // Calculate total changes
-        const yesterdayTotalScore = yesterdayData?.totalScore || 0;
-        const yesterdayTotalProblems = yesterdayData?.totalProblemsSolved || 0;
-
-        return {
-          userId: user._id,
-          overallRank: index + 1,
-          totalScore: user.totalScore || 0,
-          totalProblemsSolved: user.totalProblemsSolved || 0,
-          totalScoreChange: (user.totalScore || 0) - yesterdayTotalScore,
-          totalProblemsChange:
-            (user.totalProblemsSolved || 0) - yesterdayTotalProblems,
-          department: user.department,
-          totalUsers: allUsers.length,
-          platformData: platformData,
-        };
-      });
-
-      // Calculate department-wise ranks
-      const departmentGroups = {};
-      allUsers.forEach((user) => {
-        if (!departmentGroups[user.department]) {
-          departmentGroups[user.department] = [];
-        }
-        departmentGroups[user.department].push(user);
-      });
-
-      // Add department ranks
-      rankData.forEach((rank) => {
-        const deptUsers = departmentGroups[rank.department];
-        const userIndex = deptUsers.findIndex(
-          (u) => u._id.toString() === rank.userId.toString(),
-        );
-        rank.departmentRank = userIndex + 1;
-        rank.totalDepartmentUsers = deptUsers.length;
-      });
-
-      // Save rank data to database
-      await RankHistory.saveDailyRanks(rankData);
-
-      // Cleanup old rank history (keep only last 30 days)
-      await RankHistory.cleanupOldHistory();
-
-      const rankElapsedTime = Date.now() - rankStartTime;
-      console.log(
-        `\x1b[32m[RANKS]\x1b[0m Successfully calculated and stored ranks in ${rankElapsedTime}ms`,
-      );
-      console.log(`\x1b[36m[RANKS]\x1b[0m Rank breakdown by department:`);
-
-      // Log department statistics
-      Object.entries(departmentGroups).forEach(([dept, users]) => {
-        console.log(`\x1b[36m[RANKS]\x1b[0m ${dept}: ${users.length} users`);
-      });
-    } catch (rankError) {
-      console.error(
-        "\x1b[31m[RANK ERROR]\x1b[0m Failed to calculate or store daily ranks:",
-        rankError,
-      );
-      // Don't fail the entire process if rank calculation fails
+      rankingNote = ` | ranked ${ranking.students} students (${ranking.written} records)`;
       if (progressState) {
-        progressState.rankError = rankError.message;
+        progressState.ranking = { students: ranking.students, written: ranking.written, ok: true };
       }
+    } catch (rankingError) {
+      rankingNote = " | ranking FAILED";
+      log.error("ranking after the sync failed:", rankingError);
+      if (progressState) progressState.ranking = { ok: false, error: rankingError.message };
     }
 
-    // Generate daily statistics after profile sync and rank calculation
-    try {
-      console.log(
-        "\n\x1b[35m========= GENERATING DAILY STATISTICS =========\x1b[0m",
-      );
-      const statsStartTime = Date.now();
-
-      // Import the stats service
-      const statsService = require("../services/statsService");
-
-      console.log(
-        "\x1b[36m[STATS]\x1b[0m Starting daily statistics generation...",
-      );
-
-      // Generate daily statistics for all users
-      const statsResult = await statsService.generateDailyStats();
-
-      const statsElapsedTime = Date.now() - statsStartTime;
-      console.log(
-        `\x1b[32m[STATS]\x1b[0m Successfully generated daily statistics in ${statsElapsedTime}ms`,
-      );
-
-      if (statsResult.success) {
-        console.log(
-          `\x1b[36m[STATS]\x1b[0m Generated stats for ${statsResult.generated} users`,
-        );
-        console.log(
-          `\x1b[36m[STATS]\x1b[0m Updated stats for ${statsResult.updated} users`,
-        );
-        if (statsResult.errors > 0) {
-          console.log(
-            `\x1b[31m[STATS]\x1b[0m ${statsResult.errors} users had errors during stats generation`,
-          );
-        }
-      } else {
-        console.log(
-          `\x1b[31m[STATS]\x1b[0m Daily stats generation failed: ${statsResult.error}`,
-        );
-      }
-    } catch (statsError) {
-      console.error(
-        "\x1b[31m[STATS ERROR]\x1b[0m Failed to generate daily statistics:",
-        statsError,
-      );
-      // Don't fail the entire process if stats generation fails
-      if (progressState) {
-        progressState.statsError = statsError.message;
-      }
-    }
+    // One green summary line. The users counted as failed are those with at
+    // least one failed profile; the profile totals are in the same line.
+    job.complete(
+      `profiles ${stats.updatedProfiles} ok, ${stats.failedProfiles} failed` +
+        ` | avg ${Math.round(avgProfileTime)}ms/profile` +
+        rankingNote,
+    );
 
     // Update progress state for completion
     if (progressState) {
@@ -957,7 +664,11 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
       totalTime: totalTimeSeconds,
     };
   } catch (error) {
-    console.error("\x1b[41m\x1b[37m FATAL ERROR \x1b[0m", error);
+    if (job) {
+      job.error(error);
+    } else {
+      log.error("profile sync failed before it started:", error);
+    }
 
     if (logger) {
       logger.error("Fatal error in profile update process", error);
@@ -979,53 +690,11 @@ const updateAllUserProfiles = async (progressState = null, signal = null) => {
   }
 };
 
-// Profile Update Cron Job - 12:00 AM IST daily
-const profileUpdateCronJob = cron.schedule(
-  "0 0 * * *",
-  async () => {
-    console.log("🔔 Profile update cron job triggered at 12:00 AM IST");
-    try {
-      await updateAllUserProfiles();
-      console.log("✅ Scheduled profile update completed successfully");
-    } catch (error) {
-      console.error("❌ Scheduled profile update failed:", error.message);
-    }
-  },
-  {
-    scheduled: true,
-    timezone: "Asia/Kolkata",
-  },
-);
-
-function startProfileUpdateCron() {
-  profileUpdateCronJob.start();
-  console.log("🚀 Profile update cron job started (12:00 AM IST daily)");
-}
-
-function stopProfileUpdateCron() {
-  profileUpdateCronJob.stop();
-  console.log("🛑 Profile update cron job stopped");
-}
-
 // If running as standalone script
 if (require.main === module) {
-  console.log("Running profile update manually...");
   updateAllUserProfiles()
-    .then(() => {
-      console.log("Manual profile update finished");
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error("Manual profile update failed:", err);
-      process.exit(1);
-    });
-} else {
-  // Auto-start cron when imported
-  startProfileUpdateCron();
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1)); // already reported by the job
 }
 
-// Export for direct usage
 module.exports = updateAllUserProfiles;
-module.exports.startProfileUpdateCron = startProfileUpdateCron;
-module.exports.stopProfileUpdateCron = stopProfileUpdateCron;
-module.exports.profileUpdateCronJob = profileUpdateCronJob;

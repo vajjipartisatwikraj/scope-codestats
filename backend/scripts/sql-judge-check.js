@@ -17,7 +17,7 @@ require("dotenv").config({
   path: require("node:path").resolve(__dirname, "..", ".env"),
 });
 
-const sqlJudge = require("../services/sqlJudgeClient");
+const { sqlJudge } = require("../services/judges");
 const service = require("../services/sqlQuestionService");
 
 let passed = 0;

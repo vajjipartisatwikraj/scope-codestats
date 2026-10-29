@@ -5,7 +5,6 @@ const PAQuestion = require("../models/PAQuestion");
 const PATest = require("../models/PATest");
 const PASubmission = require("../models/PASubmission");
 const QuestionBank = require("../models/QuestionBank");
-const ActivityHeatmap = require("../models/ActivityHeatmap");
 const auth = require("../middleware/auth");
 const adminAuth = require("../middleware/adminAuth");
 const {
@@ -13,6 +12,24 @@ const {
   incrementDailyTestCount,
   getRemainingTests,
 } = require("../middleware/practiceArenaLimiter");
+const { submissionRateLimiter, runCodeRateLimiter } = require("../middleware/redisRateLimiter");
+const codeExecutionController = require("../controllers/codeExecutionController");
+const log = require("../utils/logger").scope("PRACTICE-ARENA");
+
+// ==== CODE EXECUTION ====
+// run-code: any signed-in user can run code with custom input.
+// submit-code-combined: admins and teachers check a question's test cases
+// against the solution code while writing it. Students run their code in a
+// test through POST /api/compiler/execute-with-question, which reads the test
+// cases from the database. Rate limited per user: 2 s for run-code, 5 s for submissions.
+router.post("/run-code", auth, runCodeRateLimiter, codeExecutionController.runCode);
+router.post(
+  "/submit-code-combined",
+  auth,
+  adminAuth,
+  submissionRateLimiter,
+  codeExecutionController.submitCodeCombined,
+);
 
 // ==== ADMIN ROUTES ====
 
@@ -95,7 +112,7 @@ router.get("/questions", auth, adminAuth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching practice arena questions:", error);
+    log.error("Error fetching practice arena questions:", error);
     res
       .status(500)
       .json({ message: "Error fetching questions", error: error.message });
@@ -130,7 +147,7 @@ router.get("/questions/search", auth, adminAuth, async (req, res) => {
 
     res.status(200).json(questions);
   } catch (error) {
-    console.error("Error searching practice arena questions:", error);
+    log.error("Error searching practice arena questions:", error);
     res
       .status(500)
       .json({ message: "Error searching questions", error: error.message });
@@ -151,7 +168,7 @@ router.get("/questions/:id", auth, adminAuth, async (req, res) => {
 
     res.status(200).json(question);
   } catch (error) {
-    console.error(
+    log.error(
       `Error fetching practice arena question ${req.params.id}:`,
       error
     );
@@ -240,7 +257,7 @@ router.post("/questions", auth, adminAuth, async (req, res) => {
       question,
     });
   } catch (error) {
-    console.error("Error creating practice arena question:", error);
+    log.error("Error creating practice arena question:", error);
     res
       .status(500)
       .json({ message: "Error creating question", error: error.message });
@@ -273,12 +290,12 @@ router.put("/questions/:id", auth, adminAuth, async (req, res) => {
       question,
     });
   } catch (error) {
-    console.error(
+    log.error(
       `❌ Error updating practice arena question ${req.params.id}:`,
       error
     );
-    console.error("Full error stack:", error.stack);
-    console.error("Validation errors:", error.errors);
+    log.error("Full error stack:", error.stack);
+    log.error("Validation errors:", error.errors);
     res.status(500).json({
       message: "Error updating question",
       error: error.message,
@@ -302,7 +319,7 @@ router.delete("/questions/:id", auth, adminAuth, async (req, res) => {
       .status(200)
       .json({ message: "Practice arena question deleted successfully" });
   } catch (error) {
-    console.error(
+    log.error(
       `Error deleting practice arena question ${req.params.id}:`,
       error
     );
@@ -324,7 +341,7 @@ router.get("/subjects", auth, async (req, res) => {
     const subjects = visibleBanks.map((bank) => bank.name);
     res.status(200).json(subjects);
   } catch (error) {
-    console.error("Error fetching subjects:", error);
+    log.error("Error fetching subjects:", error);
     res
       .status(500)
       .json({ message: "Error fetching subjects", error: error.message });
@@ -337,7 +354,7 @@ router.get("/topics", auth, async (req, res) => {
     const topics = await PAQuestion.distinct("tags");
     res.status(200).json(topics);
   } catch (error) {
-    console.error("Error fetching topics:", error);
+    log.error("Error fetching topics:", error);
     res
       .status(500)
       .json({ message: "Error fetching topics", error: error.message });
@@ -369,7 +386,7 @@ router.get("/question-banks", auth, adminAuth, async (req, res) => {
 
     res.status(200).json(banksWithCount);
   } catch (error) {
-    console.error("Error fetching question banks:", error);
+    log.error("Error fetching question banks:", error);
     res
       .status(500)
       .json({ message: "Error fetching question banks", error: error.message });
@@ -403,7 +420,7 @@ router.patch(
         bank,
       });
     } catch (error) {
-      console.error("Error updating question bank visibility:", error);
+      log.error("Error updating question bank visibility:", error);
       res.status(500).json({
         message: "Error updating question bank visibility",
         error: error.message,
@@ -418,7 +435,7 @@ router.get("/daily-limit", auth, async (req, res) => {
     const limitInfo = await getRemainingTests(req.user.id);
     res.status(200).json(limitInfo);
   } catch (error) {
-    console.error("Error fetching daily limit:", error);
+    log.error("Error fetching daily limit:", error);
     res
       .status(500)
       .json({ message: "Error fetching daily limit", error: error.message });
@@ -548,7 +565,7 @@ router.post("/tests", auth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error creating practice test:", error);
+    log.error("Error creating practice test:", error);
     res
       .status(500)
       .json({ message: "Error creating test", error: error.message });
@@ -641,7 +658,7 @@ router.put("/tests/:id/start", auth, checkDailyTestLimit, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error starting practice test:", error);
+    log.error("Error starting practice test:", error);
     res
       .status(500)
       .json({ message: "Error starting test", error: error.message });
@@ -781,10 +798,6 @@ router.post("/tests/:id/submit", auth, async (req, res) => {
       user: req.user.id,
     });
 
-    // Track first-time solve for the activity heatmap (Trigger 1 — PA submissions).
-    // Captured BEFORE the submission is mutated below.
-    const priorCorrect = submission ? submission.isCorrect === true : false;
-
     if (submission) {
       // ✅ MAX SCORE OVERRIDE: Update existing submission only if new score is better
       submission.submissionType = submissionType;
@@ -843,15 +856,6 @@ router.post("/tests/:id/submit", auth, async (req, res) => {
 
     await submission.save();
 
-    // Fire-and-forget: increment the activity heatmap when a programming
-    // problem is solved for the first time in Practice Arena.
-    if (submissionType === "programming" && isCorrect && !priorCorrect) {
-      ActivityHeatmap.incrementActivity(req.user.id, "practice", 1).catch(
-        (err) =>
-          console.error("Heatmap increment (practice) failed:", err.message)
-      );
-    }
-
     // Update stats for the question (use updateOne to avoid triggering validation on entire document)
     await PAQuestion.updateOne(
       { _id: questionId },
@@ -871,7 +875,7 @@ router.post("/tests/:id/submit", auth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error submitting answer:", error);
+    log.error("Error submitting answer:", error);
     res
       .status(500)
       .json({ message: "Error submitting answer", error: error.message });
@@ -938,7 +942,7 @@ router.put("/tests/:id/end", auth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error ending practice test:", error);
+    log.error("Error ending practice test:", error);
     res
       .status(500)
       .json({ message: "Error ending test", error: error.message });
@@ -1006,7 +1010,7 @@ router.get("/tests", auth, async (req, res) => {
     // Submission details will be loaded when user clicks "View Results"
     res.status(200).json(tests);
   } catch (error) {
-    console.error("Error fetching user tests:", error);
+    log.error("Error fetching user tests:", error);
     res
       .status(500)
       .json({ message: "Error fetching tests", error: error.message });
@@ -1121,7 +1125,7 @@ router.get("/tests/:id", auth, async (req, res) => {
 
     res.status(200).json(testWithSubmissions);
   } catch (error) {
-    console.error("Error fetching test details:", error);
+    log.error("Error fetching test details:", error);
     res
       .status(500)
       .json({ message: "Error fetching test details", error: error.message });

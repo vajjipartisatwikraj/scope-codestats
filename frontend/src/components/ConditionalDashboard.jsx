@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Dashboard from './Dashboard';
+import './ConditionalDashboard.css';
 
-const ConditionalDashboard = () => {
+// The views of the old dashboard that have not been rebuilt yet (see deprecated/deprecated_Dashboard.jsx)
+const LEGACY_VIEWS = new Set(['platforms', 'progress']);
+
+/**
+ * Chooses what /dashboard shows.
+ *
+ * Admins and teachers are sent to the admin dashboard. Students get `children` (the new
+ * dashboard), except for ?view=platforms and ?view=progress, which get `legacy` (the old
+ * dashboard) because linking platforms and the Progress tab only exist there so far.
+ */
+const ConditionalDashboard = ({ children, legacy = null }) => {
   const { user, isAuthenticated, refreshUserData } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
@@ -43,23 +53,16 @@ const ConditionalDashboard = () => {
   // Show loading indicator while checking
   if (isLoading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '80vh',
-        flexDirection: 'column'
-      }}>
-        <CircularProgress size={40} />
-        <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
-          Preparing your dashboard...
-        </Typography>
-      </Box>
+      <div className="ds-gate" role="status">
+        <span className="ds-gate__spinner" aria-hidden="true" />
+        <p className="ds-gate__text">Preparing your dashboard...</p>
+      </div>
     );
   }
   
-  // For non-admin users, render the Dashboard
-  return <Dashboard />;
+  // Students: the old dashboard for the two views it still owns, the new one otherwise
+  if (legacy && LEGACY_VIEWS.has(searchParams.get('view'))) return legacy;
+  return children;
 };
 
 export default ConditionalDashboard; 

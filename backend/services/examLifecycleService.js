@@ -23,6 +23,7 @@ const {
   getExamWindow,
   getExamAttempt,
 } = require("../utils/examAccess");
+const log = require("../utils/logger").scope("EXAM-LIFECYCLE");
 
 const DEFAULT_SWEEP_INTERVAL_MS = 60 * 1000;
 
@@ -57,7 +58,7 @@ async function autoSubmitExpiredAttempts(now = new Date()) {
 
   const changed = result.modifiedCount ?? result.nModified ?? 0;
   if (changed > 0) {
-    console.log(`⏱️  Exam sweeper: ${changed} attempt(s) auto-submitted on time up`);
+    log.info(`${changed} attempt(s) auto-submitted on time up`);
   }
   return changed;
 }
@@ -93,7 +94,7 @@ async function autoSubmitIfExpired(cohort, enrollment, now = new Date()) {
   enrollment.examSubmittedAt = now;
   enrollment.examSubmitReason = "time_up";
 
-  console.log(
+  log.debug(
     `⏱️  Exam time up: attempt auto-submitted for user ${enrollment.user} ` +
       `in cohort ${cohort._id}`
   );
@@ -142,7 +143,7 @@ async function deactivateEndedExams(now = new Date()) {
 
   const changed = result.modifiedCount ?? result.nModified ?? 0;
   if (changed > 0) {
-    console.log(`⏱️  Exam sweeper: ${changed} exam cohort(s) moved to inactive`);
+    log.info(`${changed} exam cohort(s) moved to inactive`);
   }
   return changed;
 }
@@ -174,7 +175,7 @@ async function deactivateIfEnded(cohort, now = new Date()) {
   );
 
   cohort.isActive = false;
-  console.log(`⏱️  Exam ended: cohort ${cohort._id} moved to inactive`);
+  log.debug(`⏱️  Exam ended: cohort ${cohort._id} moved to inactive`);
   return true;
 }
 
@@ -192,17 +193,17 @@ function startExamSweeper({ intervalMs = DEFAULT_SWEEP_INTERVAL_MS } = {}) {
 
   // Run once at boot so a restart during an exam settles immediately.
   runSweep().catch((err) =>
-    console.error("Exam sweeper (initial) failed:", err.message)
+    log.error("Exam sweeper (initial) failed:", err.message)
   );
 
   sweepTimer = setInterval(() => {
-    runSweep().catch((err) => console.error("Exam sweeper failed:", err.message));
+    runSweep().catch((err) => log.error("Exam sweeper failed:", err.message));
   }, intervalMs);
 
   // Never hold the event loop open for this.
   if (typeof sweepTimer.unref === "function") sweepTimer.unref();
 
-  console.log(`⏱️  Exam sweeper started (every ${Math.round(intervalMs / 1000)}s)`);
+  log.ready(`sweeper every ${Math.round(intervalMs / 1000)}s`);
   return sweepTimer;
 }
 

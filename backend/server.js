@@ -22,20 +22,40 @@ require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const logger = require("./utils/logger");
 const connectDB = require("./config/db");
+const validateEnv = require("./config/validateEnv");
+
+// Stop here with a clear message if a required variable is missing.
+validateEnv();
+
+// A rejected promise nobody handled used to take the whole process down (Node 15+).
+// Log it and keep serving; an exception thrown outside a request leaves the process in an
+// unknown state, so that one is logged and the process exits for pm2 to restart it.
+process.on("unhandledRejection", (reason) => {
+  logger.error("PROCESS", reason instanceof Error ? reason : new Error(String(reason)), {
+    note: "unhandled promise rejection",
+  });
+});
+process.on("uncaughtException", (err) => {
+  logger.error("PROCESS", err, { note: "uncaught exception, exiting" });
+  setTimeout(() => process.exit(1), 100).unref();
+});
 
 // Optional Redis - only load if redis package is installed
 let redisClient = null;
 try {
   redisClient = require("./config/redis");
 } catch (error) {
-  console.log(
-    "[Server] ⚠️  Redis module not installed, rate limiter will use in-memory fallback",
+  logger.warn(
+    "SERVER",
+    "redis package not installed, rate limiter uses memory (npm install redis to enable)",
   );
-  console.log("[Server] 💡 To enable Redis: npm install redis");
 }
 
 const cors = require("cors");
+const compression = require("compression");
+const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/auth");
 const profileRoutes = require("./routes/profiles");
@@ -49,8 +69,6 @@ const notificationsRoutes = require("./routes/notifications");
 const cron = require("node-cron");
 const Profile = require("./models/Profile");
 const User = require("./models/User");
-const platformAPI = require("./services/platformAPIs");
-const { runCode } = require("./services/simpleCodeExecutionService");
 const healthRoutes = require("./routes/healthRoutes");
 const passport = require("passport");
 const session = require("express-session");
@@ -59,9 +77,6 @@ const { initializeCronJobs } = require("./cron-jobs");
 const webPushUtil = require("./utils/webPushUtil");
 const cohortsRoutes = require("./routes/cohorts");
 const practiceArenaRoutes = require("./routes/practiceArena");
-const statsRoutes = require("./routes/stats");
-const dailyStatsRoutes = require("./routes/dailyStats");
-const profileSyncRoutes = require("./routes/profileSync");
 const compilerRoutes = require("./routes/compiler");
 const contactRoutes = require("./routes/contact");
 const jwt = require("jsonwebtoken");
@@ -105,9 +120,7 @@ const corsOrigins = () => {
   }
 };
 
-console.log(`[Server] 🔧 Environment: ${isDev ? "DEVELOPMENT" : "PRODUCTION"}`);
-console.log(`[Server] 🌐 Frontend URL: ${frontendUrl}`);
-console.log(`[Server] 📍 Allowed CORS Origins:`, corsOrigins());
+logger.debug("SERVER", `frontend ${frontendUrl}`, { cors: corsOrigins().length });
 
 // Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
@@ -134,7 +147,7 @@ io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;
 
     if (!token) {
-      console.log("[Socket.IO] ❌ Connection rejected: No token provided");
+      logger.warn("SOCKET", "connection rejected: no token");
       return next(new Error("Authentication error: No token provided"));
     }
 
@@ -147,7 +160,7 @@ io.use(async (socket, next) => {
     );
 
     if (!user) {
-      console.log("[Socket.IO] ❌ Connection rejected: User not found");
+      logger.warn("SOCKET", "connection rejected: user not found");
       return next(new Error("Authentication error: User not found"));
     }
 
@@ -155,12 +168,9 @@ io.use(async (socket, next) => {
     socket.userEmail = user.email;
     socket.userName = user.name;
 
-    console.log(
-      `[Socket.IO] ✅ User authenticated: ${socket.userEmail} (${socket.userId})`,
-    );
     next();
   } catch (error) {
-    console.log("[Socket.IO] ❌ Authentication failed:", error.message);
+    logger.warn("SOCKET", "authentication failed", { reason: error.message });
     return next(new Error("Authentication error: Invalid token"));
   }
 });
@@ -170,14 +180,11 @@ io.on("connection", (socket) => {
   const userId = socket.userId;
   const userEmail = socket.userEmail;
 
-  console.log(
-    `[Socket.IO] 🔌 User connected: ${userEmail} (Socket ID: ${socket.id})`,
-  );
+  logger.debug("SOCKET", `connected ${userEmail}`, { socket: socket.id });
 
   // Join user-specific room for targeted notifications
   const userRoom = `user:${userId}`;
   socket.join(userRoom);
-  console.log(`[Socket.IO] 👤 User ${userEmail} joined room: ${userRoom}`);
 
   // Send connection confirmation
   socket.emit("connection:success", {
@@ -188,52 +195,42 @@ io.on("connection", (socket) => {
 
   // Handle disconnection
   socket.on("disconnect", (reason) => {
-    console.log(
-      `[Socket.IO] 🔌 User disconnected: ${userEmail} - Reason: ${reason}`,
-    );
+    logger.debug("SOCKET", `disconnected ${userEmail}`, { reason });
   });
 
   // Handle errors
   socket.on("error", (error) => {
-    console.error(`[Socket.IO] ❌ Socket error for ${userEmail}:`, error);
+    logger.error("SOCKET", error, { user: userEmail });
   });
 
   // Practice Arena: Request timer sync (for reconnections)
   socket.on("pa:timer:requestSync", async (data) => {
     try {
       const { testId } = data;
-      console.log(
-        `[Socket.IO] 🔄 Timer sync requested for test ${testId} by ${userEmail}`,
-      );
+      logger.debug("SOCKET", `timer sync requested by ${userEmail}`, { test: testId });
 
       const timerState = await app.locals.paTimerService.getTimerState(testId);
 
       if (timerState) {
         socket.emit("pa:timer:sync", timerState);
-        console.log(`[Socket.IO] ✅ Timer sync sent for test ${testId}`);
       } else {
         socket.emit("pa:timer:error", {
           message: "Test not found or not active",
         });
       }
     } catch (error) {
-      console.error("[Socket.IO] ❌ Error handling timer sync request:", error);
+      logger.error("SOCKET", error, { event: "pa:timer:requestSync", user: userEmail });
       socket.emit("pa:timer:error", { message: "Failed to sync timer" });
     }
   });
 
-  // Log all events for debugging (disabled in production for performance)
-  if (process.env.NODE_ENV !== "production") {
-    socket.onAny((eventName, ...args) => {
-      console.log(
-        `[Socket.IO] 📨 Event received from ${userEmail}: ${eventName}`,
-        args,
-      );
-    });
-  }
+  // Event names only (never the payload), and only when LOG_LEVEL=debug.
+  socket.onAny((eventName) => {
+    logger.debug("SOCKET", `event ${eventName}`, { user: userEmail });
+  });
 });
 
-console.log("[Socket.IO] ✅ WebSocket server initialized and ready");
+logger.ready("SOCKET", "websocket server");
 
 // Initialize Practice Arena Timer Service
 const PracticeArenaTimerService = require("./services/practiceArenaTimerService");
@@ -247,7 +244,7 @@ mongoose.connection.once("open", async () => {
   try {
     await app.locals.paTimerService.initialize();
   } catch (error) {
-    console.error("[PA Timer] ❌ Failed to initialize timer service:", error);
+    logger.error("PA-TIMER", error, { note: "failed to initialize timer service" });
   }
 
   // Access control does not depend on this; it keeps ended exams out of
@@ -255,7 +252,15 @@ mongoose.connection.once("open", async () => {
   try {
     examLifecycleService.startExamSweeper();
   } catch (error) {
-    console.error("[Exam Sweeper] ❌ Failed to start:", error);
+    logger.error("EXAM-SWEEPER", error, { note: "failed to start" });
+  }
+
+  // A profile sync that was running when the server stopped can never finish.
+  // Close it now so the admin list does not show it as running forever.
+  try {
+    await require("./services/syncJobService").reconcileStaleRuns(0);
+  } catch (error) {
+    logger.error("SYNC-JOBS", error, { note: "failed to close interrupted runs" });
   }
 
   // Speech tests: auto-submits sections that ran out of time, sends submitted
@@ -263,48 +268,60 @@ mongoose.connection.once("open", async () => {
   try {
     require("./services/speechTestService").startSpeechTestSweeper();
   } catch (error) {
-    console.error("[Speech Test Sweeper] ❌ Failed to start:", error);
+    logger.error("SPEECH-SWEEPER", error, { note: "failed to start" });
   }
 });
 
-// Initialize syncProgress tracking for profile synchronization
-app.locals.syncProgress = {};
-
 // Initialize Web Push
 const publicVapidKey = webPushUtil.initWebPush();
-console.log("Web Push initialized with public VAPID key");
+logger.debug("SERVER", "web push initialized");
 
-// Connect Database
-connectDB();
+// Connect Database. Retries in the background with a growing pause, so a short database
+// outage at boot does not crash the server. Requests wait for the connection (Mongoose
+// buffers them) and the start-up work below runs on the first "open".
+connectDB({ maxAttempts: Infinity }).catch((err) => {
+  logger.error("DB", err, { note: "database connection gave up" });
+});
 
 // Initialize Redis (only if module is installed)
 if (redisClient) {
   (async () => {
     try {
       await redisClient.connect();
-      console.log("[Server] ✅ Redis initialization complete");
     } catch (error) {
-      console.error(
-        "[Server] ⚠️  Redis initialization failed, using fallback mode:",
-        error.message,
-      );
+      logger.warn("REDIS", "initialization failed, using in-memory fallback", {
+        reason: error.message,
+      });
     }
   })();
-} else {
-  console.log(
-    "[Server] ⚠️  Redis not available, rate limiter will use in-memory storage",
-  );
 }
 
 // Middleware
+
+// The app runs behind one reverse proxy (nginx), so without this req.ip is the proxy's address
+// and every visitor looks like the same person. Limits that work per IP (the public profile)
+// need the real address. TRUST_PROXY is the number of proxies in front of the app; set it to 0
+// when the server is reached directly, otherwise a visitor could fake the header.
+const trustedProxies = Number.parseInt(process.env.TRUST_PROXY ?? "1", 10);
+app.set("trust proxy", Number.isNaN(trustedProxies) ? 1 : trustedProxies);
+
+// Responses over 1 KB are gzip-compressed (JSON shrinks 70 to 90 %). The meter
+// goes first so the request log can show the size that is really sent.
+app.use(logger.responseMeter());
+// Security headers. The API serves JSON and a few images that the app on another origin
+// loads, so resources must stay readable cross-origin (CORS still decides who may call).
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(compression());
 app.use(
   cors({
     origin: corsOrigins(),
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Bodies are parsed before auth, so the limit stays modest (it was 50 MB).
+const BODY_LIMIT = process.env.BODY_LIMIT || "10mb";
+app.use(express.json({ limit: BODY_LIMIT }));
+app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 
 // Global rate limiter - DISABLED
 // Removed to prevent blocking legitimate users who don't have institute email
@@ -317,7 +334,11 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === "production" },
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+    },
   }),
 );
 
@@ -325,47 +346,19 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Debug middleware to log requests
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, req.body);
-  next();
-});
+// One log block per request (method, route, status, time, size, waits, main error).
+// Replaces the old middleware that printed every request body.
+app.use(logger.requestLogger());
 
-// ✅ CRON JOBS ENABLED - AUTO-START ON SERVER START
-// Initialize comprehensive daily maintenance cron jobs
-initializeCronJobs(); // ✅ ENABLED - Runs at 12:00 AM and 5:00 AM IST daily
-console.log("✅ Daily maintenance cron jobs are ENABLED and running");
-console.log("⏰ Scheduled runs:");
-console.log("   - 12:00 AM IST: Profile synchronization");
-console.log("   - 5:00 AM IST: Daily statistics generation");
-console.log(
-  "🧪 For manual execution: node backend/scripts/daily-maintenance-cron.js",
-);
-
-// Debug route
-app.get("/api/debug", (req, res) => {
-  res.json({
-    message: "Server is running correctly",
-    timestamp: new Date().toISOString(),
-    routes: [
-      "/api/auth",
-      "/api/profiles",
-      "/api/leaderboard",
-      "/api/admin",
-      "/api/achievements",
-      "/api/users",
-      "/api/courses",
-      "/api/opportunities",
-    ],
-  });
-});
+// Scheduled jobs (see cron-jobs.js): the nightly profile sync at 12:00 AM IST.
+initializeCronJobs();
 
 // Web Push public key endpoint
 app.get("/api/push/vapidPublicKey", (req, res) => {
   try {
     res.json({ publicKey: webPushUtil.getVapidPublicKey() });
   } catch (error) {
-    console.error("Error getting VAPID public key:", error);
+    logger.captureError(res, error);
     res.status(500).json({ message: "Error retrieving VAPID public key" });
   }
 });
@@ -376,6 +369,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin", require("./routes/dailyCrons")); // nightly profile sync (admin controls)
+app.use("/api/admin", require("./routes/adminCatalog")); // courses and opportunities (admin management)
 app.use("/api/achievements", require("./routes/achievements"));
 app.use("/api/resumes", require("./routes/resumes"));
 app.use("/api/courses", coursesRoutes);
@@ -384,292 +379,71 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/auth/google", googleAuthRoutes);
 app.use("/api/cohorts", cohortsRoutes);
+app.use("/api/user-groups", require("./routes/userGroups")); // named roll number lists attached to cohorts
+app.use("/api/teacher-requests", require("./routes/teacherRequests")); // teacher access requests (admin approves)
+app.use("/api/platform-progress", require("./routes/platformProgress")); // dashboard Progress tab (platform history, GitHub timeline)
+app.use("/api/admin/rankings", require("./routes/rankings")); // admin: score and rank calculation
+app.use("/api/admin/analytics", require("./routes/adminAnalytics")); // admin: student performance over the platforms
 app.use("/api/speech-tests", require("./routes/speechTests"));
 app.use("/api/practice-arena", practiceArenaRoutes);
-app.use("/api/stats", statsRoutes);
-app.use("/api/dailyStats", dailyStatsRoutes);
-app.use("/api/profile-sync", profileSyncRoutes);
 app.use("/api/compiler", compilerRoutes);
 app.use("/api/contact", contactRoutes);
-app.use("/api/dashboard", require("./routes/dashboard"));
+app.use("/api/dashboard", require("./routes/heatmap")); // activity heatmap
 app.use("/api/search", require("./routes/search"));
-app.use("/api/user-stats", require("./routes/UserStatisticsGenerator"));
 
-// Test route for CodeChef profile scraping
-app.get("/api/test/codechef/:username", async (req, res) => {
-  try {
-    const { username } = req.params;
+// NOTE: the CodeChef/LeetCode test routes and /api/profiles/verify were removed.
+// Platform fetching now lives in services/platformScraper and is only reachable
+// through the authenticated, rate-limited routes in routes/profiles.js.
 
-    if (!username || username.trim() === "") {
-      return res.status(400).json({ message: "Username is required" });
-    }
-
-    console.log(`TEST: Fetching CodeChef profile for ${username}`);
-    const profileData = await platformAPI.getCodeChefProfile(username);
-
-    res.json({
-      success: true,
-      message: "CodeChef profile data retrieved",
-      data: profileData,
-    });
-  } catch (err) {
-    console.error("CodeChef test error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching CodeChef profile",
-      error: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    });
-  }
-});
-
-// Test route for LeetCode API
-app.get("/api/test/leetcode/:username", async (req, res) => {
-  try {
-    const { username } = req.params;
-
-    if (!username || username.trim() === "") {
-      return res.status(400).json({ message: "Username is required" });
-    }
-
-    console.log(`TEST: Fetching LeetCode profile for ${username}`);
-    const profileData = await platformAPI.getLeetCodeProfile(username);
-
-    res.json({
-      success: true,
-      message: "LeetCode profile data retrieved",
-      data: profileData,
-    });
-  } catch (err) {
-    console.error("LeetCode test error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching LeetCode profile",
-      error: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    });
-  }
-});
-
-// Direct endpoint for profile verification (temporary solution)
-app.post("/api/profiles/verify/:platform", async (req, res) => {
-  try {
-    const { platform } = req.params;
-    const { username } = req.body;
-    const token = req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-      return res
-        .status(401)
-        .json({ message: "No authorization token provided" });
-    }
-
-    if (!username || username.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Username is required",
-      });
-    }
-
-    if (
-      !["codechef", "codeforces", "leetcode", "hackerrank", "github"].includes(
-        platform,
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid platform",
-      });
-    }
-
-    try {
-      // Try to fetch the profile data to verify it exists
-      let profileData;
-
-      // Use a timeout promise to avoid hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Verification timed out")), 15000),
-      );
-
-      // Get platform data with timeout
-      try {
-        // For demo/testing purposes, handle "xyz" as a special valid username
-        // This allows testing without real accounts
-        if (username === "xyz") {
-          // Return mock data for testing
-          profileData = {
-            username: "xyz",
-            problemsSolved: 100,
-            rating: 1500,
-            rank:
-              platform === "leetcode"
-                ? "Candidate Master"
-                : platform === "codeforces"
-                  ? "Expert"
-                  : platform === "codechef"
-                    ? "4 Star"
-                    : platform === "hackerrank"
-                      ? "Gold"
-                      : "Demo User",
-            score: 850,
-          };
-        } else {
-          // Handle real verification with the appropriate method
-          switch (platform) {
-            case "leetcode":
-              profileData = await Promise.race([
-                platformAPI.getLeetCodeProfile(username),
-                timeoutPromise,
-              ]);
-              break;
-            case "codeforces":
-              profileData = await Promise.race([
-                platformAPI.getCodeforcesProfile(username),
-                timeoutPromise,
-              ]);
-              break;
-            case "codechef":
-              profileData = await Promise.race([
-                platformAPI.getCodeChefProfile(username),
-                timeoutPromise,
-              ]);
-              break;
-            case "hackerrank":
-              profileData = await Promise.race([
-                platformAPI.getHackerRankProfile(username),
-                timeoutPromise,
-              ]);
-              break;
-            case "github":
-              profileData = await Promise.race([
-                platformAPI.getGitHubProfile(username),
-                timeoutPromise,
-              ]);
-              break;
-            default:
-              throw new Error("Unsupported platform");
-          }
-        }
-      } catch (fetchError) {
-        console.error(
-          `Error fetching ${platform} profile for ${username}:`,
-          fetchError,
-        );
-        throw new Error(
-          `Could not verify ${platform} profile: ${fetchError.message}`,
-        );
-      }
-
-      if (!profileData) {
-        throw new Error(`Could not find ${platform} profile for "${username}"`);
-      }
-
-      return res.json({
-        success: true,
-        message: `${platform} profile verified successfully`,
-        profile: {
-          platform,
-          username,
-          verified: true,
-          details: profileData,
-        },
-      });
-    } catch (error) {
-      console.error(
-        `Profile verification error for ${platform}/${username}:`,
-        error,
-      );
-      return res.status(400).json({
-        success: false,
-        message: error.message || `Could not verify ${platform} profile`,
-        error: error.message,
-      });
-    }
-  } catch (err) {
-    console.error("Profile verification error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: err.message,
-    });
-  }
-});
-
-// Test route for Google Auth
-app.get("/api/test/google-auth", (req, res) => {
-  res.json({
-    success: true,
-    message: "Google OAuth test route is working",
-    googleAuthRoute: "/api/auth/google",
-    googleCallbackRoute: "/api/auth/google/callback",
-    clientID: process.env.GOOGLE_CLIENT_ID
-      ? `Configured (starts with ${process.env.GOOGLE_CLIENT_ID.substring(
-          0,
-          10,
-        )}...)`
-      : "Not configured",
-  });
-});
-
-// Test route for Google profile image
-app.get("/api/test/google-profile-image", (req, res) => {
-  // Check if there's a user in the session
-  if (!req.user) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-
-  // Return the user's profile picture URL
-  return res.json({
-    name: req.user.name,
-    profilePicture: req.user.profilePicture || "",
-    hasProfilePicture: !!req.user.profilePicture,
-    googleId: req.user.googleId || null,
-  });
-});
-
-// Test route for code execution
-app.post("/api/test/execute-code", async (req, res) => {
-  try {
-    const { language, code, input } = req.body;
-
-    if (!language || !code) {
-      return res.status(400).json({
-        success: false,
-        message: "Language and code are required",
-        required: ["language", "code"],
-      });
-    }
-
-    console.log(`TEST: Executing ${language} code`);
-    const result = await runCode(language, code, input || "");
-
-    res.json({
-      success: result.success,
-      message: "Code execution completed",
-      result: result.result,
-    });
-  } catch (err) {
-    console.error("Code execution test error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error executing code",
-      error: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    });
-  }
-});
-
-// Note: MongoDB connection is handled by connectDB() call above (line 218)
-// The config/db.js module handles connection, error handling, and reconnection logic
-
-// Error handling middleware
+// Error handling middleware. errorCapture hands the error to the request log
+// (printed once, with its request); the handler below only answers the client.
+app.use(logger.errorCapture);
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Something broke!", error: err.message });
+  if (res.headersSent) return next(err);
+  // Body parser errors carry their own status (413 too large, 400 bad JSON).
+  const status = err.status >= 400 && err.status < 500 ? err.status : 500;
+  res.status(status).json({
+    message: status === 500 ? "Something broke!" : err.message,
+    // The detail is only for development; in production it stays in the server log.
+    ...(isProduction || status !== 500 ? {} : { error: err.message }),
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`WebSocket server is ready at ws://localhost:${PORT}`);
+  logger.ready(
+    "SERVER",
+    `port ${PORT} | ${isDev ? "development" : "production"}`,
+  );
 });
+
+// Stop cleanly on SIGINT/SIGTERM (pm2 restart, docker stop, Ctrl+C): stop accepting
+// connections, close sockets and the database, then exit. A timer forces the exit if
+// something hangs, so a restart is never stuck.
+let shuttingDown = false;
+const shutdown = (signal) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info("SERVER", `${signal} received, shutting down`);
+
+  const forceExit = setTimeout(() => {
+    logger.warn("SERVER", "shutdown timed out, forcing exit");
+    process.exit(1);
+  }, 10000);
+  forceExit.unref();
+
+  // io.close() also closes the HTTP server it is attached to.
+  io.close(async () => {
+    try {
+      await mongoose.connection.close();
+    } catch (error) {
+      logger.error("SERVER", error, { note: "closing the database" });
+    }
+    process.exit(0);
+  });
+};
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => shutdown(signal));
+}
+

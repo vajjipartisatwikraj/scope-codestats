@@ -6,6 +6,7 @@
  */
 
 const redis = require("redis");
+const logger = require("../utils/logger");
 
 class RedisClient {
   constructor() {
@@ -34,9 +35,7 @@ class RedisClient {
           connectTimeoutMs: 3000, // 3 second connection timeout
           reconnectStrategy: (retries) => {
             if (retries > 3) {
-              console.log(
-                "[Redis] ⚠️  Max reconnection attempts reached, switching to fallback mode"
-              );
+              logger.warn("REDIS", "max reconnection attempts reached, using in-memory fallback");
               this.fallbackMode = true;
               return false; // Stop reconnecting
             }
@@ -49,36 +48,31 @@ class RedisClient {
       });
 
       // Connection event handlers
-      this.client.on("connect", () => {
-        console.log("[Redis] 🔄 Connecting to Redis...");
-      });
-
       this.client.on("ready", () => {
-        console.log("[Redis] ✅ Redis client connected and ready");
+        logger.ready("REDIS", "connected");
         this.isConnected = true;
         this.fallbackMode = false;
       });
 
+      // While Redis is down the client emits the same error on every retry.
+      // The logger prints a repeated message once per minute.
       this.client.on("error", (err) => {
-        console.error("[Redis] ❌ Redis client error:", err.message);
+        logger.error("REDIS", err);
         this.fallbackMode = true;
       });
 
       this.client.on("end", () => {
-        console.log("[Redis] 🔌 Redis client disconnected");
+        logger.debug("REDIS", "disconnected");
         this.isConnected = false;
         this.fallbackMode = true;
-      });
-
-      this.client.on("reconnecting", () => {
-        console.log("[Redis] 🔄 Reconnecting to Redis...");
       });
 
       // Connect to Redis
       await this.client.connect();
     } catch (error) {
-      console.error("[Redis] ❌ Failed to connect to Redis:", error.message);
-      console.log("[Redis] ⚠️  Running in FALLBACK MODE (in-memory storage)");
+      logger.warn("REDIS", "not reachable, running in-memory fallback", {
+        reason: error.message,
+      });
       this.fallbackMode = true;
       this.isConnected = false;
     }
@@ -113,7 +107,7 @@ class RedisClient {
         });
       }
     } catch (error) {
-      console.error("[Redis] Error setting key:", error.message);
+      logger.error("REDIS", error, { op: "set" });
       // Fallback to in-memory on error
       this.memoryStore.set(key, {
         value,
@@ -144,7 +138,7 @@ class RedisClient {
         return item.value;
       }
     } catch (error) {
-      console.error("[Redis] Error getting key:", error.message);
+      logger.error("REDIS", error, { op: "get" });
       return null;
     }
   }
@@ -161,7 +155,7 @@ class RedisClient {
         this.memoryStore.delete(key);
       }
     } catch (error) {
-      console.error("[Redis] Error deleting key:", error.message);
+      logger.error("REDIS", error, { op: "del" });
     }
   }
 
@@ -184,7 +178,7 @@ class RedisClient {
         return newValue;
       }
     } catch (error) {
-      console.error("[Redis] Error incrementing key:", error.message);
+      logger.error("REDIS", error, { op: "incr" });
       return 1;
     }
   }
@@ -205,7 +199,7 @@ class RedisClient {
         }
       }
     } catch (error) {
-      console.error("[Redis] Error setting expiration:", error.message);
+      logger.error("REDIS", error, { op: "expire" });
     }
   }
 
@@ -230,7 +224,7 @@ class RedisClient {
         return true;
       }
     } catch (error) {
-      console.error("[Redis] Error checking key existence:", error.message);
+      logger.error("REDIS", error, { op: "exists" });
       return false;
     }
   }
@@ -254,10 +248,10 @@ class RedisClient {
     try {
       if (this.client && this.isConnected) {
         await this.client.quit();
-        console.log("[Redis] 👋 Disconnected gracefully");
+        logger.info("REDIS", "disconnected gracefully");
       }
     } catch (error) {
-      console.error("[Redis] Error disconnecting:", error.message);
+      logger.error("REDIS", error, { op: "disconnect" });
     }
   }
 

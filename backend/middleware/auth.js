@@ -2,6 +2,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const logger = require('../utils/logger');
 
 module.exports = async (req, res, next) => {
   // Check for Bearer token in Authorization header
@@ -23,7 +24,7 @@ module.exports = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     
     // Set basic user information from token
     req.user = {
@@ -33,7 +34,6 @@ module.exports = async (req, res, next) => {
     // Get the full user information from database including userType and sessionToken
     const user = await User.findById(decoded.userId).select('userType sessionToken');
     if (!user) {
-      console.log(`User not found for ID: ${decoded.userId}`);
       return res.status(401).json({ 
         message: 'User not found',
         code: 'USER_NOT_FOUND'
@@ -43,7 +43,6 @@ module.exports = async (req, res, next) => {
     // Check if session token matches (single active login enforcement)
     // If sessionToken exists in DB and doesn't match the one in JWT, reject
     if (user.sessionToken && decoded.sessionToken !== user.sessionToken) {
-      console.log(`Session invalidated for user: ${decoded.userId} - User logged in elsewhere`);
       return res.status(401).json({ 
         message: 'Your session has been invalidated. You have logged in from another device.',
         code: 'SESSION_EXPIRED',
@@ -52,11 +51,22 @@ module.exports = async (req, res, next) => {
     }
     
     req.user.userType = user.userType;
-    console.log(`User authenticated: ${decoded.userId}, Type: ${req.user.userType}`);
     
     next();
   } catch (err) {
-    console.error('Token verification error:', err);
+    // A bad or expired token is a normal 401, shown by the request log.
+    // Anything else (for example a database failure) is logged as the error.
+    if (err.name === 'TokenExpiredError') {
+      res.locals.logMessage = 'Token expired';
+    } else if (err.name !== 'JsonWebTokenError' && err.name !== 'NotBeforeError') {
+      logger.captureError(res, err);
+      // A database failure is not a bad token. A 401 here would log everyone out of the app
+      // during a short outage, so answer 503 and let the client retry.
+      return res.status(503).json({
+        message: 'Service temporarily unavailable. Please try again.',
+        code: 'SERVICE_UNAVAILABLE'
+      });
+    }
     res.status(401).json({ 
       message: 'Token is not valid',
       code: 'TOKEN_INVALID'

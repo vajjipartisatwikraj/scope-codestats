@@ -72,7 +72,11 @@ const CodeEditorPanel = (
   // fire, but the first effect clears the flag and the second effect sees false → calls
   // setValue() → cursor resets. A counter correctly tracks the number of pending
   // typing-originated code changes.
-  const typingCountRef = useRef(0);
+  // NOTE: a counter is NOT reliable here because Monaco also fires onChange for
+  // programmatic setValue() calls, which left the counter stuck above zero and made the
+  // next language switch get ignored. Instead we remember the last code the editor
+  // itself produced/received and only sync from the parent when it differs.
+  const lastEditorCodeRef = useRef("");
 
   // Inject Fill in the Blank styles on mount
   useEffect(() => {
@@ -92,13 +96,13 @@ const CodeEditorPanel = (
   useEffect(() => {
     // If this code change was triggered by typing in the editor, skip entirely.
     // The editor already has the correct content — calling setValue() would reset the cursor.
-    if (typingCountRef.current > 0) {
-      typingCountRef.current -= 1;
+    const newCode = code || "";
+    if (newCode === lastEditorCodeRef.current) {
       return;
     }
 
     // External change (language switch, question load, session restore) — sync to editor
-    const newCode = code || "";
+    lastEditorCodeRef.current = newCode;
     let codeToSet = newCode;
     if (fillInTheBlankEnabled && newCode.includes('/*<<START>>*/')) {
       setOriginalCodeWithMarkers(newCode);
@@ -285,6 +289,65 @@ const CodeEditorPanel = (
           true
         );
 
+        // Encrypted copy / cut. Native cut (Ctrl/Cmd+X or context menu) would place
+        // PLAIN text on the clipboard, which the encrypted paste then rejects as
+        // "from outside of the platform". Intercept both events so the clipboard always
+        // holds the encrypted payload, and for cut also remove the selected text.
+        const handleClipboardEvent = (e, isCut) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const model = editor.getModel();
+          if (!model) return;
+
+          let ranges = editor
+            .getSelections()
+            .filter((s) => !s.isEmpty());
+
+          // With no selection, Monaco copies/cuts the whole current line.
+          if (ranges.length === 0) {
+            const lineNumber = editor.getPosition()?.lineNumber;
+            if (!lineNumber) return;
+            const isLastLine = lineNumber === model.getLineCount();
+            ranges = [
+              isLastLine
+                ? new monaco.Range(
+                    Math.max(1, lineNumber - 1),
+                    lineNumber > 1 ? model.getLineMaxColumn(lineNumber - 1) : 1,
+                    lineNumber,
+                    model.getLineMaxColumn(lineNumber)
+                  )
+                : new monaco.Range(lineNumber, 1, lineNumber + 1, 1),
+            ];
+          }
+
+          const text = ranges.map((r) => model.getValueInRange(r)).join("\n");
+          if (!text) return;
+
+          const encrypted = encryptCode(text);
+          if (!encrypted) {
+            toast.error("Failed to encrypt code");
+            return;
+          }
+          const wrapped = wrapEncryptedContent(encrypted);
+
+          if (e.clipboardData) {
+            e.clipboardData.setData("text/plain", wrapped);
+          } else {
+            navigator.clipboard.writeText(wrapped).catch(() => {});
+          }
+
+          if (isCut) {
+            editor.executeEdits(
+              "encrypted-cut",
+              ranges.map((range) => ({ range, text: "", forceMoveMarkers: true }))
+            );
+          }
+        };
+
+        domNode.addEventListener("copy", (e) => handleClipboardEvent(e, false), true);
+        domNode.addEventListener("cut", (e) => handleClipboardEvent(e, true), true);
+
         // Block drop event
         domNode.addEventListener('drop', (e) => {
           e.preventDefault();
@@ -320,7 +383,7 @@ const CodeEditorPanel = (
   // This runs before React schedules any render, so the counter is always incremented
   // before the code-sync useEffect has a chance to fire.
   const handleCodeChange = useCallback((newCode) => {
-    typingCountRef.current += 1; // Increment: one more typing-originated change pending
+    lastEditorCodeRef.current = newCode || "";
     setCurrentCode(newCode);
     if (onChange) {
       onChange(newCode);
@@ -519,7 +582,7 @@ const CodeEditorPanel = (
       // Handle changes
       fullscreenEditor.onDidChangeModelContent((e) => {
         const newValue = fullscreenEditor.getValue();
-        typingCountRef.current += 1; // Increment: typing-originated change
+        lastEditorCodeRef.current = newValue || "";
         setCurrentCode(newValue);
         if (onChange) {
           onChange(newValue);

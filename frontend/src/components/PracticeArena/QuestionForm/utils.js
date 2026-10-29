@@ -126,7 +126,7 @@ export const validateFillInBlankMarkers = (code) => {
 };
 
 /**
- * Direct code execution API calls to backend simpleCodeExecutionService
+ * Code execution calls (the backend runs them on Judge0 through CodeJudge)
  */
 export const codeExecutionApi = {
   /**
@@ -135,7 +135,7 @@ export const codeExecutionApi = {
   runCode: async (language, source_code, input = "") => {
     try {
       const response = await axios.post(
-        `${apiUrl}/courses/run-code`,
+        `${apiUrl}/practice-arena/run-code`,
         { language, source_code, input },
         {
           headers: {
@@ -164,7 +164,7 @@ export const codeExecutionApi = {
   ) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/courses/submit-code-combined`,
+        `${apiUrl}/practice-arena/submit-code-combined`,
         { language, source_code, testCases, options },
         {
           headers: {

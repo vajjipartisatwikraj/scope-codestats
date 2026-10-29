@@ -13,7 +13,7 @@
  * identifiers, object keys and display-safe assets are stored locally.
  */
 
-const sqlJudge = require("./sqlJudgeClient");
+const { sqlJudge } = require("./judges");
 
 const MAX_TESTCASES = 50;
 const MAX_SQL_LENGTH = 200000;

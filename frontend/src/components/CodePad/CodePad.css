@@ -1,0 +1,754 @@
+/*
+ * CodePad
+ *
+ * Plain CSS on the design tokens (--ds-*), like the Sidebar, the Navbar, the student dashboard and
+ * the leaderboard. Nothing here belongs to one theme: ThemeContext publishes the Midnight and
+ * Daylight roles as variables and every colour below is one of them. The rules come from DESIGN.md
+ * and design/screens.md section 9 (code editor surfaces).
+ *
+ *   the page      a 56px header strip, then the work area
+ *   the work area from 900px a full-height split (editor | output above input) with 8px gutters that
+ *                 can be dragged; below 900px the three panes are tabs
+ *   a pane        a flat surface card with a header (title, actions) over a hairline and a body
+ *
+ * One primary button (Run). No inverted tile and no accent tile: the editor is the figure of this
+ * screen. Panes are flat; only the language menu, a floating layer, casts a shadow.
+ */
+
+.cp {
+  --cp-pad: 0px;
+  --cp-offset: 80px; /* the navbar (48px) and the 16px the shell leaves above and below */
+  --cp-gap: var(--ds-canvas); /* the colour behind a focus ring */
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - var(--cp-offset));
+  height: calc(100dvh - var(--cp-offset));
+  min-height: 480px;
+  padding: 8px var(--cp-pad) 12px;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The page-wide transition rule in index.css would make every child ease its colours a second time */
+.cp *,
+.cp *::before,
+.cp *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+@media (min-width: 600px) {
+  .cp {
+    --cp-offset: 96px; /* the navbar (64px) and the 16px the shell leaves above and below */
+  }
+}
+
+@media (min-width: 900px) {
+  .cp {
+    --cp-pad: 24px;
+    --cp-offset: 64px; /* the navbar: from here the shell adds no padding of its own */
+  }
+}
+
+@media (min-width: 1200px) {
+  .cp {
+    --cp-pad: 32px;
+  }
+}
+
+.cp:fullscreen,
+.cp[data-fullscreen='true'] {
+  --cp-offset: 0px;
+
+  height: 100vh;
+  height: 100dvh;
+  padding: 16px 24px;
+  background-color: var(--ds-canvas);
+}
+
+.cp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.cp [hidden] {
+  display: none !important;
+}
+
+/* ---- Header strip ----------------------------------------------------------------------------- */
+
+.cp-header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: 56px;
+  margin: 0 0 8px;
+}
+
+.cp-title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.cp-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Controls --------------------------------------------------------------------------------- */
+
+.cp-icon-button,
+.cp-run,
+.cp-ghost,
+.cp-select__trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.cp-icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.cp-icon-button--large {
+  width: 44px;
+  height: 44px;
+}
+
+.cp-icon-button:hover {
+  background-color: var(--ds-high);
+}
+
+/* A copy that worked: the icon turns into a tick (the word is in the tooltip and the label) */
+.cp-icon-button[data-done='true'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.cp-run {
+  min-width: 104px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.cp-run:hover:not(:disabled) {
+  background-color: var(--ds-accent-hover);
+}
+
+.cp-run:active:not(:disabled) {
+  background-color: var(--ds-accent-press);
+}
+
+/* Running: the button keeps its width and its label, the spinner replaces the icon */
+.cp-run:disabled {
+  background-color: var(--ds-accent-press);
+  color: var(--ds-on-accent);
+  cursor: progress;
+}
+
+.cp-ghost {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  color: var(--ds-accent-text);
+}
+
+.cp-ghost:hover {
+  background-color: var(--ds-accent-soft);
+}
+
+.cp-icon-button:focus-visible,
+.cp-run:focus-visible,
+.cp-ghost:focus-visible,
+.cp-select__trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--cp-gap),
+    0 0 0 4px var(--ds-focus);
+}
+
+.cp-tip {
+  display: inline-flex;
+}
+
+.cp [data-spin='true'] {
+  animation: cp-spin 900ms linear infinite;
+}
+
+@keyframes cp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A finger needs 44px */
+@media (pointer: coarse), (max-width: 899.95px) {
+  .cp-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ---- Language select ----------------------------------------------------------------------------- */
+
+.cp-select {
+  position: relative;
+}
+
+.cp-select__trigger {
+  height: 44px;
+  padding: 0 14px 0 10px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+}
+
+.cp-select__trigger:hover {
+  background-color: var(--ds-high);
+}
+
+.cp-select__trigger[aria-expanded='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.cp-select__caret {
+  transition: transform var(--ds-duration-base) var(--ds-ease);
+}
+
+.cp-select__trigger[aria-expanded='true'] .cp-select__caret {
+  transform: rotate(180deg);
+}
+
+/* The round mark of a language: its short name on a tone of the data series */
+.cp-mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--cp-size, 28px);
+  height: var(--cp-size, 28px);
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--cp-tone, var(--ds-series-slate)) 22%, var(--ds-raised));
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  font-size: calc(var(--cp-size, 28px) * 0.4);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.cp-mark[data-long='true'] {
+  font-size: calc(var(--cp-size, 28px) * 0.32);
+}
+
+/* A floating layer: it stays in the page and fades and drops in, so it can also animate out */
+.cp-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  min-width: 248px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-float-sm);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top left;
+  transition:
+    opacity 140ms var(--ds-ease),
+    transform 180ms var(--ds-ease),
+    visibility 0s linear 180ms;
+}
+
+.cp-menu[data-open='true'] {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 180ms var(--ds-ease),
+    transform 220ms var(--ds-ease);
+}
+
+.cp-menu__option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background-color: transparent;
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.cp-menu__option:hover {
+  background-color: var(--ds-raised);
+}
+
+.cp-menu__option[aria-selected='true'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.cp-menu__option:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-focus);
+}
+
+.cp-menu__ext {
+  color: var(--ds-muted);
+  font-family: var(--ds-font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.cp-menu__option[aria-selected='true'] .cp-menu__ext {
+  color: var(--ds-accent-text);
+}
+
+.cp-menu__check {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+}
+
+/* ---- Work area ---------------------------------------------------------------------------------- */
+
+.cp-body {
+  display: grid;
+  flex: 1;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.cp-body[data-dragging='true'] {
+  user-select: none;
+}
+
+.cp-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+}
+
+.cp-body--tabs {
+  display: block;
+}
+
+.cp-panel {
+  height: 100%;
+  min-height: 0;
+}
+
+.cp-panel > .cp-pane {
+  height: 100%;
+}
+
+.cp-tabs {
+  flex: none;
+  align-self: flex-start;
+  max-width: 100%;
+  margin: 0 0 8px;
+}
+
+.cp-small-screen {
+  display: none;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.cp-small-screen svg {
+  flex: none;
+}
+
+@media (max-width: 599.95px) {
+  .cp-small-screen {
+    display: flex;
+  }
+}
+
+/* ---- Gutters --------------------------------------------------------------------------------------- */
+
+.cp-gutter {
+  --cp-gap: var(--ds-canvas);
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  outline: none;
+}
+
+.cp-gutter[data-axis='x'] {
+  cursor: col-resize;
+}
+
+.cp-gutter[data-axis='y'] {
+  cursor: row-resize;
+}
+
+/* A wider target than the 8px that is drawn */
+.cp-gutter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.cp-gutter[data-axis='x']::before {
+  right: -4px;
+  left: -4px;
+}
+
+.cp-gutter[data-axis='y']::before {
+  top: -4px;
+  bottom: -4px;
+}
+
+.cp-gutter__handle {
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-high);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.cp-gutter[data-axis='x'] .cp-gutter__handle {
+  width: 4px;
+  height: 40px;
+}
+
+.cp-gutter[data-axis='y'] .cp-gutter__handle {
+  width: 40px;
+  height: 4px;
+}
+
+.cp-gutter:hover .cp-gutter__handle {
+  background-color: var(--ds-bar-muted);
+}
+
+.cp-gutter[data-dragging='true'] .cp-gutter__handle,
+.cp-gutter:focus-visible .cp-gutter__handle {
+  background-color: var(--ds-focus);
+}
+
+/* ---- Panes ------------------------------------------------------------------------------------------ */
+
+.cp-pane {
+  --cp-gap: var(--ds-surface);
+
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-surface);
+}
+
+.cp-pane__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.cp-pane__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.cp-pane__title svg {
+  flex: none;
+  color: var(--ds-muted);
+}
+
+.cp-pane__file {
+  overflow: hidden;
+  font-family: var(--ds-font-mono);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-pane__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-pane__note {
+  padding-right: 8px;
+  color: var(--ds-muted);
+  font-family: var(--ds-font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ---- The editor --------------------------------------------------------------------------------------- */
+
+.cp-editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.cp-editor__loading {
+  height: calc(100% - 24px);
+  margin: 12px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+/* ---- The console (output and input) --------------------------------------------------------------------- */
+
+.cp-console {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.cp-output {
+  margin: 0;
+  color: var(--ds-text);
+  font-family: var(--ds-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  tab-size: 4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A sentence about the page itself, apart from what the program printed */
+.cp-notice {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+  font: var(--ds-type-body);
+}
+
+.cp-notice svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.cp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 340px;
+  margin: auto;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.cp-empty__mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 0 12px;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+}
+
+.cp-empty__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.cp-empty__text {
+  margin: 4px 0 12px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+/* The state of a run: a badge with an icon and a word */
+.cp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-pill);
+  font: var(--ds-type-caption);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+.cp-badge[data-tone='info'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.cp-badge[data-tone='success'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.cp-badge[data-tone='danger'] {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.cp-badge[data-tone='warning'] {
+  background-color: var(--ds-warning-soft);
+  color: var(--ds-warning);
+}
+
+/* Running: lines the shape of text, in the raised tone, shimmering at 1.4s */
+.cp-running {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-skeleton {
+  position: relative;
+  display: block;
+  height: 14px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-xs);
+  background-color: var(--ds-raised);
+}
+
+.cp-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--ds-high), transparent);
+  transform: translateX(-100%);
+  animation: cp-shimmer 1.4s var(--ds-ease) infinite;
+}
+
+@keyframes cp-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* The input: a text area in the raised tone */
+.cp-console--field {
+  padding: 12px;
+}
+
+.cp-stdin {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--ds-field-border);
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font-family: var(--ds-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  resize: none;
+}
+
+.cp-stdin::placeholder {
+  color: var(--ds-subtle);
+}
+
+.cp-stdin:focus-visible {
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp [data-spin='true'],
+  .cp-skeleton::after {
+    animation: none;
+  }
+
+  .cp-menu,
+  .cp-menu[data-open='true'] {
+    transform: none;
+    transition: opacity 120ms linear;
+  }
+
+  .cp-select__caret {
+    transition: none;
+  }
+}
