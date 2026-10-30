@@ -9,7 +9,7 @@
  *   a card       flat, 24px, a button with a live thumbnail of the paper, the name and the time; it opens the detail panel
  *   the dialog   a name field and a gallery of template tiles with previews
  *
- * The paper itself (the thumbnails) is styled by templates/resumePaper.css, always Daylight.
+ * The paper itself (the thumbnails) is each resume's own HTML, with its own styles.
  */
 
 /* ---- The grid ---------------------------------------------------------------------------------- */
@@ -309,4 +309,78 @@
   position: absolute;
   right: 12px;
   bottom: 12px;
+}
+
+/* ---- Phones (below 600px) ---------------------------------------------------------------------------------------
+   A resume is a compact row: a small thumbnail beside its name and when it was edited. The template gallery of
+   the new resume dialog is two across.
+   -------------------------------------------------------------------------------------------------------------------- */
+
+@media (max-width: 599.95px) {
+  .rbl-toolbar {
+    gap: 8px;
+  }
+
+  .rbl-search {
+    max-width: none;
+  }
+
+  .rbl-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .rbl-card__thumb {
+    flex: none;
+    width: 88px;
+    padding: 8px;
+    border-radius: var(--ds-radius-md);
+  }
+
+  .rbl-card .rbl-thumb {
+    max-width: 72px;
+  }
+
+  .rbl-card__title {
+    font-size: 1rem;
+  }
+
+  .rbl-detail__preview {
+    padding: 16px;
+  }
+
+  .rbl-detail__preview .rbl-thumb {
+    max-width: 200px;
+  }
+
+  .rbl-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .rbl-tile__face {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .rbl-tile__preview .rbl-thumb {
+    max-width: 104px;
+  }
+
+  .rbl-tile__text {
+    padding-right: 24px;
+  }
+
+  .rbl-tile__check {
+    right: 8px;
+    bottom: 8px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .rbl-empty {
+    padding: 32px 16px;
+  }
 }

@@ -1,12 +1,4 @@
 const mongoose = require("mongoose");
-const {
-  TEMPLATE_IDS,
-  DEFAULT_TEMPLATE_ID,
-} = require("../resumeTemplates");
-const {
-  RESUME_FONT_IDS,
-  DEFAULT_RESUME_FONT_ID,
-} = require("../resumeFonts");
 
 /**
  * ⚠️ CASCADE DELETE NOTICE:
@@ -16,24 +8,14 @@ const {
  */
 
 /**
- * One editable field of a resume. The shape is driven by the template config in
- * backend/resumeTemplates, which also clamps the font size.
+ * A resume is three things and nothing more (see backend/resumeTemplates):
  *
- * `value` is Mixed because a field's type decides its shape:
- *   text / multiline -> String
- *   bullets          -> [String]
- *   repeater         -> [{ ...subFields }]
- * Everything is normalized by normalizeFields() before it reaches the database.
+ *   template   which template it uses: its id and its name
+ *   details    what the student wrote: name, contacts, education, projects ... (plain JSON,
+ *              cleaned by normalizeDetails() before it is saved)
+ *   html       the finished resume as one HTML document, the template filled with the details.
+ *              It is made on the server on every save, so it is always safe to show and to print.
  */
-const resumeFieldSchema = new mongoose.Schema(
-  {
-    key: { type: String, required: true, trim: true },
-    value: { type: mongoose.Schema.Types.Mixed, default: "" },
-    fontSize: { type: Number, default: 13 },
-  },
-  { _id: false },
-);
-
 const resumeSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -49,19 +31,19 @@ const resumeSchema = new mongoose.Schema({
   },
   template: {
     type: String,
-    enum: TEMPLATE_IDS,
-    default: DEFAULT_TEMPLATE_ID,
+    required: true,
   },
-  // Chosen from backend/resumeFonts, which only lists fonts that render
-  // identically in the preview, the PDF and the Word export
-  font: {
+  templateName: {
     type: String,
-    enum: RESUME_FONT_IDS,
-    default: DEFAULT_RESUME_FONT_ID,
+    default: "",
   },
-  fields: {
-    type: [resumeFieldSchema],
-    default: [],
+  details: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  html: {
+    type: String,
+    default: "",
   },
   createdAt: {
     type: Date,

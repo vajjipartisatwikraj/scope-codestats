@@ -1,6 +1,6 @@
 import React, { useId, useState } from "react";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
-import { Button, Dialog, TextField } from "../../ui";
+import { Button, Checkbox, Dialog, TextField } from "../../ui";
 import PaperThumbnail from "./PaperThumbnail";
 
 const NAME_LIMIT = 80;
@@ -12,6 +12,7 @@ const NAME_LIMIT = 80;
 function NewResumeForm({ formId, templates, busy, onCreate }) {
   const [title, setTitle] = useState("");
   const [template, setTemplate] = useState(templates[0]?.id || "");
+  const [useProfile, setUseProfile] = useState(true);
   const [error, setError] = useState("");
   const nameId = useId();
   const legendId = useId();
@@ -27,7 +28,7 @@ function NewResumeForm({ formId, templates, busy, onCreate }) {
       if (field) field.focus();
       return;
     }
-    onCreate(name, template);
+    onCreate(name, template, useProfile);
   };
 
   return (
@@ -46,6 +47,12 @@ function NewResumeForm({ formId, templates, busy, onCreate }) {
           if (error) setError("");
         }}
         autoComplete="off"
+      />
+
+      <Checkbox
+        label="Start with the details from my profile"
+        checked={useProfile}
+        onChange={(event) => setUseProfile(event.target.checked)}
       />
 
       <fieldset className="rbl-new__templates">
@@ -68,7 +75,7 @@ function NewResumeForm({ formId, templates, busy, onCreate }) {
                 />
                 <span className="rbl-tile__face" data-selected={selected ? "true" : "false"}>
                   <span className="rbl-tile__preview">
-                    <PaperThumbnail template={item} />
+                    <PaperThumbnail html={item.previewHtml} />
                   </span>
                   <span className="rbl-tile__text">
                     <span className="rbl-tile__name">{item.name}</span>
@@ -98,7 +105,7 @@ function NewResumeForm({ formId, templates, busy, onCreate }) {
  *   open, onClose
  *   templates   the template catalogue
  *   busy        the resume is being created
- *   onCreate(title, templateId)
+ *   onCreate(title, templateId, useProfile)
  */
 export default function NewResumeDialog({ open, onClose, templates, busy, onCreate }) {
   const formId = useId();
@@ -110,7 +117,7 @@ export default function NewResumeDialog({ open, onClose, templates, busy, onCrea
       busy={busy}
       size="lg"
       title="New resume"
-      description="Name it and choose a template. The editor opens in a new tab."
+      description="Name it and choose a look. You can change the template later without losing anything. The editor opens in a new tab."
       actions={
         <>
           <Button onClick={onClose} disabled={busy}>

@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ConfirmDialog } from '../../ui';
 import { completionOf } from '../completion';
@@ -77,6 +78,18 @@ export default function ProfileManage({ data }) {
   const completion = useMemo(() => completionOf(profile, achievements), [profile, achievements]);
 
   const open = useCallback((section, extra = {}) => setEditor({ section, ...extra }), []);
+
+  // /profile?edit=platforms opens the platforms editor straight away. The dashboard links here
+  // ("Link a platform", "Manage platforms"). The parameter is removed so a refresh does not reopen it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedEditor = searchParams.get('edit');
+  useEffect(() => {
+    if (requestedEditor === 'platforms') {
+      setEditor({ section: 'platforms' });
+      setSearchParams({}, { replace: true });
+    }
+  }, [requestedEditor, setSearchParams]);
+
   const close = useCallback(
     (saved) => {
       const section = editor?.section;

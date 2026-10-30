@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!--
+  @name Minimal
+  @category Two-column rows
+  @description Generous white space with each section's heading in a quiet left column and its content on the right. Understated and easy to scan.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{fullName}}</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap");
+
+:root { --fs: {{fontScale}}; --gs: {{gapScale}}; --ps: {{padScale}}; --ink: #111111; --body: #3f3f46; --muted: #71717a; --line: #e4e4e7; --accent: #111111; }
+
+@page { size: A4; margin: calc(13mm * {{padScale}}) calc(15mm * {{padScale}}); }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html { background: #fff; }
+body { margin: 0; color: var(--body); font-family: "DM Sans", "Segoe UI", Arial, sans-serif; font-size: calc(9.7pt * var(--fs)); line-height: 1.5; }
+@media screen { body { padding: calc(13mm * var(--ps)) calc(15mm * var(--ps)); } }
+
+a { color: var(--ink); text-decoration: none; }
+code { padding: 0 3px; border-radius: 3px; background: #f4f4f5; font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; }
+strong { color: var(--ink); font-weight: 700; }
+p { margin: 0; }
+ul { margin: calc(3px * var(--gs)) 0 0; padding-left: 15px; }
+li { margin: calc(1.5px * var(--gs)) 0; }
+li::marker { color: var(--muted); }
+
+.head { padding-bottom: calc(16px * var(--gs)); }
+.name { margin: 0; color: var(--ink); font-size: calc(30pt * var(--fs)); font-weight: 500; letter-spacing: -1px; line-height: 1.05; }
+.contact { display: flex; flex-wrap: wrap; gap: calc(2px * var(--gs)) calc(18px * var(--gs)); margin-top: calc(11px * var(--gs)); color: var(--muted); font-size: calc(9pt * var(--fs)); }
+.contact a { border-bottom: 1px solid var(--line); }
+
+.sec { display: grid; grid-template-columns: 31mm minmax(0, 1fr); gap: 0 8mm; padding: calc(13px * var(--gs)) 0; border-top: 1px solid var(--line); }
+.sec[data-break] { break-before: page; border-top: 0; }
+.sec h2 { margin: calc(2px * var(--gs)) 0 0; color: var(--muted); font-size: calc(7.8pt * var(--fs)); font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; }
+.body { min-width: 0; }
+
+.entry { margin-top: calc(9px * var(--gs)); break-inside: avoid; }
+.entry:first-child { margin-top: 0; }
+.row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(14px * var(--gs)); }
+.t { color: var(--ink); font-size: calc(10.2pt * var(--fs)); font-weight: 700; }
+.d { color: var(--muted); font-size: calc(8.8pt * var(--fs)); white-space: nowrap; }
+.sub { color: var(--muted); }
+.links a { margin-left: calc(12px * var(--gs)); font-size: calc(8.8pt * var(--fs)); font-weight: 700; border-bottom: 1px solid var(--ink); }
+.skill + .skill { margin-top: calc(3px * var(--gs)); }
+</style>
+</head>
+<body>
+<main class="resume">
+
+  <header class="head">
+    <h1 class="name">{{fullName}}</h1>
+    {{?contact}}<p class="contact">{{#contact}}<span>{{#url}}<a href="{{@url}}">{{text}}</a>{{/url}}{{^url}}{{text}}{{/url}}</span>{{/contact}}</p>{{/contact}}
+  </header>
+
+  {{?overview}}<section class="sec" {{~overview}}>
+    <h2>{{$overview}}</h2>
+    <div class="body"><p>{{overview}}</p></div>
+  </section>{{/overview}}
+
+  {{?experience}}<section class="sec" {{~experience}}>
+    <h2>{{$experience}}</h2>
+    <div class="body">
+      {{#experience}}<div class="entry">
+        <div class="row"><span class="t">{{role}}</span><span class="d">{{dateRange}}</span></div>
+        {{?organization}}<div class="sub">{{organization}}</div>{{/organization}}
+        {{?points}}<ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/points}}
+      </div>{{/experience}}
+    </div>
+  </section>{{/experience}}
+
+  {{?projects}}<section class="sec" {{~projects}}>
+    <h2>{{$projects}}</h2>
+    <div class="body">
+      {{#projects}}<div class="entry">
+        <div class="row">
+          <span class="t">{{title}}</span>
+          <span class="links">{{#liveUrl}}<a href="{{@liveUrl}}">Live</a>{{/liveUrl}}{{#githubUrl}}<a href="{{@githubUrl}}">GitHub</a>{{/githubUrl}}</span>
+        </div>
+        {{?techStack}}<div class="sub">{{techStack}}</div>{{/techStack}}
+        {{?points}}<ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/points}}
+      </div>{{/projects}}
+    </div>
+  </section>{{/projects}}
+
+  {{?education}}<section class="sec" {{~education}}>
+    <h2>{{$education}}</h2>
+    <div class="body">
+      {{#education}}<div class="entry">
+        <div class="row"><span class="t">{{institution}}</span><span class="d">{{dateRange}}</span></div>
+        <div class="row"><span class="sub">{{degree}}</span><span class="d">{{score}}</span></div>
+      </div>{{/education}}
+    </div>
+  </section>{{/education}}
+
+  {{?skills}}<section class="sec" {{~skills}}>
+    <h2>{{$skills}}</h2>
+    <div class="body">
+      {{#skills}}<p class="skill">{{#category}}<strong>{{category}}</strong> &nbsp;{{/category}}{{items}}</p>{{/skills}}
+    </div>
+  </section>{{/skills}}
+
+  {{?certifications}}<section class="sec" {{~certifications}}>
+    <h2>{{$certifications}}</h2>
+    <div class="body">
+      {{#certifications}}<div class="entry">
+        <div class="row">
+          <span><span class="t">{{name}}</span>{{#issuer}}<span class="sub"> · {{issuer}}</span>{{/issuer}}{{#credentialUrl}}<span class="links"><a href="{{@credentialUrl}}">Credential</a></span>{{/credentialUrl}}</span>
+          <span class="d">{{issuedDate}}</span>
+        </div>
+      </div>{{/certifications}}
+    </div>
+  </section>{{/certifications}}
+
+  {{?achievements}}<section class="sec" {{~achievements}}>
+    <h2>{{$achievements}}</h2>
+    <div class="body">
+      {{#achievements}}<div class="entry">
+        <div class="row">
+          <span><span class="t">{{title}}</span>{{#issuer}}<span class="sub"> · {{issuer}}</span>{{/issuer}}{{#link}}<span class="links"><a href="{{@link}}">View</a></span>{{/link}}</span>
+          <span class="d">{{date}}</span>
+        </div>
+        {{?points}}<ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/points}}
+      </div>{{/achievements}}
+    </div>
+  </section>{{/achievements}}
+</main>
+</body>
+</html>

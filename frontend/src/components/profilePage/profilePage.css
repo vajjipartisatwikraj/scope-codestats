@@ -400,26 +400,60 @@
   gap: 4px;
 }
 
+/* A platform: its icon, then the name, the username and how fresh the numbers are, all stacked and
+   left-aligned, then the link out. The sync badge is the small print of the row. */
+.pf-row--platform {
+  gap: 12px;
+}
+
+.pf-row__sync {
+  display: block;
+  margin-top: 6px;
+}
+
+.pf-row__sync .ui-badge {
+  height: 20px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+}
+
+/* A portfolio entry on a phone: the logo beside the text, and what is left of the row (the badge and
+   the buttons) under the text, in the same column, so everything lines up on one left edge */
 @media (max-width: 599.95px) {
   .pf-row--item {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 14px 0;
+  }
+
+  .pf-row--item > :first-child {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .pf-row--item .pf-row__main {
-    flex-basis: calc(100% - 60px);
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .pf-row--item .pf-row__badge {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .pf-row--item .pf-row__actions {
-    margin-left: auto;
+    grid-column: 2;
+    gap: 8px;
+    margin: 0;
+    justify-self: start;
   }
-}
 
-.pf-dot {
-  display: inline-block;
-  flex: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  .pf-portfolio-tabs {
+    margin-bottom: 8px;
+  }
 }
 
 .pf-portfolio-tabs {
@@ -845,6 +879,196 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pf-step {
+    transition: none;
+  }
+}
+
+/* ======================================================================================================
+   Motion
+   Calm and short: things arrive with a fade and a small rise on one soft ease-out, in the order the
+   eye reads the page (header, then the main column, then the side cards). Only opacity and transform
+   move. Everything is switched off for people who ask for less motion (last block of this file).
+   ====================================================================================================== */
+
+@keyframes pf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes pf-band-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.6);
+  }
+}
+
+@keyframes pf-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* The page: the header first, then each card after the one before it */
+.pf-grid > .pf-hero {
+  animation: pf-rise 520ms var(--ds-ease-enter) both;
+}
+
+.pf-main-col > *,
+.pf-aside > * {
+  animation: pf-rise 520ms var(--ds-ease-enter) both;
+  animation-delay: calc(120ms + var(--pf-i, 0) * 70ms);
+}
+
+.pf-main-col > :nth-child(2),
+.pf-aside > :nth-child(2) {
+  --pf-i: 1;
+}
+
+.pf-main-col > :nth-child(3),
+.pf-aside > :nth-child(3) {
+  --pf-i: 2;
+}
+
+.pf-main-col > :nth-child(4),
+.pf-aside > :nth-child(4) {
+  --pf-i: 3;
+}
+
+.pf-main-col > :nth-child(n + 5),
+.pf-aside > :nth-child(n + 5) {
+  --pf-i: 4;
+}
+
+/* The header: the band unrolls from its top edge, the picture pops in, the text and the facts follow */
+.pf-header__band {
+  transform-origin: top;
+  animation: pf-band-in 620ms var(--ds-ease-enter) both;
+}
+
+.pf-ring {
+  animation: pf-pop 520ms var(--ds-ease-enter) 160ms both;
+}
+
+.pf-header__text > *,
+.pf-header__actions {
+  animation: pf-rise 480ms var(--ds-ease-enter) both;
+  animation-delay: calc(260ms + var(--pf-i, 0) * 70ms);
+}
+
+.pf-header__text > :nth-child(2) {
+  --pf-i: 1;
+}
+
+.pf-header__text > :nth-child(3) {
+  --pf-i: 2;
+}
+
+.pf-header__actions {
+  --pf-i: 3;
+}
+
+/* The facts come in one by one */
+.pf-header__facts > li {
+  animation: pf-pop 420ms var(--ds-ease-enter) both;
+  animation-delay: calc(420ms + var(--pf-i, 0) * 60ms);
+}
+
+.pf-header__facts > li:nth-child(2) {
+  --pf-i: 1;
+}
+
+.pf-header__facts > li:nth-child(3) {
+  --pf-i: 2;
+}
+
+.pf-header__facts > li:nth-child(n + 4) {
+  --pf-i: 3;
+}
+
+/* The completion pill rides up from the ring once the ring has begun to fill */
+.pf-ring__pill {
+  animation: pf-pill-in 480ms var(--ds-ease-enter) 420ms both;
+}
+
+@keyframes pf-pill-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 90%);
+  }
+}
+
+/* Next steps: the caret nudges toward where the step leads */
+.pf-step__caret {
+  transition: transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.pf-step:hover .pf-step__caret,
+.pf-step:focus-visible .pf-step__caret {
+  transform: translateX(3px);
+}
+
+/* Skeleton while the profile loads: a slow, quiet pulse instead of a static block */
+.pf-grid[role='status'] .ui-skeleton {
+  animation: ui-pulse 1.4s ease-in-out infinite;
+}
+
+/* ---- The edit drawer (drawn in a portal, so these stand on their own) ---------------------------------- */
+
+@keyframes pf-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Each field arrives a little after the one above it, after the drawer has begun to settle */
+.pf-editor__form > .ui-field,
+.pf-editor__form > .ti,
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > * {
+  animation: pf-field-in 420ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: calc(140ms + var(--pf-i, 0) * 40ms);
+}
+
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > :nth-child(2) { --pf-i: 1; }
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > :nth-child(3) { --pf-i: 2; }
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > :nth-child(4) { --pf-i: 3; }
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > :nth-child(5) { --pf-i: 4; }
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > :nth-child(6) { --pf-i: 5; }
+.pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > :nth-child(n + 7) { --pf-i: 5; }
+
+/* A failed save shows its reason with a short drop-in */
+.pf-editor > .ui-notice {
+  animation: pf-field-in 320ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+/* The "Unsaved changes" note fades in when something changes */
+.pf-editor__status:not(:empty) {
+  animation: pf-field-in 240ms var(--ds-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-grid > .pf-hero,
+  .pf-main-col > *,
+  .pf-aside > *,
+  .pf-header__band,
+  .pf-ring,
+  .pf-ring__pill,
+  .pf-header__text > *,
+  .pf-header__actions,
+  .pf-header__facts > li,
+  .pf-grid[role='status'] .ui-skeleton,
+  .pf-editor__form > .ui-field,
+  .pf-editor__form > .ti,
+  .pf-editor__form > :is(.pf-fields, .pf-sets, .pf-platforms-form, .pf-portfolio) > *,
+  .pf-editor > .ui-notice,
+  .pf-editor__status:not(:empty) {
+    animation: none;
+  }
+
+  .pf-step__caret {
     transition: none;
   }
 }

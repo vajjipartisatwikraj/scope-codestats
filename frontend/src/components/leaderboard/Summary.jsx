@@ -4,108 +4,25 @@ import { FireIcon } from '@phosphor-icons/react/dist/csr/Fire';
 import { FlagCheckeredIcon } from '@phosphor-icons/react/dist/csr/FlagCheckered';
 import { TrendUpIcon } from '@phosphor-icons/react/dist/csr/TrendUp';
 import { Avatar, Consistency, ScoreChange } from './Cells';
-import { formatNumber, formatRank, ordinalParts, pluralize, profilePath, signed } from './leaderboardFormat';
+import { formatNumber, ordinalParts, profilePath, signed } from './leaderboardFormat';
 import { TABS, highlightsOf, valueOf } from './leaderboardModel';
 
 /**
  * The blocks above the board, top to bottom:
  *
- *   YourPlace    a slim spotlight band, the one inverted tile of the screen: the student's rank as
- *                the biggest figure, how far up the board that is (a pill meter), what they have and
- *                the points to the next place. A teacher or an admin has no rank, so the band shows
- *                how many students are ranked instead.
  *   Leaders      "Champions": the first three places of the list as it is filtered, three cards over
  *                a quiet backdrop (the word "Champions" and two large X marks). The winner is in the
  *                middle and raised, second place is on its left and third on its right. Each card has
  *                a soft banner with the place on it, a hexagonal picture, the figure of the list in a
  *                dark pill with the 7-day change, the name, three smaller figures and a link to the
- *                profile. On a phone the cards are rows and the backdrop is dropped.
+ *                profile. On a phone the same three cards stay, smaller, with only the place, the
+ *                picture, the score, the name and the class (the X backdrop is dropped too).
  *   Highlights   "Highlights": four small tiles that name the student who tops a measure
  *                (the biggest climb, the most problems, the best consistency, the most contests).
  *
  * The places stay numerals (an ordinal, "1st") with no medals and no decoration. The layout is in
  * leaderboard.css (.lb-top).
  */
-
-const unitWord = (tab) => (TABS.find((entry) => entry.key === tab).unit === 'pts' ? 'points' : 'problems');
-
-// ---- Your rank ---------------------------------------------------------------------------------------
-
-export function YourPlace({ tab, own, rank, total, rows, onShowMe }) {
-  const info = TABS.find((entry) => entry.key === tab);
-
-  // Staff and students without a row: the size of the board and its top figure
-  if (!own || typeof rank !== 'number') {
-    const top = rows.reduce((best, row) => Math.max(best, valueOf(row, tab)), 0);
-    return (
-      <section className="lb-place" data-slot="me" aria-labelledby="lb-place-title">
-        <div className="lb-place__lead">
-          <h2 className="lb-place__label" id="lb-place-title">
-            Students ranked
-          </h2>
-          <p className="lb-place__figure">{formatNumber(total)}</p>
-          <p className="lb-place__note">
-            {total > 0 ? `The top ${info.valueLabel.toLowerCase()} is ${formatNumber(top)}` : 'The board fills up after the first update'}
-          </p>
-        </div>
-      </section>
-    );
-  }
-
-  const value = valueOf(own, tab);
-  const ahead = total > 1 ? Math.max(0, Math.min(100, Math.round(((total - rank) / total) * 100))) : 0;
-
-  // The next rank up: the nearest figure above this student's
-  let next = null;
-  rows.forEach((row) => {
-    const other = valueOf(row, tab);
-    if (other > value && (next === null || other < next)) next = other;
-  });
-  const gap = next === null ? null : next - value;
-
-  return (
-    <section className="lb-place" data-slot="me" aria-labelledby="lb-place-title">
-      <div className="lb-place__lead">
-        <h2 className="lb-place__label" id="lb-place-title">
-          Your rank
-        </h2>
-        <p className="lb-place__figure">{formatRank(rank)}</p>
-        <p className="lb-place__note">of {pluralize(total, 'student')}</p>
-      </div>
-
-      {total > 1 && (
-        <div className="lb-meter" role="img" aria-label={`You are ahead of ${ahead} percent of the students`}>
-          <span className="lb-meter__caption">Ahead of {ahead}% of the students</span>
-          <span className="lb-meter__track">
-            <span className="lb-meter__fill" style={{ width: `${Math.max(ahead, 2)}%` }} />
-          </span>
-        </div>
-      )}
-
-      <dl className="lb-place__facts">
-        <div>
-          <dt>{info.valueLabel}</dt>
-          <dd>{formatNumber(value)}</dd>
-        </div>
-        <div>
-          <dt>Last 7 days</dt>
-          <dd>
-            <ScoreChange change={own.scoreChange} />
-          </dd>
-        </div>
-      </dl>
-
-      <div className="lb-place__action">
-        <p className="lb-place__next">
-          {gap === null ? 'You lead the board. Keep the streak going.' : `${formatNumber(gap)} ${unitWord(tab)} to move up a place`}
-        </p>
-        <button type="button" className="lb-place__button" onClick={onShowMe}>
-          Show my row
-        </button>
-      </div>
-    </section>
-  );
-}
 
 // ---- Champions ---------------------------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -28,6 +28,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import useWhiteControls from "./hooks/useWhiteControls";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { AcademicYearProvider } from "./contexts/AcademicYearContext";
@@ -40,7 +41,6 @@ import Footer from "./components/Footer";
 import Login from "./components/Login";
 import MultiStepRegister from "./components/MultiStepRegister";
 import StudentDashboard from "./components/StudentDashboard";
-import DeprecatedDashboard from "./components/deprecated/deprecated_Dashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import Leaderboard from "./components/leaderboard";
 import Courses from "./components/courses";
@@ -106,8 +106,6 @@ import CohortStats from "./components/cohort/CohortStats";
 import QuestionReports from "./components/cohort/QuestionReports";
 import TeacherQuestionView from "./components/cohort/TeacherQuestionView";
 
-import MenuIcon from "@mui/icons-material/Menu";
-import IconButton from "@mui/material/IconButton";
 
 // Add custom menu icon component
 const CustomMenuIcon = () => (
@@ -137,6 +135,15 @@ const MainContent = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  useWhiteControls(location.pathname);
+
+  // The page scrolls inside <main> (it has overflow: auto), not the window, so a new page would
+  // otherwise open at the position the previous one was left at. Every new path starts at the top.
+  const mainRef = useRef(null);
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // Handler for sidebar toggle events
@@ -375,34 +382,9 @@ const MainContent = () => {
         <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {/* Mobile Menu Button - Hide when sidebar is open */}
           {shouldShowNavigation && isMobile && !mobileOpen && (
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleMobileMenuToggle}
-              sx={{
-                position: "fixed",
-                top: { xs: 12, sm: 16 },
-                left: { xs: 12, sm: 16 },
-                zIndex: theme.zIndex.drawer + 2,
-                backgroundColor: darkMode
-                  ? "rgba(0, 0, 0, 0.6)"
-                  : "rgba(255, 255, 255, 0.9)",
-                backdropFilter: "blur(8px)",
-                "&:hover": {
-                  backgroundColor: darkMode
-                    ? "rgba(0, 0, 0, 0.8)"
-                    : "rgba(255, 255, 255, 1)",
-                },
-                width: 40,
-                height: 40,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <button type="button" className="ds-menu-button" aria-label="Open navigation menu" onClick={handleMobileMenuToggle}>
               <CustomMenuIcon />
-            </IconButton>
+            </button>
           )}
 
           {/* Navbar */}
@@ -419,6 +401,7 @@ const MainContent = () => {
 
           <Box
             component="main"
+            ref={mainRef}
             sx={{
               flexGrow: 1,
               minHeight: "auto", // Remove height constraints
@@ -551,9 +534,8 @@ const MainContent = () => {
                   path="/dashboard"
                   element={
                     <PrivateRoute>
-                      {/* StudentDashboard is the student home. The old dashboard still
-                          serves ?view=platforms and ?view=progress until they are rebuilt. */}
-                      <ConditionalDashboard legacy={<DeprecatedDashboard />}>
+                      {/* StudentDashboard is the student home. Platforms are linked on /profile. */}
+                      <ConditionalDashboard>
                         <StudentDashboard />
                       </ConditionalDashboard>
                     </PrivateRoute>
@@ -595,9 +577,7 @@ const MainContent = () => {
                   path="/build-resume"
                   element={
                     <PrivateRoute>
-                      <MobileRestrictedRoute pageName="Build my Resume">
-                        <ResumeList />
-                      </MobileRestrictedRoute>
+                      <ResumeList />
                     </PrivateRoute>
                   }
                 />
@@ -605,9 +585,7 @@ const MainContent = () => {
                   path="/build-resume/:id/edit"
                   element={
                     <PrivateRoute>
-                      <MobileRestrictedRoute pageName="Resume Editor">
-                        <ResumeEditor />
-                      </MobileRestrictedRoute>
+                      <ResumeEditor />
                     </PrivateRoute>
                   }
                 />

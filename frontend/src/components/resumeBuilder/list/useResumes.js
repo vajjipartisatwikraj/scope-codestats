@@ -8,16 +8,16 @@ import { apiUrl } from "../../../config/apiConfig";
  * The resumes of the list page and the two things a student does to them. The endpoints, the
  * Authorization header and the toasts are the ones the page has always used:
  *
- *   GET    ${apiUrl}/resumes/templates   the template and font catalogues
- *   GET    ${apiUrl}/resumes             { resumes, limit }
- *   POST   ${apiUrl}/resumes             { title, template }
+ *   GET    ${apiUrl}/resumes/templates   the templates, each with a preview of its look
+ *   GET    ${apiUrl}/resumes             { resumes, limit } (each with its saved HTML)
+ *   POST   ${apiUrl}/resumes             { title, template, useProfile }
  *   DELETE ${apiUrl}/resumes/:id
  *
  * The first load shows skeletons; reloads after a change refresh quietly behind the cards.
  *
- * @returns {{ resumes: Array, templates: Array, fonts: Array, limit: number, loading: boolean,
+ * @returns {{ resumes: Array, templates: Array, limit: number, loading: boolean,
  *   failed: boolean, reload: () => Promise<void>,
- *   create: (title: string, template: string) => Promise<string|null>,
+ *   create: (title: string, template: string, useProfile: boolean) => Promise<string|null>,
  *   remove: (id: string) => Promise<boolean> }}
  */
 export default function useResumes() {
@@ -25,7 +25,6 @@ export default function useResumes() {
   const [state, setState] = useState({
     resumes: [],
     templates: [],
-    fonts: [],
     limit: 5,
     loading: true,
     failed: false,
@@ -52,7 +51,6 @@ export default function useResumes() {
       setState((previous) => ({
         ...previous,
         templates: catalogue.data.templates || [],
-        fonts: catalogue.data.fonts || [],
       }));
       await loadResumes();
       if (alive.current) setState((previous) => ({ ...previous, loading: false }));
@@ -72,9 +70,9 @@ export default function useResumes() {
 
   /** Creates a resume and refreshes the list. Returns the new id, or null when it failed. */
   const create = useCallback(
-    async (title, template) => {
+    async (title, template, useProfile = true) => {
       try {
-        const response = await axios.post(`${apiUrl}/resumes`, { title, template }, authHeader);
+        const response = await axios.post(`${apiUrl}/resumes`, { title, template, useProfile }, authHeader);
         await loadResumes().catch(() => {});
         return response.data._id;
       } catch (err) {

@@ -10,8 +10,8 @@
  *   a section     a flat 24px card that collapses; its entries are tiles inside it
  *   the preview   paper sheets on the canvas, the only things here with a shadow (they float)
  *
- * One primary button (Save). No inverted tile and no accent tile. The paper is styled by
- * templates/resumePaper.css and is always Daylight.
+ * One primary button (Save). No inverted tile and no accent tile. The resume itself is an HTML document
+ * that carries its own styles (backend/resumeTemplates), so nothing here styles the paper.
  */
 
 .rbe {
@@ -102,6 +102,21 @@
 .rbe-title--static {
   display: block;
   pointer-events: none;
+}
+
+/* The row of actions inside the page, under the navbar */
+.rbe-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 0;
+}
+
+@media (min-width: 1200px) {
+  .rbe-actions {
+    padding: 16px 24px 0;
+  }
 }
 
 .rbe-top__end {
@@ -325,7 +340,7 @@
   padding: 0 14px;
   border: 0;
   border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
   font: var(--ds-type-label);
   white-space: nowrap;
@@ -480,69 +495,13 @@
   font: var(--ds-type-body-sm);
 }
 
-/* Text size of a field: a stepper with a number */
-.rbe-size {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.rbe-size__caption {
-  margin-right: 4px;
-  color: var(--ds-muted);
-  font: var(--ds-type-caption);
-  letter-spacing: var(--ds-tracking-caption);
-}
-
-.rbe-size__box {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
-  cursor: text;
-}
-
-.rbe-size__box:focus-within {
-  box-shadow: 0 0 0 2px var(--ds-focus);
-}
-
-.rbe-size__input {
-  width: 28px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background-color: transparent;
-  color: var(--ds-text);
-  font: var(--ds-type-label);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.rbe-size__input:focus-visible {
-  outline: none;
-}
-
-.rbe-size__unit {
-  color: var(--ds-muted);
-  font: var(--ds-type-caption);
-}
-
-@media (pointer: coarse) {
-  .rbe-size__box {
-    height: 44px;
-  }
-}
-
 /* A text area for text the paper formats, with its small toolbar */
 .rbe-rich {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--ds-field-border);
   border-radius: var(--ds-radius-md);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
 }
 
 .rbe-rich:focus-within {
@@ -764,7 +723,7 @@
   padding: 0 16px;
   border: 0;
   border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
   font: var(--ds-type-label);
   cursor: pointer;
@@ -833,28 +792,24 @@
   margin: 0 auto;
 }
 
-.rbe-stack {
-  display: flex;
-  flex-direction: column;
+/* The sheet is the resume's own HTML in a frame the width of an A4 page. It floats on the backdrop. */
+.rbe-sheet {
+  position: relative;
+  background-color: #ffffff;
+  box-shadow: var(--ds-shadow-float-sm);
   transform-origin: top left;
 }
 
-.rbe-sheet {
-  box-shadow: var(--ds-shadow-float-sm);
+.rbe-frame {
+  display: block;
+  border: 0;
+  background-color: #ffffff;
 }
 
-.rbe-measure,
-.rbe-export-source {
-  position: fixed;
-  top: 0;
-  left: -99999px;
-  pointer-events: none;
+/* While a newer preview is on its way the sheet stays, a little quieter */
+.rbe-sheet[data-updating='true'] .rbe-frame {
+  opacity: 0.92;
 }
-
-.rbe-measure {
-  visibility: hidden;
-}
-
 /* ---- Loading and error states ------------------------------------------------------------------------------------ */
 
 .rbe-skel-card {
@@ -914,5 +869,308 @@
   .rbe-export__caret,
   .rbe-section__caret {
     transition: none;
+  }
+}
+
+/* ---- Layout: the global text size, gaps and padding ---------------------------------------------------------- */
+
+.rbe-layout {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 16px;
+}
+
+.rbe-layout__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'text controls'
+    'text state';
+  align-items: center;
+  gap: 2px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--ds-line);
+}
+
+.rbe-layout__row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.rbe-layout__text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rbe-layout__label {
+  font: var(--ds-type-label);
+}
+
+.rbe-layout__hint {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.rbe-layout__controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+}
+
+.rbe-layout__state {
+  grid-area: state;
+  justify-self: end;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* Where the setting stands: nine dots, the middle one is the template as designed */
+.rbe-pips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+}
+
+.rbe-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--ds-high);
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.rbe-pip[data-home='true'] {
+  background-color: var(--ds-subtle);
+}
+
+.rbe-pip[data-here='true'] {
+  background-color: var(--ds-accent);
+  transform: scale(1.6);
+}
+
+@media (max-width: 479.95px) {
+  .rbe-layout__row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'text'
+      'controls'
+      'state';
+  }
+
+  .rbe-layout__controls,
+  .rbe-layout__state {
+    justify-self: start;
+    margin-top: 6px;
+  }
+
+  .rbe-layout__state {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rbe-pip {
+    transition: none;
+  }
+}
+
+/* ---- Phones (below 600px) ---------------------------------------------------------------------------------------
+   One column, a 56px bar, big touch targets, and nothing smaller than 12px. The bar keeps back, the name, the
+   save state as an icon, Export as an icon and Save. Edit and Preview are two full-width tabs under it.
+   -------------------------------------------------------------------------------------------------------------------- */
+
+@media (max-width: 599.95px) {
+  .rbe-top {
+    height: 56px;
+    gap: 4px;
+    padding: 0 8px 0 12px;
+  }
+
+  .rbe-actions {
+    gap: 4px;
+    padding: 8px 8px 0;
+  }
+
+  .rbe-title {
+    height: 40px;
+    padding: 0 8px;
+    font-size: 1rem;
+  }
+
+  .rbe-top__end {
+    gap: 4px;
+  }
+
+  /* The save state is its icon (pencil, spinner or check); the words stay for screen readers */
+  .rbe-status,
+  .rbe-status__inner {
+    gap: 0;
+    margin: 0;
+    font-size: 0;
+  }
+
+  .rbe-status svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* The format list opens as a sheet under the bar, the width of the screen */
+  .rbe-menu {
+    position: fixed;
+    top: 60px;
+    right: 8px;
+    left: 8px;
+    min-width: 0;
+  }
+
+  .rbe-body,
+  .rbe-body[data-wide='false'] {
+    gap: 8px;
+    padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .rbe-tabs .pt {
+    display: flex;
+    width: 100%;
+  }
+
+  .rbe-tabs .pt__item {
+    flex: 1 1 0;
+  }
+
+  .rbe-edit {
+    padding: 0 0 24px;
+    scrollbar-gutter: auto;
+  }
+
+  .rbe-edit__stack {
+    gap: 8px;
+  }
+
+  .rbe-nav {
+    padding-bottom: 8px;
+  }
+
+  .rbe-nav__item {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 0.8125rem;
+  }
+
+  .rbe-section__toggle {
+    gap: 8px;
+    min-height: 56px;
+    padding: 0 12px 0 16px;
+    font-size: 1rem;
+  }
+
+  .rbe-section__hint {
+    font-size: 0.75rem;
+  }
+
+  .rbe-section__panel {
+    gap: 18px;
+    padding: 14px 14px 18px;
+  }
+
+  .rbe-field {
+    gap: 8px;
+  }
+
+  .rbe-field__hint {
+    font-size: 0.75rem;
+  }
+
+  .rbe-entry {
+    padding: 4px 12px 14px;
+  }
+
+  .rbe-entry__head {
+    margin: 0 -4px 4px -8px;
+  }
+
+  .rbe-rich__input {
+    padding: 10px 12px 2px;
+  }
+
+  .rbe-document__grid {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: 12px;
+  }
+
+  .rbe-layout__hint {
+    font-size: 0.75rem;
+  }
+
+  .rbe-preview {
+    gap: 8px;
+  }
+
+  .rbe-preview__scroll {
+    padding: 12px;
+    border-radius: var(--ds-radius-lg);
+  }
+
+  .rbe-preview__limit {
+    display: none;
+  }
+
+  .rbe-error {
+    padding: 28px 16px;
+  }
+}
+
+/* ---- The CodeStats mark and name at the left of the navbar ---------------------------------------------------------------- */
+
+.rbe-brand {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  user-select: none;
+}
+
+.rbe-brand__logo {
+  display: block;
+  width: auto;
+  height: 32px;
+}
+
+.rbe-brand__name {
+  font: var(--ds-type-title);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 599.95px) {
+  .rbe-brand {
+    margin-right: 0;
+  }
+
+  .rbe-brand__logo {
+    height: 28px;
+  }
+
+  /* Smaller buttons: back and Export are 36px circles, Save is a 32px pill */
+  .rbe-actions .ui-icon-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .rbe-actions .rbe-save.ui-button {
+    min-height: 0;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 0.8125rem;
   }
 }

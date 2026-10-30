@@ -17,7 +17,7 @@ import LeaderboardTable from './LeaderboardTable';
 import Pagination from './Pagination';
 import PositionBar from './PositionBar';
 import StudentSheet from './StudentSheet';
-import { Highlights, Leaders, YourPlace } from './Summary';
+import { Highlights, Leaders } from './Summary';
 import exportCsv from './exportCsv';
 import {
   DEFAULT_SORT,
@@ -84,7 +84,6 @@ export default function Leaderboard() {
     () => rows.filter((row) => !row.graduatingYear || getAcademicYear(row.graduatingYear) !== 'Graduated'),
     [rows, getAcademicYear]
   );
-  const overallRanks = useMemo(() => rankMap(eligible, tab), [eligible, tab]);
   const departmentRanks = useMemo(() => departmentRankMap(eligible, tab), [eligible, tab]);
 
   const filtered = useMemo(() => filterRows(eligible, filters, getAcademicYear), [eligible, filters, getAcademicYear]);
@@ -98,7 +97,6 @@ export default function Leaderboard() {
 
   // ---- The signed-in student -----------------------------------------------------------------
   const own = useMemo(() => findOwnRow(eligible, user), [eligible, user]);
-  const ownRank = own ? overallRanks.get(own._id) : null;
   const ownIndex = own ? sorted.findIndex((row) => row._id === own._id) : -1;
   const ownOnPage = ownIndex >= (current - 1) * pageSize && ownIndex < current * pageSize && ownIndex !== -1;
   const ownFilteredRank = ownIndex === -1 ? null : ranks.get(own._id);
@@ -303,13 +301,11 @@ export default function Leaderboard() {
                 <div className="lb-highlight lb-highlight--loading" />
               </div>
             </section>
-            <div className="lb-place lb-place--loading" role="status" aria-label="Loading your rank" />
           </>
         ) : (
           <>
             <Leaders tab={tab} rows={leaders} ranks={ranks} />
             <Highlights rows={filtered} />
-            <YourPlace tab={tab} own={own} rank={ownRank} total={eligible.length} rows={eligible} onShowMe={showMyRow} />
           </>
         )}
       </div>

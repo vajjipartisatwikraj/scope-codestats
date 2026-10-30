@@ -551,7 +551,7 @@
   padding: 0 12px;
   border: 0;
   border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
   font: var(--ds-type-label);
   white-space: nowrap;

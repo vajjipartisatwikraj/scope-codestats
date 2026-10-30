@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { XIcon } from '@phosphor-icons/react/dist/csr/X';
 import { initialsOf } from './format';
 
@@ -60,6 +60,16 @@ const TONES = ['blue', 'teal', 'amber', 'violet', 'coral', 'green', 'sky'];
 /** A picture, or the initials on a tone of the data series when there is none (or it will not load) */
 export function Avatar({ name, src, size = 40, className }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const imageRef = useRef(null);
+
+  // A picture that is already in the cache can finish loading before the listener is attached
+  useEffect(() => {
+    setLoaded(false);
+    const image = imageRef.current;
+    if (image && image.complete && image.naturalWidth > 0) setLoaded(true);
+  }, [src]);
+
   let hash = 0;
   String(name || '').split('').forEach((letter) => {
     hash = (hash * 31 + letter.charCodeAt(0)) % 997;
@@ -69,9 +79,14 @@ export function Avatar({ name, src, size = 40, className }) {
     <span
       className={className ? `ui-avatar ${className}` : 'ui-avatar'}
       style={{ '--ui-size': `${size}px`, '--ui-tone': `var(--ds-series-${tone})` }}
+      data-loading={src && !failed && !loaded ? 'true' : undefined}
       aria-hidden="true"
     >
-      {src && !failed ? <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} /> : <span>{initialsOf(name)}</span>}
+      {src && !failed ? (
+        <img ref={imageRef} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" data-loaded={loaded ? 'true' : 'false'} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
+      ) : (
+        <span>{initialsOf(name)}</span>
+      )}
     </span>
   );
 }

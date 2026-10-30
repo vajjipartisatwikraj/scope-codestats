@@ -1,10 +1,13 @@
 import React, { useLayoutEffect, useRef } from "react";
 import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
+import { KeyReturnIcon } from "@phosphor-icons/react/dist/csr/KeyReturn";
 import { TextBIcon } from "@phosphor-icons/react/dist/csr/TextB";
+import { TextItalicIcon } from "@phosphor-icons/react/dist/csr/TextItalic";
 import { toast } from "react-toastify";
 import { IconButton, formatNumber } from "../../ui";
 
 const BOLD = "**";
+const ITALIC = "*";
 const CODE = "`";
 
 /**
@@ -16,7 +19,10 @@ export function toggleMark(text, start, end, mark) {
   const size = mark.length;
   const selected = text.slice(start, end);
 
-  if (start >= size && text.slice(start - size, start) === mark && text.slice(end, end + size) === mark) {
+  // A lone * is italic; the * of a ** pair around the selection is bold and not this mark
+  const partOfBold = mark === ITALIC && (text[start - 2] === "*" || text[end + 1] === "*");
+
+  if (!partOfBold && start >= size && text.slice(start - size, start) === mark && text.slice(end, end + size) === mark) {
     return {
       text: text.slice(0, start - size) + selected + text.slice(end + size),
       start: start - size,
@@ -24,7 +30,7 @@ export function toggleMark(text, start, end, mark) {
     };
   }
 
-  if (selected.length >= size * 2 && selected.startsWith(mark) && selected.endsWith(mark)) {
+  if (mark !== ITALIC && selected.length >= size * 2 && selected.startsWith(mark) && selected.endsWith(mark)) {
     const inner = selected.slice(size, selected.length - size);
     return { text: text.slice(0, start) + inner + text.slice(end), start, end: start + inner.length };
   }
@@ -37,9 +43,9 @@ export function toggleMark(text, start, end, mark) {
 }
 
 /**
- * A text area for the fields the paper formats: **bold** and `code` (the marks the preview, the
- * PDF and the Word export all read). A small toolbar applies them to the selection, and Ctrl+B or
- * Cmd+B makes the selection bold.
+ * A text area for the fields the resume formats: **bold**, *italic* and `code` (the marks the template
+ * engine reads), and line breaks (Enter, or the break button). A small toolbar applies them to the
+ * selection, Ctrl+B or Cmd+B makes it bold and Ctrl+I or Cmd+I italic.
  *
  *   id, ariaLabel / labelledBy   the accessible name of the text area
  *   describedBy                  the id of the hint under the field
@@ -81,10 +87,30 @@ export default function RichTextArea({
     onChange(result.text);
   };
 
+  // A new line at the caret (or in place of the selection), for text that must break at a chosen spot
+  const insertBreak = () => {
+    const area = ref.current;
+    if (!area) return;
+    const start = area.selectionStart;
+    const end = area.selectionEnd;
+    if (maxLength && value.length - (end - start) + 1 > maxLength) {
+      toast.warn("This text is at its length limit, so the line break could not be added");
+      return;
+    }
+    selection.current = [start + 1, start + 1];
+    onChange(`${value.slice(0, start)}\n${value.slice(end)}`);
+  };
+
   const onKeyDown = (event) => {
-    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "b") {
-      event.preventDefault();
-      apply(BOLD);
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+      const key = event.key.toLowerCase();
+      if (key === "b") {
+        event.preventDefault();
+        apply(BOLD);
+      } else if (key === "i") {
+        event.preventDefault();
+        apply(ITALIC);
+      }
     }
   };
 
@@ -120,6 +146,16 @@ export default function RichTextArea({
             <TextBIcon size={18} weight="bold" aria-hidden="true" />
           </IconButton>
           <IconButton
+            label="Italic"
+            size="sm"
+            tone="plain"
+            aria-keyshortcuts="Control+I Meta+I"
+            onMouseDown={keepSelection}
+            onClick={() => apply(ITALIC)}
+          >
+            <TextItalicIcon size={18} weight="regular" aria-hidden="true" />
+          </IconButton>
+          <IconButton
             label="Code"
             size="sm"
             tone="plain"
@@ -127,6 +163,9 @@ export default function RichTextArea({
             onClick={() => apply(CODE)}
           >
             <CodeIcon size={18} weight="regular" aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Line break" size="sm" tone="plain" onMouseDown={keepSelection} onClick={insertBreak}>
+            <KeyReturnIcon size={18} weight="regular" aria-hidden="true" />
           </IconButton>
         </div>
         {maxLength ? (

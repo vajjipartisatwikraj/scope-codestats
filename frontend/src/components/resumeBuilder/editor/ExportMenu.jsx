@@ -1,25 +1,26 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { CaretDownIcon } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { DownloadSimpleIcon } from "@phosphor-icons/react/dist/csr/DownloadSimple";
-import { FileDocIcon } from "@phosphor-icons/react/dist/csr/FileDoc";
+import { FileHtmlIcon } from "@phosphor-icons/react/dist/csr/FileHtml";
 import { FilePdfIcon } from "@phosphor-icons/react/dist/csr/FilePdf";
 import useDismiss from "../../Navbar/useDismiss";
-import { EXPORT_FORMATS } from "../../../utils/resumeExport";
-import { Button } from "../../ui";
+import { Button, IconButton } from "../../ui";
+import { EXPORT_FORMATS } from "./exportResume";
 
-const FORMAT_ICONS = { pdf: FilePdfIcon, word: FileDocIcon };
+const FORMAT_ICONS = { pdf: FilePdfIcon, html: FileHtmlIcon };
 
 /**
- * The Export control: a button that opens a small menu of formats (PDF, Word), each with its hint.
+ * The Export control: a button that opens a small menu of formats (PDF, HTML file), each with its hint.
  * It behaves like the language select of CodePad: a panel that stays mounted and fades in through
  * data-open, closes on an outside press or Escape (focus returns to the button), and the arrow
  * keys, Home and End move between the items.
  *
  *   exporting   an export is running: the button shows its spinner and cannot be pressed
  *   disabled    nothing to export yet
+ *   compact     a phone: the trigger is an icon button
  *   onExport(formatId)
  */
-export default function ExportMenu({ exporting, disabled, onExport }) {
+export default function ExportMenu({ exporting, disabled, compact = false, onExport }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -67,20 +68,35 @@ export default function ExportMenu({ exporting, disabled, onExport }) {
 
   return (
     <div className="rbe-export" ref={rootRef}>
-      <Button
-        ref={triggerRef}
-        loading={exporting}
-        disabled={disabled}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={menuId}
-        startIcon={<DownloadSimpleIcon size={18} weight="regular" aria-hidden="true" />}
-        endIcon={<CaretDownIcon className="rbe-export__caret" size={16} weight="regular" aria-hidden="true" />}
-        onClick={() => setOpen((current) => !current)}
-        onKeyDown={onTriggerKeyDown}
-      >
-        {exporting ? "Exporting" : "Export"}
-      </Button>
+      {compact ? (
+        <IconButton
+          ref={triggerRef}
+          label={exporting ? "Exporting" : "Export"}
+          disabled={disabled || exporting}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
+          onClick={() => setOpen((current) => !current)}
+          onKeyDown={onTriggerKeyDown}
+        >
+          <DownloadSimpleIcon size={20} weight="regular" aria-hidden="true" />
+        </IconButton>
+      ) : (
+        <Button
+          ref={triggerRef}
+          loading={exporting}
+          disabled={disabled}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
+          startIcon={<DownloadSimpleIcon size={18} weight="regular" aria-hidden="true" />}
+          endIcon={<CaretDownIcon className="rbe-export__caret" size={16} weight="regular" aria-hidden="true" />}
+          onClick={() => setOpen((current) => !current)}
+          onKeyDown={onTriggerKeyDown}
+        >
+          {exporting ? "Exporting" : "Export"}
+        </Button>
+      )}
 
       <ul
         ref={listRef}

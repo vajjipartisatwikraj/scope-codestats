@@ -7,16 +7,15 @@ import { editorPath } from "./openEditor";
 
 /**
  * The detail panel of a resume (the app's DetailPanel from ../../ui): a larger preview of the first
- * page, the template, the font, when it was created and last edited, and the two actions: open the
+ * page, the template, when it was created and last edited, and the two actions: open the
  * editor (in a new tab, as always) and delete.
  *
  *   resume       the selected one, or null while the panel is closed
- *   template     its template definition
- *   font         its font definition ({ name, category, cssFamily })
+ *   template     its template (name and category) from the catalogue, when it is still offered
  *   onClose
  *   onDelete     asks to delete this resume (the page confirms)
  */
-export default function ResumeDetails({ resume, template, font, onClose, onDelete }) {
+export default function ResumeDetails({ resume, template, onClose, onDelete }) {
   return (
     <DetailPanel
       open={Boolean(resume)}
@@ -25,15 +24,14 @@ export default function ResumeDetails({ resume, template, font, onClose, onDelet
       media={
         resume ? (
           <div className="rbl-detail__preview">
-            <PaperThumbnail template={template} storedFields={resume.fields} fontFamily={font?.cssFamily} />
+            <PaperThumbnail html={resume.html} />
           </div>
         ) : null
       }
       facts={
         resume
           ? [
-              { label: "Template", value: template?.name || resume.template },
-              { label: "Font", value: font ? font.name : null },
+              { label: "Template", value: template?.name || resume.templateName || resume.template },
               { label: "Last edited", value: resume.updatedAt ? formatDateTime(resume.updatedAt) : null },
               { label: "Created", value: resume.createdAt ? formatDateTime(resume.createdAt) : null },
             ]

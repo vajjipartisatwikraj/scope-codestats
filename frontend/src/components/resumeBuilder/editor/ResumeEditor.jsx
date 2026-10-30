@@ -1,16 +1,17 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useMediaQuery from "../../../hooks/useMediaQuery";
 import { ConfirmDialog, PillTabs } from "../../ui";
-import { getTemplateComponent, pageGeometry } from "../templates";
+import ActionBar, { TITLE_ID } from "./ActionBar";
 import EditPane from "./EditPane";
 import { EditorError, EditorSkeleton } from "./EditorStates";
 import PreviewPane from "./PreviewPane";
-import TopBar, { TITLE_ID } from "./TopBar";
+import TopBar from "./TopBar";
 import useResumeEditor from "./useResumeEditor";
 import "./resumeEditor.css";
 
 const LIST_PATH = "/build-resume";
+const DASHBOARD_PATH = "/dashboard";
 const TAB_ITEMS = [
   { key: "edit", label: "Edit" },
   { key: "preview", label: "Preview" },
@@ -29,17 +30,16 @@ export default function ResumeEditor() {
   const navigate = useNavigate();
   const wide = useMediaQuery("(min-width: 1200px)");
   const editor = useResumeEditor(id);
-  const { phase, error, template, font, draft, dirty } = editor;
+  const { phase, error, template, draft, dirty } = editor;
 
   const [tab, setTab] = useState("edit");
-  const [leaving, setLeaving] = useState(false);
-
-  // An unclipped copy of the template at the printable width, kept off-screen as the Word export's
-  // source so the output flows across pages instead of inheriting the preview's page windows.
-  const exportRef = useRef(null);
+  // Where the student is heading while the "leave without saving?" question is open (null = closed)
+  const [leaveTo, setLeaveTo] = useState(null);
 
   const goToList = useCallback(() => navigate(LIST_PATH), [navigate]);
-  const goBack = () => (dirty ? setLeaving(true) : goToList());
+  const leaveFor = (path) => (dirty ? setLeaveTo(path) : navigate(path));
+  const goBack = () => leaveFor(LIST_PATH);
+  const goToDashboard = () => leaveFor(DASHBOARD_PATH);
 
   const { save } = editor;
   const onSave = useCallback(async () => {
@@ -53,8 +53,6 @@ export default function ResumeEditor() {
 
   const ready = phase === "ready" && Boolean(template);
   const unavailable = phase === "ready" && !template;
-  const geometry = template ? pageGeometry(template.page) : null;
-  const Body = template ? getTemplateComponent(template.id) : null;
 
   let body = null;
   if (phase === "loading") {
@@ -86,14 +84,15 @@ export default function ResumeEditor() {
           <EditPane
             templates={editor.templates}
             template={template}
-            fonts={editor.fonts}
-            fontId={draft.font}
-            fields={draft.fields}
+            details={draft.details}
             importing={editor.importing}
             onTemplate={editor.changeTemplate}
-            onFont={editor.setFont}
             onField={editor.changeField}
+            onSectionTitle={editor.changeSectionTitle}
+            onBreak={editor.changeBreak}
             onImport={editor.importFromProfile}
+            onLayout={editor.changeLayout}
+            onLayoutReset={editor.resetLayout}
           />
         </div>
 
@@ -104,14 +103,7 @@ export default function ResumeEditor() {
           aria-labelledby={wide ? undefined : "rbe-tab-preview"}
           hidden={!wide && tab !== "preview"}
         >
-          <PreviewPane template={template} fields={draft.fields} fontFamily={font?.cssFamily} />
-        </div>
-
-        {/* Off-screen export source: full content at the printable width */}
-        <div className="rbe-export-source" aria-hidden="true" inert="" style={{ width: geometry.contentWidth }}>
-          <div ref={exportRef}>
-            <Body template={template} fields={draft.fields} fontFamily={font?.cssFamily} />
-          </div>
+          <PreviewPane html={editor.html} updating={editor.previewing} />
         </div>
       </div>
     );
@@ -121,31 +113,34 @@ export default function ResumeEditor() {
     <div className="rbe">
       <h1 className="ui-sr">Resume editor</h1>
 
-      <TopBar
-        title={draft.title}
-        onTitle={editor.setTitle}
-        titleInvalid={ready && !draft.title.trim()}
-        onBack={goBack}
-        ready={ready}
-        dirty={dirty}
-        saving={editor.saving}
-        updatedAt={editor.updatedAt}
-        announcement={editor.announcement}
-        exporting={editor.exporting}
-        onExport={(format) => editor.exportAs(format, exportRef.current)}
-        onSave={onSave}
-      />
+      <TopBar onDashboard={goToDashboard} />
+
+      {ready ? (
+        <ActionBar
+          title={draft.title}
+          onTitle={editor.setTitle}
+          titleInvalid={!draft.title.trim()}
+          onBack={goBack}
+          dirty={dirty}
+          saving={editor.saving}
+          updatedAt={editor.updatedAt}
+          announcement={editor.announcement}
+          exporting={editor.exporting}
+          onExport={editor.exportAs}
+          onSave={onSave}
+        />
+      ) : null}
 
       {body}
 
       <ConfirmDialog
-        open={leaving}
-        onClose={() => setLeaving(false)}
+        open={leaveTo !== null}
+        onClose={() => setLeaveTo(null)}
         title="Leave without saving?"
         description="You have changes that are not saved. If you leave now, they will be lost."
         confirmLabel="Leave without saving"
         danger
-        onConfirm={goToList}
+        onConfirm={() => navigate(leaveTo)}
       />
     </div>
   );

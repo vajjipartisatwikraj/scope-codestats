@@ -73,8 +73,8 @@ export const NotificationProvider = ({ children }) => {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(notification.title, {
           body: notification.message,
-          icon: "/codestats.png",
-          badge: "/codestats.png",
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
         });
       }
     });

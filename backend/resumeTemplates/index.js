@@ -1,119 +1,83 @@
 /**
- * Resume template registry.
+ * Resume templates.
  *
- * Add a template module here and it becomes available to the API, the model's
- * enum and the editor UI. Templates are plain config objects - see classic.js
- * for the supported field types.
+ * A template is ONE .html file in this folder: the structure of the resume, its styles and its
+ * {{placeholders}} together (see engine.js for the placeholders). There is no other code to write.
+ *
+ * To add a template:
+ *   1. Copy classic.html to a new file, for example compact.html, and change the markup and CSS.
+ *   2. Describe it in the comment at the top of the file (@name, @category, @description).
+ *   3. Add its file name (without .html) to ORDER below.
+ *
+ * The editor builds its inputs from the placeholders the file uses, so a section or a field that
+ * the template leaves out simply has no input.
  */
-const classic = require("./classic");
+const fs = require("fs");
+const path = require("path");
+const { render, describe, normalizeDetails } = require("./engine");
+const SAMPLE_DETAILS = require("./sample");
 
-const templates = [classic];
+// The order of the gallery. The first one is the default.
+const ORDER = ["classic", "modern", "executive", "minimal", "banner"];
 
-const templatesById = new Map(templates.map((template) => [template.id, template]));
+/** @name, @category and @description from the comment at the top of a template */
+function readMeta(source, id) {
+  const comment = /<!--([\s\S]*?)-->/.exec(source);
+  const meta = {};
+  if (comment) {
+    comment[1].replace(/@(\w+)[ \t]+([^\n]+)/g, (_all, key, value) => {
+      meta[key] = value.trim();
+      return "";
+    });
+  }
+  return {
+    id,
+    name: meta.name || id,
+    category: meta.category || "Resume template",
+    description: meta.description || "",
+  };
+}
+
+const templates = ORDER.map((id) => {
+  const source = fs.readFileSync(path.join(__dirname, `${id}.html`), "utf8");
+  return { ...readMeta(source, id), source, sections: describe(source) };
+});
+
+const byId = new Map(templates.map((template) => [template.id, template]));
 
 const TEMPLATE_IDS = templates.map((template) => template.id);
+const DEFAULT_TEMPLATE_ID = ORDER[0];
 
-const DEFAULT_TEMPLATE_ID = classic.id;
+const getTemplate = (templateId) => byId.get(templateId) || byId.get(DEFAULT_TEMPLATE_ID);
 
-const getTemplate = (templateId) =>
-  templatesById.get(templateId) || templatesById.get(DEFAULT_TEMPLATE_ID);
-
-const DEFAULT_MAX_LENGTH = 600;
-const DEFAULT_MAX_ITEMS = 10;
-const DEFAULT_MIN_FONT_SIZE = 6;
-const DEFAULT_MAX_FONT_SIZE = 48;
-const FALLBACK_FONT_SIZE = 13;
-
-const toText = (value, definition) =>
-  String(value ?? definition.defaultValue ?? "").slice(
-    0,
-    definition.maxLength || DEFAULT_MAX_LENGTH,
-  );
-
-const toBullets = (value, definition) =>
-  (Array.isArray(value) ? value : [])
-    .slice(0, definition.maxItems || DEFAULT_MAX_ITEMS)
-    .map((point) => toText(point, definition));
-
-// One repeater entry, keyed by its subField definitions so unknown keys are dropped
-const toItem = (subFields, item) =>
-  subFields.reduce((entry, subField) => {
-    const raw = item?.[subField.key];
-    entry[subField.key] =
-      subField.type === "bullets" ? toBullets(raw, subField) : toText(raw, subField);
-    return entry;
-  }, {});
-
-const blankItem = (subFields) => toItem(subFields, {});
-
-/** Value a field starts with when the client sends nothing for it. */
-const defaultValue = (definition) => {
-  if (definition.type === "repeater") {
-    return Array.from({ length: definition.defaultItems || 0 }, () =>
-      blankItem(definition.subFields),
-    );
-  }
-  if (definition.type === "bullets") return [];
-  return definition.defaultValue ?? "";
-};
-
-const toValue = (definition, value) => {
-  if (value === undefined) return defaultValue(definition);
-
-  switch (definition.type) {
-    case "repeater":
-      return (Array.isArray(value) ? value : [])
-        .slice(0, definition.maxItems || DEFAULT_MAX_ITEMS)
-        .map((item) => toItem(definition.subFields, item));
-    case "bullets":
-      return toBullets(value, definition);
-    default:
-      return toText(value, definition);
-  }
-};
+/** The finished HTML document of a resume: the template filled with the (cleaned) details */
+const renderResume = (templateId, details) => render(getTemplate(templateId).source, normalizeDetails(details));
 
 /**
- * Rebuilds a resume's fields from the template definition, so the stored shape
- * always matches the template: unknown keys are dropped, missing keys get their
- * defaults, values are coerced to the field's type, and font sizes are clamped.
+ * What the editor and the gallery need: for each template its name, the sections and fields it
+ * uses, and a preview drawn with made-up details. The source itself is not sent.
  */
-const normalizeFields = (templateId, incomingFields) => {
-  const template = getTemplate(templateId);
-  // Fall back rather than trust the template: an undefined bound turns the
-  // clamp below into NaN, which mongoose then rejects on save.
-  const minFontSize = template.typography.minFontSize ?? DEFAULT_MIN_FONT_SIZE;
-  const maxFontSize = template.typography.maxFontSize ?? DEFAULT_MAX_FONT_SIZE;
-
-  const byKey = new Map(
-    (Array.isArray(incomingFields) ? incomingFields : [])
-      .filter((field) => field && typeof field === "object")
-      .map((field) => [field.key, field]),
-  );
-
-  return template.fields.map((definition) => {
-    const incoming = byKey.get(definition.key) || {};
-
-    const rawFontSize = Number(incoming.fontSize);
-    const fallback = Number.isFinite(definition.defaultFontSize)
-      ? definition.defaultFontSize
-      : FALLBACK_FONT_SIZE;
-    const fontSize =
-      Number.isFinite(rawFontSize) && rawFontSize > 0
-        ? Math.min(maxFontSize, Math.max(minFontSize, Math.round(rawFontSize)))
-        : fallback;
-
-    return {
-      key: definition.key,
-      value: toValue(definition, incoming.value),
-      fontSize,
-    };
-  });
+let catalogueCache = null;
+const catalogue = () => {
+  if (!catalogueCache) {
+    const sample = normalizeDetails(SAMPLE_DETAILS);
+    catalogueCache = templates.map(({ id, name, category, description, sections, source }) => ({
+      id,
+      name,
+      category,
+      description,
+      sections,
+      previewHtml: render(source, sample),
+    }));
+  }
+  return catalogueCache;
 };
 
 module.exports = {
-  templates,
   TEMPLATE_IDS,
   DEFAULT_TEMPLATE_ID,
   getTemplate,
-  normalizeFields,
+  renderResume,
+  catalogue,
+  normalizeDetails,
 };

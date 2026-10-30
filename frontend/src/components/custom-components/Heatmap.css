@@ -39,8 +39,44 @@
 .hm__scroll {
   overflow-x: auto;
   overflow-y: hidden;
+  /* The scrollbar is there when it is needed and invisible until the pointer is over the grid */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
 }
 
+.hm__scroll:hover,
+.hm__scroll:focus-within {
+  scrollbar-color: var(--ds-subtle) transparent;
+}
+
+/* When the grid scrolls sideways it has its own strip under the month names for the scrollbar.
+   Phone and macOS scrollbars are drawn over the content, and without this strip they would sit on the months. */
+.hm:not([data-fill='true']) .hm__scroll {
+  padding-bottom: 12px;
+}
+
+/* Browsers that style the bar with ::-webkit-scrollbar instead of the standard properties above */
+.hm__scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.hm__scroll::-webkit-scrollbar-button {
+  display: none;
+}
+
+.hm__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hm__scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background-color: transparent;
+}
+
+.hm__scroll:hover::-webkit-scrollbar-thumb,
+.hm__scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--ds-subtle);
+}
 .hm__inner {
   min-width: calc(var(--hm-weeks) * var(--hm-min-cell) + (var(--hm-weeks) - 1) * var(--hm-gap));
 }

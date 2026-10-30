@@ -147,7 +147,7 @@
   padding: 0;
   border: 0;
   border-radius: var(--ds-radius-md);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-muted);
   font: var(--ds-type-label);
   font-variant-numeric: tabular-nums;

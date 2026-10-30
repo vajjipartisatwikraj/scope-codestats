@@ -1,57 +1,62 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Switch, TextField } from "../../ui";
 import DocumentCard from "./DocumentCard";
 import FieldEditor from "./FieldEditor";
+import LayoutCard from "./LayoutCard";
 import SectionCard, { sectionDomId } from "./SectionCard";
 import SectionNav from "./SectionNav";
-import { groupSections, summarize } from "./sections";
+import { summarize } from "./resumeDetails";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * The editing side of the editor: the document settings, a section navigator and one collapsible
- * card per section. Everything is generated from the template definition, so a field added in
- * backend/resumeTemplates appears here with no change.
+ * card per section. Everything is generated from what the template uses, so a field a template adds
+ * appears here with no change. A card holds the inputs of its fields and, when the template allows it,
+ * the section's heading and a switch to start the section on a new page.
  *
- *   templates, template, fonts, fontId   the catalogues and the current choices
- *   fields                               [{ key, value, fontSize }]
+ *   templates, template   the catalogue and the chosen template
+ *   details               the resume's details (a value for every field, plus titles and breaks)
  *   importing
- *   onTemplate(id), onFont(id), onField(key, patch), onImport()
+ *   onTemplate(id), onField(key, value), onSectionTitle(key, text), onBreak(key, on), onImport()
+ *   onLayout(key, change), onLayoutReset()   the global text size, gaps and padding
  */
 export default function EditPane({
   templates,
   template,
-  fonts,
-  fontId,
-  fields,
+  details,
   importing,
   onTemplate,
-  onFont,
   onField,
+  onSectionTitle,
+  onBreak,
   onImport,
+  onLayout,
+  onLayoutReset,
 }) {
   const scrollRef = useRef(null);
-  const sections = useMemo(() => groupSections(template), [template]);
+  const sections = template.sections;
   // Only the first section is open at the start; the rest open when asked
   const [open, setOpen] = useState({});
   const [current, setCurrent] = useState("document");
 
-  const isOpen = (section, index) => open[section.id] ?? index === 0;
+  const isOpen = (section, index) => open[section.key] ?? index === 0;
   const allOpen = sections.every(isOpen);
 
   const navItems = useMemo(
-    () => [{ id: "document", title: "Document" }, ...sections.map(({ id, title }) => ({ id, title }))],
+    () => [{ id: "document", title: "Document" }, { id: "layout", title: "Layout" }, ...sections.map(({ key, title }) => ({ id: key, title }))],
     [sections],
   );
 
   const toggle = (section, index) =>
-    setOpen((previous) => ({ ...previous, [section.id]: !isOpen(section, index) }));
+    setOpen((previous) => ({ ...previous, [section.key]: !isOpen(section, index) }));
 
   const toggleAll = () =>
-    setOpen(Object.fromEntries(sections.map((section) => [section.id, !allOpen])));
+    setOpen(Object.fromEntries(sections.map((section) => [section.key, !allOpen])));
 
   const goTo = (id) => {
-    if (id !== "document") setOpen((previous) => ({ ...previous, [id]: true }));
+    if (id !== "document" && id !== "layout") setOpen((previous) => ({ ...previous, [id]: true }));
     window.requestAnimationFrame(() => {
       const card = document.getElementById(sectionDomId(id));
       if (!card) return;
@@ -88,50 +93,62 @@ export default function EditPane({
 
   return (
     <div className="rbe-edit" ref={scrollRef}>
-      <SectionNav
-        sections={navItems}
-        current={current}
-        allOpen={allOpen}
-        onGo={goTo}
-        onToggleAll={toggleAll}
-      />
+      <SectionNav sections={navItems} current={current} allOpen={allOpen} onGo={goTo} onToggleAll={toggleAll} />
 
       <div className="rbe-edit__stack">
         <DocumentCard
           templates={templates}
           template={template}
-          fonts={fonts}
-          fontId={fontId}
           importing={importing}
           onTemplate={onTemplate}
-          onFont={onFont}
           onImport={onImport}
         />
 
-        {sections.map((section, index) => (
-          <SectionCard
-            key={section.id}
-            section={section}
-            summary={summarize(section, fields)}
-            open={isOpen(section, index)}
-            onToggle={() => toggle(section, index)}
-          >
-            {section.definitions.map((definition) => {
-              const field = fields.find((item) => item.key === definition.key);
-              if (!field) return null;
-              return (
+        <LayoutCard layout={details.layout} onChange={onLayout} onReset={onLayoutReset} />
+
+        {sections.map((section, index) => {
+          const title = (details.titles && details.titles[section.key]) || section.title;
+          return (
+            <SectionCard
+              key={section.key}
+              section={{ id: section.key, title }}
+              summary={summarize(section, details)}
+              open={isOpen(section, index)}
+              onToggle={() => toggle(section, index)}
+            >
+              {section.titleEditable ? (
+                <TextField
+                  label="Heading on the resume"
+                  hint={`Leave it empty to use “${section.title}”.`}
+                  placeholder={section.title}
+                  value={(details.titles && details.titles[section.key]) || ""}
+                  maxLength={60}
+                  autoComplete="off"
+                  onChange={(event) => onSectionTitle(section.key, event.target.value)}
+                />
+              ) : null}
+
+              {section.fields.map((definition) => (
                 <FieldEditor
                   key={definition.key}
-                  template={template}
                   definition={definition}
-                  field={field}
-                  showLabel={section.definitions.length > 1}
-                  onChange={(patch) => onField(definition.key, patch)}
+                  value={details[definition.key]}
+                  showLabel={section.fields.length > 1}
+                  onChange={(value) => onField(definition.key, value)}
                 />
-              );
-            })}
-          </SectionCard>
-        ))}
+              ))}
+
+              {section.breakable ? (
+                <Switch
+                  label="Start this section on a new page"
+                  description="Adds a page break before the section when the resume is printed or saved as PDF."
+                  checked={Boolean(details.breaks && details.breaks[section.key])}
+                  onChange={(checked) => onBreak(section.key, checked)}
+                />
+              ) : null}
+            </SectionCard>
+          );
+        })}
       </div>
     </div>
   );

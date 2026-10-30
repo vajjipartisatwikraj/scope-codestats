@@ -83,7 +83,7 @@ function ProfileBadge({ interactive }) {
  * the only chrome. It is a `header` landmark; a spacer of the same height keeps the page from
  * sliding underneath it.
  *
- * Left: the platform mark (/scope-blac.png, the blue mark on a transparent background, which reads on
+ * Left: the platform mark (/codestats-color.png, the blue mark on a transparent background, which reads on
  * both Midnight and Daylight) with the "CodeStats" wordmark and an optional subtitle. Middle: the
  * `children` slot, right-aligned, for step indicators, progress and timers. Right: the built-in
  * tools: connection (SignalBars and "Online"/"Offline"), the theme toggle and the profile badge.
@@ -107,7 +107,7 @@ function ProfileBadge({ interactive }) {
 const FocusHeader = ({ subtitle, to = "/speech-tests", locked = false, backLabel = "Back to speech tests", children, tools = true, profileInteractive, compact = false, className }) => {
   const brandContent = (
     <>
-      <img className="sx-brand__logo" src="/scope-blac.png" alt="" />
+      <img className="sx-brand__logo" src="/codestats-color.png" alt="" />
       <span className="sx-brand__text">
         <span className="sx-brand__name">CodeStats</span>
         {subtitle ? <span className="sx-brand__subtitle">{subtitle}</span> : null}

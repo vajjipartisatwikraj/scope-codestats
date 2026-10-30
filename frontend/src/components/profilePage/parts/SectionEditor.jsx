@@ -88,6 +88,7 @@ export default function SectionEditor({ title, description, width = 'md', initia
         title={title}
         description={description}
         width={width}
+        tone="accent"
         busy={busy}
         footer={
           <>

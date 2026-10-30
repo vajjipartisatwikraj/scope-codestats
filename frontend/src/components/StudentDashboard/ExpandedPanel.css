@@ -35,8 +35,9 @@ html[data-theme='daylight'] .sd-panel--ink {
   --sd-ink: var(--ds-canvas);
 }
 
+/* The same tone as the tile it opened from (--sd-ink-midnight is set on .sd in StudentDashboard.css) */
 html[data-theme='midnight'] .sd-panel--ink {
-  --sd-ink: var(--ds-high);
+  --sd-ink: var(--sd-ink-midnight);
 }
 
 .sd-panel--ink {
@@ -488,20 +489,21 @@ html[data-theme='midnight'] .sd-panel--surface {
 /* ---- Phones and small tablets: the panel replaces the stack and the page scrolls ------------- */
 
 @media (max-width: 999.95px) {
-  /* Nothing is cut at the corners any more (no window is animated), so the top can stick */
+  /* Nothing is cut at the corners any more (no window is animated). The top is a little tighter
+     than the sides, since the way back is a 44px circle that already brings its own air. */
   .sd-panel {
     overflow: visible;
+    padding-top: 12px;
   }
 
-  /* The way back and the tabs stay under the navbar while the charts scroll past */
+  /* The way back and the tabs scroll with the page. They used to stick under the navbar, but with
+     two rows of controls the stuck block was about 190px tall: it covered the lines under it (the
+     username and last sync) and, when the page had been scrolled, left a gap above the title. */
   .sd-view__top {
-    position: sticky;
-    top: var(--sd-top, 64px);
-    z-index: 5;
-    margin: calc(var(--sd-panel-pad) * -1) calc(var(--sd-panel-pad) * -1) 0;
-    padding: var(--sd-panel-pad) var(--sd-panel-pad) 12px;
-    border-radius: var(--ds-radius-xl) var(--ds-radius-xl) 0 0;
-    background-color: var(--sd-panel-bg);
+    position: static;
+    margin: 0;
+    padding: 0;
+    gap: 12px;
   }
 
   /* The panel is as tall as its content here. Its inner box must not start from a height of zero,

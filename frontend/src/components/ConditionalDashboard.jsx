@@ -1,22 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './ConditionalDashboard.css';
-
-// The views of the old dashboard that have not been rebuilt yet (see deprecated/deprecated_Dashboard.jsx)
-const LEGACY_VIEWS = new Set(['platforms', 'progress']);
 
 /**
  * Chooses what /dashboard shows.
  *
- * Admins and teachers are sent to the admin dashboard. Students get `children` (the new
- * dashboard), except for ?view=platforms and ?view=progress, which get `legacy` (the old
- * dashboard) because linking platforms and the Progress tab only exist there so far.
+ * Admins are sent to the admin dashboard. Students get `children` (the student dashboard).
  */
-const ConditionalDashboard = ({ children, legacy = null }) => {
+const ConditionalDashboard = ({ children }) => {
   const { user, isAuthenticated, refreshUserData } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
@@ -60,8 +54,6 @@ const ConditionalDashboard = ({ children, legacy = null }) => {
     );
   }
   
-  // Students: the old dashboard for the two views it still owns, the new one otherwise
-  if (legacy && LEGACY_VIEWS.has(searchParams.get('view'))) return legacy;
   return children;
 };
 

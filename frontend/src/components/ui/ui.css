@@ -11,6 +11,15 @@
  * subtle label, never a lowered opacity.
  */
 
+/*
+ * Controls (inputs, selects, search, chips, secondary buttons) are filled with --ui-control-bg,
+ * which falls back to the `raised` tone. On Daylight, the screens that ask for it (see
+ * hooks/useWhiteControls: courses, opportunities, the resume builder and the speech tests) get
+ * pure white controls.
+ */
+html[data-theme='daylight'][data-white-controls='true'] {
+  --ui-control-bg: #ffffff;
+}
 /* The page-wide transition rule in index.css would make every child ease its colours a second time.
    Each control below names the one thing it animates. */
 .ui-page *,
@@ -273,7 +282,7 @@
 }
 
 .ui-button[data-variant='secondary'] {
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
 }
 
@@ -332,7 +341,7 @@
   height: 44px;
   padding: 0;
   border-radius: 50%;
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
 }
 
@@ -522,7 +531,7 @@ a.ui-icon-button[aria-disabled='true']:focus-visible {
   padding: 0 14px;
   border: 0;
   border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
   font: var(--ds-type-label);
   white-space: nowrap;
@@ -591,6 +600,30 @@ button.ui-chip[data-selected='true']:hover {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+}
+
+/* The picture arrives with a soft fade and a slight settle, over a quiet pulse that says it is coming */
+.ui-avatar img[data-loaded='true'] {
+  opacity: 1;
+  animation: ui-avatar-in 420ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.ui-avatar[data-loading='true'] {
+  animation: ui-avatar-wait 1.4s ease-in-out infinite;
+}
+
+@keyframes ui-avatar-in {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes ui-avatar-wait {
+  50% {
+    background-color: var(--ds-high);
+  }
 }
 
 /* ---- Forms -------------------------------------------------------------------------------------- */
@@ -642,7 +675,7 @@ button.ui-chip[data-selected='true']:hover {
   padding: 0 16px;
   border: 1px solid var(--ds-field-border);
   border-radius: var(--ds-radius-md);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
   font: var(--ds-type-body);
 }
@@ -754,7 +787,7 @@ button.ui-chip[data-selected='true']:hover {
   padding: 0 44px 0 46px;
   border: 0;
   border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
+  background-color: var(--ui-control-bg, var(--ds-raised));
   color: var(--ds-text);
   font: var(--ds-type-body);
   appearance: none;
@@ -1504,7 +1537,7 @@ button.ui-chip[data-selected='true']:hover {
   place-items: center;
   padding: 16px;
   background-color: var(--ds-scrim);
-  animation: ui-fade 180ms var(--ds-ease) both;
+  animation: ui-fade 240ms var(--ds-ease) both;
 }
 
 .ui-overlay--drawer {
@@ -1525,7 +1558,7 @@ button.ui-chip[data-selected='true']:hover {
   color: var(--ds-text);
   box-shadow: var(--ds-shadow-float-md);
   outline: none;
-  animation: ui-rise 220ms var(--ds-ease) both;
+  animation: ui-dialog-in 320ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) 40ms both;
 }
 
 .ui-dialog[data-size='sm'] {
@@ -1586,7 +1619,7 @@ button.ui-chip[data-selected='true']:hover {
   color: var(--ds-text);
   box-shadow: var(--ds-shadow-float-md);
   outline: none;
-  animation: ui-slide 260ms var(--ds-ease) both;
+  animation: ui-slide 360ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
 .ui-drawer[data-width='lg'] {
@@ -1605,6 +1638,7 @@ button.ui-chip[data-selected='true']:hover {
 
 .ui-drawer__heading {
   min-width: 0;
+  animation: ui-drawer-text 380ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) 140ms both;
 }
 
 .ui-drawer__title {
@@ -1617,6 +1651,40 @@ button.ui-chip[data-selected='true']:hover {
   margin: 4px 0 0;
   color: var(--ds-muted);
   font: var(--ds-type-body);
+}
+
+/* The blue header (tone="accent"): the accent fill with white text, the same in Midnight and Daylight */
+.ui-drawer__header[data-tone='accent'] {
+  --ui-ring-gap: var(--ds-accent);
+
+  border-bottom: 0;
+  border-top-left-radius: var(--ds-radius-2xl);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.ui-drawer__header[data-tone='accent'] .ui-drawer__description {
+  color: color-mix(in srgb, var(--ds-on-accent) 86%, var(--ds-accent));
+}
+
+.ui-drawer__header[data-tone='accent'] .ui-icon-button {
+  background-color: var(--ds-accent-hover);
+  color: var(--ds-on-accent);
+}
+
+.ui-drawer__header[data-tone='accent'] .ui-icon-button:hover:not(:disabled) {
+  background-color: var(--ds-accent-press);
+}
+
+.ui-drawer__header[data-tone='accent'] .ui-icon-button:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-accent),
+    0 0 0 4px var(--ds-on-accent);
+}
+
+.ui-drawer__header[data-tone='accent'] .ui-icon-button:disabled {
+  background-color: var(--ds-accent-hover);
+  color: color-mix(in srgb, var(--ds-on-accent) 70%, var(--ds-accent));
 }
 
 .ui-drawer__body {
@@ -1639,6 +1707,10 @@ button.ui-chip[data-selected='true']:hover {
 @media (max-width: 599.95px) {
   .ui-drawer {
     border-radius: 0;
+  }
+
+  .ui-drawer__header[data-tone='accent'] {
+    border-top-left-radius: 0;
   }
 
   .ui-drawer__header,
@@ -1673,7 +1745,23 @@ button.ui-chip[data-selected='true']:hover {
 @keyframes ui-slide {
   from {
     opacity: 0;
-    transform: translateX(32px);
+    transform: translateX(48px);
+  }
+}
+
+/* The dialog rises from slightly below and grows into place; the soft ease-out lets it settle */
+@keyframes ui-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+
+/* The heading of a drawer arrives a beat after the panel, so the eye lands on it */
+@keyframes ui-drawer-text {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }
 
@@ -1681,9 +1769,16 @@ button.ui-chip[data-selected='true']:hover {
   .ui-overlay,
   .ui-dialog,
   .ui-drawer,
+  .ui-drawer__heading,
   .ui-skeleton,
+  .ui-avatar,
+  .ui-avatar img,
   [data-spin='true'] {
     animation: none;
+  }
+
+  .ui-avatar img {
+    opacity: 1;
   }
 
   .ui-check__box::after,

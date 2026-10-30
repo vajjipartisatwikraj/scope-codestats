@@ -28,6 +28,8 @@ import { clamp, colorVars, cx, finiteOr, formatNumber } from './chartUtils';
  *
  * Look
  *   animate (true)    the filled ticks light up one after another on mount
+ *   glide (false)     arc variant: the fill sweeps in along the arc on mount and glides to a new value
+ *                     when alue changes, instead of fading in and jumping
  *   colors            { fill, track, text, label }, any CSS colour
  *
  * Accessibility
@@ -78,6 +80,7 @@ export default function Gauge({
   rounded = true,
   children,
   animate = true,
+  glide = false,
   colors,
   label,
   valueDescription,
@@ -122,9 +125,13 @@ export default function Gauge({
     marks = (
       <>
         <path className="ga__track" d={arcPath(arcRadius, startAngle, totalSweep)} strokeWidth={thickness} />
-        {percent > 0 && (
-          <path className="ga__fill" d={arcPath(arcRadius, startAngle, totalSweep * percent)} strokeWidth={thickness} />
-        )}
+        {percent > 0 &&
+          (glide ? (
+            // The whole arc, drawn as a dash of `percent` of its length: it sweeps in on mount and glides when the value changes
+            <path className="ga__fill" d={arcPath(arcRadius, startAngle, totalSweep)} pathLength={1} strokeWidth={thickness} style={{ strokeDasharray: `${round3(percent)} 2` }} />
+          ) : (
+            <path className="ga__fill" d={arcPath(arcRadius, startAngle, totalSweep * percent)} strokeWidth={thickness} />
+          ))}
       </>
     );
   } else {
@@ -178,6 +185,7 @@ export default function Gauge({
       aria-valuenow={current}
       aria-valuetext={valueDescription || `${text} out of ${formatValue(max)}`}
       data-animate={animate ? 'true' : 'false'}
+      data-glide={glide ? 'true' : 'false'}
       data-round={rounded ? 'true' : 'false'}
     >
       <svg

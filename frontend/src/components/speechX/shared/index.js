@@ -31,7 +31,7 @@
  *   `locked` makes the brand plain text and the profile not pressable (a running section).
  *   children is the middle slot (right-aligned flex row; give a child flex:1 to fill it).
  *   Built in at the right: connection (SignalBars + Online/Offline, a live region), theme toggle,
- *   profile badge. Logo: /scope-blac.png (blue mark, transparent, legible in both themes).
+ *   profile badge. Logo: /codestats-color.png (blue mark, transparent, legible in both themes).
  *   <FocusHeader subtitle="Speech Judge" locked><TimerPill .../></FocusHeader>
  *
  * FocusPage  (FocusPage.jsx)

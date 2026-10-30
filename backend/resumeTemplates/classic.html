@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!--
+  @name Classic
+  @category Single column
+  @description Centered name, deep blue headings with a fine rule and dates on the right. Dense, plain and easy for applicant tracking systems to read.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{fullName}}</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap");
+
+:root { --fs: {{fontScale}}; --gs: {{gapScale}}; --ps: {{padScale}}; --ink: #111827; --muted: #4b5563; --accent: #19376d; --rule: rgba(25, 55, 109, 0.35); }
+
+@page { size: A4; margin: calc(12mm * {{padScale}}) calc(14mm * {{padScale}}); }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html { background: #fff; }
+body { margin: 0; color: var(--ink); font-family: "Source Sans 3", "Segoe UI", Arial, sans-serif; font-size: calc(10.5pt * var(--fs)); line-height: 1.38; }
+@media screen { body { padding: calc(12mm * var(--ps)) calc(14mm * var(--ps)); } }
+
+a { color: inherit; text-decoration: none; }
+code { padding: 0 3px; border-radius: 3px; background: #eef1f6; font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; }
+p { margin: 0; }
+ul { margin: calc(3px * var(--gs)) 0 0; padding-left: 17px; }
+li { margin: calc(1px * var(--gs)) 0; padding-left: 2px; }
+
+.head { text-align: center; }
+.name { margin: 0; color: var(--accent); font-size: calc(25pt * var(--fs)); font-weight: 700; letter-spacing: 0.2px; line-height: 1.15; }
+.contact { margin-top: calc(5px * var(--gs)); color: var(--muted); font-size: calc(9.5pt * var(--fs)); }
+.contact .c + .c::before { content: "|"; margin: 0 calc(8px * var(--gs)); color: #9ca3af; }
+
+.sec { margin-top: calc(12px * var(--gs)); }
+.sec[data-break] { break-before: page; margin-top: 0; }
+.sec h2 { margin: 0 0 calc(6px * var(--gs)); padding-bottom: 2px; border-bottom: 1px solid var(--rule); color: var(--accent); font-size: calc(12pt * var(--fs)); font-weight: 700; letter-spacing: 0.3px; }
+
+.entry { margin-top: calc(6px * var(--gs)); break-inside: avoid; }
+.entry:first-of-type { margin-top: 0; }
+.row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(12px * var(--gs)); }
+.t { font-weight: 700; }
+.d { color: var(--muted); font-size: calc(9.5pt * var(--fs)); white-space: nowrap; }
+.sub { color: var(--muted); font-style: italic; }
+.links a { margin-left: calc(10px * var(--gs)); color: var(--accent); font-size: calc(9.5pt * var(--fs)); font-weight: 600; }
+.skill + .skill { margin-top: calc(2px * var(--gs)); }
+</style>
+</head>
+<body>
+<main class="resume">
+
+  <header class="head">
+    <h1 class="name">{{fullName}}</h1>
+    {{?contact}}<p class="contact">{{#contact}}<span class="c">{{#url}}<a href="{{@url}}">{{text}}</a>{{/url}}{{^url}}{{text}}{{/url}}</span>{{/contact}}</p>{{/contact}}
+  </header>
+
+  {{?overview}}<section class="sec" {{~overview}}>
+    <h2>{{$overview}}</h2>
+    <p>{{overview}}</p>
+  </section>{{/overview}}
+
+  {{?education}}<section class="sec" {{~education}}>
+    <h2>{{$education}}</h2>
+    {{#education}}<div class="entry">
+      <div class="row"><span class="t">{{institution}}</span><span class="d">{{dateRange}}</span></div>
+      <div class="row"><span class="sub">{{degree}}</span><span class="d">{{score}}</span></div>
+    </div>{{/education}}
+  </section>{{/education}}
+
+  {{?skills}}<section class="sec" {{~skills}}>
+    <h2>{{$skills}}</h2>
+    {{#skills}}<p class="skill">{{#category}}<strong>{{category}}:</strong> {{/category}}{{items}}</p>{{/skills}}
+  </section>{{/skills}}
+
+  {{?experience}}<section class="sec" {{~experience}}>
+    <h2>{{$experience}}</h2>
+    {{#experience}}<div class="entry">
+      <div class="row"><span class="t">{{organization}}</span><span class="d">{{dateRange}}</span></div>
+      {{?role}}<div class="sub">{{role}}</div>{{/role}}
+      {{?points}}<ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/points}}
+    </div>{{/experience}}
+  </section>{{/experience}}
+
+  {{?projects}}<section class="sec" {{~projects}}>
+    <h2>{{$projects}}</h2>
+    {{#projects}}<div class="entry">
+      <div class="row">
+        <span class="t">{{title}}</span>
+        <span class="links">{{#liveUrl}}<a href="{{@liveUrl}}">Live</a>{{/liveUrl}}{{#githubUrl}}<a href="{{@githubUrl}}">GitHub</a>{{/githubUrl}}</span>
+      </div>
+      {{?techStack}}<div class="sub">{{techStack}}</div>{{/techStack}}
+      {{?points}}<ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/points}}
+    </div>{{/projects}}
+  </section>{{/projects}}
+
+  {{?certifications}}<section class="sec" {{~certifications}}>
+    <h2>{{$certifications}}</h2>
+    {{#certifications}}<div class="entry">
+      <div class="row">
+        <span><span class="t">{{name}}</span>{{#issuer}}<span class="sub">, {{issuer}}</span>{{/issuer}}</span>
+        <span class="d">{{issuedDate}}</span>
+      </div>
+      {{#credentialUrl}}<div class="links"><a href="{{@credentialUrl}}" style="margin-left:0">View credential</a></div>{{/credentialUrl}}
+    </div>{{/certifications}}
+  </section>{{/certifications}}
+
+  {{?achievements}}<section class="sec" {{~achievements}}>
+    <h2>{{$achievements}}</h2>
+    {{#achievements}}<div class="entry">
+      <div class="row">
+        <span><span class="t">{{title}}</span>{{#issuer}}<span class="sub">, {{issuer}}</span>{{/issuer}}</span>
+        <span class="d">{{date}}</span>
+      </div>
+      {{?points}}<ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/points}}
+      {{#link}}<div class="links"><a href="{{@link}}" style="margin-left:0">View</a></div>{{/link}}
+    </div>{{/achievements}}
+  </section>{{/achievements}}
+</main>
+</body>
+</html>

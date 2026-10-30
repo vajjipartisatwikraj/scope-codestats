@@ -86,7 +86,7 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   height: 36px;
   margin: 0 0 4px 4px; /* centres the mark over the icon column */
 }
@@ -97,9 +97,15 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--ds-radius-sm);
-  background-color: var(--ds-accent);
-  color: var(--ds-on-accent);
+}
+
+/* The CodeStats mark is a tall blue shape on a transparent background, so it reads on both
+   themes without a tile behind it. */
+.ds-sidebar__logo {
+  display: block;
+  width: auto; /* the mark is taller than wide, so the width follows the height */
+  height: 34px;
+  object-fit: contain;
 }
 
 .ds-sidebar__brand-name,
@@ -122,8 +128,8 @@
 
 .ds-sidebar__brand-name {
   font: var(--ds-type-title);
-  font-weight: 700;
-  letter-spacing: var(--ds-tracking-title);
+  font-weight: 800; /* ExtraBold, the heaviest weight Plus Jakarta Sans has */
+  letter-spacing: calc(var(--ds-tracking-title) - 0.02em);
   white-space: nowrap;
 }
 

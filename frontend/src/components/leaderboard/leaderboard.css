@@ -180,8 +180,7 @@
 /* Disabled: the high fill with a subtle label, no change of opacity (DESIGN.md) */
 .lb-icon-button:disabled,
 .lb-secondary:disabled,
-.lb-spotlight:disabled,
-.lb-place__button:disabled {
+.lb-spotlight:disabled {
   background-color: var(--ds-high);
   color: var(--ds-subtle);
   cursor: default;
@@ -273,8 +272,8 @@
 /* ---- The blocks above the board ------------------------------------------------------------------ */
 
 /*
- * Top to bottom: your rank (the spotlight band), the champions (three cards, the first is the accent
- * tile) and the highlights (four small tiles).
+ * Top to bottom: the champions (three cards, the first is the accent tile) and the highlights
+ * (four small tiles).
  */
 .lb-top {
   display: flex;
@@ -308,177 +307,11 @@
   font: var(--ds-type-body-sm);
 }
 
-/* Your rank: the one inverted tile of the screen, a slim band */
-.lb-place {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 20px 40px;
-  min-width: 0;
-  padding: 24px 32px;
-  border-radius: var(--ds-radius-xl);
-  background-color: var(--ds-spotlight);
-  color: var(--ds-on-spotlight);
-}
-
-/* On a wide screen the band starts below the first screen: the champions and highlights fill it */
+/* On a wide screen the actions float above, so the champions get some air on top */
 @media (min-width: 900px) {
   .lb-top {
     padding-top: 24px;
   }
-
-  .lb-place {
-    margin-top: 72px;
-  }
-}
-
-.lb-place--loading {
-  min-height: 112px;
-  background-color: var(--ds-raised);
-  color: var(--ds-text);
-}
-
-.lb-place__lead {
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-areas:
-    'label label'
-    'figure note';
-  align-items: baseline;
-  justify-content: start;
-  column-gap: 12px;
-}
-
-.lb-place__label {
-  grid-area: label;
-  margin: 0;
-  color: var(--ds-on-spotlight-muted);
-  font: var(--ds-type-label);
-}
-
-.lb-place__figure {
-  grid-area: figure;
-  margin: 0;
-  font: var(--ds-type-numeral-l);
-  letter-spacing: var(--ds-tracking-numeral-l);
-  font-variant-numeric: tabular-nums;
-}
-
-.lb-place__note {
-  grid-area: note;
-  margin: 0;
-  color: var(--ds-on-spotlight-muted);
-  font: var(--ds-type-body);
-}
-
-/* How far up the board: a pill meter that fills once when the band first appears */
-.lb-meter {
-  flex: 1 1 220px;
-  min-width: 200px;
-  max-width: 360px;
-}
-
-.lb-meter__caption {
-  display: block;
-  margin: 0 0 8px;
-  color: var(--ds-on-spotlight-muted);
-  font: var(--ds-type-body-sm);
-}
-
-.lb-meter__track {
-  display: block;
-  height: 10px;
-  overflow: hidden;
-  border-radius: var(--ds-radius-pill);
-  background-color: color-mix(in srgb, var(--ds-on-spotlight) 18%, var(--ds-spotlight));
-}
-
-.lb-meter__fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-on-spotlight);
-  transform-origin: left center;
-  animation: lb-meter-in var(--ds-duration-enter) var(--ds-ease-enter) both;
-}
-
-@keyframes lb-meter-in {
-  from {
-    transform: scaleX(0);
-  }
-
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.lb-place__facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 32px;
-  margin: 0;
-}
-
-.lb-place__facts > div {
-  min-width: 0;
-}
-
-.lb-place__facts dt {
-  color: var(--ds-on-spotlight-muted);
-  font: var(--ds-type-body-sm);
-}
-
-.lb-place__facts dd {
-  display: flex;
-  align-items: center;
-  min-height: 32px;
-  margin: 2px 0 0;
-  font: var(--ds-type-numeral-m);
-  letter-spacing: var(--ds-tracking-numeral-m);
-  font-variant-numeric: tabular-nums;
-}
-
-.lb-place__action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 20px;
-  margin-left: auto;
-}
-
-.lb-place__next {
-  margin: 0;
-  font: var(--ds-type-label);
-}
-
-.lb-place__button {
-  height: 44px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-on-spotlight);
-  color: var(--ds-spotlight);
-  font: var(--ds-type-label);
-  letter-spacing: var(--ds-tracking-label);
-  cursor: pointer;
-  transition: background-color var(--ds-duration-fast) var(--ds-ease);
-}
-
-.lb-place__button:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--ds-on-spotlight) 86%, var(--ds-spotlight));
-}
-
-.lb-place__button:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--ds-spotlight),
-    0 0 0 4px var(--ds-focus);
-}
-
-/* On the inverted tile the change badge is a tonal pill of the tile's own colours */
-.lb-place .lb-change {
-  background-color: color-mix(in srgb, var(--ds-on-spotlight) 14%, var(--ds-spotlight));
-  color: var(--ds-on-spotlight);
 }
 
 /*
@@ -906,10 +739,14 @@
   }
 }
 
-/* Little room (a phone): no backdrop, and each champion is one row */
+/*
+ * Little room (a phone): the same three cards as on a desktop, the winner in the middle and a little
+ * higher, but each one is small and holds only the place, the picture, the score, the name and the
+ * class. The extra figures (problems, contests, consistency), the 7-day change, the "pts" unit, the
+ * profile button and the X backdrop are left out; the profile opens from the board below.
+ */
 @container champs (max-width: 639.95px) {
   .lb-champs__x,
-  .lb-champ__banner,
   .lb-champ__stats,
   .lb-champ__profile,
   .lb-champ__pills .lb-change,
@@ -918,41 +755,51 @@
   }
 
   .lb-champs__grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
 
   .lb-champ--loading {
-    min-height: 80px;
+    min-height: 190px;
   }
 
   .lb-champ,
   .lb-champ[data-place] {
-    --lb-hex: 48px;
+    --lb-banner: 56px;
+    --lb-hex: 52px;
 
-    grid-column: auto;
-    grid-row: auto;
-    display: grid;
-    grid-template-columns: 2.5rem auto minmax(0, 1fr) auto;
-    grid-template-areas: 'ordinal hex who score';
     align-items: center;
-    column-gap: 12px;
-    margin-top: 0;
-    padding: 16px;
+    padding: calc(var(--lb-banner) - var(--lb-hex) / 2) 6px 12px;
+    border-radius: var(--ds-radius-lg);
+    text-align: center;
   }
 
-  .lb-champ__top,
+  .lb-champ[data-place='1'] {
+    --lb-banner: 68px;
+    --lb-hex: 62px;
+  }
+
+  .lb-champ[data-place='2'],
+  .lb-champ[data-place='3'] {
+    margin-top: 20px;
+  }
+
+  /* The picture on the edge of the banner, the score pill under it */
+  .lb-champ__top {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: auto;
+  }
+
   .lb-champ__pills {
-    display: contents;
-  }
-
-  .lb-champ__hex {
-    grid-area: hex;
+    justify-content: center;
+    padding-bottom: 0;
   }
 
   .lb-champ__hex .lb-avatar {
-    width: 44px;
-    height: 44px;
+    width: calc(var(--lb-hex) - 6px);
+    height: calc(var(--lb-hex) - 6px);
   }
 
   .lb-champ .lb-avatar__initials {
@@ -961,25 +808,42 @@
 
   .lb-champ__ordinal,
   .lb-champ[data-place='1'] .lb-champ__ordinal {
-    position: static;
-    grid-area: ordinal;
-    color: var(--ds-muted);
+    top: 6px;
+    right: 8px;
     font: var(--ds-type-numeral-m);
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     letter-spacing: var(--ds-tracking-numeral-m);
+    font-style: italic;
+  }
+
+  .lb-champ[data-place='1'] .lb-champ__ordinal {
+    font-size: 1.375rem;
   }
 
   .lb-champ__suffix {
     font-size: 0.75rem;
   }
 
-  .lb-champ__who {
-    grid-area: who;
-    margin: 0;
+  .lb-champ__score {
+    height: 22px;
+    padding: 0 8px;
+    font-size: 0.75rem;
   }
 
-  .lb-champ__score {
-    grid-area: score;
+  .lb-champ__who {
+    width: 100%;
+    margin: 8px 0 0;
+  }
+
+  .lb-champ__name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .lb-champ__meta {
+    font-size: 0.75rem;
+    letter-spacing: 0;
   }
 }
 
@@ -1096,30 +960,6 @@
   100% {
     opacity: 1;
     transform: none;
-  }
-}
-
-/* One row per champion: there is nothing to slide out from, so the rows rise one after the other */
-@container champs (max-width: 639.95px) {
-  .lb-champs[data-intro='true'] .lb-champ[data-place] {
-    animation: lb-champ-front 800ms var(--lb-soft) both;
-  }
-
-  .lb-champs[data-intro='true'] .lb-champ[data-place='2'] {
-    animation-delay: 180ms;
-  }
-
-  .lb-champs[data-intro='true'] .lb-champ[data-place='3'] {
-    animation-delay: 360ms;
-  }
-
-  .lb-champs[data-intro='true'] .lb-champs__mark {
-    animation-delay: 540ms;
-    animation-duration: 1000ms;
-  }
-
-  .lb-champs[data-intro='true'] .lb-champs__mark::after {
-    animation-delay: 1200ms;
   }
 }
 
@@ -1276,6 +1116,7 @@
   align-items: baseline;
   gap: 4px;
   font: var(--ds-type-numeral-m);
+  font-size: 1.25rem; /* smaller than the numeral-m step (1.75rem): these are side notes to the names */
   letter-spacing: var(--ds-tracking-numeral-m);
   font-variant-numeric: tabular-nums;
 }
@@ -1326,42 +1167,21 @@
   letter-spacing: var(--ds-tracking-caption);
 }
 
-/* A phone: the band stacks and each champion is one row */
+/* A phone: a little more space between the blocks above the board */
 @media (max-width: 699.95px) {
   .lb-top {
     gap: 20px;
-  }
-
-  .lb-place {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    padding: 20px;
-  }
-
-  .lb-meter {
-    flex: none;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .lb-place__action {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-left: 0;
   }
 }
 
 @container highlights (max-width: 479.95px) {
   .lb-highlight {
-    min-height: 72px;
-    padding: 12px 16px;
+    min-height: 64px;
+    padding: 10px 14px;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .lb-meter__fill {
-    animation: none;
+  .lb-highlight__figure {
+    font-size: 1.125rem;
   }
 }
 
@@ -1641,13 +1461,6 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-
-.lb-platform__mark {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
 }
 
 /* A row: its fill is a variable so the two sticky cells can match it */
@@ -1967,6 +1780,32 @@ thead .lb-th:nth-child(2) {
 .lb-change[data-compact='true'] {
   height: 22px;
   padding: 0 8px;
+}
+
+/* A tighter row: the rank sits close to the picture, and the picture, name and figures are smaller */
+.lb-item {
+  grid-template-columns: 28px 36px minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 60px;
+  padding: 6px 4px;
+}
+
+.lb-item .lb-rank {
+  width: 28px;
+  height: 28px;
+  font-size: 0.8125rem;
+}
+
+.lb-item .lb-item__name-text {
+  font-size: 0.8125rem;
+}
+
+.lb-item .lb-item__value {
+  font-size: 1rem;
+}
+
+.lb-item .lb-avatar__initials {
+  font-size: 0.75rem;
 }
 
 /* ---- Pages ------------------------------------------------------------------------------------ */

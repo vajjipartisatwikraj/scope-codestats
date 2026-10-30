@@ -1,35 +1,28 @@
 import React, { useId } from "react";
 import { TextField } from "../../ui";
 import BulletsEditor from "./BulletsEditor";
-import FontSizeControl from "./FontSizeControl";
 import RepeaterEditor from "./RepeaterEditor";
 import RichTextArea from "./RichTextArea";
 
 /**
- * The editor of one template field. It handles every field type the templates support (text,
- * multiline, bullets, repeater), so a field added in backend/resumeTemplates shows up here with no
- * change. Each field also has its text size on the paper.
+ * The input of one field. It handles every field type a template can use (text, url, multiline,
+ * bullets, repeater), so a field a template adds shows up here with no change.
  *
- *   template     the template (for the text size bounds)
- *   definition   the field definition
- *   field        { key, value, fontSize }
+ *   definition   the field definition from the template (key, label, type, limits)
+ *   value        the field's current value
  *   showLabel    show the field's name; false when the section card already carries it
- *   onChange(patch)   { value } or { fontSize }
+ *   onChange(value)
  */
-export default function FieldEditor({ template, definition, field, showLabel, onChange }) {
+export default function FieldEditor({ definition, value, showLabel, onChange }) {
   const id = useId();
   const labelId = `${id}-label`;
   const hintId = definition.helperText ? `${id}-hint` : undefined;
 
-  const setValue = (value) => onChange({ value });
-
   let control;
   if (definition.type === "repeater") {
-    control = <RepeaterEditor definition={definition} items={field.value} onChange={setValue} />;
+    control = <RepeaterEditor definition={definition} items={value} onChange={onChange} />;
   } else if (definition.type === "bullets") {
-    control = (
-      <BulletsEditor definition={definition} points={field.value} label={definition.label} onChange={setValue} />
-    );
+    control = <BulletsEditor definition={definition} points={value} label={definition.label} onChange={onChange} />;
   } else if (definition.type === "multiline") {
     control = (
       <RichTextArea
@@ -37,11 +30,11 @@ export default function FieldEditor({ template, definition, field, showLabel, on
         labelledBy={showLabel ? labelId : undefined}
         ariaLabel={definition.label}
         describedBy={hintId}
-        value={field.value ?? ""}
+        value={value ?? ""}
         rows={4}
         maxLength={definition.maxLength}
         placeholder={definition.placeholder}
-        onChange={setValue}
+        onChange={onChange}
       />
     );
   } else {
@@ -52,10 +45,10 @@ export default function FieldEditor({ template, definition, field, showLabel, on
         aria-labelledby={showLabel ? labelId : undefined}
         aria-describedby={hintId}
         placeholder={definition.placeholder}
-        value={field.value ?? ""}
+        value={value ?? ""}
         maxLength={definition.maxLength}
         autoComplete="off"
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => onChange(event.target.value)}
       />
     );
   }
@@ -69,19 +62,13 @@ export default function FieldEditor({ template, definition, field, showLabel, on
       aria-labelledby={grouped && showLabel ? labelId : undefined}
       aria-label={grouped && !showLabel ? definition.label : undefined}
     >
-      <div className="rbe-field__head" data-labelled={showLabel ? "true" : "false"}>
-        {showLabel ? (
+      {showLabel ? (
+        <div className="rbe-field__head">
           <label className="rbe-field__label" id={labelId} htmlFor={grouped ? undefined : `${id}-input`}>
             {definition.label}
           </label>
-        ) : null}
-        <FontSizeControl
-          template={template}
-          label={definition.label}
-          value={field.fontSize}
-          onChange={(fontSize) => onChange({ fontSize })}
-        />
-      </div>
+        </div>
+      ) : null}
 
       {definition.helperText ? (
         <p className="rbe-field__hint" id={hintId}>

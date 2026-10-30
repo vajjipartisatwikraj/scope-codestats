@@ -32,7 +32,7 @@ export default function ProfileTopBar() {
     <header className="pp-top">
       <div className="pp-top__inner">
         <Link to="/" className="pp-brand" aria-label="CodeStats home">
-          <img className="pp-brand__logo" src="/scope-blac.png" alt="" />
+          <img className="pp-brand__logo" src="/codestats-color.png" alt="" />
           <span className="pp-brand__name">CodeStats</span>
         </Link>
 

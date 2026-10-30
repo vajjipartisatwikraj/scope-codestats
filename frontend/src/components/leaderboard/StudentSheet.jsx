@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowSquareOutIcon } from '@phosphor-icons/react/dist/csr/ArrowSquareOut';
 import { XIcon } from '@phosphor-icons/react/dist/csr/X';
+import { PlatformIcon } from '../custom-components';
 import { Avatar, Consistency, ScoreChange, YouBadge } from './Cells';
 import { formatNumber, formatRank, profilePath } from './leaderboardFormat';
 import { PLATFORMS, TAB_PLATFORMS, TABS, platformValue, valueOf } from './leaderboardModel';
@@ -128,7 +129,7 @@ export default function StudentSheet({ row, tab, rank, departmentRank, own, year
             return (
               <li key={key} data-empty={value === null ? 'true' : 'false'}>
                 <span className="lb-platform">
-                  <span className="lb-platform__mark" style={{ backgroundColor: PLATFORMS[key].color }} aria-hidden="true" />
+                  <PlatformIcon platform={key} size={18} />
                   {PLATFORMS[key].name}
                 </span>
                 <span className="lb-num">{value === null ? 'Not linked' : formatNumber(value)}</span>

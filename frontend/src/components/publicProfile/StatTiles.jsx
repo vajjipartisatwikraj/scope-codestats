@@ -6,7 +6,7 @@ import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
 import { FireIcon } from '@phosphor-icons/react/dist/csr/Fire';
 import { MinusIcon } from '@phosphor-icons/react/dist/csr/Minus';
 import { TrophyIcon } from '@phosphor-icons/react/dist/csr/Trophy';
-import { Badge, StatTile, formatNumber, pluralize } from '../ui';
+import { Badge, formatNumber, pluralize } from '../ui';
 import { AnimatedNumber, Gauge, PieChart, ScoreRing } from '../custom-components';
 import { difficultyTotals, platformsOf } from './profileModel';
 
@@ -28,28 +28,6 @@ function Change({ value, suffix }) {
       {formatNumber(Math.abs(value))}
       {suffix ? ` ${suffix}` : ''}
     </Badge>
-  );
-}
-
-/**
- * The inverted tile, the one spotlight of the page: the total score as the biggest numeral, with how
- * it moved this week. Lives next to the hero on a wide screen.
- */
-export function ScoreTile({ profile }) {
-  const platforms = platformsOf(profile.codingProfiles);
-  return (
-    <StatTile
-      className="pp-score"
-      tone="spotlight"
-      label="Total score"
-      value={<AnimatedNumber value={profile.totalScore || 0} duration={1100} />}
-      context={
-        <>
-          <Change value={profile.scoreChange} suffix="this week" />
-          <span>{platforms.length > 0 ? `Across ${pluralize(platforms.length, 'platform')}` : 'No platform linked yet'}</span>
-        </>
-      }
-    />
   );
 }
 
@@ -208,7 +186,7 @@ export function StatTiles({ profile }) {
             ticks={30}
             tickLength={20}
             tickWidth={4.6}
-            size={176}
+            size={136}
             label="Consistency index"
             valueDescription={`${consistency} out of 5, from how many of the last 7 days had activity`}
             colors={{ fill: 'var(--ds-accent)', track: 'var(--ds-high)', text: 'var(--ds-text)' }}

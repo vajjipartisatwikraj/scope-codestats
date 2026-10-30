@@ -134,3 +134,34 @@
     translate: 0 0;
   }
 }
+
+/*
+ * glide (arc variant): the fill is the whole arc drawn as a dash of percent of its length (the path
+ * has pathLength 1). On mount the dash grows from nothing along the arc; when the value changes later
+ * the dash length transitions, so the ring moves instead of jumping.
+ */
+.ga[data-glide='true'] .ga__fill {
+  transition: stroke-dasharray 900ms var(--cc-ease);
+}
+
+.ga[data-glide='true'][data-animate='true'] .ga__fill {
+  animation: ga-glide calc(var(--cc-enter) * 1.8) var(--cc-ease) both;
+  animation-delay: calc(var(--cc-start) + 120ms);
+}
+
+@keyframes ga-glide {
+  from {
+    stroke-dasharray: 0 2;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga[data-glide='true'] .ga__fill {
+    transition: none;
+    animation: none;
+  }
+}

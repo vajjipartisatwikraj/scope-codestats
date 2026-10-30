@@ -41,7 +41,7 @@ export default function PlatformSolvedCard({ state, onOpen }) {
       <CardEmpty
         title="No platforms linked yet"
         action={
-          <ButtonLink to="/dashboard?view=platforms" tone="secondary">
+          <ButtonLink to="/profile?edit=platforms" tone="secondary">
             Link a platform
           </ButtonLink>
         }
@@ -96,7 +96,7 @@ export default function PlatformSolvedCard({ state, onOpen }) {
       <CardHeader
         id="sd-platforms-title"
         icon={<ChartBarIcon size={20} weight="regular" />}
-        title="Platform-wise problems solved"
+        title="Problems solved"
         subtitle="Problems solved on each linked platform"
         action={
           <div className="sd-card__tools">
@@ -115,7 +115,7 @@ export default function PlatformSolvedCard({ state, onOpen }) {
               </button>
             )}
             <Link
-              to="/dashboard?view=platforms"
+              to="/profile?edit=platforms"
               className="sd-circle"
               aria-label="Manage platforms"
               title="Manage platforms and see full progress"

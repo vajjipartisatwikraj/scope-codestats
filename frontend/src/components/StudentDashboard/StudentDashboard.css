@@ -165,6 +165,21 @@
     grid-column: 1 / -1;
     min-height: 224px;
   }
+
+  /* The tile is as wide as the screen here, so "Overall score" fits on one line. Two lines made the
+     top row taller than the figure beside it and pushed everything under it down. */
+  .sd-card--overall .sd-label {
+    max-width: none;
+  }
+}
+
+/* Below the fixed composition the navbar already leaves 12px above and below its buttons, so the
+   page does not add its own 4px on top of that (it showed as a gap above the first card and above
+   an opened score or rank view). */
+@media (max-width: 999.95px) {
+  .sd {
+    padding-top: 0;
+  }
 }
 @media (max-width: 599.95px) {
   .sd {
@@ -173,6 +188,15 @@
 
   .sd-card--platforms {
     min-height: 0;
+  }
+
+  /* The year of squares is as tall as it needs to be and scrolls sideways, so the card takes its height from it */
+  .sd-card--activity {
+    min-height: 0;
+  }
+
+  .sd-card--activity .sd-fill {
+    flex: none;
   }
 }
 /* ---- Page header ----------------------------------------------------------------------- */
@@ -213,8 +237,15 @@ html[data-theme='daylight'] .sd-card--ink {
   --sd-ink: var(--ds-canvas);
 }
 
+/* On Midnight the score and rank tiles (and the views they open into) are a dark navy that is
+   darker than the cards beside them (the heatmap is the `surface` tone). The colour was picked
+   from a sample the owner supplied. */
+html[data-theme='midnight'] .sd {
+  --sd-ink-midnight: #171a2a;
+}
+
 html[data-theme='midnight'] .sd-card--ink {
-  --sd-ink: var(--ds-high);
+  --sd-ink: var(--sd-ink-midnight);
 }
 
 .sd-card--ink {
@@ -692,13 +723,19 @@ html[data-theme='midnight'] .sd-card--ink .sd-btn--secondary:hover {
 }
 
 @media (max-width: 699.95px) {
+  /* The card has no height of its own on a phone, so the body cannot share what is left (a flex
+     basis of 0 collapsed it and hid the chart). It takes the height of its content, and the
+     chart gets a height of its own. */
   .sd-platforms {
+    flex: none;
     flex-direction: column;
     gap: 12px;
   }
 
   .sd-platforms .sd-fill {
-    min-height: 220px;
+    flex: none;
+    height: 260px;
+    min-height: 260px;
   }
 }
 

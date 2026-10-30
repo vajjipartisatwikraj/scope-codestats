@@ -10,20 +10,18 @@ import { formatDay, formatNumber, pluralize, todayInIndia } from './formatters';
  *
  * The server counts problems solved in cohorts, and decides the shade of every day, so this card
  * only draws what it is given. The grid is as big as fits the card, with square cells, and sits in the
- * middle of it. On a phone it shows the last 6 months, so the squares stay big enough to see.
+ * middle of it. On a phone the whole year is kept and the squares stay big (15px); the grid scrolls
+ * sideways, starting at the latest week, with room under the month names for the scrollbar.
  */
 export default function ActivityCard({ state }) {
   const { data, loading, error, reload } = state;
   const phone = useMediaQuery('(max-width: 599.95px)');
-  const span = phone ? 183 : 365;
-  const spanWords = phone ? 'Last 6 months' : 'Last 12 months';
+  const span = 365;
+  const spanWords = 'Last 12 months';
   const endKey = todayInIndia();
-  const startKey = new Date(Date.parse(endKey + 'T00:00:00Z') - (span - 1) * 86400000).toISOString().slice(0, 10);
-  const all = Array.isArray(data?.dailyActivity) ? data.dailyActivity : [];
-  const days = phone ? all.filter((entry) => String(entry.date).slice(0, 10) >= startKey) : all;
-  const total = phone ? days.reduce((sum, entry) => sum + (entry.count || 0), 0) : data?.totalCount || 0;
-  const activeDays = phone ? days.filter((entry) => entry.count > 0).length : data?.activeDays || 0;
-
+  const days = Array.isArray(data?.dailyActivity) ? data.dailyActivity : [];
+  const total = data?.totalCount || 0;
+  const activeDays = data?.activeDays || 0;
   let body;
   if (loading) {
     body = <Skeleton height="fill" label="Loading your activity" />;
@@ -33,15 +31,15 @@ export default function ActivityCard({ state }) {
     body = (
       <div className="sd-fill">
         <Heatmap
-          fill
+          fill={!phone}
           data={days}
           getDate={(entry) => entry.date}
           getValue={(entry) => entry.count}
           getLevel={(entry) => entry.level}
           endDate={endKey}
           days={span}
-          gap={2}
-          minCellSize={7}
+          gap={phone ? 3 : 2}
+          minCellSize={phone ? 15 : 7}
           getTooltip={(entry, { date, value }) =>
             entry && value > 0
               ? `${pluralize(value, 'problem')} solved on ${formatDay(date)}`

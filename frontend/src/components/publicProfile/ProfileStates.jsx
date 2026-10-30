@@ -13,12 +13,9 @@ export function ProfileSkeleton() {
       <div className="pp-hero pp-hero--skeleton">
         <Skeleton height={200} radius="var(--ds-radius-xl)" />
       </div>
-      <div className="pp-score-slot">
-        <Skeleton height={200} radius="var(--ds-radius-xl)" />
-      </div>
       <div className="pp-tiles">
         {[0, 1, 2, 3].map((key) => (
-          <Skeleton key={key} height={150} radius="var(--ds-radius-xl)" />
+          <Skeleton key={key} height={124} radius="var(--ds-radius-xl)" />
         ))}
       </div>
       <div className="pp-main-col">

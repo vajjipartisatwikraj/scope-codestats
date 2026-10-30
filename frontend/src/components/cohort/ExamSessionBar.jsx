@@ -73,7 +73,7 @@ const ExamSessionBar = ({
       >
         <Box
           component="img"
-          src="/scope-blac.png"
+          src="/codestats-color.png"
           alt="Codestats"
           sx={{ width: 22, height: 22, objectFit: "contain" }}
         />

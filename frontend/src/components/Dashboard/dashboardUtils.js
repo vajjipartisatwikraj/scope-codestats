@@ -34,7 +34,7 @@ export const platforms = [
   {
     name: "CodeStats",
     key: "scopecodestats",
-    logo: "/scope-logo.png",
+    logo: "/codestats-color.png",
     color: "#4503fc",
   },
 ];

@@ -35,8 +35,7 @@ import { useCodingProfiles, useHeatmap, useScores, useWeeklyActivity } from './u
  * Every card gets its own { data, loading, error, reload } from useDashboardData, so one slow or
  * failing request only affects its own card. The charts come from ../custom-components.
  *
- * The old dashboard (platform linking, the Progress tab) still lives in deprecated/deprecated_Dashboard.jsx
- * and is reached through ?view=platforms and ?view=progress (see ConditionalDashboard.jsx).
+ * Platforms are linked on the profile page (/profile?edit=platforms opens that editor).
  */
 
 // The cards on the right read the last 30 days

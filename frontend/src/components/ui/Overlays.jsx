@@ -133,9 +133,10 @@ export function ConfirmDialog({ open, onClose, title, description, confirmLabel,
  *   footer             the actions (the main one last)
  *   busy               Escape and the scrim do nothing while true
  *   width              'md' (480px, default) | 'lg' (640px)
+ *   tone               'default' | 'accent' (the header is the blue of the accent in both themes)
  *   children           the body
  */
-export function Drawer({ open, onClose, title, description, footer, busy = false, width = 'md', children }) {
+export function Drawer({ open, onClose, title, description, footer, busy = false, width = 'md', tone = 'default', children }) {
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useOverlay({ open, onClose, busy });
@@ -158,7 +159,7 @@ export function Drawer({ open, onClose, title, description, footer, busy = false
         data-width={width}
         tabIndex={-1}
       >
-        <header className="ui-drawer__header">
+        <header className="ui-drawer__header" data-tone={tone === 'accent' ? 'accent' : undefined}>
           <div className="ui-drawer__heading">
             <h2 className="ui-drawer__title" id={titleId}>
               {title}

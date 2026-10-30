@@ -263,7 +263,7 @@ const NotificationPage = () => {
               }}
             >
               <img
-                src="/scope-blac.png"
+                src="/codestats-color.png"
                 alt="ScopeClub"
                 style={{
                   width: 34,

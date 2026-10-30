@@ -111,9 +111,11 @@ export default function PortfolioSection({ achievements, onAdd, onEdit, onDelete
                     {when ? <p className="pf-row__meta">{when}</p> : null}
                   </div>
                   {item.recognized ? (
-                    <Badge tone="success" icon={<SealCheckIcon size={14} weight="fill" aria-hidden="true" />}>
-                      Recognized
-                    </Badge>
+                    <span className="pf-row__badge">
+                      <Badge tone="success" icon={<SealCheckIcon size={14} weight="fill" aria-hidden="true" />}>
+                        Recognized
+                      </Badge>
+                    </span>
                   ) : null}
                   <div className="pf-row__actions">
                     {href ? (

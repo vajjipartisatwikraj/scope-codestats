@@ -35,7 +35,7 @@ const LandingNavbar = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 pl-2 md:pl-3 relative z-[60]">
           <img
-            src="/scope-blac.png"
+            src="/codestats-color.png"
             alt="CodeStats logo"
             className="h-7 w-7 object-contain md:h-8 md:w-8"
           />

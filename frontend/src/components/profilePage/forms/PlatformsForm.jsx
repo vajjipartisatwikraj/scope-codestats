@@ -1,4 +1,5 @@
 import React from 'react';
+import { PlatformIcon } from '../../custom-components';
 import { Button, Notice, TextField } from '../../ui';
 import { PLATFORMS, usernameFrom } from '../profileModel';
 
@@ -26,7 +27,7 @@ export default function PlatformsForm({ draft, set, errors, saved = {}, onUnlink
               <TextField
                 label={
                   <span className="pf-platform-label">
-                    <span className="pf-dot" style={{ backgroundColor: platform.color }} aria-hidden="true" />
+                    <PlatformIcon platform={platform.key} size={18} />
                     {platform.name}
                   </span>
                 }

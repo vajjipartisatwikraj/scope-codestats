@@ -1,6 +1,5 @@
 import React, { forwardRef, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
 import { SignOutIcon } from '@phosphor-icons/react/dist/csr/SignOut';
 import { isItemActive } from './navigation';
 import useSlidingIndicator from './useSlidingIndicator';
@@ -124,7 +123,7 @@ const SidebarPanel = forwardRef(function SidebarPanel(
     >
       <div className="ds-sidebar__brand">
         <span className="ds-sidebar__mark" aria-hidden="true">
-          <CodeIcon size={20} weight="bold" />
+          <img className="ds-sidebar__logo" src="/codestats-color.png" alt="" />
         </span>
         <span className="ds-sidebar__brand-name">CodeStats</span>
       </div>

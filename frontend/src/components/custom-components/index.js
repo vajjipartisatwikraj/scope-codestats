@@ -23,6 +23,7 @@ export { default as PieChart } from './PieChart';
 export { default as ChartLegend } from './ChartLegend';
 export { default as ChartTip, TipTitle, TipValue, TipRow } from './ChartTip';
 export { default as PillTabs } from './PillTabs';
+export { default as PlatformIcon } from './PlatformIcon';
 export { default as TagInput } from './TagInput';
 export { default as AudioWaveform } from './AudioWaveform';
 export { default as WaveformBars } from './WaveformBars';

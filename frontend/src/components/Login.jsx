@@ -310,8 +310,8 @@ const Login = ({ variant = 'student' }) => {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Box 
                 component="img" 
-                src="/scope-white.png" 
-                alt="Scope Logo"
+                src="/codestats-color.png" 
+                alt="CodeStats logo"
                 sx={{ 
                   width: '90px',
                   height: 'auto',

@@ -55,9 +55,16 @@ export default function PillTabs({
 
   useLayoutEffect(() => {
     place();
-    const current = rootRef.current ? rootRef.current.querySelector('[data-selected="true"]') : null;
-    if (current && typeof current.scrollIntoView === 'function' && rootRef.current.scrollWidth > rootRef.current.clientWidth) {
-      current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    // Keep the selected tab inside the tab list when the list scrolls sideways. This moves only the
+    // list: scrollIntoView would also scroll the whole page down to the tabs, which made a page with
+    // tabs below the fold (the profile's portfolio) open already scrolled.
+    const root = rootRef.current;
+    const current = root ? root.querySelector('[data-selected="true"]') : null;
+    if (current && root.scrollWidth > root.clientWidth) {
+      const start = current.offsetLeft;
+      const end = start + current.offsetWidth;
+      if (start < root.scrollLeft) root.scrollLeft = Math.max(0, start - 8);
+      else if (end > root.scrollLeft + root.clientWidth) root.scrollLeft = end - root.clientWidth + 8;
     }
   }, [value, items.length, place]);
 

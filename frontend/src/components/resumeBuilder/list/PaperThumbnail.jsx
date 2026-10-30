@@ -1,28 +1,24 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
-import { buildFields } from "../../../utils/resume";
-import { PaperPage, getTemplateComponent, pageGeometry } from "../templates";
+
+// An A4 sheet at 96 dpi: the width the templates are laid out for
+const PAGE_WIDTH = 794;
+const PAGE_HEIGHT = 1123;
 
 /**
- * A live thumbnail of a resume: the real template, drawn at its real size inside an A4 frame and
- * scaled down with a CSS transform. Only the first page is shown.
+ * A thumbnail of a resume: its own HTML document, drawn at its real size inside an A4 frame and scaled
+ * down with a CSS transform. Only the first page shows.
  *
- * It renders lazily: nothing is drawn until the frame scrolls into view, because a list of
- * thumbnails would otherwise lay out several complete documents at once. It is a picture, not a
- * control: hidden from assistive technology, inert, and its links are plain text.
+ * It renders lazily: nothing is drawn until the frame scrolls into view, because a list of thumbnails
+ * would otherwise load several complete documents at once. It is a picture, not a control: hidden from
+ * assistive technology, inert, and its links cannot be followed. The frame can run no scripts.
  *
- *   template     the template definition
- *   storedFields the resume's saved fields (omit for the template's blank placeholders)
- *   fontFamily   the CSS family of the resume's font
+ *   html   the finished resume document (a resume's saved `html`, or a template's `previewHtml`)
  */
-export default function PaperThumbnail({ template, storedFields, fontFamily }) {
+export default function PaperThumbnail({ html }) {
   const frameRef = useRef(null);
   const [scale, setScale] = useState(0);
   const [seen, setSeen] = useState(false);
-
-  const geometry = useMemo(() => (template ? pageGeometry(template.page) : null), [template]);
-  const fields = useMemo(() => buildFields(template, storedFields), [template, storedFields]);
-  const Body = template ? getTemplateComponent(template.id) : null;
 
   // Draw only once the frame has been on screen
   useEffect(() => {
@@ -48,31 +44,36 @@ export default function PaperThumbnail({ template, storedFields, fontFamily }) {
   // The sheet is scaled to the width of the frame, whatever width the grid gives it
   useEffect(() => {
     const frame = frameRef.current;
-    if (!frame || !geometry) return undefined;
-    const measure = () => setScale(frame.clientWidth / geometry.width);
+    if (!frame) return undefined;
+    const measure = () => setScale(frame.clientWidth / PAGE_WIDTH);
     measure();
     if (typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(measure);
     observer.observe(frame);
     return () => observer.disconnect();
-  }, [geometry]);
+  }, []);
 
   return (
     <div
       ref={frameRef}
       className="rbl-thumb"
-      style={geometry ? { aspectRatio: `${geometry.width} / ${geometry.height}` } : undefined}
+      style={{ aspectRatio: `${PAGE_WIDTH} / ${PAGE_HEIGHT}` }}
       aria-hidden="true"
     >
-      {Body && geometry && seen && scale > 0 ? (
+      {html && seen && scale > 0 ? (
         <div
           className="rbl-thumb__sheet"
-          style={{ width: geometry.width, height: geometry.height, transform: `scale(${scale})` }}
+          style={{ width: PAGE_WIDTH, height: PAGE_HEIGHT, transform: `scale(${scale})` }}
           inert=""
         >
-          <PaperPage geometry={geometry} pageIndex={0}>
-            <Body template={template} fields={fields} fontFamily={fontFamily} links={false} />
-          </PaperPage>
+          <iframe
+            title="Resume thumbnail"
+            sandbox="allow-same-origin"
+            srcDoc={html}
+            scrolling="no"
+            tabIndex={-1}
+            style={{ width: PAGE_WIDTH, height: PAGE_HEIGHT, border: 0, background: "#fff" }}
+          />
         </div>
       ) : (
         <span className="rbl-thumb__blank">

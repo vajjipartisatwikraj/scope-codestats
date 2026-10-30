@@ -49,7 +49,7 @@ function SkeletonCards() {
  */
 export default function ResumeList() {
   const navigate = useNavigate();
-  const { resumes, templates, fonts, limit, loading, failed, reload, create, remove } = useResumes();
+  const { resumes, templates, limit, loading, failed, reload, create, remove } = useResumes();
 
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
@@ -67,7 +67,6 @@ export default function ResumeList() {
 
   const atLimit = resumes.length >= limit;
   const templateOf = (id) => templates.find((item) => item.id === id);
-  const fontOf = (id) => fonts.find((item) => item.id === id) || fonts[0];
   const selected = resumes.find((resume) => resume._id === selectedId) || null;
 
   // The confirmation takes the place of the detail panel, so only one layer is open at a time
@@ -76,9 +75,9 @@ export default function ResumeList() {
     setToDelete(resume);
   };
 
-  const onCreate = async (title, template) => {
+  const onCreate = async (title, template, useProfile) => {
     setCreating(true);
-    const id = await create(title, template);
+    const id = await create(title, template, useProfile);
     setCreating(false);
     if (id) {
       setDialogOpen(false);
@@ -129,8 +128,7 @@ export default function ResumeList() {
         <EmptyMark />
         <h2 className="rbl-empty__title">Start your first resume</h2>
         <p className="rbl-empty__text">
-          Pick a template, bring in your details from your profile and watch every page update as you
-          type.
+          Pick a template, start from your profile details and watch every page update as you type.
         </p>
         <Button
           variant="primary"
@@ -170,12 +168,7 @@ export default function ResumeList() {
           <ul className="ui-grid rbl-grid" aria-label="Your resumes">
             {visible.map((resume) => (
               <li key={resume._id} className="rbl-grid__item">
-                <ResumeCard
-                  resume={resume}
-                  template={templateOf(resume.template)}
-                  fontFamily={fontOf(resume.font)?.cssFamily}
-                  onOpen={(item) => setSelectedId(item._id)}
-                />
+                <ResumeCard resume={resume} onOpen={(item) => setSelectedId(item._id)} />
               </li>
             ))}
           </ul>
@@ -212,7 +205,6 @@ export default function ResumeList() {
       <ResumeDetails
         resume={selected}
         template={selected ? templateOf(selected.template) : undefined}
-        font={selected ? fontOf(selected.font) : undefined}
         onClose={() => setSelectedId(null)}
         onDelete={askDelete}
       />

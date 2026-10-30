@@ -2,9 +2,10 @@
  * Builds a canonical "profile snapshot" from a user's saved profile so the
  * resume editor can prefill itself.
  *
- * The snapshot is keyed by the field keys the resume templates declare (see
- * backend/resumeTemplates). A template field may set `importKey` if its key
- * differs from the snapshot key.
+ * The snapshot has the same shape as a resume's `details`: one entry for each field in
+ * backend/resumeTemplates/fields.js (fullName, contact, overview, education, skills, experience,
+ * projects, certifications, achievements). It is used when a resume is created from the profile and by the
+ * editor's Import from profile button.
  */
 const { normalizeEducation } = require("./education");
 const { normalizeSkillSets } = require("./skillSets");
@@ -136,6 +137,18 @@ const buildCertifications = (achievements) =>
       issuedDate: monthYear(item.issuedDate) ? `Issued ${monthYear(item.issuedDate)}` : "",
     }));
 
+const buildAchievements = (achievements) =>
+  achievements
+    .filter((item) => item.type === "achievement")
+    .sort(byRecency)
+    .map((item) => ({
+      title: item.title || "",
+      issuer: item.issuer || item.role || "",
+      date: monthYear(item.issuedDate || item.startDate),
+      link: String(item.link || "").trim(),
+      points: normalizeDescriptionPoints(item.description),
+    }));
+
 const buildProfileSnapshot = (user, achievements = []) => ({
   fullName: displayName(user.name),
   contact: buildContact(user),
@@ -145,6 +158,7 @@ const buildProfileSnapshot = (user, achievements = []) => ({
   experience: buildExperience(achievements),
   projects: buildProjects(achievements),
   certifications: buildCertifications(achievements),
+  achievements: buildAchievements(achievements),
 });
 
 module.exports = { buildProfileSnapshot };

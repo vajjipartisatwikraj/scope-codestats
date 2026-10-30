@@ -232,7 +232,7 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
           }}
         >
           <img 
-            src="/scope-blac.png" 
+            src="/codestats-color.png" 
             alt="Scope Logo" 
             style={{ 
               maxHeight: '32px',

@@ -6,7 +6,7 @@ import { streaksOf } from './profileModel';
 /**
  * A year of solving, one square per day (the custom Heatmap), with the three figures that matter
  * under it: the longest streak, the streak that is still going and the best day. The shades come
- * from the server (level 0 to 4), so they match the student's own dashboard.
+ * from the server (level 0 to 4), so they match the student's own dashboard. The squares are at least\n * 15px, so the whole year does not shrink to dots on a phone: the grid scrolls sideways instead.
  *
  *   activity   { dailyActivity: [{ date, count, level }], activeDays, totalCount, days } or null
  */
@@ -35,6 +35,8 @@ export default function ActivityCard({ activity }) {
           getValue={(day) => day.count}
           getLevel={(day) => day.level}
           days={activity.days || 365}
+          gap={3}
+          minCellSize={15}
           getTooltip={(day, info) => `${info.date}: ${pluralize(info.value, 'problem')} solved`}
           title="Problems solved per day over the last 12 months"
           summary={`${pluralize(total, 'problem')} solved on ${pluralize(active, 'day')}. Longest streak ${pluralize(streaks.longest, 'day')}.`}

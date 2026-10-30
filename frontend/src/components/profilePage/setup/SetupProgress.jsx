@@ -12,7 +12,7 @@ import { encouragement, leftText } from '../completion';
 export default function SetupProgress({ completion }) {
   return (
     <Card as="section" className="pf-card pf-progress" aria-label="Profile completion">
-      <ScoreRing value={completion.percent} size={112} caption="% done" label="Profile completion" tone={completion.percent >= 100 ? 'success' : 'accent'} />
+      <ScoreRing glide value={completion.percent} size={112} caption="% done" label="Profile completion" tone={completion.percent >= 100 ? 'success' : 'accent'} />
       <div>
         <p className="pf-progress__title">{encouragement(completion.percent)}</p>
         <p className="pf-muted">{leftText(completion.next)}</p>

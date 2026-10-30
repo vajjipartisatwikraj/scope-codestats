@@ -27,7 +27,7 @@ export default function LeaderboardList({ rows, tab, ranks, ownId, yearName, onO
           <li key={row._id} id={own ? 'lb-own' : undefined}>
             <button type="button" className="lb-item" data-own={own ? 'true' : 'false'} onClick={() => onOpen(row)}>
               <RankMark rank={ranks.get(row._id)} />
-              <Avatar name={row.name} picture={row.profilePicture} size={44} />
+              <Avatar name={row.name} picture={row.profilePicture} size={36} />
               <span className="lb-item__text">
                 <span className="lb-item__name">
                   <span className="lb-item__name-text">{row.name || 'Unnamed student'}</span>

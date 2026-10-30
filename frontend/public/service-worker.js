@@ -1,13 +1,13 @@
 // Service Worker for Push Notifications
 
 // Cache name for the app
-const CACHE_NAME = 'scope-stats-v1';
+const CACHE_NAME = 'scope-stats-v2';
 
 // Files to cache
 const urlsToCache = [
   '/',
   '/index.html',
-  '/codestats.png',
+  '/icon-192.png',
   '/favicon.ico'
 ];
 
@@ -52,7 +52,7 @@ self.addEventListener('push', (event) => {
       data = {
         title: 'New Notification',
         body: event.data.text(),
-        icon: '/codestats.png'
+        icon: '/icon-192.png'
       };
     }
   }
@@ -60,8 +60,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'SCOPE Notification';
   const options = {
     body: data.body || 'You have a new notification',
-    icon: data.icon || '/codestats.png',
-    badge: data.badge || '/codestats.png',
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-192.png',
     data: data.data || {},
     actions: data.actions || []
   };

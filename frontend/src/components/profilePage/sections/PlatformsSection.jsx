@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRightIcon } from '@phosphor-icons/react/dist/csr/ArrowUpRight';
 import { LinkSimpleIcon } from '@phosphor-icons/react/dist/csr/LinkSimple';
+import { PlatformIcon } from '../../custom-components';
 import { Badge, Button, IconButton, Tip, formatDateTime, relativeTime } from '../../ui';
 import SectionCard from '../parts/SectionCard';
 import { PLATFORMS } from '../profileModel';
@@ -48,29 +49,31 @@ export default function PlatformsSection({ profile, onEdit }) {
           const link = PROFILE_LINKS.find((entry) => entry.key === platform.key);
           const href = isLinked && link && link.url ? link.url(info.username) : null;
           return (
-            <li key={platform.key} className="pf-row">
-              <span className="pf-dot" style={{ backgroundColor: platform.color }} aria-hidden="true" />
+            <li key={platform.key} className="pf-row pf-row--platform">
+              <PlatformIcon platform={platform.key} size={28} />
               <div className="pf-row__main">
                 <p className="pf-row__title">{platform.name}</p>
                 <p className="pf-row__meta">{isLinked ? info.username : 'Not linked'}</p>
+                {isLinked ? (
+                  <span className="pf-row__sync">
+                    {state.time ? (
+                      <Tip text={formatDateTime(state.time)}>
+                        <span>
+                          <Badge tone={state.tone}>{state.label}</Badge>
+                        </span>
+                      </Tip>
+                    ) : (
+                      <Badge tone={state.tone}>{state.label}</Badge>
+                    )}
+                  </span>
+                ) : null}
               </div>
               {isLinked ? (
-                <>
-                  {state.time ? (
-                    <Tip text={formatDateTime(state.time)}>
-                      <span>
-                        <Badge tone={state.tone}>{state.label}</Badge>
-                      </span>
-                    </Tip>
-                  ) : (
-                    <Badge tone={state.tone}>{state.label}</Badge>
-                  )}
-                  {href ? (
-                    <IconButton href={href} target="_blank" rel="noopener noreferrer" size="sm" label={`Open ${platform.name} profile (opens in a new tab)`}>
-                      <ArrowUpRightIcon size={18} aria-hidden="true" />
-                    </IconButton>
-                  ) : null}
-                </>
+                href ? (
+                  <IconButton href={href} target="_blank" rel="noopener noreferrer" size="sm" label={`Open ${platform.name} profile (opens in a new tab)`}>
+                    <ArrowUpRightIcon size={18} aria-hidden="true" />
+                  </IconButton>
+                ) : null
               ) : (
                 <Button size="sm" variant="ghost" onClick={onEdit}>
                   Link {platform.name}

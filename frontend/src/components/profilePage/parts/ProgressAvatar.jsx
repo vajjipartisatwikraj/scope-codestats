@@ -1,10 +1,10 @@
 import React from 'react';
 import { Avatar } from '../../ui';
-import { Gauge } from '../../custom-components';
+import { AnimatedNumber, Gauge } from '../../custom-components';
 
 /**
  * The student's picture inside a ring that fills as the profile gets complete (the custom Gauge as a
- * closed arc), with the percentage in a small pill under it. The ring sits on a disc of the card's
+ * closed arc: it sweeps in when the page opens and glides when the percentage changes), with the percentage in a small pill under it that counts up. The ring sits on a disc of the card's
  * own colour, so it reads the same over the blue band and over the card. The ring, the pill and the
  * spoken value all say the same thing, so it never depends on colour alone.
  *
@@ -29,6 +29,7 @@ export default function ProgressAvatar({ name, src, percent, size = 124 }) {
         min={0}
         max={100}
         value={percent}
+        glide
         label="Profile completion"
         valueDescription={`${percent} percent complete`}
         colors={{ fill: complete ? 'var(--ds-success)' : 'var(--ds-accent)', track: 'var(--ds-high)' }}
@@ -37,7 +38,7 @@ export default function ProgressAvatar({ name, src, percent, size = 124 }) {
         <Avatar name={name} src={src} size={picture} />
       </Gauge>
       <span className="pf-ring__pill" data-complete={complete ? 'true' : 'false'}>
-        {percent}%<span className="ui-sr"> complete</span>
+        <AnimatedNumber value={percent} duration={1200} delay={300} suffix="%" /><span className="ui-sr"> complete</span>
       </span>
     </div>
   );

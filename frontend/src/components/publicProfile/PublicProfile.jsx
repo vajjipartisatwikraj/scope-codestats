@@ -10,7 +10,7 @@ import ProfileHero from './ProfileHero';
 import { ProfileError, ProfileNotFound, ProfileRateLimited, ProfileSkeleton } from './ProfileStates';
 import ProfileTopBar from './ProfileTopBar';
 import ShareDialog from './ShareDialog';
-import { ScoreTile, StatTiles } from './StatTiles';
+import { StatTiles } from './StatTiles';
 import { platformsOf, profileUrl, titleCase } from './profileModel';
 import usePublicProfile from './usePublicProfile';
 
@@ -35,7 +35,7 @@ function useDocumentTitle(title) {
  *
  *   ProfileTopBar    brand, theme switch, sign in / open dashboard
  *   ProfileHero      picture, name, who they are, links and Share
- *   StatTiles        total score (the spotlight tile), ranks, problems solved, consistency
+ *   StatTiles        college rank, department rank, problems solved, consistency
  *   ActivityCard     the year heatmap and streaks            (custom Heatmap)
  *   PlatformsCard    tabs: all platforms, then one per platform (custom PieChart, BarChart, Gauge)
  *   GitHubCard       the GitHub numbers
@@ -44,7 +44,7 @@ function useDocumentTitle(title) {
  *   ShareDialog      QR code, copy link, LinkedIn
  *   ProfileStates    skeleton, not found, rate limited, error
  *
- * Layout: a 12 column grid from 1000px (hero 8 + score 4, the tiles, then the main column 8 and the
+ * Layout: a 12 column grid from 1000px (the hero across, the tiles, then the main column 8 and the
  * side column 4); 2 columns of tiles from 600px; one column below. Both themes, no Material UI.
  */
 export default function PublicProfile() {
@@ -71,9 +71,6 @@ export default function PublicProfile() {
     body = (
       <div className="pp-grid">
         <ProfileHero profile={profile} onShare={() => setShareOpen(true)} />
-        <div className="pp-score-slot">
-          <ScoreTile profile={profile} />
-        </div>
         <StatTiles profile={profile} />
 
         <div className="pp-main-col">

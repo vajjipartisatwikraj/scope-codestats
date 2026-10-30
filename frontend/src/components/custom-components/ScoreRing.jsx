@@ -27,6 +27,7 @@ import { toneColors, toneForShare } from './tone';
  *   decimals (0)           digits of the number in the middle
  *   thickness             px, overrides the stroke
  *   animate (true)         the ring appears and the number counts up once
+ *   glide (false)          the ring sweeps in along its arc and glides when the value changes (see Gauge)
  *   className, style       passed to the root element
  *
  * CSS variables: the Gauge ones (--ga-fill --ga-track --ga-text --ga-label)
@@ -42,6 +43,7 @@ export default function ScoreRing({
   decimals = 0,
   thickness,
   animate = true,
+  glide = false,
   className,
   style,
 }) {
@@ -67,6 +69,7 @@ export default function ScoreRing({
       max={top}
       value={current}
       animate={animate}
+      glide={glide}
       label={label}
       valueDescription={`${rounded} out of ${top}${caption ? `, ${caption}` : ''}`}
       colors={{ fill: toneColors(resolvedTone).fill }}

@@ -5,11 +5,10 @@ import { DotsSixVerticalIcon } from "@phosphor-icons/react/dist/csr/DotsSixVerti
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import { toast } from "react-toastify";
-import { blankItem } from "../../../utils/resume";
 import { Button, IconButton, TextField } from "../../ui";
 import BulletsEditor from "./BulletsEditor";
 import RichTextArea from "./RichTextArea";
-import { isFilled } from "./sections";
+import { blankItem, isFilled } from "./resumeDetails";
 
 let keyCounter = 0;
 const newKey = () => `entry-${++keyCounter}`;

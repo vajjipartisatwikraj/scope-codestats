@@ -71,7 +71,7 @@ function AllPlatformsTab({ profiles, onPick }) {
       <ViewEmpty
         title="No platforms linked yet"
         action={
-          <ButtonLink to="/dashboard?view=platforms" tone="secondary">
+          <ButtonLink to="/profile?edit=platforms" tone="secondary">
             Link a platform
           </ButtonLink>
         }
@@ -143,7 +143,7 @@ function PlatformTab({ userId, platform, days }) {
       <ViewEmpty
         title={data?.state === 'not_linked' ? 'Not linked' : `No ${name} history yet`}
         action={
-          <ButtonLink to="/dashboard?view=platforms" tone="secondary">
+          <ButtonLink to="/profile?edit=platforms" tone="secondary">
             Manage platforms
           </ButtonLink>
         }

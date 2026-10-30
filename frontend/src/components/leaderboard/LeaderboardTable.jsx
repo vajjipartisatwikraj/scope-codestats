@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown';
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight';
 import { CaretUpIcon } from '@phosphor-icons/react/dist/csr/CaretUp';
+import { PlatformIcon } from '../custom-components';
 import { Avatar, Consistency, RankMark, ScoreChange, YouBadge } from './Cells';
 import { formatNumber, formatRank, profilePath } from './leaderboardFormat';
 import { PLATFORMS, TAB_PLATFORMS, TABS, platformValue, valueOf } from './leaderboardModel';
@@ -100,7 +101,7 @@ export default function LeaderboardTable({ rows, tab, ranks, departmentRanks, so
                   key={key}
                   label={
                     <span className="lb-platform">
-                      <span className="lb-platform__mark" style={{ backgroundColor: PLATFORMS[key].color }} aria-hidden="true" />
+                      <PlatformIcon platform={key} size={16} />
                       {PLATFORMS[key].name}
                     </span>
                   }

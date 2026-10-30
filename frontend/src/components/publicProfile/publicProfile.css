@@ -160,13 +160,7 @@
 
   .pp-hero,
   .pp-hero--skeleton {
-    grid-column: span 8;
-    align-self: stretch;
-  }
-
-  .pp-score-slot {
-    grid-column: span 4;
-    align-self: stretch;
+    grid-column: 1 / -1;
   }
 
   .pp-tiles {
@@ -289,6 +283,21 @@
   margin-top: 8px;
 }
 
+/* From 900px the links sit at the right end of the card, level with the name, and the facts stay under the name */
+@media (min-width: 900px) {
+  .pp-hero__body {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'avatar identity actions';
+  }
+
+  .pp-hero__actions {
+    align-self: start;
+    justify-content: flex-end;
+    /* The identity starts 12px down; the buttons are as tall as the name, so they share its line */
+    margin-top: 12px;
+  }
+}
+
 /* On a phone the picture is smaller and the identity goes under it */
 @media (max-width: 479.95px) {
   .pp-hero__body {
@@ -312,37 +321,11 @@
   }
 }
 
-/* ---- Score tile and the four small tiles -------------------------------------------------------- */
-
-.pp-score-slot {
-  display: flex;
-  min-width: 0;
-}
-
-.pp-score-slot > .pp-score {
-  flex: 1 1 auto;
-}
-
-.pp-score {
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.pp-score .ui-stat__value {
-  font: var(--ds-type-numeral-xl);
-  letter-spacing: var(--ds-tracking-numeral-xl);
-}
-
-@media (max-width: 599.95px) {
-  .pp-score .ui-stat__value {
-    font: var(--ds-type-numeral-l);
-    letter-spacing: var(--ds-tracking-numeral-l);
-  }
-}
+/* ---- The four small tiles ------------------------------------------------------------------------------ */
 
 .pp-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: var(--pp-gap);
   min-width: 0;
 }
@@ -350,7 +333,37 @@
 /* Label and icon at the top, the figure with its picture in the middle, the context at the foot */
 .pp-tile {
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+@media (min-width: 900px) {
+  .pp-tile {
+    padding: 16px 18px;
+  }
+}
+
+/* Smaller figures, labels and icon than the kit's tile: these four are a summary strip, not the page's headline */
+.pp-tile .ui-stat__label {
+  font-size: 0.8125rem;
+}
+
+.pp-tile .ui-stat__icon {
+  width: 30px;
+  height: 30px;
+}
+
+.pp-tile .ui-stat__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pp-tile .ui-stat__value {
+  font-size: 1.625rem;
+}
+
+.pp-tile .ui-stat__context {
+  font-size: 0.75rem;
 }
 
 .pp-tile__main {
@@ -359,6 +372,9 @@
   justify-content: space-between;
   gap: 12px 16px;
   min-width: 0;
+  /* The ring and the donut sit well in from the edge of the tile, nearer its middle: the gap is a
+     share of the tile's width, so it grows with a wide tile and stays modest in a narrow one */
+  padding-right: clamp(10px, 12%, 48px);
 }
 
 .pp-tile__figure {
@@ -372,9 +388,11 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 76px;
+  height: 76px;
   margin-left: auto;
+  /* The ring and the donut are drawn at 96px; zoom brings them down with their text, keeping the proportions */
+  zoom: 0.8;
 }
 
 .pp-tile__visual > * {
@@ -389,6 +407,7 @@
   margin: 2px 0 0;
   color: var(--ds-muted);
   font: var(--ds-type-body-sm);
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -400,11 +419,12 @@
 .pp-mix {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin: 8px 0 0;
+  gap: 1px;
+  margin: 6px 0 0;
   padding: 0;
   color: var(--ds-muted);
   font: var(--ds-type-body-sm);
+  font-size: 0.75rem;
   list-style: none;
 }
 
@@ -429,12 +449,12 @@
 .pp-dial__gauge {
   display: grid;
   place-items: center;
-  min-height: 104px;
+  min-height: 84px;
 }
 
 .pp-dial__value {
   display: block;
-  font: var(--ds-type-numeral-l);
+  font: var(--ds-type-numeral-m);
   letter-spacing: var(--ds-tracking-numeral-l);
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -698,39 +718,86 @@
 
 .pp-github {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  gap: 20px 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
 }
 
+/* Every figure is a cell of the same size. The number sits over its name; hairlines run between
+   the cells, so six numbers read as two tidy rows of three instead of five and a stray one. */
 .pp-github > div {
   display: flex;
   flex-direction: column-reverse;
   justify-content: flex-end;
   gap: 2px;
   min-width: 0;
-  padding: 0 16px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--ds-line);
   border-left: 1px solid var(--ds-line);
 }
 
-.pp-github > div:first-child {
+.pp-github > div:nth-child(3n + 1) {
   padding-left: 0;
   border-left: 0;
 }
 
+.pp-github > div:nth-child(-n + 3) {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.pp-github > div:nth-last-child(-n + 3):nth-child(n + 4),
+.pp-github > div:last-child {
+  padding-bottom: 0;
+}
+
+@media (max-width: 599.95px) {
+  .pp-github {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-github > div {
+    padding: 14px 16px;
+    border-top: 1px solid var(--ds-line);
+    border-left: 1px solid var(--ds-line);
+  }
+
+  .pp-github > div:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .pp-github > div:nth-child(-n + 2) {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .pp-github > div:nth-child(n + 3) {
+    padding-top: 14px;
+    border-top: 1px solid var(--ds-line);
+  }
+
+  .pp-github > div:nth-child(even) {
+    padding-left: 16px;
+    border-left: 1px solid var(--ds-line);
+  }
+}
+
 .pp-github dt {
+  overflow: hidden;
   color: var(--ds-muted);
   font: var(--ds-type-caption);
   letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pp-github dd {
   margin: 0;
   font: var(--ds-type-numeral-m);
+  font-size: 1.5rem;
   letter-spacing: var(--ds-tracking-numeral-m);
   font-variant-numeric: tabular-nums;
 }
-
 /* ---- Work and achievements ------------------------------------------------------------------------ */
 
 .pp-items {
@@ -924,5 +991,133 @@
 @media (prefers-reduced-motion: reduce) {
   .pp-item {
     transition: none;
+  }
+}
+
+/*
+ * Opening the page. Calm, short and in reading order: the top bar settles, the hero rises (its blue band
+ * unrolls, the picture pops in, the name and the facts follow), then the four tiles, then the cards of the
+ * main column and the side column, each a little after the one before. Only opacity and transform move;
+ * the numbers count up and the rings and the heatmap draw themselves through their own components.
+ * The loading skeleton is not animated here, only the real page.
+ */
+@keyframes pp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes pp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes pp-band-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.6);
+  }
+}
+
+@keyframes pp-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.pp-top {
+  animation: pp-drop 420ms var(--ds-ease-enter) both;
+}
+
+.pp-grid:not([role='status']) > .pp-hero {
+  animation: pp-rise 520ms var(--ds-ease-enter) 60ms both;
+}
+
+.pp-grid:not([role='status']) .pp-hero__band {
+  transform-origin: top;
+  animation: pp-band-in 620ms var(--ds-ease-enter) 80ms both;
+}
+
+.pp-grid:not([role='status']) .pp-hero__avatar {
+  animation: pp-pop 520ms var(--ds-ease-enter) 220ms both;
+}
+
+.pp-grid:not([role='status']) .pp-hero__identity > *,
+.pp-grid:not([role='status']) .pp-hero__actions {
+  animation: pp-rise 480ms var(--ds-ease-enter) both;
+  animation-delay: calc(300ms + var(--pp-i, 0) * 70ms);
+}
+
+.pp-hero__identity > :nth-child(2) {
+  --pp-i: 1;
+}
+
+.pp-hero__identity > :nth-child(3) {
+  --pp-i: 2;
+}
+
+.pp-hero__identity > :nth-child(n + 4) {
+  --pp-i: 3;
+}
+
+.pp-hero__actions {
+  --pp-i: 3;
+}
+
+/* The tiles, one after another */
+.pp-grid:not([role='status']) .pp-tiles > * {
+  animation: pp-rise 520ms var(--ds-ease-enter) both;
+  animation-delay: calc(240ms + var(--pp-i, 0) * 80ms);
+}
+
+.pp-tiles > :nth-child(2) {
+  --pp-i: 1;
+}
+
+.pp-tiles > :nth-child(3) {
+  --pp-i: 2;
+}
+
+.pp-tiles > :nth-child(n + 4) {
+  --pp-i: 3;
+}
+
+/* The cards below */
+.pp-grid:not([role='status']) .pp-main-col > *,
+.pp-grid:not([role='status']) .pp-aside > * {
+  animation: pp-rise 560ms var(--ds-ease-enter) both;
+  animation-delay: calc(420ms + var(--pp-i, 0) * 90ms);
+}
+
+.pp-main-col > :nth-child(2),
+.pp-aside > :nth-child(2) {
+  --pp-i: 1;
+}
+
+.pp-main-col > :nth-child(3),
+.pp-aside > :nth-child(3) {
+  --pp-i: 2;
+}
+
+.pp-main-col > :nth-child(n + 4),
+.pp-aside > :nth-child(n + 4) {
+  --pp-i: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-top,
+  .pp-grid > .pp-hero,
+  .pp-hero__band,
+  .pp-hero__avatar,
+  .pp-hero__identity > *,
+  .pp-hero__actions,
+  .pp-tiles > *,
+  .pp-main-col > *,
+  .pp-aside > * {
+    animation: none !important;
   }
 }
