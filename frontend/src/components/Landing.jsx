@@ -14,6 +14,7 @@ import {
   StarBorder
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import useLoginConfig from '../hooks/useLoginConfig';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 
 // CountUp Component
@@ -88,6 +89,8 @@ const ScrollRevealText = ({ segments, className = '' }) => {
 
 // FAQ Accordion Component - Custom implementation matching Dark Hero Section
 const FAQAccordion = () => {
+  // Who can sign in depends on how the server is set up (college addresses, or a list of addresses)
+  const { loginMode } = useLoginConfig();
   const [openIndex, setOpenIndex] = useState(null);
   const contentRefs = useRef([]);
 
@@ -104,7 +107,10 @@ const FAQAccordion = () => {
     {
       cat: "Access",
       q: "Who can use CodeStats?",
-      a: "It's exclusively for the MLRIT community — students, teachers, and admins of MLR Institute of Technology. It isn't open to other campuses or to external recruiters and hiring teams.",
+      a:
+        loginMode === "allowlist"
+          ? "Students, teachers, and admins whose email address has been added by an admin. You sign in with the Google account for that address, from any email domain. It isn't open to people who haven't been added."
+          : "It's exclusively for the MLRIT community — students, teachers, and admins of MLR Institute of Technology. It isn't open to other campuses or to external recruiters and hiring teams.",
     },
     {
       cat: "For admins",

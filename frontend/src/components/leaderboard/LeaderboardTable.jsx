@@ -67,7 +67,7 @@ export default function LeaderboardTable({ rows, tab, ranks, departmentRanks, so
   }, [rows.length, tab]);
 
   const openProfile = (row) => {
-    const path = profilePath(row.email);
+    const path = profilePath(row.email, row.username);
     if (path) window.open(path, '_blank', 'noopener');
   };
 
@@ -119,7 +119,7 @@ export default function LeaderboardTable({ rows, tab, ranks, departmentRanks, so
           <tbody>
             {rows.map((row) => {
               const own = row._id === ownId;
-              const path = profilePath(row.email);
+              const path = profilePath(row.email, row.username);
               return (
                 <tr key={row._id} id={own ? 'lb-own' : undefined} className="lb-row" data-own={own ? 'true' : 'false'} onClick={() => openProfile(row)}>
                   <td className="lb-col-rank" data-align="center">

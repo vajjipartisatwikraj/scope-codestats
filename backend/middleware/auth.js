@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const logger = require('../utils/logger');
+const accessList = require('../services/accessListService');
 
 module.exports = async (req, res, next) => {
   // Check for Bearer token in Authorization header
@@ -32,7 +33,7 @@ module.exports = async (req, res, next) => {
     };
     
     // Get the full user information from database including userType and sessionToken
-    const user = await User.findById(decoded.userId).select('userType sessionToken');
+    const user = await User.findById(decoded.userId).select('userType sessionToken email');
     if (!user) {
       return res.status(401).json({ 
         message: 'User not found',
@@ -50,6 +51,16 @@ module.exports = async (req, res, next) => {
       });
     }
     
+    // LOGIN_MODE=allowlist: an address taken off the access list is blocked on its next request,
+    // even with a token that has not expired. (Always true in domain mode, and for admins.)
+    if (!(await accessList.canAccess(user))) {
+      res.locals.logMessage = 'Access revoked: email is not on the access list';
+      return res.status(401).json({
+        message: 'Your email address no longer has access. Contact your coordinator.',
+        code: 'ACCESS_REVOKED'
+      });
+    }
+
     req.user.userType = user.userType;
     
     next();

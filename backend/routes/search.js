@@ -43,7 +43,7 @@ router.get('/', auth, async (req, res) => {
           }
         ]
       })
-      .select('name email rollNumber department section profilePicture')
+      .select('name email username rollNumber department section profilePicture')
       .limit(limit)
       .lean()
     );
@@ -93,7 +93,7 @@ router.get('/', auth, async (req, res) => {
     // Format user results to extract username from email
     const formattedUsers = users.map(user => ({
       ...user,
-      username: user.email.split('@')[0],
+      username: user.username || user.email.split('@')[0],
     }));
 
     res.json({

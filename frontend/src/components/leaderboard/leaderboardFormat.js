@@ -57,8 +57,12 @@ export function profileImageUrl(picture) {
 /** The part of an email before the "@", which is the address of the student's profile page */
 export const usernameOf = (email) => (typeof email === 'string' && email.includes('@') ? email.split('@')[0] : '');
 
-/** The address of a student's profile page, or null without an email */
-export const profilePath = (email) => {
-  const username = usernameOf(email);
+/**
+ * The address of a student's profile page, or null without an email.
+ * `stored` is the username the server keeps for newer accounts (so two people with the same first
+ * part on different domains get different pages); older accounts use the part of the email before the "@".
+ */
+export const profilePath = (email, stored) => {
+  const username = stored || usernameOf(email);
   return username ? `/public-profile/${encodeURIComponent(username)}` : null;
 };

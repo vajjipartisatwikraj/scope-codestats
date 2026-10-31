@@ -27,7 +27,7 @@ import { TABS, highlightsOf, valueOf } from './leaderboardModel';
 // ---- Champions ---------------------------------------------------------------------------------------------
 
 function Name({ row }) {
-  const path = profilePath(row.email);
+  const path = profilePath(row.email, row.username);
   const name = row.name || 'Unnamed student';
   return path ? (
     <a href={path} target="_blank" rel="noopener noreferrer">
@@ -57,7 +57,7 @@ function Champion({ tab, row, rank, index }) {
   // The card in front is the winner of the list, even when students tie for first
   const place = index + 1;
   const ordinal = ordinalParts(rank);
-  const path = profilePath(row.email);
+  const path = profilePath(row.email, row.username);
   const otherLabel = tab === 'problems' ? 'Score' : 'Problems';
   const otherValue = tab === 'problems' ? row.totalScore : row.problemsSolved;
 

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSwipeable } from 'react-swipeable';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import useLoginConfig from '../../hooks/useLoginConfig';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import SidebarPanel from './SidebarPanel';
 import { buildNavigation } from './navigation';
@@ -53,9 +54,11 @@ const Sidebar = ({ onToggle, mobileOpen = false, onMobileClose }) => {
 
   // Teacher access requests waiting for an admin (a badge, admins only).
   const teacherRequestCount = useTeacherRequestBadge(user?.userType === 'admin');
+  // How the server lets people in: the access control list entry shows only in allowlist mode.
+  const { loginMode } = useLoginConfig();
   const groups = useMemo(
-    () => buildNavigation(user, { teacherRequestCount }),
-    [user, teacherRequestCount]
+    () => buildNavigation(user, { teacherRequestCount, loginMode }),
+    [user, teacherRequestCount, loginMode]
   );
 
   // The shell passes a new onMobileClose on every render; reading it through a ref keeps the

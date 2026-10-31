@@ -57,6 +57,7 @@ import NotificationManagement from "./components/notificationManagement";
 import ManageUsers from "./components/manageUsers";
 import UserGroups from "./components/userGroupManagement";
 import TeacherRequests from "./components/teacherRequests";
+import AccessList from "./components/accessList";
 import TeacherAccess from "./components/TeacherAccess";
 import AcademicYearConfigAdmin from "./components/academicYearConfig";
 import PublicProfile, { PublicProfileRedirect } from "./components/publicProfile";
@@ -276,6 +277,7 @@ const MainContent = () => {
     "/admin/manage-users",
     "/admin/user-groups",
     "/admin/teacher-requests",
+    "/admin/access-list",
     "/practice-arena",
     "/cohorts",
     "/admin/practice-arena",
@@ -682,6 +684,15 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true} strictAdmin={true}>
                       <TeacherRequests />
+                    </PrivateRoute>
+                  }
+                />
+                {/* Who may sign in when the server runs LOGIN_MODE=allowlist. Admins only. */}
+                <Route
+                  path="/admin/access-list"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <AccessList />
                     </PrivateRoute>
                   }
                 />

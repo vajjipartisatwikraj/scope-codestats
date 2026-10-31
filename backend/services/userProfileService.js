@@ -23,6 +23,7 @@ const MAX_LIST_SIZE = 1000;
 const SCORE_LIST_FIELDS = {
   name: 1,
   email: 1,
+  username: 1,
   rollNumber: 1,
   department: 1,
   section: 1,
@@ -42,13 +43,27 @@ const findUsersByScore = (match, limit) =>
   ]);
 
 /**
- * The username is the part of the email before the "@". It comes from the URL,
- * so it is escaped and matched literally.
+ * Finds the owner of a profile page address.
+ *
+ * An account has a stored `username` (set when it was created, unique). Accounts created
+ * before that field existed have none, and their address is the part of the email before
+ * the "@", which is how it has always worked. The stored username is looked up first, and the
+ * email fallback only considers accounts without one, so a person on another domain who
+ * shares the same first part can never be shown in place of the real owner.
+ *
+ * The address comes from the URL, so it is escaped and matched literally.
  */
-const findUserByUsername = (username, select) =>
-  User.findOne({ email: new RegExp(`^${escapeRegex(username)}@`, "i") })
+const findUserByUsername = async (username, select) => {
+  const handle = String(username || "").trim();
+  if (!handle) return null;
+
+  const stored = await User.findOne({ username: handle.toLowerCase() }).select(select).lean();
+  if (stored) return stored;
+
+  return User.findOne({ username: { $exists: false }, email: new RegExp(`^${escapeRegex(handle)}@`, "i") })
     .select(select)
     .lean();
+};
 
 // Fields no page needs. The unauthenticated profile route leaves them out.
 const PRIVATE_USER_FIELDS = "-password -sessionToken -pushSubscriptions";

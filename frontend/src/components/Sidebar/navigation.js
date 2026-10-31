@@ -7,6 +7,7 @@ import { ChatsIcon } from '@phosphor-icons/react/dist/csr/Chats';
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText';
 import { MicrophoneIcon } from '@phosphor-icons/react/dist/csr/Microphone';
+import { ShieldCheckIcon } from '@phosphor-icons/react/dist/csr/ShieldCheck';
 import { SquaresFourIcon } from '@phosphor-icons/react/dist/csr/SquaresFour';
 import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
 import { TargetIcon } from '@phosphor-icons/react/dist/csr/Target';
@@ -155,6 +156,14 @@ const GROUPS = [
         path: () => '/admin/manage-users',
         visible: (user) => isAdminUser(user),
       },
+      {
+        id: 'access-list',
+        label: 'Access control list',
+        icon: ShieldCheckIcon,
+        // Admins only, and only while the server lets people in by email address (LOGIN_MODE=allowlist)
+        path: () => '/admin/access-list',
+        visible: (user, { loginMode } = {}) => isAdminUser(user) && loginMode === 'allowlist',
+      },
     ],
   },
 ];
@@ -164,14 +173,15 @@ const GROUPS = [
  * Groups with nothing visible are left out.
  *
  * @param {Object} user  The signed-in user (needs `userType`).
- * @param {{ teacherRequestCount?: number }} [counts]  Numbers shown on badges.
+ * @param {{ teacherRequestCount?: number, loginMode?: string }} [context]  Numbers shown on badges,
+ *        and how the server lets people in ('domain' | 'allowlist'), which some entries depend on.
  */
-export function buildNavigation(user, { teacherRequestCount = 0 } = {}) {
+export function buildNavigation(user, { teacherRequestCount = 0, loginMode } = {}) {
   return GROUPS.map((group) => ({
     id: group.id,
     title: group.title,
     items: group.items
-      .filter((item) => item.visible(user))
+      .filter((item) => item.visible(user, { loginMode }))
       .map((item) => ({
         id: item.id,
         label: item.label,

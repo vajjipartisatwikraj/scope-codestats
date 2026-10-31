@@ -13,6 +13,7 @@ const Profile = require("../models/Profile");
 const User = require("../models/User");
 const { normalizeSkillSets } = require("../utils/skillSets");
 const { normalizeEducation, validateEducation } = require("../utils/education");
+const { isInstitutionEmail } = require("../config/loginAccess");
 const {
   extractUsername,
   saveUsernames,
@@ -48,23 +49,40 @@ const calculateGraduationYear = (rollNumber) => {
   return 2000 + parseInt(yearCode, 10) + 4;
 };
 
-/** The personal-details part of the profile page response. */
-const toProfilePage = (user) => ({
-  user: user._id,
-  name: user.name,
-  email: user.email,
-  phone: user.mobileNumber || user.phone || "",
-  department: user.department || "",
-  section: user.section || "",
-  rollNumber: user.rollNumber || "",
-  graduationYear: user.graduatingYear || calculateGraduationYear(user.rollNumber),
-  skills: normalizeSkillSets(user.skills),
-  interests: user.interests || [],
-  education: normalizeEducation(user.education),
-  about: user.about || "",
-  linkedinUrl: user.linkedinUrl || "",
-  profilePicture: user.profilePicture || "",
-});
+/** The part of the email before the "@": the public address of accounts that have no stored username. */
+const handleOf = (user) => user.username || String(user.email || "").split("@")[0];
+
+/**
+ * The personal-details part of the profile page response.
+ * `institutional` is false for someone who is not on a college address: they type their own
+ * roll number, department, year and college in the setup (the roll number cannot be read from
+ * their email), so the page shows those fields.
+ */
+const toProfilePage = (user) => {
+  const institutional = isInstitutionEmail(user.email);
+  // A new account outside the college starts with a placeholder roll number and department
+  // (services/newAccountService). They are not the person's details, so the page gets them blank.
+  const unset = /^EXT-[a-f0-9]{24}$/i.test(user.rollNumber || "");
+  return {
+    user: user._id,
+    name: user.name,
+    email: user.email,
+    username: handleOf(user),
+    institutional,
+    collegeName: user.collegeName || "",
+    phone: user.mobileNumber || user.phone || "",
+    department: unset ? "" : user.department || "",
+    section: user.section || "",
+    rollNumber: unset ? "" : user.rollNumber || "",
+    graduationYear: user.graduatingYear || (institutional ? calculateGraduationYear(user.rollNumber) : null),
+    skills: normalizeSkillSets(user.skills),
+    interests: user.interests || [],
+    education: normalizeEducation(user.education),
+    about: user.about || "",
+    linkedinUrl: user.linkedinUrl || "",
+    profilePicture: user.profilePicture || "",
+  };
+};
 
 // ─── Platform profiles ──────────────────────────────────────────────────────
 
@@ -199,7 +217,7 @@ const getMyProfile = async (req, res) => {
     const [user, platformProfiles] = await Promise.all([
       User.findById(req.user.id)
         .select(
-          "name email phone department section graduatingYear rollNumber mobileNumber skills interests education about linkedinUrl resumeLink profilePicture"
+          "name email username collegeName phone department section graduatingYear rollNumber mobileNumber skills interests education about linkedinUrl resumeLink profilePicture"
         )
         .lean(),
       Profile.find({ userId: req.user.id }).lean(),
@@ -234,6 +252,7 @@ const updateMyProfile = async (req, res) => {
       section,
       rollNumber,
       graduationYear,
+      collegeName,
       skills,
       interests,
       education,
@@ -266,6 +285,7 @@ const updateMyProfile = async (req, res) => {
     if (name) updateFields.name = name;
     if (department) updateFields.department = department;
     if (rollNumber) updateFields.rollNumber = rollNumber;
+    if (typeof collegeName === "string") updateFields.collegeName = collegeName.trim();
 
     if (graduationYear) {
       updateFields.graduatingYear = graduationYear;
@@ -319,6 +339,11 @@ const updateMyProfile = async (req, res) => {
           errors[field] = validationError.errors[field].message;
         });
         return res.status(400).json({ message: "Validation error", errors });
+      }
+      // Roll numbers are unique: a number that is taken gets a sentence, not a 500
+      if (validationError.code === 11000 && validationError.keyPattern?.rollNumber) {
+        const message = "That roll number is already registered to another account.";
+        return res.status(409).json({ message, errors: { rollNumber: message } });
       }
       throw validationError;
     }

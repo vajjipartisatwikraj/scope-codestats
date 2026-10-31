@@ -262,9 +262,10 @@ const SubmissionDetailsView = ({
         {submission.user && typeof submission.user === 'object' && (
           <Box
             onClick={() => {
-              // The profile page finds a student by the part of the email before the "@"
-              const userIdentifier = submission.user?.email?.split('@')[0] ||
-                submission.user?.username ||
+              // The profile page finds a student by their stored username, or for older accounts by
+              // the part of the email before the "@"
+              const userIdentifier = submission.user?.username ||
+                submission.user?.email?.split('@')[0] ||
                 submission.user?.rollNumber;
               if (userIdentifier) {
                 window.open(`/public-profile/${encodeURIComponent(userIdentifier)}`, '_blank', 'noopener');

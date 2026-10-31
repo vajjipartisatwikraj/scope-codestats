@@ -81,7 +81,8 @@ export const setupDraft = (profile) => ({
 
 /** The body that finishes the setup: everything the steps collected, in the shape the server reads */
 export function setupFinalPayload(draft) {
-  const year = graduationYearFromRoll(draft.rollNumber);
+  // A college roll number holds the batch; anyone else types their graduating year
+  const year = draft.external ? Number(draft.graduationYear) : graduationYearFromRoll(draft.rollNumber);
   return {
     ...basicsPayload(draft, { includeRoll: true }),
     ...platformsPayload(draft),
@@ -102,6 +103,8 @@ export const draftAsProfile = (draft, profile) => ({
   department: draft.department,
   section: draft.section,
   phone: draft.phone,
+  institutional: !draft.external,
+  collegeName: draft.collegeName,
   about: draft.about,
   linkedinUrl: draft.linkedinUrl,
   resumeLink: draft.resumeLink,

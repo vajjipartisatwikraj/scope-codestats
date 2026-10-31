@@ -26,6 +26,32 @@ For development with hot reload:
 npm run dev
 ```
 
+## Who can sign in (`LOGIN_MODE`)
+
+Sign-in is Google only. Two modes decide which Google accounts are let in, chosen in the backend `.env`:
+
+```
+# domain (default): only college addresses can create an account. Existing accounts are not checked again.
+# allowlist: only addresses on the access list (any domain) can sign in, new and existing accounts alike.
+LOGIN_MODE=domain
+
+# The college domains, used by both modes (comma separated, no "@"). Default shown.
+ALLOWED_EMAIL_DOMAINS=mlrit.ac.in,mlrinstitutions.ac.in
+```
+
+- Leaving `LOGIN_MODE` out means `domain`, exactly how the app worked before. A typo stops the server at start-up.
+- In `allowlist` mode admins manage the list in the app under **Access control list** (admins only): type or paste
+  addresses, or upload a CSV with the columns `email, role, note` (role is `student` or `teacher`, both optional).
+  An address with the role `teacher` becomes a teacher on its first sign-in.
+- Taking an address off the list blocks that person on their next request, even with a token that has not expired.
+  Admins are never blocked, so keep at least one admin account.
+- Before switching a running site to `allowlist`, open the page and press **Add existing accounts**, so nobody who
+  already has an account is locked out.
+- People whose address is not a college address type their own roll number, department, graduating year and
+  college when they set up their profile.
+- Changing `.env` needs a restart (`pm2 restart all`). Allowed changes on the list apply within 15 seconds on every
+  server process.
+
 ## Manually Syncing User Profiles
 
 The application includes scripts to manually trigger synchronization of all user coding profiles across platforms. These scripts connect to the database, fetch all profiles, update them with fresh data from coding platforms, and save the results.

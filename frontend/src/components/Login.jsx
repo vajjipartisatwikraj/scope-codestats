@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import { ArrowBack, ArrowForwardIos, ArrowBackIos } from '@mui/icons-material';
 import GoogleIcon from '@mui/icons-material/Google';
+import useLoginConfig from '../hooks/useLoginConfig';
 
 // Carousel component
 const Carousel = () => {
@@ -175,13 +176,23 @@ const Login = ({ variant = 'student' }) => {
   const location = useLocation();
   const isTeacher = variant === 'teacher';
 
+  // How the server lets people in: only college addresses ('domain', the default) or only the
+  // addresses an admin listed ('allowlist'). It decides the wording below.
+  const { loginMode, domainHint } = useLoginConfig();
+  const allowlist = loginMode === 'allowlist';
+
   // Why a previous sign-in attempt ended, passed back in the URL by the server
   const params = new URLSearchParams(location.search);
   const errorParam = params.get('error');
+  const SIGN_IN_PROBLEMS = {
+    'not-allowed': 'This email address is not on the access list. Ask your coordinator to add it, then try again.',
+    'domain-not-allowed': `Use your MLRIT college email address (${domainHint}).`,
+    'access-revoked': 'Your email address no longer has access. Contact your coordinator.',
+  };
   const signInProblem = errorParam
     ? /^(google-)?auth-failed$/.test(errorParam)
       ? 'Sign in failed. Please try again.'
-      : errorParam
+      : SIGN_IN_PROBLEMS[errorParam] || errorParam
     : params.get('sessionExpired')
     ? 'You were signed out because this account signed in on another device.'
     : '';
@@ -361,7 +372,20 @@ const Login = ({ variant = 'student' }) => {
                 lineHeight: 1.5,
               }}
             >
-              {isTeacher ? (
+              {allowlist ? (
+                isTeacher ? (
+                  <>
+                    Sign in with the Google account for the <b>email address an admin added</b> to the access
+                    list. If this is your first time, you may be asked to request teacher access, which an
+                    admin approves.
+                  </>
+                ) : (
+                  <>
+                    Sign in with the Google account for the <b>email address your coordinator added</b> to
+                    track your competitive programming progress.
+                  </>
+                )
+              ) : isTeacher ? (
                 <>
                   Sign in with your <b>MLRIT college email</b>. If this is your first time, you will be
                   asked to request teacher access, which an admin approves.

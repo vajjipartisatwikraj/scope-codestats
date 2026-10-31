@@ -72,7 +72,7 @@ export default function StudentSheet({ row, tab, rank, departmentRank, own, year
 
   const tabInfo = TABS.find((entry) => entry.key === tab);
   const platforms = TAB_PLATFORMS[tab];
-  const path = profilePath(row.email);
+  const path = profilePath(row.email, row.username);
   const meta = [row.department, row.section ? `Section ${row.section}` : null, yearName(row.graduatingYear) !== '\u2013' ? yearName(row.graduatingYear) : null]
     .filter(Boolean)
     .join(' \u00b7 ');

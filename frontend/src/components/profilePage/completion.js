@@ -17,7 +17,9 @@ export function completionOf(profile, achievements = []) {
   const skills = (profile.skills || []).reduce((sum, set) => sum + (set.skills || []).length, 0);
   const education = (profile.education || []).filter((entry) => entry && entry.level).length;
   const links = [hasText(profile.linkedinUrl), hasText(profile.resumeLink)].filter(Boolean).length;
-  const basicsDone = [hasText(profile.name), hasText(profile.rollNumber), Boolean(profile.department), Boolean(profile.section), PHONE.test(profile.phone || '')];
+  // A section belongs to the college's own students; someone outside it gives their college name instead
+  const placeDone = profile.institutional === false ? hasText(profile.collegeName) : Boolean(profile.section);
+  const basicsDone = [hasText(profile.name), hasText(profile.rollNumber), Boolean(profile.department), placeDone, PHONE.test(profile.phone || '')];
   const basicsCount = basicsDone.filter(Boolean).length;
 
   const part = (key, title, hint, minutes, weight, fraction, detail) => {

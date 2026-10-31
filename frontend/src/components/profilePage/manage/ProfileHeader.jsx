@@ -20,7 +20,7 @@ import { usernameOfEmail } from '../profileModel';
  */
 export default function ProfileHeader({ profile, completion }) {
   const year = yearLabel(profile.graduationYear);
-  const username = usernameOfEmail(profile.email);
+  const username = usernameOfEmail(profile.email, profile.username);
   const facts = [
     profile.department ? { key: 'department', icon: BuildingsIcon, text: profile.department } : null,
     profile.section ? { key: 'section', icon: UsersThreeIcon, text: `Section ${profile.section}` } : null,

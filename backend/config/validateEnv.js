@@ -6,6 +6,7 @@
  * so an existing deployment keeps starting while the secrets are rotated.
  */
 const logger = require("../utils/logger");
+const { MODES, isValidMode, loginMode } = require("./loginAccess");
 
 const REQUIRED = [
   "MONGODB_URI",
@@ -24,6 +25,16 @@ function validateEnv(env = process.env) {
     logger.error("CONFIG", new Error(`missing environment variables: ${missing.join(", ")}`));
     process.exit(1);
   }
+
+  // A typo here must not silently fall back to another mode, so it stops the start-up
+  if (!isValidMode(env)) {
+    logger.error(
+      "CONFIG",
+      new Error(`LOGIN_MODE must be one of: ${MODES.join(", ")} (got "${env.LOGIN_MODE}")`),
+    );
+    process.exit(1);
+  }
+  logger.info("CONFIG", `login mode: ${loginMode(env)}`);
 
   for (const name of ["JWT_SECRET", "SESSION_SECRET"]) {
     if (env[name].length < MIN_SECRET_LENGTH) {

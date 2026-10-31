@@ -70,8 +70,13 @@ export function platformError(platform, raw) {
 
 // ---- The profile at a glance ------------------------------------------------------------------
 
-/** Public profile address: the part of the email before the "@" */
-export const usernameOfEmail = (email) => (typeof email === 'string' && email.includes('@') ? email.split('@')[0] : '');
+/**
+ * Public profile address. New accounts have a stored username (the part of the email before the
+ * "@", with a number added when another domain already has it), passed as `stored`. Older accounts
+ * have none and keep using the part of the email before the "@".
+ */
+export const usernameOfEmail = (email, stored) =>
+  stored || (typeof email === 'string' && email.includes('@') ? email.split('@')[0] : '');
 
 /** "23r21a05y9" starts with the year they joined: 2000 + 23 + 4 */
 export function graduationYearFromRoll(rollNumber) {
@@ -91,37 +96,61 @@ export const batchError = (rollNumber) => {
 
 export const PHONE = /^\d{10}$/;
 
+/**
+ * `external` is true for someone who signed in with an address that is not a college address
+ * (the server runs with LOGIN_MODE=allowlist). Their roll number cannot be read from the address,
+ * so they type their own roll number or ID, department, graduating year and college, and the
+ * section is optional.
+ */
 export const basicsDraft = (profile) => ({
   name: profile.name || '',
   rollNumber: profile.rollNumber || '',
   department: profile.department || '',
   section: profile.section || '',
   phone: profile.phone || '',
+  external: profile.institutional === false,
+  collegeName: profile.collegeName || '',
+  graduationYear: profile.graduationYear ? String(profile.graduationYear) : '',
 });
+
+/** The year a person types, as a whole number, or NaN */
+const typedYear = (value) => (/^\d{4}$/.test(String(value).trim()) ? Number(value) : NaN);
 
 /** @returns {Object<string,string>} field -> sentence; empty when everything is fine */
 export function validateBasics(draft, { checkRoll = false } = {}) {
   const errors = {};
   if (!draft.name.trim()) errors.name = 'Enter your full name, as you want it to appear on your profile.';
   if (checkRoll) {
-    if (!draft.rollNumber.trim()) errors.rollNumber = 'Enter your roll number.';
-    else {
+    if (!draft.rollNumber.trim()) errors.rollNumber = draft.external ? 'Enter your roll number or student ID.' : 'Enter your roll number.';
+    else if (draft.external) {
+      if (draft.rollNumber.trim().length > 40) errors.rollNumber = 'Use at most 40 characters.';
+    } else {
       const problem = batchError(draft.rollNumber);
       if (problem) errors.rollNumber = problem;
     }
   }
-  if (!draft.department) errors.department = 'Choose your department.';
-  if (!draft.section) errors.section = 'Choose your section.';
+  if (draft.external) {
+    if (!draft.collegeName.trim()) errors.collegeName = 'Enter the name of your college.';
+    if (!draft.department.trim()) errors.department = 'Enter your department, like Computer Science.';
+    else if (draft.department.trim().length > 60) errors.department = 'Use at most 60 characters.';
+    const year = typedYear(draft.graduationYear);
+    if (!(year >= 2000 && year <= 2100)) errors.graduationYear = 'Enter the year you graduate, like 2028.';
+  } else {
+    if (!draft.department) errors.department = 'Choose your department.';
+    if (!draft.section) errors.section = 'Choose your section.';
+  }
   if (!PHONE.test(draft.phone)) errors.phone = 'Enter a 10-digit mobile number, like 9876543210. Only you see it.';
   return errors;
 }
 
 export const basicsPayload = (draft, { includeRoll = false } = {}) => ({
   name: draft.name.trim(),
-  department: draft.department,
-  section: draft.section,
+  department: draft.external ? draft.department.trim() : draft.department,
+  // A section is optional for someone outside the college, and the server rejects an empty one
+  ...(draft.section ? { section: draft.section } : {}),
   phone: draft.phone,
-  ...(includeRoll ? { rollNumber: draft.rollNumber.trim(), graduationYear: graduationYearFromRoll(draft.rollNumber) } : {}),
+  ...(draft.external ? { collegeName: draft.collegeName.trim(), graduationYear: typedYear(draft.graduationYear) } : {}),
+  ...(includeRoll ? { rollNumber: draft.rollNumber.trim(), ...(draft.external ? {} : { graduationYear: graduationYearFromRoll(draft.rollNumber) }) } : {}),
 });
 
 export const platformsDraft = (profile) =>

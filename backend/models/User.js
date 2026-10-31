@@ -1,6 +1,24 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const log = require("../utils/logger").scope("USER");
+const { EMAIL_PATTERN, loginMode, isInstitutionEmail } = require("../config/loginAccess");
+
+// The departments of the college. Accounts on a college address must use one of these.
+const DEPARTMENTS = ["AERO", "CSC", "CSD", "CSE", "CSM", "CSIT", "IT", "ECE", "MECH", "EEE"];
+
+/**
+ * Department rule.
+ *  - LOGIN_MODE=domain: every account is a college account, so only DEPARTMENTS (as before).
+ *  - LOGIN_MODE=allowlist: a college address still uses DEPARTMENTS; anyone else types their own
+ *    department. When the address is unknown (a validator run by an update query), any short
+ *    text passes; the document validation that runs first in the profile routes is the strict one.
+ */
+function departmentIsValid(value) {
+  if (loginMode() === "domain") return DEPARTMENTS.includes(value);
+  const email = typeof this?.get === "function" ? this.get("email") : undefined;
+  if (email && isInstitutionEmail(email)) return DEPARTMENTS.includes(value);
+  return typeof value === "string" && value.trim().length > 0 && value.length <= 60;
+}
 
 const userSchema = new mongoose.Schema(
   {
@@ -47,26 +65,37 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      match: [
-        /(@mlrit\.ac\.in|@mlrinstitutions\.ac\.in)$/,
-        "Please use your MLRIT college email address",
-      ],
+      // Only the shape is checked here. Who may sign in is decided by config/loginAccess.js
+      // and the access list, not by the schema.
+      match: [EMAIL_PATTERN, "Please enter a valid email address"],
+    },
+    // The public address of the profile page (/public-profile/:username). Accounts created
+    // before this field existed have none and keep using the part of the email before the
+    // "@", see services/userProfileService.findUserByUsername. Set once, when the account is
+    // created, so two people with the same name on different domains never share a page.
+    username: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      unique: true,
+      sparse: true,
     },
     department: {
       type: String,
       required: true,
-      enum: [
-        "AERO",
-        "CSC",
-        "CSD",
-        "CSE",
-        "CSM",
-        "CSIT",
-        "IT",
-        "ECE",
-        "MECH",
-        "EEE",
-      ],
+      trim: true,
+      uppercase: true,
+      validate: {
+        validator: departmentIsValid,
+        message: "Please choose a valid department",
+      },
+    },
+    // The college of someone who does not sign in with a college address
+    collegeName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: "",
     },
     section: {
       type: String,
@@ -74,8 +103,8 @@ const userSchema = new mongoose.Schema(
     },
     graduatingYear: {
       type: Number,
-      min: 2024,
-      max: 2030,
+      min: 2000,
+      max: 2100,
       validate: {
         validator: Number.isInteger,
         message: "Graduating year must be a 4-digit number",

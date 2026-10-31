@@ -68,7 +68,7 @@ async function buildLeaderboardFilter(query) {
 //  - the page shows six platforms
 //  - from each platform it reads five numbers
 const LEADERBOARD_USER_FIELDS =
-  "_id name rollNumber email department section graduatingYear profilePicture weeklyActivity";
+  "_id name rollNumber email username department section graduatingYear profilePicture weeklyActivity";
 const LEADERBOARD_PROFILE_FIELDS =
   "userId platform score problemsSolved rating maxRating contestsParticipated";
 const LEADERBOARD_PLATFORMS = ["leetcode", "codechef", "codeforces", "hackerrank", "github", "scopecodestats"];
@@ -112,6 +112,7 @@ function buildEntries(users, summaries) {
       name: user.name,
       rollNumber: user.rollNumber,
       email: user.email,
+      username: user.username || undefined,
       department: user.department,
       section: user.section,
       graduatingYear: user.graduatingYear,

@@ -80,6 +80,7 @@ const practiceArenaRoutes = require("./routes/practiceArena");
 const compilerRoutes = require("./routes/compiler");
 const contactRoutes = require("./routes/contact");
 const jwt = require("jsonwebtoken");
+const accessList = require("./services/accessListService");
 
 const app = express();
 const server = http.createServer(app);
@@ -162,6 +163,12 @@ io.use(async (socket, next) => {
     if (!user) {
       logger.warn("SOCKET", "connection rejected: user not found");
       return next(new Error("Authentication error: User not found"));
+    }
+
+    // Same rule as the HTTP routes: LOGIN_MODE=allowlist keeps out addresses that are not listed
+    if (!(await accessList.canAccess(user))) {
+      logger.warn("SOCKET", "connection rejected: email is not on the access list");
+      return next(new Error("Authentication error: No access"));
     }
 
     socket.userId = decoded.userId;
@@ -382,6 +389,7 @@ app.use("/api/cohorts", cohortsRoutes);
 app.use("/api/user-groups", require("./routes/userGroups")); // named roll number lists attached to cohorts
 app.use("/api/teacher-requests", require("./routes/teacherRequests")); // teacher access requests (admin approves)
 app.use("/api/platform-progress", require("./routes/platformProgress")); // dashboard Progress tab (platform history, GitHub timeline)
+app.use("/api/admin/access-list", require("./routes/accessList")); // admin: who may sign in (LOGIN_MODE=allowlist)
 app.use("/api/admin/rankings", require("./routes/rankings")); // admin: score and rank calculation
 app.use("/api/admin/analytics", require("./routes/adminAnalytics")); // admin: student performance over the platforms
 app.use("/api/speech-tests", require("./routes/speechTests"));

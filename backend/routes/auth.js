@@ -7,6 +7,8 @@ const { body, validationResult } = require("express-validator");
 const User = require("../models/User");
 const { saveUsernames } = require("../services/profileSyncService");
 const { normalizeSkillSets } = require("../utils/skillSets");
+const accessList = require("../services/accessListService");
+const { loginMode, publicConfig } = require("../config/loginAccess");
 const log = require("../utils/logger").scope("AUTH");
 
 // Middleware to authenticate token
@@ -33,6 +35,14 @@ const auth = async (req, res, next) => {
         message: "Your session has been invalidated. You have logged in from another device.",
         code: "SESSION_EXPIRED",
         sessionExpired: true,
+      });
+    }
+
+    // LOGIN_MODE=allowlist: an address taken off the access list is blocked at once
+    if (!(await accessList.canAccess(user))) {
+      return res.status(401).json({
+        message: "Your email address no longer has access. Contact your coordinator.",
+        code: "ACCESS_REVOKED",
       });
     }
 
@@ -95,8 +105,15 @@ router.get("/info", (req, res) => {
   res.json({
     message: "This service uses Google OAuth for authentication",
     googleAuthRoute: "/api/auth/google",
-    requiredEmail: "@mlrit.ac.in or @mlrinstitutions.ac.in",
+    requiredEmail:
+      loginMode() === "domain" ? publicConfig().domainHint : "An email address on the access list",
   });
+});
+
+// What the sign-in pages need: the login mode and, in domain mode, which addresses work.
+// Public on purpose (the pages load it before anyone is signed in) and holds nothing private.
+router.get("/config", (req, res) => {
+  res.json(publicConfig());
 });
 
 // Traditional Register route - DISABLED (Google OAuth only)
@@ -187,6 +204,7 @@ router.post("/completeRegistration", auth, async (req, res) => {
       profiles,
       profileCompleted,
       imageUrl,
+      collegeName,
     } = req.body;
 
     // Validate required fields
@@ -211,6 +229,7 @@ router.post("/completeRegistration", auth, async (req, res) => {
     if (section) user.section = section;
     if (rollNumber) user.rollNumber = rollNumber;
     if (graduationYear) user.graduatingYear = graduationYear;
+    if (typeof collegeName === "string") user.collegeName = collegeName;
     if (gender) user.gender = gender;
     if (mobileNumber) user.mobileNumber = mobileNumber;
     if (phone) user.mobileNumber = phone; // Map phone to mobileNumber
@@ -279,6 +298,14 @@ router.post("/completeRegistration", auth, async (req, res) => {
       });
     } catch (saveError) {
       log.error("Error saving user:", saveError);
+
+      // Roll numbers are unique: someone typing a number that is taken gets a sentence, not a 500
+      if (saveError.code === 11000 && saveError.keyPattern?.rollNumber) {
+        return res.status(409).json({
+          message: "That roll number is already registered to another account.",
+          errors: { rollNumber: "That roll number is already registered to another account." },
+        });
+      }
 
       if (saveError.name === "ValidationError") {
         const validationErrors = {};

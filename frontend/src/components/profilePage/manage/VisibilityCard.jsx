@@ -17,7 +17,7 @@ const PRIVATE = ['Your college email', 'Your mobile number'];
 export default function VisibilityCard({ profile }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef(null);
-  const username = usernameOfEmail(profile.email);
+  const username = usernameOfEmail(profile.email, profile.username);
   const address = username ? `${window.location.origin}/public-profile/${encodeURIComponent(username)}` : '';
 
   useEffect(() => () => window.clearTimeout(timer.current), []);

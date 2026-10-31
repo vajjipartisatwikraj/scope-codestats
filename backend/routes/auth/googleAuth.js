@@ -38,7 +38,7 @@ router.get('/callback', (req, res, next) => {
   // Where to send the person back to if sign-in fails
   const loginPath = readLoginIntent(req) === 'teacher' ? '/teacher-login' : '/login';
   
-  passport.authenticate('google', { failureRedirect: '/login?error=google-auth-failed' }, async (err, user) => {
+  passport.authenticate('google', { failureRedirect: '/login?error=google-auth-failed' }, async (err, user, info) => {
     if (err) {
       log.error('Google auth error:', err);
       let errorMessage = 'Authentication failed';
@@ -53,8 +53,11 @@ router.get('/callback', (req, res, next) => {
     }
 
     if (!user) {
-      log.debug('No user returned from Google auth');
-      return res.redirect(`${process.env.FRONTEND_URL}${loginPath}?error=auth-failed`);
+      // The strategy says why it refused in info.code (config/passport.js). Only these two
+      // are passed on, so nothing else can be put on the sign-in page through the URL.
+      const reason = ['not-allowed', 'domain-not-allowed'].includes(info && info.code) ? info.code : 'auth-failed';
+      log.debug(`No user returned from Google auth (${reason})`);
+      return res.redirect(`${process.env.FRONTEND_URL}${loginPath}?error=${reason}`);
     }
 
     // Generate unique session token for single active login enforcement

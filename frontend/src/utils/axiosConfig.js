@@ -40,6 +40,10 @@ axios.interceptors.response.use(
         console.log("Session invalidated - User logged in from another device");
         // Redirect to login with message
         window.location.href = `${window.location.origin}/login?sessionExpired=true`;
+      } else if (errorCode === "ACCESS_REVOKED") {
+        // An admin took this email address off the access list (LOGIN_MODE=allowlist)
+        console.log("Access revoked - the email address is no longer on the access list");
+        window.location.href = `${window.location.origin}/login?error=access-revoked`;
       } else {
         // Regular unauthorized - redirect to SCOPE club website
         window.location.href = window.location.origin + "/";
