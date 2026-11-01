@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React from 'react';
 import { Box, Typography, Button, useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +25,8 @@ const NotFound = () => {
     >
       <Box
         component="img"
-        src={darkMode ? '/404-dark.png' : '/404-light.png'}
+        src={darkMode ? brand.shared.notFoundDark : brand.shared.notFoundLight}
+
         alt="404 Not Found"
         sx={{
           maxWidth: '100%',

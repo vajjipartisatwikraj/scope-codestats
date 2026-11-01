@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowForward, LocationCity, Lightbulb, EmojiEvents, Groups } from '@mui/icons-material';
@@ -29,16 +30,16 @@ const About = () => {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black" />
           <div className="pointer-events-none absolute -top-32 left-1/2 h-[520px] w-[860px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(0,136,204,0.22),transparent_70%)] blur-3xl" />
           <div className="relative mx-auto max-w-5xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-[11px] uppercase tracking-[0.25em] text-white/70">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-xs uppercase tracking-[0.25em] text-white/70">
               <span className="h-1.5 w-1.5 rounded-full bg-[rgb(120,200,255)] shadow-[0_0_8px_rgba(0,170,255,0.9)]" />
-              About CodeStats
+              About {brand.names.platform}
             </div>
-            <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
-              Built by MLRIT students, <br />
-              <span className="italic text-white/70">for MLRIT students.</span>
+            <h1 className="font-display text-3xl leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
+              Built by {brand.names.builder}, <br />
+              <span className="italic text-white/70">for {brand.names.institution} students.</span>
             </h1>
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-relaxed text-white/70 md:text-lg">
-              CodeStats is the coding assessment platform built by SCOPE Club — the central coding club of MLR Institute of Technology.
+            <p className="mx-auto mt-7 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
+              {brand.names.platform} is the coding assessment platform built by {brand.names.builder}{brand.institution.clubName ? `, the central coding club of ${brand.names.institutionFull}` : ` for the students of ${brand.names.institutionFull}`}.
             </p>
           </div>
         </section>
@@ -46,12 +47,12 @@ const About = () => {
         {/* Coming soon chip */}
         <section className="px-6 pb-20 md:px-12 md:pb-24">
           <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.1)] px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[rgb(120,200,255)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.1)] px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-[rgb(120,200,255)]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[rgb(120,200,255)] shadow-[0_0_8px_rgba(0,170,255,0.9)]" />
               More coming soon
             </div>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-white/55">
-              We're actively building out this page. Check back soon for the full story behind CodeStats and SCOPE Club.
+              We're actively building out this page. Check back soon for the full story behind {brand.names.platform} and {brand.names.builder}.
             </p>
           </div>
         </section>
@@ -65,19 +66,19 @@ const About = () => {
           <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[1fr_1.3fr] md:gap-20">
             <div className="md:sticky md:top-32 md:self-start">
               <div className="mb-4 text-xs uppercase tracking-[0.25em] text-white/55">Our mission</div>
-              <h2 className="font-display text-3xl leading-[1.1] tracking-tight md:text-5xl">
+              <h2 className="font-display text-2xl leading-[1.1] tracking-tight md:text-4xl">
                 Measure what <span className="italic text-white/70">actually</span> matters.
               </h2>
             </div>
-            <div className="space-y-6 text-[15px] leading-relaxed text-white/70 md:text-[17px]">
+            <div className="space-y-6 text-sm leading-relaxed text-white/70 md:text-base">
               <p>
-                Software is built in editors, not on whiteboards. So our assessments are too. Students write real code against problems that reflect the work — then get instant, honest feedback on how they did.
+                Software is built in editors, not on whiteboards. So our assessments are too. Students write real code against problems that reflect the work, then get instant, honest feedback on how they did.
               </p>
               <p>
-                Behind the scenes, CodeStats quietly turns every submission into insight. Teachers see where a class is struggling, students see how they're improving, and everyone works from the same clear picture — no proctoring, no surveillance, just performance.
+                Behind the scenes, {brand.names.platform} quietly turns every submission into insight. Teachers see where a class is struggling, students see how they're improving, and everyone works from the same clear picture: no proctoring, no surveillance, just performance.
               </p>
               <p>
-                We're a group of MLRIT students — the SCOPE Club — who love building things. We made CodeStats for our own campus because we wanted it to exist.
+                We're {brand.names.builder}, a group who love building things. We made {brand.names.platform} for {brand.names.institution} because we wanted it to exist.
               </p>
             </div>
           </div>
@@ -88,7 +89,7 @@ const About = () => {
           <div className="mx-auto max-w-6xl">
             <div className="mb-12 text-center">
               <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/55">What we believe</div>
-              <h2 className="font-display text-3xl tracking-tight md:text-5xl">Principles, not posture.</h2>
+              <h2 className="font-display text-2xl tracking-tight md:text-4xl">Principles, not posture.</h2>
             </div>
             <div className="grid gap-5 md:grid-cols-3">
               {[
@@ -105,7 +106,7 @@ const About = () => {
                 {
                   icon: <EmojiEvents className="h-5 w-5 text-white" />,
                   title: "Cinematic detail",
-                  copy: "We obsess over the small things — timing, motion, type. Assessment should feel as crafted as the work.",
+                  copy: "We obsess over the small things: timing, motion, type. Assessment should feel as crafted as the work.",
                 },
               ].map((v) => (
                 <div key={v.title} className="liquid-glass rounded-[1.25rem] p-7">
@@ -124,10 +125,10 @@ const About = () => {
         <section className="px-6 py-24 md:px-12">
           <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-white/10 md:grid-cols-4 md:divide-y-0 md:divide-x">
             {[
-              { stat: "1", label: "Campus — MLRIT" },
+              { stat: "1", label: `Campus: ${brand.names.institution}` },
               { stat: "3,000+", label: "Students assessed" },
               { stat: "50+", label: "Teachers onboard" },
-              { stat: "2019", label: "SCOPE Club founded" },
+              { stat: brand.institution.clubFounded || "-", label: `${brand.names.club} founded` },
             ].map((s) => (
               <div key={s.label} className="px-2 py-8 md:px-10 md:py-4 text-center">
                 <div className="font-display text-5xl tracking-tight text-white md:text-6xl">{s.stat}</div>
@@ -143,14 +144,14 @@ const About = () => {
             <div className="mb-10 flex items-end justify-between">
               <div>
                 <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/55">The team</div>
-                <h2 className="font-display text-3xl tracking-tight md:text-5xl">Builders, first.</h2>
+                <h2 className="font-display text-2xl tracking-tight md:text-4xl">Builders, first.</h2>
               </div>
               <Groups className="h-7 w-7 text-white/50" />
             </div>
             <div className="grid gap-5 md:grid-cols-3">
               {[
                 { name: "Satwik Tata", role: "Founder & Developer", bio: "Building SCOPE to revolutionize coding assessments. Believes in measurable skill." },
-                { name: "MLRIT Team", role: "Core Contributors", bio: "Students and faculty working together to build the future of technical education." },
+                { name: `${brand.names.institution} Team`, role: "Core Contributors", bio: "Students and faculty working together to build the future of technical education." },
                 { name: "You?", role: "Join Us", bio: "We're always looking for passionate contributors who want to make assessment better." },
               ].map((p) => (
                 <div key={p.name} className="liquid-glass rounded-[1.25rem] p-6">
@@ -174,7 +175,8 @@ const About = () => {
               Ready to <span className="italic text-white/70">start coding?</span>
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-white/65">
-              Log in with your MLRIT account and jump into your first assessment.
+              Log in with your {brand.names.institution} account and jump
+ into your first assessment.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button

@@ -11,7 +11,7 @@
  * .tc TrendChart, .pc PieChart, .cl ChartLegend, .cc-tip ChartTip, .pt PillTabs, .aw AudioWaveform,
  * .wb WaveformBars, .lm LevelMeter, .sb SignalBars, .rc RadarChart, .sr StarRating,
  * .an AnimatedNumber, .pb ProgressBar, .sp SegmentedProgress, .sring ScoreRing, .ac AnimatedCheck,
- * .acp AudioClipPlayer.
+ * .acp AudioClipPlayer, .srow ScrollRow.
  */
 
 .cc,

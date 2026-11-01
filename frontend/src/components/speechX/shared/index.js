@@ -4,7 +4,7 @@
  * Plain CSS on the design tokens (speechX.css, prefix sx-), Phosphor icons, no Material UI. It keeps
  * the feel of the old screens (a focus surface: a fixed top bar with the platform mark, centred
  * cards, stepper-like flows, the app footer below) in the current theme system (Midnight and Daylight).
- * Import from the folder:   import { FocusHeader, FocusPage, SpeechCard } from "../shared";
+ * Import from the folder:   import { FocusHeader, FocusPage, SpeechCard } from ".";
  *
  * ---------------------------------------------------------------------------------------------
  * THE SHELL OF A FOCUS SCREEN
@@ -31,7 +31,8 @@
  *   `locked` makes the brand plain text and the profile not pressable (a running section).
  *   children is the middle slot (right-aligned flex row; give a child flex:1 to fill it).
  *   Built in at the right: connection (SignalBars + Online/Offline, a live region), theme toggle,
- *   profile badge. Logo: /codestats-color.png (blue mark, transparent, legible in both themes).
+ *   profile badge. Logo: the platform logo (blue mark
+, transparent, legible in both themes).
  *   <FocusHeader subtitle="Speech Judge" locked><TimerPill .../></FocusHeader>
  *
  * FocusPage  (FocusPage.jsx)

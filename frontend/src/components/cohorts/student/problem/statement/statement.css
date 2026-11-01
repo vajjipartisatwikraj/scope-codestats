@@ -1,0 +1,265 @@
+/*
+ * Statement (statement/): the left pane. The reading typography comes from ui/Prose; this adds the
+ * blocks teachers write into a problem (.example, .note, .highlight, .warning) and MathML. Only
+ * design tokens. Nothing is a coloured side stripe.
+ */
+
+.ps-description .ps-pane__body {
+  padding: 20px 24px 32px;
+}
+
+@media (max-width: 599.95px) {
+  .ps-description .ps-pane__body {
+    padding: 16px;
+  }
+}
+
+.ps-strip {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-surface);
+}
+
+/* ---- Header ------------------------------------------------------------------------------------- */
+
+.ps-problem-header {
+  margin: 0 0 20px;
+}
+
+.ps-problem-header__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.ps-problem-header__title {
+  min-width: 0;
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+  overflow-wrap: anywhere;
+}
+
+.ps-problem-header__badges {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Medium · Accuracy: 40% · Submissions: 12 · Points: 150 */
+.ps-meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-meta > span + span::before {
+  content: '\00B7';
+  margin: 0 8px;
+}
+
+.ps-meta strong {
+  color: var(--ds-text);
+  font-weight: 600;
+}
+
+.ps-meta__difficulty {
+  font-weight: 600;
+}
+
+.ps-meta__difficulty[data-tone='success'] {
+  color: var(--ds-success);
+}
+
+.ps-meta__difficulty[data-tone='warning'] {
+  color: var(--ds-warning);
+}
+
+.ps-meta__difficulty[data-tone='danger'] {
+  color: var(--ds-danger);
+}
+
+/* ---- The statement ---------------------------------------------------------------------------------- */
+
+.ps-statement {
+  max-width: 76ch;
+  font: var(--ds-type-body-lg);
+}
+
+/* The side headings (Input format, Output format, Examples) are set in the platform blue: the colour of the text, not a background */
+.ps-statement h1,
+.ps-statement h2,
+.ps-statement h3,
+.ps-statement h4,
+.ps-statement h5,
+.ps-statement h6 {
+  color: var(--ds-accent-text);
+}
+
+.ps-statement .highlight {
+  padding: 0.1em 0.35em;
+  border-radius: var(--ds-radius-xs);
+  background-color: var(--ds-warning-soft);
+}
+
+/* A note: a header band over the body */
+.ps-statement .note {
+  margin: 16px 0;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  overflow: hidden;
+}
+
+.ps-statement .note > p:first-of-type {
+  margin: 0;
+  padding: 10px 16px;
+  background-color: var(--ds-high);
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+}
+
+.ps-statement .note > :not(p:first-of-type) {
+  margin-right: 16px;
+  margin-left: 16px;
+}
+
+.ps-statement .warning {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-warning-soft);
+}
+
+/* An example: the input and the output side by side, on the raised tone */
+.ps-statement .example {
+  margin: 16px 0;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  font-family: var(--ds-font-mono);
+  overflow: hidden;
+}
+
+.ps-statement .example > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ps-statement .example .input-output-row {
+  display: contents;
+}
+
+.ps-statement .example .label {
+  padding: 10px 16px;
+  background-color: var(--ds-high);
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+  font-family: inherit;
+}
+
+.ps-statement .example .value {
+  padding: 10px 16px;
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+}
+
+.ps-statement .example .label:first-of-type,
+.ps-statement .example .value:first-of-type {
+  border-right: 1px solid var(--ds-line);
+}
+
+/* A table of input and output (the usual way an example is written) */
+.ps-statement table {
+  width: 100%;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+}
+
+.ps-statement th {
+  background-color: var(--ds-high);
+  color: var(--ds-accent-text);
+}
+
+.ps-statement td,
+.ps-statement th {
+  white-space: pre-wrap;
+}
+
+/* ---- Math: MathML renders natively and inherits nothing, so it is set here ------------------------------ */
+
+.ps-statement math {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  color: var(--ds-text);
+  font-family: 'Latin Modern Math', 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif;
+  font-size: 1.08em;
+}
+
+.ps-statement math[display='inline'] {
+  margin: 0 2px;
+  vertical-align: -0.15em;
+}
+
+.ps-statement math[display='block'] {
+  display: block;
+  margin: 14px auto;
+  font-size: 1.15em;
+  text-align: center;
+}
+
+.ps-statement mfrac {
+  padding: 0 1px;
+}
+
+.ps-statement mo {
+  padding: 0 1px;
+}
+
+/* MathML must not take the inline code look */
+.ps-statement math mi,
+.ps-statement math mn,
+.ps-statement math mo {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* ---- Hints, topics, companies ------------------------------------------------------------------------------ */
+
+.ps-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.ps-extra__title {
+  margin: 0 0 4px;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.ps-extra__text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ps-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

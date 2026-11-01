@@ -1,0 +1,244 @@
+/*
+ * Navigation (navigation/): the rail, the top strip and the problem list of the problem screen.
+ * Only design tokens.
+ */
+
+/* ---- Rail: the one accent area of the screen ------------------------------------------------------- */
+
+.ps-rail {
+  display: none;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 60px;
+  padding: 12px 0;
+  background-color: var(--ds-accent);
+}
+
+@media (min-width: 900px) {
+  .ps-rail {
+    display: flex;
+  }
+}
+
+.ps-rail__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  color: var(--ds-text);
+}
+
+.ps-rail__logo {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-surface);
+}
+
+.ps-rail__logo img {
+  max-width: 30px;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+/* ---- Top strip --------------------------------------------------------------------------------------- */
+
+.ps-topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 6px 12px;
+}
+
+.ps-topbar__spacer {
+  flex: 1 1 auto;
+}
+
+.ps-topbar__steps,
+.ps-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 599.95px) {
+  .ps-topbar {
+    padding: 6px 8px;
+  }
+
+  /* On a phone the word goes; the icon and the chevron stay */
+  .ps-topbar .ui-button {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
+
+/* ---- Problem list: slides out beside the rail --------------------------------------------------------- */
+
+.ps-list {
+  position: fixed;
+  top: var(--ps-top, 0px);
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 100vw);
+  /* The platform blue and white text in both themes; the softer white is a solid mix, never a lowered opacity */
+  --pl-soft: color-mix(in srgb, var(--ds-on-accent) 82%, var(--ds-accent));
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+  box-shadow: var(--ds-shadow-float-md);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-16px);
+  transition:
+    opacity 150ms var(--ds-ease),
+    transform 220ms var(--ds-ease),
+    visibility 0s linear 220ms;
+}
+
+@media (min-width: 900px) {
+  .ps-list {
+    left: 60px;
+    width: 400px;
+    border-radius: 0 var(--ds-radius-lg) var(--ds-radius-lg) 0;
+  }
+}
+
+.ps-list[data-open='true'] {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 180ms var(--ds-ease),
+    transform 220ms var(--ds-ease);
+}
+
+.ps-list__head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 12px 12px 20px;
+  border-bottom: 1px solid var(--ds-accent-hover);
+}
+
+.ps-list__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.ps-list__count {
+  margin: 2px 0 0;
+  color: var(--pl-soft);
+  font: var(--ds-type-body-sm);
+}
+
+.ps-list__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.ps-list__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+  color: var(--ds-on-accent);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ps-list__item:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+/* The open question is a white row with dark blue text */
+.ps-list__item[data-current='true'] {
+  background-color: var(--ds-on-accent);
+  color: var(--ds-accent-press);
+}
+
+.ps-list__item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-on-accent);
+}
+
+.ps-list__item[data-current='true']:focus-visible {
+  box-shadow: 0 0 0 2px var(--ds-accent-press);
+}
+
+.ps-list__mark {
+  display: inline-flex;
+  flex: none;
+}
+
+.ps-list__empty {
+  margin: 0;
+  padding: 24px 12px;
+  color: var(--pl-soft);
+  text-align: center;
+}
+
+.ps-list__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ps-list__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-list__meta {
+  display: flex;
+  gap: 12px;
+  color: var(--pl-soft);
+  font: var(--ds-type-caption);
+}
+
+.ps-list__item[data-current='true'] .ps-list__meta {
+  color: var(--ds-accent-press);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-list,
+  .ps-list[data-open='true'],
+  .ps-list__item {
+    transition: none;
+  }
+}

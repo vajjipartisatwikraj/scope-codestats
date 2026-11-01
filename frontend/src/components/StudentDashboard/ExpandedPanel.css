@@ -30,7 +30,7 @@
   container-type: inline-size;
 }
 
-/* The ink tone: near-black on Daylight, a lifted tone on Midnight (the same fills as the tiles) */
+/* The ink tone: near-black on Daylight, the `surface` tone on Midnight (the same fills as the tiles) */
 html[data-theme='daylight'] .sd-panel--ink {
   --sd-ink: var(--ds-canvas);
 }

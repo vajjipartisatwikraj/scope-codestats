@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Email, LocationOn, Send, Chat, ArrowForward, Business } from '@mui/icons-material';
@@ -73,15 +74,15 @@ const Contact = () => {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black" />
           <div className="pointer-events-none absolute -top-32 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(0,136,204,0.22),transparent_70%)] blur-3xl" />
           <div className="relative mx-auto max-w-4xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-[11px] uppercase tracking-[0.25em] text-white/70">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-xs uppercase tracking-[0.25em] text-white/70">
               <Email className="h-3 w-3" />
               Get in touch
             </div>
-            <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
+            <h1 className="font-display text-3xl leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
               Let's <span className="italic text-white/70">talk.</span>
             </h1>
-            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
-              Have a question about CodeStats, spotted a bug, or want to get involved with SCOPE Club? Send us a message and we'll get back to you.
+            <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">
+              Have a question about {brand.codeStats.name} at {brand.names.institution}, spotted a bug, or want to get involved? Send us a message and we'll get back to you.
             </p>
           </div>
         </section>
@@ -91,12 +92,12 @@ const Contact = () => {
           <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.1fr_1fr] md:gap-14">
             {/* Form */}
             <form onSubmit={handleSubmit} className="liquid-glass rounded-[1.5rem] p-7 md:p-10">
-              <h2 className="font-display text-2xl tracking-tight md:text-3xl">Send us a note</h2>
+              <h2 className="font-display text-xl tracking-tight md:text-2xl">Send us a note</h2>
               <p className="mt-2 text-sm text-white/60">We read everything. Reply within one business day.</p>
 
               <div className="mt-8 grid gap-5 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-white/55">Full name</label>
+                  <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/55">Full name</label>
                   <input
                     type="text"
                     name="name"
@@ -108,7 +109,7 @@ const Contact = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-white/55">Work email</label>
+                  <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/55">Work email</label>
                   <input
                     type="email"
                     name="email"
@@ -121,7 +122,7 @@ const Contact = () => {
                 </div>
               </div>
               <div className="mt-5">
-                <label className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-white/55">Institution</label>
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/55">Institution</label>
                 <input
                   type="text"
                   name="company"
@@ -132,7 +133,7 @@ const Contact = () => {
                 />
               </div>
               <div className="mt-5">
-                <label className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-white/55">Topic</label>
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/55">Topic</label>
                 <select
                   name="topic"
                   value={formData.topic}
@@ -142,11 +143,11 @@ const Contact = () => {
                   <option className="bg-black">General</option>
                   <option className="bg-black">Assessment help</option>
                   <option className="bg-black">Report a bug</option>
-                  <option className="bg-black">Join SCOPE Club</option>
+                  <option className="bg-black">Join {brand.codeStats.name} at {brand.names.institution}</option>
                 </select>
               </div>
               <div className="mt-5">
-                <label className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-white/55">Message</label>
+                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/55">Message</label>
                 <textarea
                   name="message"
                   value={formData.message}
@@ -171,19 +172,19 @@ const Contact = () => {
             {/* Sidebar */}
             <div className="space-y-4">
               {[
-                { icon: <Chat className="h-5 w-5 text-white" />, title: "Talk to SCOPE Club", copy: "Questions about CodeStats or joining the club.", value: "scopeclub@mlrinstitutions.ac.in" },
-                { icon: <Email className="h-5 w-5 text-white" />, title: "Help & support", copy: "Trouble with your account or an assessment.", value: "scopeclub@mlrinstitutions.ac.in" },
+                { icon: <Chat className="h-5 w-5 text-white" />, title: `Talk to ${brand.codeStats.name} at ${brand.names.institution}`, copy: `Questions about ${brand.codeStats.name} at ${brand.names.institution}.`, value: brand.institution.contactEmail },
+                { icon: <Email className="h-5 w-5 text-white" />, title: "Help & support", copy: "Trouble with your account or an assessment.", value: brand.institution.contactEmail },
               ].map((c) => (
                 <a
                   key={c.title}
-                  href="mailto:scopeclub@mlrinstitutions.ac.in"
+                  href={`mailto:${brand.institution.contactEmail}`}
                   className="liquid-glass group flex items-start gap-4 rounded-[1.25rem] p-6 transition-all duration-300 hover:border-[rgba(0,170,255,0.35)]"
                 >
                   <div className="liquid-glass flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
                     {c.icon}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-lg">{c.title}</div>
+                    <div className="font-display text-base">{c.title}</div>
                     <div className="text-xs text-white/55">{c.copy}</div>
                     <div className="mt-2 text-sm text-[rgb(120,200,255)]">{c.value}</div>
                   </div>
@@ -198,8 +199,9 @@ const Contact = () => {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {[
-                    { city: "MLR Institute of Technology", line: "Dundigal, Hyderabad, Telangana" },
-                    { city: "SCOPE Club", line: "On campus · MLRIT" },
+                    { city: brand.names.institutionFull, line: brand.institution.address },
+                    { city: `${brand.codeStats.name} at ${brand.names.institution}`, line: 'On campus' },
+
                   ].map((o) => (
                     <div key={o.city} className="flex items-start gap-3">
                       <LocationOn className="mt-0.5 h-4 w-4 text-white/55" />

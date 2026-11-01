@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -242,7 +243,8 @@ const SearchBox = () => {
 
         {noResults ? (
           <div className="ds-search__empty">
-            <img className="ds-search__empty-image" src="/notFound.png" alt="" />
+            <img className="ds-search__empty-image" src={brand.shared.notFound}
+ alt="" />
             <p className="ds-search__empty-text">No results found for “{trimmed}”</p>
           </div>
         ) : null}

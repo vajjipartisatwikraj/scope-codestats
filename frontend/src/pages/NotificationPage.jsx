@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useMemo } from "react";
 import {
   Box,
@@ -263,8 +264,8 @@ const NotificationPage = () => {
               }}
             >
               <img
-                src="/codestats-color.png"
-                alt="ScopeClub"
+                src={brand.platform.logo}
+                alt={brand.names.platform}
                 style={{
                   width: 34,
                   height: 34,

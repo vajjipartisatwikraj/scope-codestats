@@ -1,0 +1,29 @@
+/*
+ * Staff questions panel (questions/). It wears the student panel's classes (.cdq, .cdqi) and adds the
+ * tools at the end of a row and the count line. Only design tokens.
+ */
+
+.cad-count {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.cad-row__tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+/* A button on a row that is hovering would vanish into it; the rows move one tone up on hover */
+.cad-row:hover .ui-icon-button[data-tone='plain']:hover,
+.cad-row:focus-within .ui-icon-button[data-tone='plain']:hover {
+  background-color: var(--ds-surface);
+}
+
+/* The header row has more buttons than the student's (Issues, Export, Upload, Add): they wrap */
+.cdq-head__actions {
+  justify-content: flex-end;
+}

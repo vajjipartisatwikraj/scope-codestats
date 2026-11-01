@@ -163,9 +163,7 @@ router.post(
         if (!isAdmin) {
           // Find a cohort where user is eligible
           const userCohort = cohortsWithModule.find((cohort) =>
-            cohort.eligibleUsers.some(
-              (id) => id.toString() === req.user.id.toString()
-            )
+            cohort.isOpenTo(req.user.id)
           );
 
           if (!userCohort) {

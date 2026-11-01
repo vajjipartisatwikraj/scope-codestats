@@ -62,13 +62,5 @@ export function levelTone(level) {
   return 'neutral';
 }
 
-/** A link is only followed when it is http or https */
-export function safeUrl(value) {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
-  } catch {
-    return null;
-  }
-}
+// A link is only followed when it is http or https (shared with the cohort page)
+export { safeUrl } from '../../utils/safeUrl';

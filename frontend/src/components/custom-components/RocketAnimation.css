@@ -1,0 +1,179 @@
+/*
+ * RocketAnimation (custom-components/RocketAnimation.jsx). Every colour is a variable that defaults
+ * to a --ds-* token, so the rocket follows Midnight and Daylight. The flames use the data series
+ * colours; the drawing is flat (no gradients).
+ */
+
+.rk {
+  --rk-body: var(--ds-raised);
+  --rk-main: var(--ds-accent);
+  --rk-main-dark: var(--ds-accent-press);
+  --rk-glass: var(--ds-accent-hover);
+  --rk-flame-outer: var(--ds-series-coral);
+  --rk-flame-mid: var(--ds-series-amber);
+  --rk-flame-core: color-mix(in srgb, var(--ds-series-amber) 35%, var(--ds-on-accent));
+  --rk-smoke: var(--ds-high);
+  --rk-success: var(--ds-success);
+  --rk-danger: var(--ds-danger);
+  --rk-text: var(--ds-text);
+  --rk-muted: var(--ds-muted);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 260px;
+  overflow: hidden;
+  color: var(--rk-text);
+}
+
+.rk-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.rk-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 180px;
+}
+
+.rk-box svg {
+  width: 120px;
+  height: auto;
+  overflow: visible;
+}
+
+.rk-shake {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- The drawing ---------------------------------------------------------------------------------- */
+
+.rk-fin,
+.rk-nose {
+  fill: var(--rk-main);
+  stroke: var(--rk-main-dark);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.rk-body {
+  fill: var(--rk-body);
+  stroke: var(--rk-main);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.rk-band {
+  fill: var(--rk-main);
+}
+
+.rk-ring {
+  fill: none;
+  stroke: var(--rk-main);
+  stroke-width: 2.5;
+}
+
+.rk-glass {
+  fill: var(--rk-glass);
+  stroke: var(--rk-main-dark);
+  stroke-width: 1;
+}
+
+.rk-shine {
+  fill: var(--rk-flame-core);
+}
+
+.rk-nozzle {
+  fill: var(--rk-main-dark);
+}
+
+.rk-crack {
+  fill: none;
+  stroke: var(--rk-main-dark);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.rk-flame--outer {
+  fill: var(--rk-flame-outer);
+}
+
+.rk-flame--mid {
+  fill: var(--rk-flame-mid);
+}
+
+.rk-flame--core {
+  fill: var(--rk-flame-core);
+}
+
+.rk-smoke {
+  fill: var(--rk-smoke);
+}
+
+.rk-spark--text {
+  fill: var(--rk-text);
+}
+
+.rk-spark--mid {
+  fill: var(--rk-flame-mid);
+}
+
+.rk-spark--outer {
+  fill: var(--rk-flame-outer);
+}
+
+/* ---- Words ------------------------------------------------------------------------------------------ */
+
+.rk-caption {
+  text-align: center;
+}
+
+.rk-caption__title {
+  margin: 4px 0 0;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+}
+
+.rk-caption__text {
+  margin: 2px 0 0;
+  color: var(--rk-muted);
+  font: var(--ds-type-caption);
+}
+
+.rk-message {
+  position: absolute;
+  right: 0;
+  bottom: 16px;
+  left: 0;
+  text-align: center;
+}
+
+.rk-message__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.rk-message[data-tone='success'] .rk-message__title {
+  color: var(--rk-success);
+}
+
+.rk-message[data-tone='failure'] .rk-message__title {
+  color: var(--rk-danger);
+}
+
+.rk-message__text {
+  margin: 2px 0 0;
+  color: var(--rk-muted);
+  font: var(--ds-type-body-sm);
+}

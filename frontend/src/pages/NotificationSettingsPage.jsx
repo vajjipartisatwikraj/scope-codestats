@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React from 'react';
 import {
   Box,
@@ -44,7 +45,8 @@ const NotificationSettingsPage = () => {
         </Breadcrumbs>
         
         <Typography variant="body1" color="text.secondary">
-          Configure how you want to receive notifications from SCOPE.
+          Configure how you want to receive notifications from {brand.names.clubShort}.
+
         </Typography>
       </Box>
       

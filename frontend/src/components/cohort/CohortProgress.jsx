@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
@@ -440,7 +441,8 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
   const handleExportToExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "SCOPE Platform";
+      workbook.creator = `${brand.names.platform} Platform`;
+
       workbook.created = new Date();
 
       // ── Shared style helpers ──

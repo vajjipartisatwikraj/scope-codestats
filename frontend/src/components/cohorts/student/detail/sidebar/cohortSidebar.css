@@ -1,0 +1,9 @@
+/* Left column (sidebar/CohortSidebar.jsx): one flush card. The header at its top is the accent tile
+   and the modules sit under it; the card clips both to its 24px corners. Only design tokens. */
+
+.cds {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}

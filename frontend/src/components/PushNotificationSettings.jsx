@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -150,7 +151,7 @@ const PushNotificationSettings = () => {
         `${apiUrl}/notifications/admin/user/${user.id}`,
         {
           title: 'Test Notification',
-          message: 'This is a test push notification from SCOPE'
+          message: `This is a test push notification from ${brand.names.clubShort}`
         },
         {
           headers: {
@@ -308,7 +309,8 @@ const PushNotificationSettings = () => {
       <Box sx={{ mt: 3, display: 'flex', alignItems: 'center' }}>
         <InfoOutlinedIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
         <Typography variant="body2" color="text.secondary">
-          Push notifications allow you to receive alerts from SCOPE even when you're not using the website.
+          Push notifications allow you to receive alerts from {brand.names.clubShort} even when
+ you're not using the website.
         </Typography>
       </Box>
     </Paper>

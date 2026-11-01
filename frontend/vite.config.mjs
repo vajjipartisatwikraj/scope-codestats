@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import viteTsconfigPaths from "vite-tsconfig-paths";
 import path from "path";
+import brandPlugin from "./vite-brand-plugin.mjs";
 
 // Determine environment and set appropriate API URL with fallback
 const isDevelopment = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
@@ -35,7 +36,8 @@ export default defineConfig({
     __API_URL__: JSON.stringify(apiUrl),
     __API_HOST__: JSON.stringify(apiHost),
   },
-  plugins: [react(), viteTsconfigPaths()],
+  // brandPlugin applies VITE_PLATFORM / VITE_INSTITUTION: aliases, index.html, icons and the manifest
+  plugins: [react(), viteTsconfigPaths(), brandPlugin()],
   server: {
     host: true, // Allow access from network
     open: true,

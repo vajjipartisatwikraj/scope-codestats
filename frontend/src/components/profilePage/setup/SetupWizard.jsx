@@ -1,3 +1,4 @@
+import brand from '../../../brand';
 import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -74,7 +75,8 @@ export default function SetupWizard({ data }) {
     try {
       if (last) {
         await finishSetup(setupFinalPayload(draft));
-        toast.success('Your profile is ready. Welcome to CodeStats.');
+        toast.success(`Your profile is ready. Welcome to ${brand.names.platform}.`);
+
         navigate('/dashboard', { replace: true });
         return;
       }

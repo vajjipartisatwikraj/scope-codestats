@@ -1,7 +1,9 @@
+import brand from '../../../brand';
 import { useCallback, useEffect, useState } from "react";
 import { cancelSpeech, isSpeechSupported, speak } from "../../../utils/browserSpeech";
 
-export const SPEAKER_PHRASE = "Welcome to SCOPE Codestats";
+export const SPEAKER_PHRASE = `Welcome to ${brand.names.clubShort} ${brand.names.platform}`;
+
 
 /**
  * Behind the speaker check: plays the phrase in a female British English

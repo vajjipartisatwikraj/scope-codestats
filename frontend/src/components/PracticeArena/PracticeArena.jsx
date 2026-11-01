@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -322,7 +323,8 @@ const PracticeArena = () => {
             >
               <Box
                 component="img"
-                src="/practiceArena.png"
+                src={brand.platform.screenshots.practiceArena}
+
                 alt="Practice Arena"
                 sx={{
                   width: { xs: "150px", md: "90%" },

@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React from 'react';
 import PLATFORM_ICON_PATHS from './platformIconPaths';
 
@@ -27,7 +28,8 @@ export default function PlatformIcon({ platform, size = 16, color, className }) 
     return (
       <img
         className={className}
-        src="/codestats-color.png"
+        src={brand.codeStats.logo}
+
         alt=""
         aria-hidden="true"
         width={size}

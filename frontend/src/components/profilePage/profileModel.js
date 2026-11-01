@@ -1,3 +1,4 @@
+import brand from '../../brand';
 /**
  * What the profile page knows about a student's profile: the lists a form offers, the rules a value
  * must follow, and how a form's draft becomes the body the server expects. Plain functions, no React,
@@ -88,7 +89,7 @@ export function graduationYearFromRoll(rollNumber) {
 export const batchError = (rollNumber) => {
   const year = graduationYearFromRoll(rollNumber);
   if (year === null) return 'We could not read your batch from this roll number. Check that it starts with two digits, like 23.';
-  if (year < 2024 || year > 2030) return `This roll number gives a batch of ${year}, which CodeStats does not support. Check it and try again.`;
+  if (year < 2024 || year > 2030) return `This roll number gives a batch of ${year}, which ${brand.names.platform} does not support. Check it and try again.`;
   return '';
 };
 
@@ -248,7 +249,8 @@ export { scoreLimits };
 // ---- Portfolio (achievements) -----------------------------------------------------------------
 
 export const ACHIEVEMENT_TYPES = [
-  { key: 'project', label: 'Projects', single: 'Project', limited: true, titleLabel: 'Project name', titleHint: 'The name people will see, for example, CodeStats leaderboard.' },
+  { key: 'project', label: 'Projects', single: 'Project', limited: true, titleLabel: 'Project name', titleHint: `The name people will see, for example, ${brand.names.platform} leaderboard.`
+ },
   { key: 'internship', label: 'Internships', single: 'Internship', limited: true, titleLabel: 'Internship title', titleHint: 'Your role and the company, for example, Backend intern at Acme.' },
   { key: 'certification', label: 'Certifications', single: 'Certification', limited: false, titleLabel: 'Certificate name', titleHint: 'Start typing to see recognized certificates you can pick.' },
   { key: 'achievement', label: 'Achievements', single: 'Achievement', limited: false, titleLabel: 'Achievement', titleHint: 'For example, Winner, Smart India Hackathon 2025.' },

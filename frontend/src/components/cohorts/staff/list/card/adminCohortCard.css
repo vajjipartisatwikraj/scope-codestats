@@ -1,0 +1,100 @@
+/*
+ * Staff cohort card (card/AdminCohortCard.jsx). It wears the student card's classes (.chc, from
+ * components/cohorts/student/list/card/cohortCard.css) and adds what a staff card has: the badges row, the facts
+ * and the actions. Only design tokens.
+ */
+
+.cmc-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.cmc-title {
+  overflow-wrap: anywhere;
+}
+
+/* The three dots sit in the top right corner, level with the badges */
+.cmc-badges {
+  width: 100%;
+}
+
+.cmc-menu {
+  margin: -6px -8px -6px auto;
+}
+
+/* The facts: one line each, with a small icon */
+.cmc-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.cmc-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cmc-facts svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* Tools at the left, the two buttons at the right; on a narrow card the buttons take the next line */
+.cmc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.cmc-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* A neutral button on a card that is hovering would vanish into it; the card's hover tone is the raised one */
+.chc:hover .cmc-main .ui-button[data-variant='secondary'],
+.chc:focus-within .cmc-main .ui-button[data-variant='secondary'] {
+  background-color: var(--ds-high);
+}
+
+@media (max-width: 479.95px) {
+  .cmc-main {
+    width: 100%;
+  }
+
+  .cmc-main .ui-button {
+    flex: 1 1 0;
+  }
+}
+
+.chc [data-spin='true'] {
+  animation: cmc-spin 900ms linear infinite;
+}
+
+@keyframes cmc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chc [data-spin='true'] {
+    animation: none;
+  }
+}

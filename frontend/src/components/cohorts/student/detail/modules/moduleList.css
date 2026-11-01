@@ -1,0 +1,168 @@
+/*
+ * Module list (modules/ModuleList.jsx, ModuleRow.jsx)
+ *
+ * The lower part of the sidebar card. A row is a button with room to breathe (68px at least, 8px
+ * between rows): transparent at rest, raised on hover, and the open one the solid accent (a tone,
+ * never a side stripe). The list scrolls inside the card when it is taller than the room the column
+ * has left. Only design tokens.
+ */
+
+.cdm {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 18px 12px 12px;
+}
+
+.cdm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px 8px;
+}
+
+.cdm-title {
+  margin: 0;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.cdm-list {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+
+  /* The app gives every scroll area a thin bar through the standard properties; those would override
+     the pseudo-element rules below, so they are reset here and the bar is drawn as 4px that exist only
+     while the list is being scrolled (data-scrolling, from hooks/useScrolling). */
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+.cdm-list::-webkit-scrollbar {
+  width: 4px;
+  background-color: transparent;
+}
+
+.cdm-list::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.cdm-list::-webkit-scrollbar-thumb {
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+}
+
+.cdm-list[data-scrolling='true']::-webkit-scrollbar-thumb {
+  background-color: var(--ds-bar-muted);
+}
+
+/* Firefox has no pseudo-element bars: the standard properties do the same job there */
+@supports not selector(::-webkit-scrollbar) {
+  .cdm-list {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .cdm-list[data-scrolling='true'] {
+    scrollbar-color: var(--ds-bar-muted) transparent;
+  }
+}
+
+.cdm-list > li + li {
+  margin-top: 8px;
+}
+
+.cdm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+  color: var(--ds-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+.cdm-row:hover {
+  background-color: var(--ds-raised);
+}
+
+/* The open module: the solid accent with white text (secondary text is told apart by size, not transparency) */
+.cdm-row[data-active='true'] {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.cdm-row[data-active='true']:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+.cdm-row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+/* The focus colour is a light blue: on the accent row it needs a surface gap to be seen */
+.cdm-row[data-active='true']:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.cdm-row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cdm-row__title {
+  font: var(--ds-type-body);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cdm-row__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.cdm-row[data-active='true'] .cdm-row__title,
+.cdm-row[data-active='true'] .cdm-row__meta {
+  color: var(--ds-on-accent);
+}
+
+/* The donut at the right: one tone up from its row so the track stays visible on every row state */
+.cdm-row .cdm-row__ring {
+  --ga-track: var(--ds-high);
+  --ga-text: var(--ds-text);
+}
+
+.cdm-row:hover .cdm-row__ring {
+  --ga-track: var(--ds-surface);
+}
+
+/* On the solid accent row the track is the pressed accent and the fill (set in ModuleRow) is white */
+.cdm-row[data-active='true'] .cdm-row__ring {
+  --ga-track: var(--ds-accent-press);
+  --ga-text: var(--ds-on-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cdm-row {
+    transition: none;
+  }
+}

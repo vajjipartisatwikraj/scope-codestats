@@ -1,14 +1,15 @@
+import brand from '../brand';
+import { Button as UiButton } from './ui';
+import { GoogleLogoIcon } from '@phosphor-icons/react/dist/csr/GoogleLogo';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './MultiStepRegister.css';
 import {
-  Box,
-  Button,
+  Box,
   Typography,
   IconButton
 } from '@mui/material';
 import { ArrowBack, ArrowForwardIos, ArrowBackIos } from '@mui/icons-material';
-import GoogleIcon from '@mui/icons-material/Google';
 
 // Carousel component
 const Carousel = () => {
@@ -16,18 +17,13 @@ const Carousel = () => {
   const [direction, setDirection] = useState('left');
   
   // Images for carousel
-  const carouselImages = [
-    '/carousel1.png',
-    '/carousel2.png', 
-    '/carousel3.png',
-    '/carousel4.png'
-  ];
+  const carouselImages = brand.shared.carousel;
   
   // Captions for each slide
   const carouselCaptions = [
     {
       title: 'Track your coding journey, showcase ',
-      subtitle: 'all in one platform tailored for MLRIT students.'
+      subtitle: `all in one platform tailored for ${brand.names.institution} students.`
     },
     {
       title: 'Monitor your progress across coding platforms',
@@ -142,7 +138,7 @@ const Carousel = () => {
             color: '#ffffff',
             fontWeight: 500,
             mb: 1,
-            fontSize: '1.1rem',
+            fontSize: { xs: '0.875rem', sm: '1.1rem' },
             lineHeight: 1.5
           }}
         >
@@ -264,28 +260,48 @@ const MultiStepRegister = () => {
           top: 0,
           right: 0,
           width: { xs: '100%', md: '50%' },
-          height: '100vh',
+          height: '100dvh',
+          overflowY: 'auto',
           bgcolor: '#0585E0',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
+          
           alignItems: 'center',
-          p: { xs: 5, sm: 6 },
+          p: { xs: 3, sm: 6 },
           zIndex: 1,
         }}
       >
-        <Box sx={{ maxWidth: 600, width: '100%', py: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+        {/* Back to the landing page: the left panel with the Go Back button is hidden on phones */}
+        <Box
+          component={Link}
+          to="/"
+          sx={{
+            display: { xs: 'inline-flex', md: 'none' },
+            alignSelf: 'flex-start',
+            alignItems: 'center',
+            gap: 0.75,
+            minHeight: 44,
+            color: '#fff',
+            textDecoration: 'none',
+            fontSize: { xs: '0.85rem', sm: '0.95rem' },
+          }}
+        >
+          <ArrowBack sx={{ fontSize: 20 }} />
+          Back
+        </Box>
+
+        <Box sx={{ maxWidth: 600, width: '100%', my: 'auto', py: { xs: 2, sm: 4 }, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <Box sx={{ mb: { xs: 2, sm: 4 }, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
             {/* Logo and text on same line */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 1.5, sm: 0 }, mb: 2 }}>
               <Box 
                 component="img" 
-                src="/codestats-color.png" 
-                alt="CodeStats logo"
+                src={brand.platform.logo} 
+                alt={`${brand.names.platform} logo`}
                 sx={{ 
-                  width: '90px',
+                  width: { xs: '48px', sm: '64px', md: '72px' },
                   height: 'auto',
-                  mr: 2
+                  mr: { xs: 0, sm: 2 }
                 }}
               />
               
@@ -296,11 +312,11 @@ const MultiStepRegister = () => {
                     fontWeight: 200,
                     color: 'white',
                     textAlign: 'left',
-                    fontSize: '2.2rem',
+                    fontSize: { xs: '1rem', sm: '1.125rem', md: '1.35rem' },
                     lineHeight: 1.2,
                   }}
                 >
-                  Get Started with
+                  Get started with
                 </Typography>
                 <Typography
                   variant="h3"
@@ -308,11 +324,12 @@ const MultiStepRegister = () => {
                     fontWeight: 700,
                     color: 'white',
                     textAlign: 'left',
-                    fontSize: '2.8rem',
+                    fontSize: { xs: '1.375rem', sm: '1.625rem', md: '2rem' },
+                    overflowWrap: 'break-word',
                     lineHeight: 1.2,
                   }}
                 >
-                  Code Stats
+                  {brand.codeStats.name} at {brand.names.institution}
                 </Typography>
               </Box>
             </Box>
@@ -324,15 +341,15 @@ const MultiStepRegister = () => {
               variant="body1"
               sx={{
                 color: 'white',
-                mb: 4,
+                mb: { xs: 2, sm: 4 },
                 mt: 3,
                 textAlign: 'left',
                 fontWeight: 400,
-                fontSize: '1.1rem',
+                fontSize: { xs: '0.875rem', sm: '1.1rem' },
                 lineHeight: 1.5,
               }}
             >
-              Sign up with your <b>MLRIT college email</b> to start tracking your competitive programming progress.
+              Sign up with the <b>email assigned by {brand.names.institution}</b> to start tracking your competitive programming progress.
             </Typography>
             
             {/* Already have an account */}
@@ -344,42 +361,23 @@ const MultiStepRegister = () => {
                 mb: 2,
                 textAlign: 'left',
                 fontWeight: 400,
-                fontSize: '1rem',
+                fontSize: { xs: '0.875rem', sm: '1rem' },
               }}
             >
-              Already have an account? <Link to="/login" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline' }}>Sign in</Link>
+              Already have an account? <Link to="/login" style={{ color: 'white', fontWeight: 500, textDecoration: 'underline', display: 'inline-block', padding: '8px 2px' }}>Sign in</Link>
             </Typography>
             
             {/* Google Login Button */}
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={<GoogleIcon sx={{ color: '#252525', fontSize: '28px' }} />}
-              onClick={handleGoogleRegister}
-              sx={{
-                mt: 1,
-                mb: 3,
-                color: '#252525',
-                backgroundColor: 'white',
-                textTransform: 'none',
-                fontSize: '1.3rem',
-                fontWeight: 700,
-                height: '40px',
-                maxWidth: '30%',
-                borderRadius: '4px',
-                justifyContent: 'center',
-                boxShadow: 'none',
-                px: 3,
-                p: 3,
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
-                },
-                pl: 2,
-              }}
-            >
-              Google
-            </Button>
+            <Box data-theme="midnight" sx={{ width: '100%', maxWidth: { xs: '100%', sm: 320 }, mt: 1, mb: 3 }}>
+              <UiButton
+                variant="spotlight"
+                fullWidth
+                onClick={handleGoogleRegister}
+                startIcon={<GoogleLogoIcon size={20} weight="bold" aria-hidden="true" />}
+              >
+                Continue with Google
+              </UiButton>
+            </Box>
           </Box>
         </Box>
       </Box>

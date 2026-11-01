@@ -1,3 +1,4 @@
+import brand from '../../brand';
 /**
  * What the leaderboard knows how to do with the list of students the server sends: which
  * platforms and tabs exist, how a student's figures are read, and how the list is filtered,
@@ -21,7 +22,7 @@ export const PLATFORMS = {
   hackerrank: { name: 'HackerRank', color: 'var(--ds-series-green)' },
   codeforces: { name: 'Codeforces', color: 'var(--ds-series-blue)' },
   github: { name: 'GitHub', color: 'var(--ds-series-slate)' },
-  scopecodestats: { name: 'CodeStats', color: 'var(--ds-series-violet)' },
+  scopecodestats: { name: brand.codeStats.name, color: 'var(--ds-series-violet)' },
 };
 
 /** The platform columns of each list. GitHub has no problems, so it is only in the score list. */

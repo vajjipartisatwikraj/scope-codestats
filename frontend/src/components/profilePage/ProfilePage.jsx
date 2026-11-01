@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { WifiSlashIcon } from '@phosphor-icons/react/dist/csr/WifiSlash';
@@ -55,7 +56,8 @@ export default function ProfilePage() {
   const data = useProfileData();
   const setupNeeded = Boolean(user && (user.newUser === true || user.profileCompleted === false));
 
-  useDocumentTitle(setupNeeded ? 'Set up your profile | CodeStats' : 'Your profile | CodeStats');
+  useDocumentTitle(setupNeeded ? `Set up your profile | ${brand.names.platform}` : `Your profile | ${brand.names.platform}`);
+
 
   let body;
   if (data.status === 'loading') {

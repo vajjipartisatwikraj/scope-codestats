@@ -1,0 +1,42 @@
+/*
+ * Staff sidebar (sidebar/). It wears the student sidebar's classes (.cdh, .cdm, .cds) and adds the
+ * publish row and the edit and delete buttons of a module. Only design tokens.
+ */
+
+/* Draft or Published, the Publish button, and Progress, wrapping when the card is narrow */
+.cad-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.cad-actions .ui-badge {
+  margin-right: 2px;
+}
+
+.cad-head {
+  margin-right: 0;
+}
+
+.cad-head__add {
+  margin-left: auto;
+}
+
+/* A module row is the select button with the tools laid over its right end */
+.cad-module {
+  position: relative;
+}
+
+.cad-module__tools {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  background: none;
+  transform: translateY(-50%);
+}
+
+/* Room for the two buttons so the title never runs under them */
+.cad-module__row[data-active='true'] {
+  padding-right: 96px;
+}

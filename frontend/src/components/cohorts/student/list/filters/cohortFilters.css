@@ -1,0 +1,36 @@
+/*
+ * Cohort filter row (filters/CohortFilters.jsx). The row itself is the kit's Toolbar and the
+ * status pills are PillTabs; this places the pills at the right, gives the search and the pills a
+ * white fill in Daylight, and sets the counts on the pills. Only design tokens.
+ */
+
+.chf {
+  margin: 0;
+}
+
+/* The status pills sit at the right end of the row */
+.chf .pt {
+  margin-left: auto;
+}
+
+/* Daylight: the search and the pills are white (the surface role) on the page, not the grey raised role */
+[data-theme='daylight'] .chf {
+  --ui-control-bg: var(--ds-surface);
+}
+
+[data-theme='daylight'] .chf .pt {
+  --pt-bg: var(--ds-surface);
+}
+
+.chf-count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a phone the pills take a line of their own and scroll sideways inside it */
+@media (max-width: 599.95px) {
+  .chf .pt {
+    width: 100%;
+    margin-left: 0;
+  }
+}

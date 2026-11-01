@@ -1,3 +1,5 @@
+import brand from '../../../brand';
+import BrandLogo from '../../custom-components/BrandLogo';
 import React from "react";
 import { MoonIcon } from "@phosphor-icons/react/dist/csr/Moon";
 import { SquaresFourIcon } from "@phosphor-icons/react/dist/csr/SquaresFour";
@@ -19,8 +21,15 @@ export default function TopBar({ onDashboard }) {
   return (
     <header className="rbe-top">
       <span className="rbe-brand">
-        <img className="rbe-brand__logo" src="/codestats-color.png" alt="" />
-        <span className="rbe-brand__name">CodeStats</span>
+        <BrandLogo
+          height={32}
+          fallback={
+            <>
+              <img className="rbe-brand__logo" src={brand.platform.logo} alt="" />
+              <span className="rbe-brand__name">{brand.names.platform}</span>
+            </>
+          }
+        />
       </span>
 
       <div className="rbe-top__end">

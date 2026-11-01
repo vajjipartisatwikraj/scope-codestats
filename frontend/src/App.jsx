@@ -93,16 +93,17 @@ import { CommunicationTestManagement, CommunicationTestEditor } from "./componen
 import { ResumeList, ResumeEditor } from "./components/resumeBuilder";
 
 // Import cohort components
-import CohortList from "./components/cohort/CohortList";
-import CohortDetail from "./components/cohort/CohortDetail";
-import CohortProblem from "./components/cohort/CohortProblem";
+import CohortList from "./components/cohorts/student/list";
+import CohortDetail from "./components/cohorts/staff/detail";
+import CohortDetailRoute from "./components/cohorts/student/detail";
+import CohortProblem from "./components/cohorts/student/problem";
 import ExamSessionHeader from "./components/cohort/ExamSessionHeader";
 import { EXAM_BAR_HEIGHT } from "./components/cohort/ExamSessionBar";
 import {
   cohortIdFromPath,
   isExamSessionSearch,
 } from "./utils/examSession";
-import CohortManagementTab from "./components/cohort/CohortManagementTab";
+import CohortManagementTab from "./components/cohorts/staff/list";
 import CohortStats from "./components/cohort/CohortStats";
 import QuestionReports from "./components/cohort/QuestionReports";
 import TeacherQuestionView from "./components/cohort/TeacherQuestionView";
@@ -237,6 +238,13 @@ const MainContent = () => {
     ) || // Admin teacher view
     location.pathname.startsWith("/admin/cohorts");
 
+  // The cohort list keeps its heading and filters in place while the list scrolls (position:
+  // sticky). Sticky binds to the nearest scrolling ancestor, which is <main>; with the shell only
+  // min-height 100vh, <main> grows to fit its content and the window scrolls instead, so nothing
+  // could stick. A shell exactly as tall as the window makes <main> the scroller. This page has no
+  // footer, so nothing is lost below it. dvh keeps the last card clear of a phone's browser bars.
+  const isCohortListPage = location.pathname === "/cohorts" || location.pathname === "/admin/cohorts";
+
   // Check if current path should not show footer
   const isNoFooterPage =
     isCohortProblemPage ||
@@ -370,6 +378,7 @@ const MainContent = () => {
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
+          ...(isCohortListPage && { height: "100vh", "@supports (height: 100dvh)": { height: "100dvh" } }),
           backgroundColor: "transparent", // Allow theme background to show through for Liquid Glass UI
         }}
       >
@@ -879,9 +888,7 @@ const MainContent = () => {
                   path="/cohorts"
                   element={
                     <PrivateRoute>
-                      <MobileRestrictedRoute pageName="Cohorts">
-                        <CohortList />
-                      </MobileRestrictedRoute>
+                      <CohortList />
                     </PrivateRoute>
                   }
                 />
@@ -889,9 +896,7 @@ const MainContent = () => {
                   path="/cohorts/:id"
                   element={
                     <PrivateRoute>
-                      <MobileRestrictedRoute pageName="Cohort Details">
-                        <CohortDetail />
-                      </MobileRestrictedRoute>
+                      <CohortDetailRoute />
                     </PrivateRoute>
                   }
                 />
@@ -899,9 +904,7 @@ const MainContent = () => {
                   path="/cohorts/:cohortId/modules/:moduleId/questions/:questionId"
                   element={
                     <PrivateRoute>
-                      <MobileRestrictedRoute pageName="Cohort Problem">
-                        <CohortProblem />
-                      </MobileRestrictedRoute>
+                      <CohortProblem />
                     </PrivateRoute>
                   }
                 />
@@ -919,9 +922,7 @@ const MainContent = () => {
                   path="/admin/cohorts"
                   element={
                     <PrivateRoute adminOnly={true}>
-                      <MobileRestrictedRoute pageName="Cohort Management">
-                        <CohortManagementTab />
-                      </MobileRestrictedRoute>
+                      <CohortManagementTab />
                     </PrivateRoute>
                   }
                 />
@@ -929,9 +930,7 @@ const MainContent = () => {
                   path="/admin/cohorts/:id"
                   element={
                     <PrivateRoute adminOnly={true}>
-                      <MobileRestrictedRoute pageName="Cohort Details">
-                        <CohortDetail />
-                      </MobileRestrictedRoute>
+                      <CohortDetail />
                     </PrivateRoute>
                   }
                 />

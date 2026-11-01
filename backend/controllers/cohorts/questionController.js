@@ -42,9 +42,7 @@ const getModuleQuestions = async (req, res) => {
 
     // If not admin, check eligibility
     if (!isAdmin) {
-      const isEligible = cohortExists.eligibleUsers.some(
-        (id) => id.toString() === userId.toString()
-      );
+      const isEligible = cohortExists.isOpenTo(userId);
 
       // An exam cohort that has closed is handled below so the client gets the
       // specific reason rather than a bare "Access denied".
@@ -197,7 +195,7 @@ const getQuestion = async (req, res) => {
       // Regular user: Check eligibility
       cohort = await Cohort.findOne({
         _id: cohortId,
-        eligibleUsers: userId,
+        ...Cohort.accessFilter(userId),
         isDraft: false,
         $or: [{ isActive: true }, { mode: EXAM_MODE }],
       });

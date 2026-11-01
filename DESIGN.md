@@ -7,11 +7,12 @@ colors:
   accent-press: "#0365AA"
   on-accent: "#FFFFFF"
   accent-ink: "#035FA0"
-  midnight-canvas: "#131522"
-  midnight-surface: "#1D2030"
-  midnight-raised: "#272B3F"
-  midnight-high: "#323650"
-  midnight-line: "#2C3048"
+  midnight-canvas: "#040405"
+  midnight-chrome: "#0A0A0B"
+  midnight-surface: "#0D0D0F"
+  midnight-raised: "#19191C"
+  midnight-high: "#1E1E22"
+  midnight-line: "#1E1E22"
   midnight-field-border: "#6A7096"
   midnight-text: "#F1F3FB"
   midnight-muted: "#A9ADC9"
@@ -38,6 +39,7 @@ colors:
   midnight-series-sky: "#5CC8FF"
   midnight-series-slate: "#9EA3C2"
   daylight-canvas: "#F1F2F7"
+  daylight-chrome: "#FDFDFF"
   daylight-surface: "#FDFDFF"
   daylight-raised: "#F5F6FA"
   daylight-high: "#ECEEF5"
@@ -284,17 +286,18 @@ The previous look is retired in full: the pure black void, glass blur and glowin
 
 ## Colors
 
-The palette is Restrained with two earned exceptions. Tinted neutrals (a cool blue-violet hue near 235 to 245 degrees) carry almost every surface; the accent is spent on action and state; the spotlight tile and the single accent tile are the only large fills. Nothing is pure black or pure white as a surface or as body text.
+The palette is Restrained with two earned exceptions. Neutrals carry almost every surface (Midnight is a near-black, neutral scale with a faint cool tint; Daylight leans blue-violet, near 235 to 245 degrees); the accent is spent on action and state; the spotlight tile and the single accent tile are the only large fills. Nothing is pure black or pure white as a surface or as body text.
 
 ### Theme mapping
 
 | Role | Midnight | Daylight | Used for |
 |---|---|---|---|
-| canvas | `#131522` | `#F1F2F7` | The page behind everything |
-| surface | `#1D2030` | `#FDFDFF` | Cards, panels, the sidebar, dialogs |
-| raised | `#272B3F` | `#F5F6FA` | Inputs, tiles inside a card, hovered rows, secondary buttons |
-| high | `#323650` | `#ECEEF5` | Selected or disabled nested items, tooltips (Midnight), pressed states |
-| line | `#2C3048` | `#E3E5EE` | Hairline dividers and table row separators |
+| canvas | `#040405` | `#F1F2F7` | The page behind everything |
+| chrome | `#0A0A0B` | `#FDFDFF` | The sidebar, the controls of the top bar (menu, search, theme, notifications, account) |
+| surface | `#0D0D0F` | `#FDFDFF` | Cards, panels, dialogs |
+| raised | `#19191C` | `#F5F6FA` | Inputs, tiles inside a card, hovered rows, secondary buttons |
+| high | `#1E1E22` | `#ECEEF5` | Empty heatmap cells, inactive bars, selected or disabled nested items, tooltips (Midnight), pressed states |
+| line | `#1E1E22` | `#E3E5EE` | Hairline dividers and table row separators |
 | field-border | `#6A7096` | `#7C84A0` | The outline of inputs, selects and checkboxes (at least 3:1) |
 | text | `#F1F3FB` | `#11131C` | Headings, values, body |
 | muted | `#A9ADC9` | `#4B5066` | Secondary text, labels, descriptions |
@@ -346,7 +349,7 @@ Platforms keep one hue everywhere: LeetCode amber, Codeforces blue, CodeChef cor
 
 **The Spotlight Rule.** One inverted tile per screen: the figure the student came for. Two spotlights is none. The active nav pill and the highlighted bar borrow the same colour because they mean "this one".
 
-**The Tint Rule.** Neutrals lean toward the blue-violet hue and never reach pure black or pure white. Secondary text on a coloured tile is a tint of that tile's text colour, not grey.
+**The Tint Rule.** Daylight neutrals lean toward the blue-violet hue; Midnight neutrals are near-black with only a faint cool tint. Neither reaches pure black (`#000000`) or pure white. Secondary text on a coloured tile is a tint of that tile's text colour, not grey.
 
 **The Theme Parity Rule.** Every role exists in both themes and every screen is checked in both. A component that only works in one theme is unfinished.
 

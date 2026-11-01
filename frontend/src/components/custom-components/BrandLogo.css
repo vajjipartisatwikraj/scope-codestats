@@ -1,0 +1,21 @@
+.ds-brand-logo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-brand-logo__img {
+  display: block;
+  flex: none;
+  width: auto; /* the width follows the height */
+  max-width: none;
+  object-fit: contain;
+}
+
+/* On a narrow phone only the icon stays, as with the name in text */
+@media (max-width: 479.95px) {
+  .ds-brand-logo--both .ds-brand-logo__name {
+    display: none;
+  }
+}

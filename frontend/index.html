@@ -3,15 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="SCOPE-Codestats"
-    />
-    <link rel="icon" type="image/png" href="/codestats-color.png" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- The __BRAND_*__ values and the icon and manifest links are filled in by vite-brand-plugin.mjs
+         from the platform chosen with VITE_PLATFORM (src/brand/platforms/<name>/brand.json) -->
+    <meta name="theme-color" content="__BRAND_THEME_COLOR__" />
+    <meta name="description" content="__BRAND_DESCRIPTION__" />
     
     <!-- Font imports - Instrument Serif & Inter from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,7 +35,7 @@
       }
     </style>
     
-    <title>SCOPE-Codestats</title>
+    <title>__BRAND_TITLE__</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

@@ -1,0 +1,88 @@
+/* Reviews tab (reviews/). Built on the kit's table, list and stat tiles. Only design tokens. */
+
+.cmr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap, 16px);
+}
+
+.cmr .ui-toolbar {
+  margin: 0;
+}
+
+.cmr-intro {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.cmr-check {
+  width: 56px;
+  padding-right: 0;
+}
+
+.cmr-cohort {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.cmr-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.cmr-rating__value {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.cmr-comment-cell {
+  max-width: 360px;
+}
+
+.cmr-comment {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font: var(--ds-type-body);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* A review on a phone: the tick, then the review in a column */
+.cmr-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.cmr-item__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cmr-item__head,
+.cmr-item__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cmr-item__foot {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px 12px;
+}

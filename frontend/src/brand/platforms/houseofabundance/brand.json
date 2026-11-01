@@ -1,0 +1,10 @@
+{
+  "name": "House of Abundance",
+  "title": "{platform}",
+  "description": "{platform} is the learning and performance platform of {institutionFull}.",
+  "manifestName": "{platform}",
+  "themeColor": "#000000",
+  "manifestThemeColor": "#103d66",
+  "manifestBackground": "#ffffff",
+  "demoVideo": ""
+}

@@ -1,6 +1,7 @@
+import brand, { fill } from '../brand';
 import React, { useEffect, useState, useRef } from 'react';
 import './Landing.css';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowForward,
   Code,
@@ -15,16 +16,21 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import useLoginConfig from '../hooks/useLoginConfig';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import { motion, useScroll, useTransform, useInView, useReducedMotion } from 'framer-motion';
 
 // CountUp Component
 const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '' }) => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-15% 0px' });
+  const reduced = useReducedMotion();
   const [value, setValue] = useState(0);
 
   useEffect(() => {
     if (!inView) return;
+    if (reduced) {
+      setValue(end);
+      return;
+    }
     const ease = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
     let raf = 0;
     const start = performance.now();
@@ -35,7 +41,7 @@ const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [inView, end, duration]);
+  }, [inView, end, duration, reduced]);
 
   return (
     <span ref={ref} className={className}>
@@ -47,13 +53,13 @@ const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '
 };
 
 // ScrollRevealText Component
-const Word = ({ children, progress, range, className = '' }) => {
+const Word = ({ children, progress, range, reduced, className = '' }) => {
   const opacity = useTransform(progress, range, [0.1, 1], {
     ease: (t) => t * t * (3 - 2 * t),
   });
   return (
     <motion.span
-      style={{ opacity }}
+      style={reduced ? undefined : { opacity }}
       className={`inline-block mr-[0.25em] ${className}`}
     >
       {children}
@@ -63,6 +69,7 @@ const Word = ({ children, progress, range, className = '' }) => {
 
 const ScrollRevealText = ({ segments, className = '' }) => {
   const containerRef = useRef(null);
+  const reduced = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start 0.85', 'end 0.45'],
@@ -78,7 +85,7 @@ const ScrollRevealText = ({ segments, className = '' }) => {
         const start = i / words.length;
         const end = start + 1 / words.length;
         return (
-          <Word key={i} progress={scrollYProgress} range={[start, end]} className={w.className}>
+          <Word key={i} progress={scrollYProgress} range={[start, end]} reduced={reduced} className={w.className}>
             {w.text}
           </Word>
         );
@@ -87,12 +94,51 @@ const ScrollRevealText = ({ segments, className = '' }) => {
   );
 };
 
+// A background video that is only loaded once its section is near the screen, and not at all
+// for people who asked for less motion. Keeps a phone from downloading three videos at once.
+const BackdropVideo = ({ src }) => {
+  const ref = useRef(null);
+  const near = useInView(ref, { once: true, margin: '400px 0px' });
+  const reduced = useReducedMotion();
+  return (
+    <div ref={ref} className="absolute inset-0 z-0" aria-hidden="true">
+      {near && !reduced ? (
+        <video autoPlay loop muted playsInline className="h-full w-full object-cover" src={src} />
+      ) : null}
+    </div>
+  );
+};
+
+// The sample assessment video, loaded when it is near the screen
+const DemoVideo = ({ src }) => {
+  const ref = useRef(null);
+  const near = useInView(ref, { once: true, margin: '300px 0px' });
+  const reduced = useReducedMotion();
+  return (
+    <div ref={ref} className="lp-demo">
+      {near ? (
+        <video
+          autoPlay={!reduced}
+          controls={reduced}
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          src={src}
+          onLoadedMetadata={(e) => {
+            e.currentTarget.playbackRate = 2.5;
+          }}
+        />
+      ) : null}
+    </div>
+  );
+};
+
 // FAQ Accordion Component - Custom implementation matching Dark Hero Section
 const FAQAccordion = () => {
   // Who can sign in depends on how the server is set up (college addresses, or a list of addresses)
   const { loginMode } = useLoginConfig();
   const [openIndex, setOpenIndex] = useState(null);
-  const contentRefs = useRef([]);
 
   const toggleAccordion = (index) => {
     setOpenIndex(openIndex === index ? null : index);
@@ -101,26 +147,26 @@ const FAQAccordion = () => {
   const faqData = [
     {
       cat: "Platform",
-      q: "What exactly is CodeStats?",
-      a: "CodeStats is an in-house coding assessment platform built by SCOPE Club for MLR Institute of Technology. Students take coding assessments, join cohorts, practice in the arena, and track how their coding performance improves over time.",
+      q: `What exactly is ${brand.codeStats.name}?`,
+      a: fill(`${brand.codeStats.name} is a coding assessment and performance analysis platform. Students take coding assessments, join cohorts, practice in the arena, and track how their coding performance improves over time. ${brand.codeStats.name} is available for {institutionFull}.`),
     },
     {
       cat: "Access",
-      q: "Who can use CodeStats?",
+      q: `Who can use ${brand.codeStats.name}?`,
       a:
         loginMode === "allowlist"
-          ? "Students, teachers, and admins whose email address has been added by an admin. You sign in with the Google account for that address, from any email domain. It isn't open to people who haven't been added."
-          : "It's exclusively for the MLRIT community — students, teachers, and admins of MLR Institute of Technology. It isn't open to other campuses or to external recruiters and hiring teams.",
+          ? fill(`${brand.codeStats.name} is available for {institution}. Students, teachers, and admins whose email address has been added by an admin. You sign in with the Google account for that address, from any email domain. It isn't open to people who haven't been added.`)
+          : fill(`${brand.codeStats.name} is available for the {institution} community: students, teachers, and admins of {institutionFull}. It isn't open to other campuses or to external recruiters and hiring teams.`),
     },
     {
       cat: "For admins",
       q: "What can admins and teachers do?",
-      a: "Admins and teachers can create and schedule coding assessments, build and manage cohorts with modules and questions, add and organise students, and review every submission — all from a dedicated management dashboard.",
+      a: "Admins and teachers can create and schedule coding assessments, build and manage cohorts with modules and questions, add and organise students, and review every submission, all from a dedicated management dashboard.",
     },
     {
       cat: "Analytics",
       q: "How can we analyse student performance?",
-      a: "CodeStats turns every submission into insight. You get class and cohort-level analytics, individual progress over time, question-wise accuracy, and clear views of where students are strong or struggling — so teaching decisions are backed by real data.",
+      a: fill(`${brand.codeStats.name} turns every submission into insight. You get class and cohort-level analytics, individual progress over time, question-wise accuracy, and clear views of where students are strong or struggling, so teaching decisions are backed by real data.`),
     },
   ];
 
@@ -136,43 +182,34 @@ const FAQAccordion = () => {
                 ? 'border-[rgba(0,170,255,0.45)] shadow-[0_0_20px_rgba(0,170,255,0.15)]'
                 : 'border-white/[0.08] hover:border-[rgba(0,170,255,0.35)]'
             }`}
-            style={{
-              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
           >
             {/* Top glow line when open */}
             <div
               className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(0,170,255,0.4)] to-transparent transition-all duration-700 ease-out ${
                 isOpen ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
               }`}
-              style={{
-                transition: 'opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-            />
-            
-            {/* Subtle background glow when open */}
-            <div
-              className={`pointer-events-none absolute inset-0 bg-gradient-to-br from-[rgba(0,170,255,0.03)] via-transparent to-transparent transition-opacity duration-700 ${
-                isOpen ? 'opacity-100' : 'opacity-0'
-              }`}
             />
             
             {/* Accordion Trigger */}
             <button
+              id={`faq-button-${i}`}
+              type="button"
               onClick={() => toggleAccordion(i)}
-              className="relative flex w-full items-center py-5 text-left outline-none focus:outline-none"
+              aria-expanded={isOpen}
+              aria-controls={`faq-panel-${i}`}
+              className="lp-faq-trigger relative flex w-full items-center py-4 text-left"
             >
               <div className="flex flex-1 items-center gap-4 pr-4">
                 <span 
                   className={`font-display text-xs tabular-nums transition-colors duration-500 ${
-                    isOpen ? 'text-[rgb(120,200,255)]' : 'text-white/35'
+                    isOpen ? 'text-[rgb(120,200,255)]' : 'text-white/50'
                   }`}
                 >
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <div className="flex flex-col gap-1">
                   <span 
-                    className={`text-[10px] uppercase tracking-[0.22em] transition-colors duration-500 ${
+                    className={`text-xs uppercase tracking-[0.2em] transition-colors duration-500 ${
                       isOpen ? 'text-[rgb(120,200,255)]' : 'text-[rgb(120,200,255)]/80'
                     }`}
                   >
@@ -184,33 +221,23 @@ const FAQAccordion = () => {
               
               {/* Chevron icon with smooth rotation */}
               <KeyboardArrowDown
+                aria-hidden="true"
                 className={`h-5 w-5 shrink-0 text-white transition-all duration-500 ease-out ${
                   isOpen ? 'rotate-180 text-[rgb(120,200,255)]' : 'rotate-0'
                 }`}
-                style={{
-                  transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease',
-                }}
               />
             </button>
 
-            {/* Accordion Content with smooth height transition */}
+            {/* The answer. Its height follows its text, so it stays right when the phone is rotated */}
             <div
-              ref={(el) => (contentRefs.current[i] = el)}
-              className="overflow-hidden transition-all duration-500 ease-out"
-              style={{
-                maxHeight: isOpen ? `${contentRefs.current[i]?.scrollHeight || 500}px` : '0px',
-                opacity: isOpen ? 1 : 0,
-                transition: 'max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
-              }}
+              id={`faq-panel-${i}`}
+              role="region"
+              aria-labelledby={`faq-button-${i}`}
+              className="lp-acc"
+              data-open={isOpen ? 'true' : 'false'}
             >
-              <div 
-                className="pb-5 pl-10 pr-4 text-[14px] leading-relaxed text-white/65"
-                style={{
-                  transform: isOpen ? 'translateY(0)' : 'translateY(-10px)',
-                  transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
-                }}
-              >
-                {f.a}
+              <div className="lp-acc-in">
+                <div className="lp-acc-body">{f.a}</div>
               </div>
             </div>
           </div>
@@ -221,9 +248,9 @@ const FAQAccordion = () => {
 };
 
 // Testimonial Card Component
-const TestimonialCard = ({ t }) => {
+const TestimonialCard = ({ t, duplicate = false }) => {
   return (
-    <div className="group relative w-[280px] shrink-0 md:w-[340px] flex flex-col">
+    <div className="group relative lp-tcard" data-dup={duplicate ? 'true' : undefined} aria-hidden={duplicate ? 'true' : undefined}>
       <div className="relative flex-1 flex flex-col justify-between rounded-[1rem] p-4 md:p-5 transition-all duration-500 hover:-translate-y-1 hover:bg-[rgba(0,136,204,0.18)] hover:border-[rgba(0,170,255,0.55)] bg-[rgba(0,136,204,0.08)] border border-[rgba(0,136,204,0.25)] shadow-[0_0_25px_rgba(0,136,204,0.2)] overflow-hidden" style={{ clipPath: 'inset(0 0 0 0 round 1rem)' }}>
         {/* Reduced glow effects - contained within card */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,136,204,0.15),rgba(0,136,204,0.05)_50%,transparent_80%)] opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
@@ -233,31 +260,31 @@ const TestimonialCard = ({ t }) => {
           <div>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-[12.5px] font-semibold text-white leading-tight">{t.name}</div>
-                <div className="truncate text-[10.5px] text-white/55 leading-tight mt-0.5">{t.role}</div>
+                <div className="truncate text-sm font-semibold text-white leading-tight">{t.name}</div>
+                <div className="truncate text-xs text-white/60 leading-tight mt-0.5">{t.role}</div>
               </div>
-              <div className="flex gap-0.5 shrink-0 pt-0.5">
+              <div className="flex gap-0.5 shrink-0 pt-0.5" role="img" aria-label={`${t.rating ?? 5} out of 5 stars`}>
                 {[...Array(5)].map((_, i) => {
                   const rating = t.rating ?? 5;
                   const starValue = i + 1;
                   const activeColor = 'rgb(120,200,255)';
                   const inactiveColor = 'rgba(255,255,255,0.25)';
                   if (rating >= starValue) {
-                    return <Star key={i} style={{ fontSize: '10px', fill: activeColor, color: activeColor }} />;
+                    return <Star key={i} style={{ fontSize: '14px', fill: activeColor, color: activeColor }} />;
                   }
                   if (rating >= starValue - 0.5) {
-                    return <StarHalf key={i} style={{ fontSize: '10px', fill: activeColor, color: activeColor }} />;
+                    return <StarHalf key={i} style={{ fontSize: '14px', fill: activeColor, color: activeColor }} />;
                   }
-                  return <StarBorder key={i} style={{ fontSize: '10px', fill: inactiveColor, color: inactiveColor }} />;
+                  return <StarBorder key={i} style={{ fontSize: '14px', fill: inactiveColor, color: inactiveColor }} />;
                 })}
               </div>
             </div>
-            <p className="mt-3 font-display text-[14.5px] leading-snug text-white/90 md:text-[16px]">
+            <p className="mt-3 font-display text-[15px] leading-snug text-white/90 md:text-[16px]">
               "{t.quote}"
             </p>
           </div>
           <div className="mt-4">
-            <span className="inline-block rounded-full px-2 py-0.5 text-[8.5px] uppercase tracking-[0.18em] text-[rgb(120,200,255)] bg-[rgba(0,136,204,0.18)] border border-[rgba(0,170,255,0.3)]">
+            <span className="inline-block rounded-full px-2.5 py-0.5 text-xs tracking-[0.1em] text-[rgb(120,200,255)] bg-[rgba(0,136,204,0.18)] border border-[rgba(0,170,255,0.3)]">
               {t.tag}
             </span>
           </div>
@@ -268,11 +295,10 @@ const TestimonialCard = ({ t }) => {
 };
 
 const MarqueeRow = ({ reverse = false, duration = 50, testimonials }) => {
-  const items = [...testimonials, ...testimonials];
   return (
     <div className="pause-on-hover relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-black to-transparent md:w-40" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-black to-transparent md:w-40" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-black to-transparent sm:w-24 md:w-40" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-black to-transparent sm:w-24 md:w-40" />
       
       <div
         className={`marquee-content flex gap-4 md:gap-5 py-2 ${
@@ -283,8 +309,11 @@ const MarqueeRow = ({ reverse = false, duration = 50, testimonials }) => {
           '--duration': `${duration}s`
         }}
       >
-        {items.map((t, i) => (
+        {testimonials.map((t, i) => (
           <TestimonialCard key={`${t.name}-${i}`} t={t} />
+        ))}
+        {testimonials.map((t, i) => (
+          <TestimonialCard key={`${t.name}-dup-${i}`} t={t} duplicate />
         ))}
       </div>
     </div>
@@ -292,74 +321,13 @@ const MarqueeRow = ({ reverse = false, duration = 50, testimonials }) => {
 };
 
 const TestimonialsMarquee = () => {
-  const testimonials = [
-    {
-      quote: "Setting up assessments now takes just minutes. Tracking thousands of student submissions has never been easier.",
-      name: "Rani",
-      role: "CSE Faculty, MLRIT",
-      tag: "Faculty",
-      rating: 5,
-    },
-    {
-      quote: "The admin analytics make it easy to monitor student performance and track progress effectively.",
-      name: "Sandeep",
-      role: "IT Faculty, MLRIT",
-      tag: "Faculty",
-      rating: 4.5,
-    },
-    {
-      quote: "Managing cohort access is effortless. The intuitive UI and UX provide a smooth user experience.",
-      name: "RajaShekar",
-      role: "Training Faculty, MLRIT",
-      tag: "Faculty",
-      rating: 5,
-    },
-    {
-      quote: "The practice arena and cohort assessments kept me consistent. I can finally see my progress week over week.",
-      name: "Rahul Mehta",
-      role: "CSE Sophomore, MLRIT",
-      tag: "Student",
-      rating: 4.5,
-    },
-    {
-      quote: "It's built by our own SCOPE Club, so it just fits how we actually learn to code at MLRIT.",
-      name: "Sara Fatima",
-      role: "Final-year student, MLRIT",
-      tag: "Student",
-      rating: 5,
-    },
-    {
-      quote: "The secure code editor prevents malpractice and ensures fair, genuine scoring during assessments.",
-      name: "Satyanagadurga",
-      role: "2nd yr Student, MLRIT",
-      tag: "Student",
-      rating: 5,
-    },
-    {
-      quote: "The coding problems are engaging, fun, and make learning enjoyable! 😊",
-      name: "Sravanthi",
-      role: "2nd yr Student, MLRIT",
-      tag: "Student",
-      rating: 4.5,
-    },
-    {
-      quote: "The tasks are well-designed and greatly help in improving logical thinking and coding skills.",
-      name: "Siddhartha",
-      role: "3rd yr Student, MLRIT",
-      tag: "Student",
-      rating: 4,
-    },
-    {
-      quote: "A great platform for beginners to build confidence and strengthen their coding fundamentals.",
-      name: "Vishnu Vardhan",
-      role: "2nd yr Student, MLRIT",
-      tag: "Student",
-      rating: 4.5,
-    },
-  ];
+  // The testimonials are the institution's own words (src/brand/institutions/<name>/testimonials.js).
+  // An institution without any shows no section.
+  const testimonials = brand.institution.testimonials || [];
+  if (testimonials.length === 0) return null;
 
   return (
-    <section className="relative overflow-hidden bg-black px-0 py-20 md:py-24">
+    <section className="lp-sec relative overflow-hidden bg-black px-0">
       <style>{`
         @keyframes marquee-ltr {
           0% { transform: translateX(-50%); }
@@ -381,15 +349,15 @@ const TestimonialsMarquee = () => {
       `}</style>
 
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.04),transparent_60%)]" />
-      <div className="relative mx-auto mb-10 max-w-6xl px-6 text-center md:px-12">
-        <div className="mb-2.5 text-xs uppercase tracking-[0.25em] text-white/50">
+      <div className="lp-pad relative mx-auto mb-10 max-w-6xl text-center">
+        <div className="mb-2.5 text-xs uppercase tracking-[0.25em] text-white/55">
           Testimonials
         </div>
         <h2 className="font-display text-2xl tracking-tight md:text-4xl">
-          Loved by <span className="italic text-white/70">students &amp; faculty at MLRIT.</span>
+          Loved by <span className="italic text-white/70">students &amp; faculty at {brand.names.institution}.</span>
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-xs text-white/45 md:text-sm">
-          Real words from the people who use CodeStats every week to learn, teach, and measure how their code is improving.
+        <p className="mx-auto mt-4 max-w-xl text-sm text-white/55">
+          Real words from the people who use {brand.names.platform} every week to learn, teach, and measure how their code is improving.
         </p>
       </div>
       <div className="relative space-y-4 md:space-y-5">
@@ -400,17 +368,26 @@ const TestimonialsMarquee = () => {
   );
 };
 
+// The footer links that lead somewhere. The others are shown as plain text until their pages exist.
+const FOOTER_ROUTES = {
+  About: '/about',
+  Contact: '/contact',
+  Docs: '/docs',
+  Login: '/login',
+  Register: '/register',
+};
+
 // Main Landing Component
 const Landing = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
-  const snippetVideoRef = useRef(null);
   const [stats, setStats] = useState({ students: 0, admins: 0, teachers: 0 });
   const [leaderboard, setLeaderboard] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [leaderboardSource, setLeaderboardSource] = useState('loading'); // 'loading', 'api', 'fallback'
   const itemsPerPage = 5;
+  const demoVideo = brand.platform.demoVideo;
 
   // Add landing-page class to body element
   useEffect(() => {
@@ -425,12 +402,6 @@ const Landing = () => {
       navigate('/dashboard');
     }
   }, [token, navigate]);
-
-  useEffect(() => {
-    if (snippetVideoRef.current) {
-      snippetVideoRef.current.playbackRate = 2.5;
-    }
-  }, []);
 
   // Fetch stats
   useEffect(() => {
@@ -473,18 +444,18 @@ const Landing = () => {
           setLeaderboardSource('fallback');
           // Fallback data
           setLeaderboard([
-            { rank: 1, name: 'Ananya Sharma', department: 'CSE', graduatingYear: 2026, score: 2987, institution: 'MLRIT' },
-            { rank: 2, name: 'Liu Wei', department: 'CSE', graduatingYear: 2025, score: 2914, institution: 'MLRIT' },
-            { rank: 3, name: 'Marco Rossi', department: 'IT', graduatingYear: 2026, score: 2856, institution: 'MLRIT' }
+            { rank: 1, name: 'Ananya Sharma', department: 'CSE', graduatingYear: 2026, score: 2987, institution: brand.names.institution },
+            { rank: 2, name: 'Liu Wei', department: 'CSE', graduatingYear: 2025, score: 2914, institution: brand.names.institution },
+            { rank: 3, name: 'Marco Rossi', department: 'IT', graduatingYear: 2026, score: 2856, institution: brand.names.institution }
           ]);
         }
       } catch (error) {
         setLeaderboardSource('fallback');
         // Fallback data
         setLeaderboard([
-          { rank: 1, name: 'Ananya Sharma', department: 'CSE', graduatingYear: 2026, score: 2987, institution: 'MLRIT' },
-          { rank: 2, name: 'Liu Wei', department: 'CSE', graduatingYear: 2025, score: 2914, institution: 'MLRIT' },
-          { rank: 3, name: 'Marco Rossi', department: 'IT', graduatingYear: 2026, score: 2856, institution: 'MLRIT' }
+          { rank: 1, name: 'Ananya Sharma', department: 'CSE', graduatingYear: 2026, score: 2987, institution: brand.names.institution },
+          { rank: 2, name: 'Liu Wei', department: 'CSE', graduatingYear: 2025, score: 2914, institution: brand.names.institution },
+          { rank: 3, name: 'Marco Rossi', department: 'IT', graduatingYear: 2026, score: 2856, institution: brand.names.institution }
         ]);
       } finally {
         setLeaderboardLoading(false);
@@ -514,69 +485,69 @@ const Landing = () => {
 
   if (token) return null;
 
+  const footerColumns = [
+    { title: 'Platform', links: ['Assessments', 'Cohorts', 'Practice Arena', 'Leaderboard'] },
+    { title: brand.names.club, links: ['About', 'Contact', 'Workshops', 'Hackathons'] },
+    { title: 'Institution', links: [brand.names.institution, 'Docs', 'Login', 'Register'] },
+  ];
+
   return (
     <>
-      <main className="relative w-full bg-black font-body text-white antialiased selection:bg-white/20">
+      <main className="lp relative w-full bg-black font-body text-white antialiased selection:bg-white/20">
         {/* HERO Section */}
-      <section className="relative h-screen w-full overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 z-0 h-full w-full object-cover"
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
-        />
+      <section className="lp-hero">
+        <BackdropVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4" />
         <div className="absolute top-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-1/4 z-[1] bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
 
-        <div className="relative z-10 flex h-full flex-col justify-between px-6 py-4 md:px-12 md:py-6">
-          <div className="h-14" />
+        <div className="lp-pad lp-hero-inner">
+          <div className="lp-hero-top" aria-hidden="true" />
 
-          <section className="flex flex-1 flex-col justify-center max-w-4xl py-4">
-            <div className="mb-6 inline-flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-white/70">
-              <span className="h-px w-8 bg-white/60" />
-              A coding platform by SCOPE Club · MLRIT
+          <div className="lp-hero-main">
+            <div className="lp-eyebrow">
+              {brand.codeStats.name} at {brand.names.institution}
             </div>
-            <h1 className="font-display text-5xl font-normal leading-[0.95] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-[7.5rem]">
+            <h1 className="lp-h1 font-display font-normal text-white">
               Sharpen every
               <br />
               <span className="italic text-white/80">line of code.</span>
             </h1>
-            <p className="mt-6 max-w-xl text-sm font-normal leading-relaxed text-white/75 md:text-base">
-              Transform everyday practice into measurable technical growth. CodeStats provides a streamlined environment to complete coding assessments, participate in targeted cohorts, and leverage data-driven insights to continuously elevate your engineering skills.
+            <p className="lp-lead font-normal">
+              Transform everyday practice into measurable technical growth. {brand.codeStats.name} provides a streamlined environment to complete coding assessments, participate in targeted cohorts, and leverage data-driven insights to continuously elevate your engineering skills.
             </p>
-            <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <div className="lp-cta-row">
               <button onClick={() => navigate('/login')} className="liquid-glass-strong group inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.02]">
                 Login
                 <ArrowForward className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
-              <a
-                href="#code-snippet"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById('code-snippet')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                className="liquid-glass group inline-flex items-center gap-3 rounded-full pl-1.5 pr-5 py-1.5 text-sm font-medium text-white/90 transition-colors hover:text-white"
-              >
-                <span className="liquid-glass flex h-9 w-9 items-center justify-center rounded-full">
-                  <PlayArrow className="h-3.5 w-3.5 fill-white text-white" />
-                </span>
-                Watch a sample assessment
-              </a>
+              {demoVideo ? (
+                <a
+                  href="#code-snippet"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('code-snippet')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="liquid-glass group inline-flex items-center gap-3 rounded-full pl-1.5 pr-5 py-1.5 text-sm font-medium text-white/90 transition-colors hover:text-white"
+                >
+                  <span className="liquid-glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+                    <PlayArrow className="h-3.5 w-3.5 fill-white text-white" />
+                  </span>
+                  Watch a sample assessment
+                </a>
+              ) : null}
             </div>
-          </section>
+          </div>
 
-          <div className="flex flex-col items-start justify-between gap-4 border-t border-white/15 pt-4 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-white/60">
-              <Code className="h-3.5 w-3.5" />
-              Built by SCOPE Club — MLR Institute of Technology
+          <div className="lp-hero-foot">
+            <div className="lp-built">
+              <Code aria-hidden="true" />
+              <span>Built by {brand.names.builder} for {brand.names.institution}</span>
             </div>
-            <div className="flex items-center gap-6 text-[11px] text-white/60">
+            <div className="lp-hero-stats">
               <span>3,000+ students</span>
-              <span className="h-3 w-px bg-white/20" />
+              <span className="lp-sep" aria-hidden="true" />
               <span>50+ teachers</span>
-              <span className="h-3 w-px bg-white/20" />
+              <span className="lp-sep" aria-hidden="true" />
               <span>10+ admins</span>
             </div>
           </div>
@@ -584,101 +555,96 @@ const Landing = () => {
       </section>
 
       {/* 1. ABOUT Section */}
-      <section className="bg-black px-6 py-32 md:px-12 md:py-48">
+      <section className="lp-sec-xl lp-pad bg-black">
         <div className="mx-auto max-w-6xl text-center">
           <ScrollRevealText
             segments={[
-              { text: 'CodeStats', className: 'font-display italic' },
+              { text: brand.codeStats.name, className: 'font-display italic' },
               { text: 'gives', className: 'font-light text-white/70' },
-              { text: 'MLRIT students', className: 'italic text-white/60' },
+              { text: `${brand.names.institution} students`, className: 'italic text-white/60' },
               { text: 'a real place to', className: 'font-light text-white/70' },
               { text: 'write code,', className: 'font-semibold' },
               { text: 'take assessments,', className: 'italic text-white/80' },
-              { text: 'and track progress —', className: 'font-semibold' },
+              { text: 'and track progress,', className: 'font-semibold' },
               { text: 'turning everyday practice', className: 'font-light text-white/65' },
               { text: 'into measurable growth', className: 'italic' },
               { text: 'that teachers and', className: 'font-light text-white/70' },
               { text: 'students can', className: 'font-light text-white/70' },
               { text: 'actually see.', className: 'font-semibold' },
             ]}
-            className="font-display text-3xl font-normal leading-[1.25] tracking-[0.02em] text-white md:text-5xl lg:text-6xl"
+            className="lp-about-text font-display font-normal leading-[1.25] tracking-[0.02em] text-white"
           />
         </div>
       </section>
 
       {/* 2. STATS Section */}
-      <section className="bg-black px-6 py-24 md:px-12">
+      <section className="lp-sec lp-pad bg-black">
         <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-y-0 md:divide-x">
-          <div className="px-2 py-10 md:px-10 md:py-4 text-center">
+          <div className="lp-stat">
             <CountUp
               end={stats.students}
               suffix="+"
-              className="font-display text-6xl tracking-tight md:text-7xl lg:text-8xl text-white"
+              className="lp-stat-num font-display text-white"
             />
-            <div className="mt-4 text-sm tracking-wide text-white/55">Students registered</div>
+            <div className="mt-4 text-sm tracking-wide text-white/60">Students registered</div>
           </div>
-          <div className="px-2 py-10 md:px-10 md:py-4 text-center">
+          <div className="lp-stat">
             <CountUp
               end={400}
               suffix="+"
-              className="font-display text-6xl tracking-tight md:text-7xl lg:text-8xl text-white"
+              className="lp-stat-num font-display text-white"
             />
-            <div className="mt-4 text-sm tracking-wide text-white/55">Coding questions available</div>
+            <div className="mt-4 text-sm tracking-wide text-white/60">Coding questions available</div>
           </div>
-          <div className="px-2 py-10 md:px-10 md:py-4 text-center">
+          <div className="lp-stat">
             <CountUp
               end={stats.teachers}
               suffix="+"
-              className="font-display text-6xl tracking-tight md:text-7xl lg:text-8xl text-white"
+              className="lp-stat-num font-display text-white"
             />
-            <div className="mt-4 text-sm tracking-wide text-white/55">Teachers onboarded</div>
+            <div className="mt-4 text-sm tracking-wide text-white/60">Teachers onboarded</div>
           </div>
         </div>
       </section>
 
       {/* 3. CAMPUSES Section */}
-      <section className="bg-black px-6 py-24 md:px-12">
+      <section className="lp-sec lp-pad bg-black">
         <div className="mx-auto max-w-5xl text-center">
-          <div className="mb-6 inline-flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-white/60">
+          <div className="mb-6 text-xs uppercase tracking-[0.25em] text-white/60">
             Institutions
           </div>
-          <h2 className="font-display text-3xl tracking-tight md:text-5xl">
+          <h2 className="lp-h2 lp-h2-sm font-display">
             Collaborated with <span className="italic text-white/70">institutions.</span>
           </h2>
-          <div className="mt-12 flex flex-col items-center text-center">
+          <div className="mt-10 flex flex-col items-center text-center md:mt-12">
             <img
-              src="/MLRIT.png"
-              alt="MLR Institute of Technology"
-              className="w-full max-w-[300px] object-contain"
-            />
-            <div className="mt-5 font-display text-xl md:text-2xl">MLR Institute of Technology</div>
-            <p className="mt-2 max-w-md text-xs leading-relaxed text-white/55 md:text-sm">
-              Dundigal V, Survey No. 444, Dundigal, Gandi Maisama, Medchal Malkajgiri, Telangana – 500 043, Telangana
-            </p>
+              src={brand.institution.logo}
+              alt={brand.names.institutionFull}
+              className="h-auto w-full object-contain"
+              style={{ maxWidth: 'min(100%, 600px)' }}
+            />
+            {brand.institution.address ? (
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-white/60">
+                {brand.institution.address}
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
 
       {/* 4. LEADERBOARD Section */}
-      <section className="relative overflow-hidden px-6 py-24 md:px-12">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 z-0 h-full w-full object-cover"
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260402_054547_9875cfc5-155a-4229-8ec8-b7ba7125cbf8.mp4"
-        />
+      <section className="lp-sec lp-pad relative overflow-hidden">
+        <BackdropVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260402_054547_9875cfc5-155a-4229-8ec8-b7ba7125cbf8.mp4" />
         <div className="absolute inset-0 z-[1] bg-black/60" />
         <div className="absolute top-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-b from-black to-transparent pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-t from-black to-transparent pointer-events-none" />
         <div className="relative z-10 mx-auto max-w-4xl">
-          <div className="mb-10 flex items-end justify-between">
+          <div className="lp-lb-head">
             <div>
               <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/60">Top performers</div>
-              <h2 className="font-display text-3xl tracking-tight md:text-5xl">Leaderboard</h2>
+              <h2 className="lp-h2 font-display">Leaderboard</h2>
             </div>
-            <EmojiEvents className="h-8 w-8 text-white/60" />
+            <EmojiEvents aria-hidden="true" className="h-8 w-8 shrink-0 text-white/60" />
           </div>
           
           {/* Leaderboard Items */}
@@ -695,20 +661,20 @@ const Landing = () => {
                     navigate(`/public-profile/${p.rollNumber}`);
                   }
                 }}
-                className={`liquid-glass flex items-center gap-5 rounded-[1.25rem] p-5 transition-all duration-300 hover:bg-[rgba(0,136,204,0.15)] ${
+                className={`liquid-glass lp-lb-row transition-all duration-300 hover:bg-[rgba(0,136,204,0.15)] ${
                   p.rollNumber ? 'cursor-pointer hover:scale-[1.01]' : ''
                 }`}
               >
-                <div className="liquid-glass flex h-12 w-12 items-center justify-center rounded-[0.75rem] font-display text-xl">
+                <div className="liquid-glass lp-lb-rank font-display">
                   {p.rank}
                 </div>
-                <div className="flex-1">
-                  <div className="font-display text-lg">{p.name}</div>
-                  <div className="text-xs text-white/55">
+                <div className="lp-lb-who">
+                  <div className="lp-lb-name font-display">{p.name}</div>
+                  <div className="lp-lb-sub">
                     {p.department} {p.graduatingYear ? `'${p.graduatingYear.toString().slice(-2)}` : ''} • {p.institution}
                   </div>
                 </div>
-                <div className="liquid-glass rounded-full px-3 py-1 text-[11px] tracking-wider text-white/80">
+                <div className="liquid-glass lp-lb-score rounded-full">
                   {p.score} pts
                 </div>
               </div>
@@ -717,41 +683,43 @@ const Landing = () => {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4">
+            <div className="lp-pg">
               <button
+                type="button"
                 onClick={handlePrevPage}
                 disabled={currentPage === 0}
-                className={`liquid-glass rounded-full px-5 py-2 text-sm font-medium transition-all duration-300 ${
+                className={`liquid-glass lp-pg-btn rounded-full font-medium transition-all duration-300 ${
                   currentPage === 0
                     ? 'opacity-40 cursor-not-allowed'
-                    : 'hover:bg-[rgba(0,136,204,0.2)] hover:scale-105 cursor-pointer'
+                    : 'hover:bg-[rgba(0,136,204,0.2)] cursor-pointer'
                 }`}
               >
                 Previous
               </button>
               
-              <div className="flex items-center gap-2">
+              <div className="lp-dots">
                 {Array.from({ length: totalPages }, (_, i) => (
                   <button
                     key={i}
+                    type="button"
                     onClick={() => setCurrentPage(i)}
-                    className={`h-2 w-2 rounded-full transition-all duration-300 ${
-                      currentPage === i
-                        ? 'w-6 bg-[rgb(120,200,255)]'
-                        : 'bg-white/30 hover:bg-white/50'
-                    }`}
+                    className="lp-dot"
                     aria-label={`Go to page ${i + 1}`}
-                  />
+                    aria-current={currentPage === i ? 'true' : undefined}
+                  >
+                    <span />
+                  </button>
                 ))}
               </div>
 
               <button
+                type="button"
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages - 1}
-                className={`liquid-glass rounded-full px-5 py-2 text-sm font-medium transition-all duration-300 ${
+                className={`liquid-glass lp-pg-btn rounded-full font-medium transition-all duration-300 ${
                   currentPage === totalPages - 1
                     ? 'opacity-40 cursor-not-allowed'
-                    : 'hover:bg-[rgba(0,136,204,0.2)] hover:scale-105 cursor-pointer'
+                    : 'hover:bg-[rgba(0,136,204,0.2)] cursor-pointer'
                 }`}
               >
                 Next
@@ -761,42 +729,34 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* 5. CODING SNIPPET Section */}
-      <section id="code-snippet" className="scroll-mt-24 bg-black px-6 py-24 md:px-12">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-8">
-            <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/60">Live sample</div>
-            <h2 className="font-display text-3xl tracking-tight md:text-5xl">
-              A real challenge, <span className="italic text-white/70">auto-graded.</span>
-            </h2>
-          </div>
-          <div className="liquid-glass-strong rounded-[1.25rem] overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3">
-              <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-              <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-              <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-              <span className="ml-3 text-[11px] tracking-wider text-white/50">code-stats</span>
+      {/* 5. CODING SNIPPET Section (only when the platform has a sample video) */}
+      {demoVideo ? (
+        <section id="code-snippet" className="lp-sec lp-pad scroll-mt-24 bg-black">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-8">
+              <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/60">Live sample</div>
+              <h2 className="lp-h2 font-display">
+                A real challenge, <span className="italic text-white/70">auto-graded.</span>
+              </h2>
             </div>
-            <div className="bg-black/40">
-              <video
-                ref={snippetVideoRef}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="block w-full h-auto object-cover"
-                src="https://sritulasiseeds.sgp1.cdn.digitaloceanspaces.com/scopecodestats.mp4"
-              />
+            <div className="liquid-glass-strong rounded-[1.25rem] overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3 md:px-5">
+                <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+                <span className="ml-3 text-xs tracking-wider text-white/55">code-stats</span>
+              </div>
+              <DemoVideo src={demoVideo} />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {/* 6. TESTIMONIALS Section */}
       <TestimonialsMarquee />
 
       {/* 7. FAQ Section */}
-      <section className="relative overflow-hidden bg-black px-6 py-28 md:px-12 md:py-32">
+      <section className="lp-sec-lg lp-pad relative overflow-hidden bg-black">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-[0.35]"
           style={{
@@ -806,12 +766,12 @@ const Landing = () => {
             maskImage: "radial-gradient(ellipse 60% 70% at 50% 0%, black 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
           }}
         />
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(0,136,204,0.18),transparent_70%)] blur-3xl" />
+        <div className="lp-faq-glow pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(0,136,204,0.18),transparent_70%)] blur-3xl" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
-        <div className="relative mx-auto grid max-w-6xl gap-14 md:grid-cols-[0.9fr_1.4fr] md:gap-20">
-          <div className="md:sticky md:top-24 md:self-start">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.12)] px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-[rgb(120,200,255)]">
+        <div className="lp-faq-grid relative mx-auto max-w-6xl">
+          <div className="lp-faq-aside">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.12)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[rgb(120,200,255)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[rgb(120,200,255)] shadow-[0_0_8px_rgba(0,170,255,0.9)]" />
               FAQ
             </div>
@@ -819,22 +779,22 @@ const Landing = () => {
               Questions, <br />
               <span className="italic text-white/65">answered with clarity.</span>
             </h2>
-            <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/55">
-              Everything you need to know about CodeStats — what it does, who it's for, and how MLRIT uses it.
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/60">
+              Everything you need to know about {brand.codeStats.name}: what it does, who it's for, and how {brand.names.institution} uses it.
               Still can't find your answer?
             </p>
 
-            <a
-              href="#"
+            <Link
+              to="/contact"
               className="group relative mt-8 inline-flex w-full max-w-sm items-center justify-between overflow-hidden rounded-2xl border border-[rgba(0,170,255,0.25)] bg-[rgba(0,136,204,0.07)] px-5 py-4 transition-all duration-500 hover:border-[rgba(0,170,255,0.55)] hover:bg-[rgba(0,136,204,0.14)]"
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(0,170,255,0.25),transparent_60%)] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
               <div className="relative">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-white/45">Still curious?</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-white/55">Still curious?</div>
                 <div className="mt-1 text-sm font-medium text-white">Talk to our team</div>
               </div>
-              <ArrowForward className="relative h-4 w-4 text-white/70 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-white" />
-            </a>
+              <ArrowForward aria-hidden="true" className="relative h-4 w-4 text-white/70 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-white" />
+            </Link>
           </div>
 
           <FAQAccordion />
@@ -842,27 +802,20 @@ const Landing = () => {
       </section>
 
       {/* 8. CTA Section */}
-      <section className="relative overflow-hidden px-6 py-32 md:px-12">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 z-0 h-full w-full object-cover"
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4"
-        />
+      <section className="lp-sec-lg lp-pad relative overflow-hidden">
+        <BackdropVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4" />
         <div className="absolute inset-0 z-[1] bg-black/55" />
         <div className="absolute top-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-b from-black to-transparent pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-1/3 z-[1] bg-gradient-to-t from-black to-transparent pointer-events-none" />
         <div className="relative z-10 mx-auto max-w-4xl text-center">
-          <h2 className="font-display text-4xl leading-[1.05] tracking-tight md:text-7xl">
+          <h2 className="lp-cta-title font-display">
             Ready to level up <br />
             <span className="italic text-white/70">your coding?</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-white/65">
-            Log in with your MLRIT account and start practicing today — one assessment at a time.
+          <p className="mx-auto mt-6 max-w-xl text-base text-white/70">
+            Log in with your {brand.names.institution} account and start practicing today, one assessment at a time.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="lp-cta-row lp-cta-row--center mt-10">
             <button onClick={() => navigate('/login')} className="liquid-glass-strong group inline-flex items-center gap-2 rounded-full px-8 py-4 text-sm font-medium text-white transition-transform hover:scale-[1.02]">
               Login
               <ArrowForward className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -875,41 +828,47 @@ const Landing = () => {
       </section>
 
       {/* 9. FOOTER Section */}
-      <footer className="bg-black border-t border-white/10 px-6 py-16 md:px-12">
+      <footer className="lp-foot lp-pad bg-black border-t border-white/10">
         <div className="mx-auto max-w-6xl">
-          <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
-            <div className="col-span-2">
-              <span className="font-display text-2xl italic tracking-tight">CodeStats</span>
-              <p className="mt-4 max-w-xs text-sm text-white/55">
-                The coding assessment and performance-analysis platform built by SCOPE Club for the students of MLR Institute of Technology.
+          <div className="lp-foot-grid">
+            <div className="lp-foot-brand">
+              <span className="font-display text-2xl italic tracking-tight">{brand.names.platform}</span>
+              <p className="mt-4 max-w-xs text-sm text-white/60">
+                The coding assessment and performance-analysis platform built by {brand.names.builder} for the students of {brand.names.institutionFull}.
               </p>
-              <div className="mt-6 flex items-center gap-4 text-white/60">
-                <a href="https://www.linkedin.com/school/mlr-institute-of-technology/" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="hover:text-white"><LinkedIn sx={{ fontSize: 16 }} /></a>
-                <a href="mailto:scopeclub@mlrinstitutions.ac.in" aria-label="Email" className="hover:text-white"><Email sx={{ fontSize: 16 }} /></a>
-              </div>
+              {brand.institution.linkedin || brand.institution.contactEmail ? (
+                <div className="lp-foot-social">
+                  {brand.institution.linkedin ? (
+                    <a href={brand.institution.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="lp-icon-link"><LinkedIn sx={{ fontSize: 20 }} /></a>
+                  ) : null}
+                  {brand.institution.contactEmail ? (
+                    <a href={`mailto:${brand.institution.contactEmail}`} aria-label="Email" className="lp-icon-link"><Email sx={{ fontSize: 20 }} /></a>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-            {[
-              { title: 'Platform', links: ['Assessments', 'Cohorts', 'Practice Arena', 'Leaderboard'] },
-              { title: 'SCOPE Club', links: ['About', 'Contact', 'Workshops', 'Hackathons'] },
-              { title: 'Institution', links: ['MLRIT', 'Docs', 'Login', 'Register'] },
-            ].map((col) => (
+            {footerColumns.map((col) => (
               <div key={col.title}>
-                <div className="mb-4 text-xs uppercase tracking-[0.2em] text-white/50">{col.title}</div>
-                <ul className="space-y-2">
+                <div className="lp-foot-title">{col.title}</div>
+                <ul>
                   {col.links.map((l) => (
                     <li key={l}>
-                      <a href="#" className="text-sm text-white/75 hover:text-white">{l}</a>
+                      {FOOTER_ROUTES[l] ? (
+                        <Link to={FOOTER_ROUTES[l]} className="lp-foot-link">{l}</Link>
+                      ) : (
+                        <span className="lp-foot-link">{l}</span>
+                      )}
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-          <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/45 sm:flex-row sm:items-center">
-            <div>© {new Date().getFullYear()} SCOPE Club · MLR Institute of Technology. All rights reserved.</div>
-            <div className="flex items-center gap-5">
-              <a href="mailto:scopeclub@mlrinstitutions.ac.in" className="hover:text-white">scopeclub@mlrinstitutions.ac.in</a>
-            </div>
+          <div className="lp-foot-bottom">
+            <div>© {new Date().getFullYear()} {brand.names.club} · {brand.names.institutionFull}. All rights reserved.</div>
+            {brand.institution.contactEmail ? (
+              <a href={`mailto:${brand.institution.contactEmail}`} className="hover:text-white">{brand.institution.contactEmail}</a>
+            ) : null}
           </div>
         </div>
       </footer>

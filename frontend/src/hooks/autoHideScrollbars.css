@@ -1,0 +1,56 @@
+/*
+ * Scrollbars that show only while their area is being scrolled (hooks/useAutoHideScrollbars.js).
+ * The app gives every scroll area a bar through the standard properties and through ::-webkit-scrollbar
+ * rules; the standard properties would override the pseudo-element rules, so they are reset here and
+ * the bar is drawn again as a slim thumb that is transparent until `data-scroll-active` is set.
+ */
+
+.autohide-scrollbars,
+.autohide-scrollbars * {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+.autohide-scrollbars::-webkit-scrollbar,
+.autohide-scrollbars *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background-color: transparent;
+}
+
+.autohide-scrollbars::-webkit-scrollbar-track,
+.autohide-scrollbars *::-webkit-scrollbar-track,
+.autohide-scrollbars::-webkit-scrollbar-corner,
+.autohide-scrollbars *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.autohide-scrollbars::-webkit-scrollbar-button,
+.autohide-scrollbars *::-webkit-scrollbar-button {
+  display: none;
+}
+
+.autohide-scrollbars::-webkit-scrollbar-thumb,
+.autohide-scrollbars *::-webkit-scrollbar-thumb {
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+}
+
+.autohide-scrollbars[data-scroll-active]::-webkit-scrollbar-thumb,
+.autohide-scrollbars [data-scroll-active]::-webkit-scrollbar-thumb {
+  background-color: var(--ds-bar-muted);
+}
+
+/* Firefox has no pseudo-element bars: the standard properties do the same job there */
+@supports not selector(::-webkit-scrollbar) {
+  .autohide-scrollbars,
+  .autohide-scrollbars * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .autohide-scrollbars[data-scroll-active],
+  .autohide-scrollbars [data-scroll-active] {
+    scrollbar-color: var(--ds-bar-muted) transparent;
+  }
+}

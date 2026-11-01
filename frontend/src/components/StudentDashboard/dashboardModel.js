@@ -1,3 +1,4 @@
+import brand from '../../brand';
 /**
  * Turns the answers of the dashboard's endpoints into what the cards draw.
  *
@@ -14,7 +15,7 @@ export const PLATFORM_NAMES = {
   codechef: 'CodeChef',
   hackerrank: 'HackerRank',
   github: 'GitHub',
-  scopecodestats: 'CodeStats',
+  scopecodestats: brand.codeStats.name,
 };
 
 export const platformName = (key) => PLATFORM_NAMES[key] || key;

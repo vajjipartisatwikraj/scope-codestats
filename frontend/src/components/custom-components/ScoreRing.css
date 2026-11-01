@@ -16,6 +16,11 @@
   line-height: 1.1;
 }
 
+.sring__center {
+  display: inline-flex;
+  color: var(--ga-fill);
+}
+
 .sring__caption {
   max-width: 100%;
   margin-top: 2px;

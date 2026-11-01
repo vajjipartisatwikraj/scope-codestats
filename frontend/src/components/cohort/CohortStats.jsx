@@ -800,7 +800,7 @@ const CohortStats = () => {
                 />
                 <Chip 
                   icon={<PeopleIcon />} 
-                  label={`${cohort.eligibleUsers?.length || 0} eligible users`} 
+                  label={cohort.accessType === "global" ? "Open to all users" : `${cohort.eligibleUsers?.length || 0} eligible users`} 
                   size="small" 
                   color="primary"
                   variant="outlined"

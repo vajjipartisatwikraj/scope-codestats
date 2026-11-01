@@ -1,0 +1,59 @@
+/* Gutter (shared/Gutter.jsx): the draggable bar between two panes. Only design tokens. */
+
+.ps-gutter {
+  position: relative;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  outline: none;
+}
+
+.ps-gutter[data-axis='x'] {
+  cursor: col-resize;
+}
+
+.ps-gutter[data-axis='y'] {
+  cursor: row-resize;
+}
+
+/* A wider target than the 8px that is drawn */
+.ps-gutter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.ps-gutter[data-axis='x']::before {
+  right: -4px;
+  left: -4px;
+}
+
+.ps-gutter[data-axis='y']::before {
+  top: -4px;
+  bottom: -4px;
+}
+
+.ps-gutter__handle {
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-high);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ps-gutter[data-axis='x'] .ps-gutter__handle {
+  width: 4px;
+  height: 40px;
+}
+
+.ps-gutter[data-axis='y'] .ps-gutter__handle {
+  width: 40px;
+  height: 4px;
+}
+
+.ps-gutter:hover .ps-gutter__handle {
+  background-color: var(--ds-bar-muted);
+}
+
+.ps-gutter[data-dragging='true'] .ps-gutter__handle,
+.ps-gutter:focus-visible .ps-gutter__handle {
+  background-color: var(--ds-focus);
+}

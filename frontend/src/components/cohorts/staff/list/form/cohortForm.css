@@ -1,0 +1,34 @@
+/*
+ * Cohort form (form/CohortFormDrawer.jsx): sections inside the drawer, labels above fields, two
+ * columns from 600px (.ui-form-grid, from the kit). Only design tokens.
+ */
+
+.cmf {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.cmf-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cmf-section__title {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+/* The explainer reads as sentences, not as one block */
+.cmf .ui-notice__body p + p {
+  margin-top: 8px;
+}
+
+/* A date and time field stays as wide as its column on a phone */
+.cmf input[type='datetime-local'] {
+  min-width: 0;
+}

@@ -26,6 +26,9 @@ import { toneColors, toneForShare } from './tone';
  *                          carries the score alone.
  *   decimals (0)           digits of the number in the middle
  *   thickness             px, overrides the stroke
+ *   center                 what fills the middle instead of the number: a node (a check for a finished
+ *                          item), or null for a plain donut. Leave it out to show the number. Give the
+ *                          ring a `label` that says the value, because the number is then not on screen.
  *   animate (true)         the ring appears and the number counts up once
  *   glide (false)          the ring sweeps in along its arc and glides when the value changes (see Gauge)
  *   className, style       passed to the root element
@@ -42,6 +45,7 @@ export default function ScoreRing({
   tone = 'accent',
   decimals = 0,
   thickness,
+  center,
   animate = true,
   glide = false,
   className,
@@ -74,9 +78,15 @@ export default function ScoreRing({
       valueDescription={`${rounded} out of ${top}${caption ? `, ${caption}` : ''}`}
       colors={{ fill: toneColors(resolvedTone).fill }}
     >
-      <span className="sring__value">
-        <AnimatedNumber value={rounded} decimals={decimals} duration={animate ? 950 : 0} delay={animate ? 240 : 0} />
-      </span>
+      {center !== undefined ? (
+        center === null ? null : (
+          <span className="sring__center">{center}</span>
+        )
+      ) : (
+        <span className="sring__value">
+          <AnimatedNumber value={rounded} decimals={decimals} duration={animate ? 950 : 0} delay={animate ? 240 : 0} />
+        </span>
+      )}
       {showCaption ? <span className="sring__caption">{caption}</span> : null}
     </Gauge>
   );

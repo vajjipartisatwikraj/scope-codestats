@@ -1,0 +1,27 @@
+/* Rate and review (feedback/FeedbackPanel.jsx): the form card over the reviews card.
+   Only design tokens. */
+
+.cdf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cdp-gap);
+}
+
+.cdf-fields,
+.cdf-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.cdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cdf-empty {
+  margin: 0;
+  color: var(--ds-muted);
+}

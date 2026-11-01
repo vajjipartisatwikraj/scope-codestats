@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React from "react";
 import { Box, Button, Typography, useTheme } from "@mui/material";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
@@ -73,8 +74,9 @@ const ExamSessionBar = ({
       >
         <Box
           component="img"
-          src="/codestats-color.png"
-          alt="Codestats"
+          src={brand.platform.logo}
+          alt={brand.names.platform}
+
           sx={{ width: 22, height: 22, objectFit: "contain" }}
         />
         <Typography

@@ -1,0 +1,115 @@
+/*
+ * Cohort page for a student (route /cohorts/:id)
+ *
+ * The layout of the page only: the two columns and how they take turns on a phone. The pieces have
+ * their own files (header/, modules/, questions/, progress/, feedback/, shared/). Only design
+ * tokens, on top of the kit in components/ui/ui.css.
+ *
+ * From 900px the page fills the window under the navbar and the two columns scroll on their own, so
+ * the cohort and its modules stay in view while the questions scroll. In an exam session the shell
+ * has no navbar, only a slim countdown bar, and the page reclaims the difference (--cdp-chrome).
+ * Below 900px there is room for one side at a time: data-view says which, and the page scrolls
+ * with the window.
+ */
+
+.cdp {
+  --cdp-chrome: 64px; /* the fixed navbar (Navbar.css) */
+  --cdp-gap: 12px;
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 4px 0 24px;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cdp-banner {
+  flex: none;
+  margin-bottom: var(--cdp-gap);
+}
+
+.cdp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cdp-gap);
+}
+
+.cdp-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cdp-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+.cdp-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cdp-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* "All modules": where the list and the other side take turns */
+.cdp-back {
+  display: none;
+}
+
+/* ---- Phones: one side at a time ------------------------------------------------------------------ */
+
+@media (max-width: 899.95px) {
+  .cdp[data-view='modules'] .cdp-right,
+  .cdp[data-view='detail'] .cdp-left {
+    display: none;
+  }
+
+  .cdp-back {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-left: -8px;
+  }
+}
+
+/* ---- From 900px: the page fills the window and the columns scroll on their own -------------------- */
+
+@media (min-width: 900px) {
+  .cdp {
+    --cdp-gap: 16px;
+
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--cdp-chrome));
+    /* Lined up with the top bar: the card's left edge under the search's (measured on screen: 2px of page padding, the rest comes from the shell), and the right edge at the bar's 20px */
+    padding: 4px 20px 16px 2px;
+  }
+
+  @supports (height: 100dvh) {
+    .cdp {
+      height: calc(100dvh - var(--cdp-chrome));
+    }
+  }
+
+  .cdp-grid {
+    flex: 1 1 auto;
+    grid-template-columns: 360px minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .cdp-right {
+    overflow-y: auto;
+    padding-bottom: 4px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .cdp {
+    --cdp-gap: 20px;
+  }
+
+  .cdp-grid {
+    grid-template-columns: 420px minmax(0, 1fr);
+  }
+}

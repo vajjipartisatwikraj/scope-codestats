@@ -1,0 +1,241 @@
+/*
+ * Sections (sections/): Editorial, Submissions, Report and Notes, shown in the right pane. Only
+ * design tokens.
+ */
+
+.ps-section .ps-pane__body {
+  padding: 20px 24px 32px;
+}
+
+@media (max-width: 599.95px) {
+  .ps-section .ps-pane__body {
+    padding: 16px;
+  }
+}
+
+.ps-stack--loose {
+  gap: 24px;
+}
+
+.ps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- Submissions ------------------------------------------------------------------------------------ */
+
+.ps-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ps-overview__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.ps-overview__figures strong {
+  color: var(--ds-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ps-submissions__row {
+  cursor: pointer;
+}
+
+.ps-row-open {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: none;
+  cursor: pointer;
+}
+
+.ps-row-open:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.ps-detail__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ps-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 4px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  cursor: pointer;
+}
+
+.ps-person:hover {
+  background-color: var(--ds-high);
+}
+
+.ps-person:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.ps-picked {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.ps-code-view {
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-surface);
+  box-shadow: 0 0 0 1px var(--ds-line);
+  overflow: hidden;
+}
+
+.ps-code-view__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 4px 8px 4px 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ps-code-view__editor {
+  height: 360px;
+}
+
+.ps-case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-case-tile {
+  padding: 12px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-surface);
+  font: var(--ds-type-body-sm);
+}
+
+.ps-case-tile p {
+  margin: 4px 0 0;
+}
+
+.ps-case-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: var(--ds-type-label);
+}
+
+.ps-case-tile__error {
+  color: var(--ds-danger);
+  font-family: var(--ds-font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Reports ----------------------------------------------------------------------------------------- */
+
+.ps-report-list__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ps-report-list__head .ps-subtitle {
+  margin: 0;
+}
+
+.ps-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-report {
+  padding: 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.ps-report p {
+  margin: 8px 0 0;
+}
+
+.ps-report__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ps-report__title {
+  flex: 1 1 auto;
+  margin: 0;
+  font: var(--ds-type-label);
+}
+
+.ps-report__text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ps-report__reply {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-surface);
+}
+
+.ps-report__reply p {
+  margin-top: 4px;
+}
+
+.ps-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* ---- Inside the statement pane (a phone) ------------------------------------------------------------- */
+
+.ps-embedded__lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}

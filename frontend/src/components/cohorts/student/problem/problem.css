@@ -1,0 +1,133 @@
+/*
+ * Problem screen (cohorts/student/problem/): the shell. Plain CSS on the design tokens (--ds-*); Midnight and
+ * Daylight both come from ThemeContext. The rules are DESIGN.md and design/screens.md section 9.
+ *
+ *   .psp         the screen: it owns the whole window (the app shell shows no chrome on this route),
+ *                under the exam countdown bar in an exam tab (--ps-top)
+ *   .psp-main    the top strip over the body
+ *   .psp-body    from 900px a grid: the statement | a gutter | the right side; below, one pane at a time
+ *
+ * One primary button (Submit) and one accent area (the rail). Panes are flat surfaces; only the
+ * problem list, a floating layer, casts a shadow.
+ */
+
+.psp {
+  position: fixed;
+  inset: var(--ps-top, 0px) 0 0 0;
+  z-index: 1200;
+  display: flex;
+  background-color: var(--ds-canvas);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The page-wide transition rule in index.css would make every child ease its colours a second time;
+   a component that wants a transition names it (their classes are stronger than this :where) */
+:where(.psp) *,
+:where(.psp) *::before,
+:where(.psp) *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+.psp [hidden] {
+  display: none !important;
+}
+
+.psp-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.psp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 8px 8px;
+}
+
+/* ---- From 900px: the split --------------------------------------------------------------------------- */
+
+.psp-body[data-layout='wide'] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  padding-right: 12px;
+}
+
+.psp-right {
+  min-width: 0;
+  min-height: 0;
+}
+
+.psp-right__pane {
+  height: 100%;
+  min-height: 0;
+}
+
+.psp-right__pane > .ps-pane {
+  height: 100%;
+}
+
+/* A single message (a question that did not load) */
+.psp-body[data-layout='single'] {
+  display: grid;
+  place-items: center;
+}
+
+/* ---- A phone: the panes take turns ---------------------------------------------------------------------- */
+
+.psp-body[data-layout='phone'] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.psp-phone-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.psp-phone-pane > .ps-pane,
+.psp-phone-pane > .ps-solo {
+  flex: 1 1 auto;
+}
+
+/* While a gutter is held, nothing under the pointer selects text or steals the drag */
+.psp-body[data-dragging='true'] {
+  user-select: none;
+}
+
+.psp-body[data-dragging='true'] iframe {
+  pointer-events: none;
+}
+
+/* A finger needs 44px */
+@media (pointer: coarse), (max-width: 899.95px) {
+  .psp .ui-select[data-variant='pill'] .ui-select__control {
+    height: 44px;
+  }
+}
+
+.psp-phone-row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.psp-phone-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ps-steps {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}

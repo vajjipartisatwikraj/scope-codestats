@@ -1,0 +1,15 @@
+/*
+ * Pieces shared by the cohort card and the cohort detail panel. Only design tokens.
+ */
+
+.chs-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chs-progress__note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}

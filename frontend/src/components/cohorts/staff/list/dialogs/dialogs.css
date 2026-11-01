@@ -1,0 +1,48 @@
+/* Dialogs of the staff cohort dashboard (dialogs/). Only design tokens. */
+
+.cmd {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cmd .ui-notice__body ul {
+  margin: 4px 0;
+}
+
+.cmd--center {
+  align-items: center;
+  text-align: center;
+}
+
+.cmd-step {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+}
+
+.cmd-note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.cmd-done {
+  color: var(--ds-success);
+}
+
+.cmd-spin {
+  color: var(--ds-accent-text);
+  animation: cmd-spin 900ms linear infinite;
+}
+
+@keyframes cmd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmd-spin {
+    animation: none;
+  }
+}

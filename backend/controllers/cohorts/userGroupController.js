@@ -53,9 +53,18 @@ const syncUserGroups = handle("syncing the user groups of a cohort", (cohort) =>
   cohortGroupService.syncCohort(cohort)
 );
 
+const setAccessType = handle("changing who can access a cohort", (cohort, req) =>
+  cohortGroupService.setAccessType({
+    cohort,
+    accessType: req.body?.accessType,
+    preview: req.query.preview === "true",
+  })
+);
+
 module.exports = {
   listCohortUserGroups,
   attachUserGroup,
   detachUserGroup,
   syncUserGroups,
+  setAccessType,
 };

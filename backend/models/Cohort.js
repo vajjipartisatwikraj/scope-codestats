@@ -25,9 +25,19 @@ const cohortSchema = new mongoose.Schema({
     },
   ],
   /**
-   * Everyone who may open and enroll in this cohort. Kept as a stored list because
-   * access checks and the student cohort list query it directly. Attach and detach
-   * user groups to change it (services/userGroups/cohortGroupService.js), do not
+   * Who may open this cohort: "userGroups" (only `eligibleUsers`, the default and what every
+   * older cohort is) or "global" (every student, including ones who sign up later; the
+   * eligible list is not consulted). Change it with cohortGroupService.setAccessType.
+   */
+  accessType: {
+    type: String,
+    enum: ["global", "userGroups"],
+    default: "userGroups",
+  },
+  /**
+   * Everyone who may open and enroll in this cohort when `accessType` is "userGroups". Kept as
+   * a stored list because access checks and the student cohort list query it directly. Attach
+   * and detach user groups to change it (services/userGroups/cohortGroupService.js), do not
    * edit it by hand.
    */
   eligibleUsers: [
@@ -234,5 +244,18 @@ cohortSchema.index({ mode: 1, isActive: 1, examEndTime: 1 });
 
 // "Which cohorts use this user group?"
 cohortSchema.index({ userGroups: 1 });
+
+/** Whether a student may open this cohort. The one place that knows about `accessType`. */
+cohortSchema.methods.isOpenTo = function (userId) {
+  return (
+    this.accessType === "global" ||
+    (this.eligibleUsers || []).some((id) => String(id) === String(userId))
+  );
+};
+
+/** Query filter for the cohorts a student may open; spread it into a find/findOne filter. */
+cohortSchema.statics.accessFilter = (userId) => ({
+  $and: [{ $or: [{ accessType: "global" }, { eligibleUsers: userId }] }],
+});
 
 module.exports = mongoose.model("Cohort", cohortSchema);

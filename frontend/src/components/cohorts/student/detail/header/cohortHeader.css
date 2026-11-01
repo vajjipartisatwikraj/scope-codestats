@@ -1,0 +1,68 @@
+/* Cohort header (header/CohortHeader.jsx): the accent tile at the top of the sidebar card. White text
+   on the accent, compact sizes. Only design tokens. */
+
+.cdh {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 168px;
+  padding: 22px 20px 20px;
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.cdh-title {
+  margin: 0;
+  max-width: 100%;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.cdh-description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* The two views at the two ends of the row: Progress at the left, Rate and review at the right */
+.cdh-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* White buttons: the row is scoped to the Daylight palette (data-theme="daylight" in CohortHeader), so
+   the surface role is white and the text role is dark in either theme. Selected = the kit's spotlight
+   (dark) button, from the same scope. */
+.cdh-actions .ui-button[data-variant='secondary'] {
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+.cdh-actions .ui-button[data-variant='secondary']:hover {
+  background-color: var(--ds-raised);
+}
+
+/* Small buttons for a pointer; a finger keeps the kit's 36px compact size (a bigger target) */
+@media (pointer: fine) {
+  .cdh-actions .ui-button {
+    height: 28px;
+    padding: 0 10px;
+    gap: 6px;
+    font: var(--ds-type-caption);
+    font-weight: 600;
+    letter-spacing: var(--ds-tracking-caption);
+  }
+}

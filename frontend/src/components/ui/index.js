@@ -3,7 +3,9 @@
  * management screens). Plain CSS on the design tokens (ui.css), Phosphor icons, no Material UI.
  *
  *   Buttons       Button, IconButton
- *   Display       Badge, Chip, Avatar, OrgLogo (a company or issuer logo with an initials fallback), Tip
+ *   Display       Badge, Chip, Avatar, OrgLogo (a company or issuer logo with an initials fallback), Tip,
+ *                 ReviewItem (one rating and comment; put the items in a ul.ui-reviews),
+ *                 Prose (teacher-written HTML, sanitized, in the reading typography)
  *   Forms         TextField, SelectField, Checkbox, Switch, SearchField
  *   Overlays      Dialog, ConfirmDialog, Drawer, DetailPanel (the sliding detail view of a list item)
  *   Feedback      EmptyState, Notice, Skeleton, SkeletonRows
@@ -17,12 +19,14 @@
  *   Helpers       formatNumber, formatDate, formatDateTime, relativeTime, daysUntil, pluralize
  *
  * Tables, grids and lists are plain markup with the classes in ui.css (.ui-table, .ui-toolbar,
- * .ui-grid, .ui-list). Import from the folder:  import { Button, Page } from '../ui';
+ * .ui-grid, .ui-list). Import from the folder:  import { Button, Page } from '.';
  */
 import './ui.css';
 
 export { default as Button, IconButton } from './Button';
 export { Badge, Chip, Avatar } from './Display';
+export { default as ReviewItem } from './ReviewItem';
+export { default as Prose } from './Prose';
 export { OrgLogo, cleanDomain, logoDomainOf } from './OrgLogo';
 export { TextField, SelectField, Checkbox, Switch, SearchField } from './Field';
 export { Dialog, ConfirmDialog, Drawer } from './Overlays';

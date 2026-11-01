@@ -31,7 +31,7 @@ const getExamStatus = async (req, res) => {
     const cohortId = req.params.id;
 
     const cohort = await Cohort.findById(cohortId).select(
-      `title isActive isDraft eligibleUsers ${EXAM_LIST_FIELDS}`
+      `title isActive isDraft accessType eligibleUsers ${EXAM_LIST_FIELDS}`
     );
 
     if (!cohort) {
@@ -44,9 +44,7 @@ const getExamStatus = async (req, res) => {
 
     // Only eligible users learn anything about the cohort from this endpoint.
     if (!isPrivileged) {
-      const isEligible = (cohort.eligibleUsers || []).some(
-        (id) => id.toString() === req.user.id.toString()
-      );
+      const isEligible = cohort.isOpenTo(req.user.id);
       if (!isEligible) {
         return res.status(403).json({
           message: "You are not eligible for this cohort",
@@ -113,7 +111,7 @@ const recordProctorEvent = async (req, res) => {
     const { type, detail } = req.body || {};
 
     const cohort = await Cohort.findById(cohortId).select(
-      `eligibleUsers ${EXAM_LIST_FIELDS}`
+      `accessType eligibleUsers ${EXAM_LIST_FIELDS}`
     );
     if (!cohort) {
       return res.status(404).json({ message: "Cohort not found" });
@@ -129,9 +127,7 @@ const recordProctorEvent = async (req, res) => {
       return res.json({ tracked: false, reason: "privileged" });
     }
 
-    const isEligible = (cohort.eligibleUsers || []).some(
-      (id) => id.toString() === req.user.id.toString()
-    );
+    const isEligible = cohort.isOpenTo(req.user.id);
     if (!isEligible) {
       return res
         .status(403)
@@ -208,7 +204,7 @@ const finishExam = async (req, res) => {
     // score without waiting for a recalculation.
     await cohortProctorService
       .recordExamSubmission(
-        await Cohort.findById(cohortId).select(`eligibleUsers ${EXAM_LIST_FIELDS}`),
+        await Cohort.findById(cohortId).select(`accessType eligibleUsers ${EXAM_LIST_FIELDS}`),
         userId,
         enrollment.examSubmittedAt,
         enrollment.totalScore

@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useState } from 'react';
 import { Card, PillTabs, Tip, formatDateTime, relativeTime } from '../ui';
 import PlatformDetail from './PlatformDetail';
@@ -7,7 +8,7 @@ import { lastSyncOf } from './profileModel';
 const ID_PREFIX = 'pp-plat';
 
 /** The short name on a tab: "Scope CodeStats" is "CodeStats", as on the dashboard */
-const tabLabel = (platform) => (platform.key === 'scopecodestats' ? 'CodeStats' : platform.name);
+const tabLabel = (platform) => (platform.key === 'scopecodestats' ? brand.codeStats.name : platform.name);
 
 /**
  * The coding platforms, built like the dashboard's problems view: a tab for all the platforms

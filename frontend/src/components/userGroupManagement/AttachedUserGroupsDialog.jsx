@@ -63,7 +63,9 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
   const [selectedId, setSelectedId] = useState('');
   const [busyAction, setBusyAction] = useState(''); // 'attach' | 'sync' | 'detach' | ''
   const [conflict, setConflict] = useState(null);
-  const [detachPreview, setDetachPreview] = useState(null); // { group, preview }
+  const [detachPreview, setDetachPreview] = useState(null); // { group, preview }, or { switchAccess: true, preview } when limiting a global cohort
+  const [accessType, setAccessType] = useState('userGroups'); // 'global' | 'userGroups'; only cohorts have it
+  const isGlobal = accessType === 'global';
   const bodyRef = useRef(null);
   const loadSeq = useRef(0);
   const busy = busyAction !== '';
@@ -78,6 +80,7 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
       if (seq !== loadSeq.current) return;
       setAttached(forTarget.userGroups || []);
       setTotalEligible(forTarget.totalEligibleUsers || 0);
+      setAccessType(forTarget.accessType || 'userGroups');
       setTitle(forTarget.title || '');
       setAllGroups(all.userGroups || []);
       setLoaded(true);
@@ -101,6 +104,7 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
       setAttached([]);
       setAllGroups([]);
       setTotalEligible(0);
+      setAccessType('userGroups');
       setTitle('');
       load();
     }
@@ -199,6 +203,40 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
     }
   };
 
+  /** Change who can access the cohort, step 2: do it */
+  const finishAccess = async (next) => {
+    setBusyAction('access');
+    try {
+      const result = await api.setAccess(targetId, next);
+      toast.success(result.message);
+      setDetachPreview(null);
+      await changed();
+    } catch (error) {
+      if (fail(error, 'Could not change who can access this cohort')) setDetachPreview(null);
+    } finally {
+      setBusyAction('');
+    }
+  };
+
+  /** Change who can access the cohort, step 1: going back to user groups asks the server who would lose their data */
+  const startAccessChange = async (next) => {
+    if (next === accessType) return;
+    setBusyAction('access');
+    setConflict(null);
+    try {
+      const preview = next === 'userGroups' ? await api.setAccess(targetId, next, { preview: true }) : null;
+      if (preview?.usersToRemove > 0) {
+        setDetachPreview({ switchAccess: true, preview });
+      } else {
+        await finishAccess(next);
+      }
+    } catch (error) {
+      fail(error, 'Could not check what limiting this cohort would remove');
+    } finally {
+      setBusyAction('');
+    }
+  };
+
   // Only cohorts delete student data when a group is detached; tests keep the attempts.
   const totals = detachPreview?.preview.totalDataToDelete;
   const preview = detachPreview?.preview;
@@ -244,7 +282,7 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
               <Skeleton width="40%" height={16} />
               <Skeleton width="30%" height={40} className="ugd-stat__skeleton" />
             </div>
-          ) : loaded ? (
+          ) : loaded && !isGlobal ? (
             <div className="ugd-stat">
               <p className="ugd-stat__label">Eligible students</p>
               <p className="ugd-stat__value">{formatNumber(totalEligible)}</p>
@@ -256,6 +294,25 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
             </div>
           ) : null}
 
+          {api.setAccess && loaded ? (
+            <section className="ugd-section" aria-labelledby="ugd-access-title">
+              <h3 id="ugd-access-title" className="ugd-section__title">
+                Who can access this cohort
+              </h3>
+              <SelectField label="Access" value={accessType} onChange={(event) => startAccessChange(event.target.value)} disabled={busy || loading}>
+                <option value="userGroups">Only the attached user groups</option>
+                <option value="global">All users (global)</option>
+              </SelectField>
+              {isGlobal ? (
+                <Notice tone="info">
+                  Every student on the platform can open and enroll in this cohort, including students who sign up later. The attached user groups are paused until you switch back.
+                </Notice>
+              ) : null}
+            </section>
+          ) : null}
+
+          {isGlobal ? null : (
+          <>
           <section className="ugd-section" aria-labelledby="ugd-attach-title">
             <h3 id="ugd-attach-title" className="ugd-section__title">
               Attach a user group
@@ -336,15 +393,17 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
               </ul>
             )}
           </section>
+          </>
+          )}
         </div>
       </Drawer>
 
       <ConfirmDialog
         open={Boolean(detachPreview)}
         onClose={() => setDetachPreview(null)}
-        title={detachPreview ? `Detach "${detachPreview.group.name}"?` : 'Detach user group'}
-        confirmLabel={totals ? 'Detach and delete their data' : 'Detach group'}
-        onConfirm={() => finishDetach(detachPreview.group)}
+        title={detachPreview?.switchAccess ? 'Limit this cohort to its user groups?' : detachPreview ? `Detach "${detachPreview.group.name}"?` : 'Detach user group'}
+        confirmLabel={totals ? 'Remove them and delete their data' : detachPreview?.switchAccess ? 'Limit to user groups' : 'Detach group'}
+        onConfirm={() => (detachPreview.switchAccess ? finishAccess('userGroups') : finishDetach(detachPreview.group))}
         danger
         busy={busy}
       >

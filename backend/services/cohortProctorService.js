@@ -36,6 +36,13 @@ const COUNTER_BY_TYPE = {
   context_menu: null, // logged only
 };
 
+/** Students expected at an exam: every student for a global cohort, else the eligible list. */
+const studentFilter = { userType: "user" };
+const eligibleCount = async (cohort) =>
+  cohort.accessType === "global"
+    ? User.countDocuments(studentFilter)
+    : (cohort.eligibleUsers || []).length;
+
 /** Fetches or creates the proctor document for an exam cohort. */
 async function getOrCreateRecord(cohort) {
   if (!cohort || cohort.mode !== EXAM_MODE) return null;
@@ -46,13 +53,13 @@ async function getOrCreateRecord(cohort) {
       cohort: cohort._id,
       examStartTime: cohort.examStartTime || null,
       examEndTime: cohort.examEndTime || null,
-      totalEligibleUsers: (cohort.eligibleUsers || []).length,
+      totalEligibleUsers: await eligibleCount(cohort),
     });
   } else {
     // Keep the snapshot current while the exam has not started yet.
     record.examStartTime = cohort.examStartTime || record.examStartTime;
     record.examEndTime = cohort.examEndTime || record.examEndTime;
-    record.totalEligibleUsers = (cohort.eligibleUsers || []).length;
+    record.totalEligibleUsers = await eligibleCount(cohort);
   }
 
   return record;
@@ -234,7 +241,13 @@ async function buildExamReport(cohortId) {
   }
 
   // ── per-student rows ────────────────────────────────────────────────────
-  const students = (cohort.eligibleUsers || []).map((user) => {
+  const roster =
+    cohort.accessType === "global"
+      ? await User.find(studentFilter)
+          .select("name email rollNumber department section graduatingYear")
+          .lean()
+      : cohort.eligibleUsers || [];
+  const students = roster.map((user) => {
     const userId = user._id.toString();
     const progress = progressByUser.get(userId);
     const proctor = proctorByUser.get(userId);

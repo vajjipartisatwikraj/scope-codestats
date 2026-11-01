@@ -1,0 +1,90 @@
+/*
+ * Pane (shared/Pane.jsx): a flat surface panel with a header over a hairline. Only design tokens.
+ */
+
+.ps-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-surface);
+  overflow: hidden;
+}
+
+.ps-pane__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ps-pane[data-folded='true'] > .ps-pane__header {
+  border-bottom-color: transparent;
+}
+
+.ps-pane__lead {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Tabs in a narrow header scroll inside themselves instead of pushing the actions out */
+.ps-pane__lead > .pt {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ps-pane__title {
+  margin: 0;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.ps-pane__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.ps-pane__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.ps-pane__body[data-flush='true'] {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ps-pane__body[hidden] {
+  display: none;
+}
+
+.ps-fold {
+  display: inline-flex;
+  transition: transform var(--ds-duration-base) var(--ds-ease);
+}
+
+.ps-fold[data-folded='true'][data-axis='y'] {
+  transform: rotate(180deg);
+}
+
+.ps-fold[data-folded='true'][data-axis='x'] {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-fold {
+    transition: none;
+  }
+}

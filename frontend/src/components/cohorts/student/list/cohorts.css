@@ -1,0 +1,113 @@
+/*
+ * Cohort list page (route /cohorts)
+ *
+ * Only the layout of the page lives here: the sticky top block and the sections (each section's row of cards is the ScrollRow of ../custom-components).
+ * The pieces have their own files (card/, details/, filters/, shared/). Only design tokens, on top
+ * of the kit in components/ui/ui.css.
+ */
+
+/* ---- Sticky top: the heading, the search and the filters stay in place while the list scrolls ------
+ *
+ * For this to work <main> has to be the element that scrolls: App.jsx makes the shell exactly as tall
+ * as the window on this route (isCohortListPage). <main> keeps 64px of padding at its top for the
+ * fixed navbar and a sticky element counts that padding (measured in Chrome: top 0 lands 64px down),
+ * so top is 0 and the block parks right under the navbar.
+ *
+ * The block has the canvas colour so cards slide under it cleanly, and it reaches the page's side
+ * padding so nothing shows at its edges. While it is stuck a hairline marks its lower edge (the
+ * marker above it tells, see hooks/useStuck). Sticky headers sit at z-index 10 (DESIGN.md).
+ *
+ * Two rows: the heading with its caption, then one line with the search at the left and the status
+ * pills at the right. From 600px that line never wraps (the search gives way first); on a phone the
+ * pills take a line of their own and scroll sideways. */
+
+.chl-marker {
+  height: 1px;
+  margin-bottom: -1px;
+  pointer-events: none;
+}
+
+.chl-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0 calc(var(--ui-pad) * -1) var(--ui-gap);
+  padding: 8px var(--ui-pad) 12px;
+  border-bottom: 1px solid transparent;
+  background-color: var(--ds-canvas);
+}
+
+.chl-top[data-stuck='true'] {
+  border-bottom-color: var(--ds-line);
+}
+
+.chl-top .ui-page-header {
+  margin: 0 0 12px;
+}
+
+.chl-top .ui-page-header__description {
+  max-width: 60ch;
+}
+
+/* A phone has little height to give: the caption goes, the title and the controls stay */
+@media (max-width: 599.95px) {
+  .chl-top .ui-page-header__description {
+    display: none;
+  }
+}
+
+/* The search and the pills on one line: the search takes what is left (up to 420px), the pills keep
+   their size and sit at the right end */
+@media (min-width: 600px) {
+  .chl-top .chf {
+    flex-wrap: nowrap;
+  }
+
+  .chl-top .chf .ui-toolbar__grow {
+    flex: 0 1 420px;
+  }
+
+  .chl-top .chf .pt,
+  .chl-top .chf .ui-button {
+    flex: none;
+  }
+
+  .chl-top .chf .pt {
+    margin-left: auto;
+  }
+}
+
+/* ---- Sections ------------------------------------------------------------------------------------ */
+
+.chl-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.chl-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 12px;
+}
+
+.chl-section__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.chl-section__count {
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.chl-section__caption {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}

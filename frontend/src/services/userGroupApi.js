@@ -46,6 +46,11 @@ export const cohortUserGroupApi = {
       })
     ),
   sync: (cohortId) => unwrap(axios.post(`${cohortsBase}/${cohortId}/user-groups/sync`)),
+  /** accessType: "global" (every student) or "userGroups". `preview: true` shows who would lose their data when going back to "userGroups". */
+  setAccess: (cohortId, accessType, { preview = false } = {}) =>
+    unwrap(
+      axios.put(`${cohortsBase}/${cohortId}/access`, { accessType }, { params: preview ? { preview: true } : undefined })
+    ),
 };
 
 // ---- groups of a communication test ----------------------------------------

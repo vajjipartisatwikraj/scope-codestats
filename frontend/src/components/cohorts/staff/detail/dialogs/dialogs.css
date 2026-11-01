@@ -1,0 +1,176 @@
+/* Dialogs and sheets of the staff cohort page (dialogs/). Only design tokens. */
+
+.cad-shared {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cad-shared__subject {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.cad-shared__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cad-shared__title {
+  margin: 0;
+  font: var(--ds-type-label);
+}
+
+.cad-shared__none {
+  margin: 0;
+  color: var(--ds-muted);
+}
+
+.cad-shared__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.cad-shared__list li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-raised);
+}
+
+.cad-shared__name {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.cad-shared__id {
+  color: var(--ds-subtle);
+  font: var(--ds-type-caption);
+}
+
+/* ---- Module form ---------------------------------------------------------------------------------- */
+
+.cad-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.cad-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cad-form__title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.cad-form__hint {
+  margin: -8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.cad-form__html textarea {
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.cad-form__preview {
+  min-height: 240px;
+  max-height: 420px;
+  padding: 16px;
+  overflow: auto;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+/* ---- Sheet: a wide panel that holds a form which is still on Material UI -------------------------------------- */
+
+.cad-sheet {
+  /* Below Material UI's own layers (1300), so its menus and pickers open above the sheet */
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background-color: var(--ds-scrim);
+}
+
+.cad-sheet__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1100px;
+  max-height: calc(100dvh - 32px);
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: var(--ds-shadow-float-md);
+  outline: none;
+  overflow: hidden;
+}
+
+.cad-sheet__head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 16px 16px 24px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.cad-sheet__title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+}
+
+.cad-sheet__description {
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.cad-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+}
+
+@media (max-width: 599.95px) {
+  .cad-sheet {
+    padding: 0;
+  }
+
+  .cad-sheet__panel {
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .cad-sheet__head {
+    padding: 16px 12px 12px 16px;
+  }
+
+  .cad-sheet__body {
+    padding: 16px;
+  }
+}

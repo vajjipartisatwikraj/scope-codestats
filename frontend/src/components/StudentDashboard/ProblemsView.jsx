@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useState } from 'react';
 import { BarChart, PieChart, PillTabs, TrendChart } from '../custom-components';
 import { ButtonLink, CardNotice } from './Card';
@@ -53,7 +54,7 @@ const TABS = [
   { key: 'codeforces', label: 'Codeforces' },
   { key: 'codechef', label: 'CodeChef' },
   { key: 'hackerrank', label: 'HackerRank' },
-  { key: 'scopecodestats', label: 'CodeStats' },
+  { key: 'scopecodestats', label: brand.codeStats.name },
 ];
 
 const ID_PREFIX = 'sd-problems';
@@ -366,7 +367,7 @@ function CohortTab({ profiles, heatmap, days }) {
   return (
     <Content key={days}>
       <p className="sd-view__caption">Problems solved in your cohorts</p>
-      <KpiRow label="CodeStats figures">
+      <KpiRow label={`${brand.codeStats.name} figures`}>
         <Kpi
           lead
           label="Problems solved"

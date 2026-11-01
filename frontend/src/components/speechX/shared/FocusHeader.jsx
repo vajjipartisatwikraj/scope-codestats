@@ -1,9 +1,11 @@
+import brand from '../../../brand';
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MoonIcon } from "@phosphor-icons/react/dist/csr/Moon";
 import { SunIcon } from "@phosphor-icons/react/dist/csr/Sun";
 import { Avatar, IconButton } from "../../ui";
 import { SignalBars } from "../../custom-components";
+import BrandLogo, { hasBrandLogo } from "../../custom-components/BrandLogo";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useAcademicYear } from "../../../contexts/AcademicYearContext";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -83,8 +85,9 @@ function ProfileBadge({ interactive }) {
  * the only chrome. It is a `header` landmark; a spacer of the same height keeps the page from
  * sliding underneath it.
  *
- * Left: the platform mark (/codestats-color.png, the blue mark on a transparent background, which reads on
- * both Midnight and Daylight) with the "CodeStats" wordmark and an optional subtitle. Middle: the
+ * Left: the platform mark (the platform logo, the blue mark on a transparent background, which reads on
+ * both Midnight and Daylight) with the platform's name
+ and an optional subtitle. Middle: the
  * `children` slot, right-aligned, for step indicators, progress and timers. Right: the built-in
  * tools: connection (SignalBars and "Online"/"Offline"), the theme toggle and the profile badge.
  * Under 600px the connection word hides and only icons and the avatar remain; under 480px the
@@ -107,9 +110,12 @@ function ProfileBadge({ interactive }) {
 const FocusHeader = ({ subtitle, to = "/speech-tests", locked = false, backLabel = "Back to speech tests", children, tools = true, profileInteractive, compact = false, className }) => {
   const brandContent = (
     <>
-      <img className="sx-brand__logo" src="/codestats-color.png" alt="" />
+      <BrandLogo
+        height={32}
+        fallback={<img className="sx-brand__logo" src={brand.platform.logo} alt="" />}
+      />
       <span className="sx-brand__text">
-        <span className="sx-brand__name">CodeStats</span>
+        {hasBrandLogo() ? null : <span className="sx-brand__name">{brand.names.platform}</span>}
         {subtitle ? <span className="sx-brand__subtitle">{subtitle}</span> : null}
       </span>
     </>

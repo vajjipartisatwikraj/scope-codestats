@@ -1,0 +1,306 @@
+/*
+ * Console (console/): the views under the editor. Only design tokens. A state is always a word or an
+ * icon as well as a colour; the tints here are the soft roles, never a lowered opacity.
+ */
+
+.ps-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ps-muted {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ps-subtitle {
+  margin: 0 0 8px;
+  font: var(--ds-type-label);
+}
+
+/* ---- Blocks of monospace text ------------------------------------------------------------------ */
+
+.ps-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .ps-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ps-block {
+  min-width: 0;
+}
+
+.ps-block + .ps-block {
+  margin-top: 12px;
+}
+
+.ps-pair > .ps-block + .ps-block {
+  margin-top: 0;
+}
+
+.ps-block__label {
+  margin: 0 0 4px;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.ps-block__label--spaced {
+  margin-top: 12px;
+}
+
+.ps-block__code {
+  min-height: 40px;
+  max-height: 240px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+
+.ps-block__code[data-empty='true'] {
+  color: var(--ds-subtle);
+  font-family: inherit;
+}
+
+.ps-block__code[data-tone='success'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ps-block__code[data-tone='danger'] {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+/* Inside a raised row the block takes the surface tone; in the plain body it takes the raised one */
+.ps-pane__body > .ps-stack > .ps-block .ps-block__code,
+.ps-pane__body > .ps-block .ps-block__code {
+  background-color: var(--ds-raised);
+}
+
+.ps-notice-code {
+  margin: 0;
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Raw lines in debug mode */
+.ps-line {
+  display: block;
+  padding: 0 6px;
+  border-radius: var(--ds-radius-xs);
+}
+
+.ps-line[data-shade='head'] {
+  background-color: var(--ds-high);
+}
+
+.ps-line[data-shade='a'] {
+  background-color: var(--ds-accent-soft);
+}
+
+.ps-line[data-state='match'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ps-line[data-state='differ'] {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+/* ---- Figures: runtime, memory, test cases ----------------------------------------------------------- */
+
+.ps-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ps-figure {
+  display: flex;
+  flex: 1 1 140px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.ps-figure__icon {
+  display: inline-flex;
+  color: var(--ds-muted);
+}
+
+.ps-figure[data-tone='success'] .ps-figure__icon,
+.ps-figure[data-tone='success'] .ps-figure__value {
+  color: var(--ds-success);
+}
+
+.ps-figure[data-tone='warning'] .ps-figure__icon,
+.ps-figure[data-tone='warning'] .ps-figure__value {
+  color: var(--ds-warning);
+}
+
+.ps-figure__label {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+}
+
+.ps-figure__value {
+  margin: 0;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Working ------------------------------------------------------------------------------------ */
+
+.ps-judging {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  color: var(--ds-muted);
+  text-align: center;
+}
+
+.ps-judging p {
+  margin: 0;
+  font: var(--ds-type-body);
+}
+
+.ps-judging [data-spin='true'] {
+  animation: ps-spin 900ms linear infinite;
+}
+
+@keyframes ps-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Scoring tiers ------------------------------------------------------------------------------ */
+
+.ps-tiers {
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.ps-tiers__points {
+  margin: 0 0 8px;
+  font: var(--ds-type-body);
+}
+
+.ps-tiers__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-tiers__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 64px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-surface);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-tiers__list li[data-state='earned'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ps-tiers__list li strong {
+  text-align: right;
+}
+
+.ps-tiers__state {
+  color: inherit;
+  font-weight: 600;
+}
+
+.ps-tiers__hint {
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- SQL result tables ------------------------------------------------------------------------------ */
+
+.ps-result-table {
+  max-height: 260px;
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-surface);
+  overflow: auto;
+}
+
+.ps-result-table:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.ps-result-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+}
+
+.ps-result-table th,
+.ps-result-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ds-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ps-result-table th {
+  position: sticky;
+  top: 0;
+  background-color: var(--ds-high);
+  color: var(--ds-text);
+  font-weight: 700;
+}
+
+.ps-result-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.ps-result-table em {
+  color: var(--ds-subtle);
+}
+
+.ps-custom-input textarea {
+  font-family: var(--ds-font-mono);
+  font-size: 0.8125rem;
+}

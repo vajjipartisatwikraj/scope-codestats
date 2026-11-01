@@ -1,0 +1,145 @@
+/*
+ * Cohort card (card/CohortCard.jsx)
+ *
+ * Flat surface, 24px corners, no border and no shadow (DESIGN.md, Cards). Hovering or focusing the
+ * card moves it one tone up (surface to raised); the neutral pieces inside it move up with it so
+ * they stay visible. Cards of a row share a height, and the foot (meta and progress) sits at the
+ * bottom of each, so the bars line up. The title is a button stretched over the whole card.
+ */
+
+.chc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: var(--ds-text);
+}
+
+/* Named with .ui-page in front so it beats the kit's "no transition on children" rule whatever the load order */
+.ui-page .chc {
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.chc:hover,
+.chc:focus-within {
+  background-color: var(--ds-raised);
+}
+
+.chc:hover .ui-badge[data-tone='neutral'],
+.chc:focus-within .ui-badge[data-tone='neutral'] {
+  background-color: var(--ds-high);
+}
+
+.chc-status {
+  margin-bottom: 4px;
+}
+
+.chc-title {
+  margin: 0;
+  max-width: 100%;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+/* The button is the title; its ::after is the card-sized hit area and carries the focus ring */
+.chc-open {
+  display: -webkit-box;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.chc-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ds-radius-xl);
+}
+
+.chc-open:focus-visible {
+  outline: none;
+}
+
+.chc-open:focus-visible::after {
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.chc-description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Pushed to the bottom so the bars of a row line up whatever the text above is */
+.chc-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+/* "12 modules · 515 questions" */
+.chc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.chc-meta li + li::before {
+  content: '\00B7';
+  margin: 0 8px;
+}
+
+.chc-schedule {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.chc-schedule svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.chc-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-page .chc {
+    transition: none;
+  }
+}

@@ -1,3 +1,4 @@
+import brand from '../../brand';
 /**
  * What the public profile page works out from the one answer of GET /api/users/public/:username:
  * the platforms, the figures behind each chart, the streaks, the class year and the safe links.
@@ -67,7 +68,7 @@ export const PLATFORMS = [
   { key: 'codechef', name: 'CodeChef', color: 'var(--ds-series-coral)', url: (u) => `https://www.codechef.com/users/${encodeURIComponent(u)}` },
   { key: 'hackerrank', name: 'HackerRank', color: 'var(--ds-series-green)', url: (u) => `https://www.hackerrank.com/profile/${encodeURIComponent(u)}` },
   { key: 'github', name: 'GitHub', color: 'var(--ds-series-slate)', url: (u) => `https://github.com/${encodeURIComponent(u)}` },
-  { key: 'scopecodestats', name: 'Scope CodeStats', color: 'var(--ds-series-violet)', url: null },
+  { key: 'scopecodestats', name: brand.codeStats.name, color: 'var(--ds-series-violet)', url: null },
 ];
 
 /** The platforms the student has, in the usual order, each with its stats as `data` and its profile link */

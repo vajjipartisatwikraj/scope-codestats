@@ -1555,3 +1555,725 @@ body.landing-page .MuiAccordionDetails-root {
 .shadow-\[0_0_20px_rgba\(0\,170\,255\,0\.15\)\] {
   box-shadow: 0 0 20px rgba(0, 170, 255, 0.15);
 }
+
+/* =====================================================================================
+   Responsive layer of the landing page. Mobile first.
+
+   Every rule is scoped to .lp (the <main> of the landing page) so it wins over the
+   unconditional utility classes above. Sizes use clamp() so the page scales between a
+   320px phone and a wide desktop without a jump. Text is never smaller than 12px and
+   touch targets are at least 44px.
+   ===================================================================================== */
+
+.lp {
+  --lp-pad: clamp(1.25rem, 5vw, 3rem);
+}
+
+/* Focus ring for keyboard users (the page removed the default one) */
+.lp a:focus-visible,
+.lp button:focus-visible,
+.lp [role="button"]:focus-visible {
+  outline: 2px solid rgb(120, 200, 255);
+  outline-offset: 2px;
+}
+
+/* Side padding and section rhythm */
+.lp .lp-pad {
+  padding-left: var(--lp-pad);
+  padding-right: var(--lp-pad);
+}
+
+.lp .lp-sec {
+  padding-top: clamp(3.5rem, 9vw, 6rem);
+  padding-bottom: clamp(3.5rem, 9vw, 6rem);
+}
+
+.lp .lp-sec-lg {
+  padding-top: clamp(4.5rem, 11vw, 8rem);
+  padding-bottom: clamp(4.5rem, 11vw, 8rem);
+}
+
+.lp .lp-sec-xl {
+  padding-top: clamp(5rem, 14vw, 12rem);
+  padding-bottom: clamp(5rem, 14vw, 12rem);
+}
+
+/* Section headings */
+.lp .lp-h2 {
+  font-size: clamp(1.875rem, 7.2vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+/* ---- Hero ---------------------------------------------------------------------------- */
+
+.lp .lp-hero {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh; /* the visible height on a phone, with the address bar showing */
+  position: relative;
+  overflow: hidden;
+}
+
+.lp .lp-hero-inner {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+/* Room for the fixed navbar */
+.lp .lp-hero-top {
+  flex: none;
+  height: 4.75rem;
+}
+
+.lp .lp-hero-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 56rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.lp .lp-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lp .lp-h1 {
+  font-size: clamp(2.125rem, 10.5vw, 3.75rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+}
+
+.lp .lp-lead {
+  max-width: 36rem;
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Buttons: stacked and full width on a phone, in a row from 640px */
+.lp .lp-cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.625rem;
+  margin-top: 1.5rem;
+}
+
+.lp .lp-cta-row > * {
+  width: 100%;
+  min-height: 2.75rem;
+  justify-content: center;
+}
+
+.lp .lp-hero-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.lp .lp-built {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lp .lp-built svg {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-top: 0.15em;
+}
+
+.lp .lp-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.lp .lp-sep {
+  display: none;
+  width: 1px;
+  height: 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lp .lp-cta-row > button {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .lp .lp-lead {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+}
+
+@media (min-width: 640px) {
+  .lp .lp-h1 {
+    font-size: 3.75rem;
+  }
+
+  .lp .lp-eyebrow {
+    letter-spacing: 0.25em;
+  }
+
+  .lp .lp-cta-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .lp .lp-cta-row > * {
+    width: auto;
+  }
+
+  .lp .lp-cta-row--center {
+    justify-content: center;
+  }
+
+  .lp .lp-hero-inner {
+    padding-bottom: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .lp .lp-h1 {
+    font-size: 4.5rem;
+  }
+
+  .lp .lp-hero-top {
+    height: 6rem;
+  }
+
+  .lp .lp-lead {
+    font-size: 1.0625rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .lp .lp-hero-foot {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .lp .lp-hero-stats {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .lp .lp-sep {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lp .lp-h1 {
+    font-size: 7.5rem;
+  }
+}
+
+/* ---- About statement ----------------------------------------------------------------- */
+
+.lp .lp-about-text {
+  font-size: clamp(1.625rem, 7vw, 1.875rem);
+}
+
+@media (min-width: 768px) {
+  .lp .lp-about-text {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lp .lp-about-text {
+    font-size: 3.75rem;
+  }
+}
+
+/* ---- Numbers ------------------------------------------------------------------------- */
+
+.lp .lp-stat {
+  padding: 2.5rem 0.5rem;
+  text-align: center;
+}
+
+.lp .lp-stat-num {
+  display: block;
+  font-size: clamp(3.25rem, 8.5vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .lp .lp-stat {
+    padding: 1rem 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lp .lp-stat {
+    padding: 1rem 2.5rem;
+  }
+}
+
+/* ---- Leaderboard --------------------------------------------------------------------- */
+
+.lp .lp-lb-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.lp .lp-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border-radius: 1.25rem;
+}
+
+.lp .lp-lb-rank {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  font-size: 1.125rem;
+}
+
+.lp .lp-lb-who {
+  flex: 1;
+  min-width: 0;
+}
+
+.lp .lp-lb-name {
+  overflow: hidden;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp .lp-lb-sub {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp .lp-lb-score {
+  flex: none;
+  padding: 0.25rem 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+  .lp .lp-lb-row {
+    gap: 1.25rem;
+    padding: 1.25rem;
+  }
+
+  .lp .lp-lb-rank {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+  }
+
+  .lp .lp-lb-name {
+    font-size: 1.125rem;
+  }
+}
+
+.lp .lp-pg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.lp .lp-pg-btn {
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  font-size: 0.875rem;
+}
+
+.lp .lp-dots {
+  display: flex;
+  align-items: center;
+}
+
+.lp .lp-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.lp .lp-dot > span {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1), background-color 300ms;
+}
+
+.lp .lp-dot[aria-current="true"] > span {
+  width: 1.5rem;
+  background: rgb(120, 200, 255);
+}
+
+/* ---- Sample video -------------------------------------------------------------------- */
+
+.lp .lp-demo {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.lp .lp-demo video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ---- Testimonials -------------------------------------------------------------------- */
+
+.lp .lp-tcard {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: min(17.5rem, 82vw);
+}
+
+@media (min-width: 768px) {
+  .lp .lp-tcard {
+    width: 21.25rem;
+  }
+}
+
+.lp .marquee-content {
+  will-change: transform;
+}
+
+/* ---- FAQ ----------------------------------------------------------------------------- */
+
+.lp .lp-faq-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+.lp .lp-faq-glow {
+  display: none; /* a 64px blur over 820px is costly on a phone */
+}
+
+@media (min-width: 640px) {
+  .lp .lp-faq-glow {
+    display: block;
+  }
+}
+
+@media (min-width: 900px) {
+  .lp .lp-faq-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+    gap: 4rem;
+  }
+
+  .lp .lp-faq-aside {
+    position: sticky;
+    top: 6rem;
+    align-self: start;
+  }
+}
+
+.lp .lp-faq-trigger {
+  min-height: 3.5rem;
+  border-radius: 1rem;
+}
+
+.lp .lp-faq-trigger:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The answer opens by animating its row from 0fr to 1fr, so it follows the text when the phone is rotated */
+.lp .lp-acc {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 450ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lp .lp-acc[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.lp .lp-acc-in {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lp .lp-acc[data-open="false"] .lp-acc-in {
+  visibility: hidden;
+  transition: visibility 0s linear 450ms;
+}
+
+.lp .lp-acc-body {
+  padding: 0 0 1.25rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+@media (min-width: 640px) {
+  .lp .lp-acc-body {
+    padding-left: 2.5rem;
+    padding-right: 1rem;
+  }
+}
+
+/* ---- Closing call to action ---------------------------------------------------------- */
+
+.lp .lp-cta-title {
+  font-size: clamp(2.25rem, 9vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+/* ---- Footer -------------------------------------------------------------------------- */
+
+.lp .lp-foot {
+  padding-top: 3.5rem;
+  padding-bottom: 2rem;
+}
+
+.lp .lp-foot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.5rem 1.5rem;
+}
+
+.lp .lp-foot-brand {
+  grid-column: 1 / -1;
+}
+
+.lp .lp-foot-title {
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.lp .lp-foot-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.lp a.lp-foot-link:hover {
+  color: #fff;
+}
+
+.lp .lp-foot-social {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  margin-left: -0.75rem;
+}
+
+.lp .lp-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.lp .lp-icon-link:hover {
+  color: #fff;
+}
+
+.lp .lp-foot-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .lp .lp-foot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lp .lp-foot-bottom {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .lp .lp-foot-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .lp .lp-foot-brand {
+    grid-column: span 2;
+  }
+}
+
+@media (pointer: coarse) {
+  .lp .lp-foot-link {
+    min-height: 2.75rem;
+  }
+}
+
+/* ---- Phones: lighter glass ----------------------------------------------------------- */
+
+@media (max-width: 767.95px) {
+  .lp .liquid-glass-strong {
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+}
+
+/* ---- Reduced motion ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* The testimonials stop moving and can be scrolled with a finger instead */
+  .lp .marquee-content {
+    width: auto !important;
+    animation: none !important;
+  }
+
+  .lp .marquee-content > [data-dup="true"] {
+    display: none;
+  }
+
+  .lp .pause-on-hover {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .lp .lp-tcard {
+    scroll-snap-align: start;
+  }
+
+  .lp .lp-acc,
+  .lp .lp-acc-in,
+  .lp .lp-dot > span {
+    transition: none !important;
+  }
+}
+
+/* ---- The navbar on the landing pages ------------------------------------------------- */
+
+/* A soft dark pill appears behind the navbar once the page scrolls, so text never runs through the logo.
+   It is a pseudo-element: a backdrop-filter on the header itself would trap the fixed mobile menu inside it. */
+.landing-navbar-header {
+  position: relative;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.landing-navbar-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+
+.landing-navbar-header[data-scrolled="true"]::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-navbar-header::before {
+    transition: none;
+  }
+}
+
+/* The smaller heading of the collaboration section */
+.lp .lp-h2-sm {
+  font-size: clamp(1.25rem, 4.5vw, 1.875rem);
+}
+
+/* A black page behind the landing pages, so a page fading out never shows the light theme background */
+body.landing-shell {
+  background-color: #000 !important;
+}

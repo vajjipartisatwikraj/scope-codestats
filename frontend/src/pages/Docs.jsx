@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Book, Code, Terminal, Lightbulb, Groups, ArrowForward, Search } from '@mui/icons-material';
@@ -62,24 +63,24 @@ const Docs = () => {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black" />
           <div className="pointer-events-none absolute -top-32 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(0,136,204,0.22),transparent_70%)] blur-3xl" />
           <div className="relative mx-auto max-w-5xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-[11px] uppercase tracking-[0.25em] text-white/70">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-xs uppercase tracking-[0.25em] text-white/70">
               <Book className="h-3 w-3" />
               Documentation
             </div>
-            <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
-              The <span className="italic text-white/70">CodeStats</span> guide.
+            <h1 className="font-display text-3xl leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
+              The <span className="italic text-white/70">{brand.codeStats.name}</span> guide.
             </h1>
-            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
-              Everything students, teachers, and admins at MLRIT need to get the most out of CodeStats — from taking assessments and joining cohorts to the practice arena and performance analytics.
+            <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">
+              Everything students, teachers, and admins at {brand.names.institution} need to get the most out of {brand.codeStats.name}, from taking assessments and joining cohorts to the practice arena and performance analytics.
             </p>
 
-            {/* Search bar — temporarily hidden. Change `false` to `true` to restore. */}
+            {/* Search bar, temporarily hidden. Change `false` to `true` to restore. */}
             {false && (
             <div className="mx-auto mt-10 flex max-w-xl items-center gap-3 rounded-full border border-white/15 bg-white/[0.04] px-5 py-3 text-left">
               <Search className="h-4 w-4 text-white/55" />
               <input
                 type="text"
-                placeholder="Search docs — try 'webhooks' or 'Python runtime'"
+                placeholder="Search docs (try 'webhooks' or 'Python runtime')"
                 className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
               />
               <kbd className="rounded-md border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[10px] text-white/60">⌘K</kbd>
@@ -91,12 +92,12 @@ const Docs = () => {
         {/* Coming soon chip */}
         <section className="px-6 pb-20 md:px-12 md:pb-24">
           <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.1)] px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[rgb(120,200,255)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(0,170,255,0.3)] bg-[rgba(0,136,204,0.1)] px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-[rgb(120,200,255)]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[rgb(120,200,255)] shadow-[0_0_8px_rgba(0,170,255,0.9)]" />
               More coming soon
             </div>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-white/55">
-              We're actively writing the full CodeStats guides. Detailed docs for assessments, cohorts, and analytics are on the way.
+              We're actively writing the full {brand.codeStats.name} guides. Detailed docs for assessments, cohorts, and analytics are on the way.
             </p>
           </div>
         </section>
@@ -144,7 +145,7 @@ const Docs = () => {
         <section className="px-6 py-24 md:px-12">
           <div className="mx-auto max-w-5xl">
             <div className="mb-3 text-xs uppercase tracking-[0.25em] text-white/55">Quickstart</div>
-            <h2 className="font-display text-3xl tracking-tight md:text-5xl">
+            <h2 className="font-display text-2xl tracking-tight md:text-4xl">
               From login to <span className="italic text-white/70">first submission</span> in a minute.
             </h2>
 
@@ -153,10 +154,11 @@ const Docs = () => {
                 <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
                 <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
                 <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-                <span className="ml-3 text-[11px] tracking-wider text-white/50">getting-started</span>
+                <span className="ml-3 text-xs tracking-wider text-white/50">getting-started</span>
               </div>
               <pre className="overflow-x-auto bg-black/40 px-6 py-6 text-sm leading-relaxed text-white/85">
-{`# 1. Sign in with your MLRIT account
+{`# 1. Sign in with your ${brand.names.institution} account
+
 Head to the login page and use your college credentials.
 
 # 2. Open your dashboard

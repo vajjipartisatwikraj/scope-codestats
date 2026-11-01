@@ -1,0 +1,152 @@
+/*
+ * Workspace (workspace/): the editor over the console, or the options of a multiple choice question.
+ * Only design tokens.
+ */
+
+.ps-workspace {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+}
+
+.ps-solo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ps-solo > .ps-pane {
+  flex: 1 1 auto;
+}
+
+/* The editor made large: it fills the screen under the exam bar (if any) and over everything else */
+.ps-editor[data-expanded='true'] {
+  position: fixed;
+  inset: var(--ps-top, 0px) 0 0 0;
+  z-index: 40;
+  border-radius: 0;
+}
+
+.ps-editor .ui-field-inline {
+  flex: none;
+}
+
+/* ---- Multiple choice ------------------------------------------------------------------------------ */
+
+.ps-mcq .ps-pane__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+@media (max-width: 599.95px) {
+  .ps-mcq .ps-pane__body {
+    padding: 16px;
+  }
+}
+
+.ps-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ps-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-body-lg);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ps-options:disabled .ps-option {
+  cursor: default;
+}
+
+.ps-option:hover {
+  background-color: var(--ds-high);
+}
+
+.ps-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ps-option__mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ds-field-border);
+  border-radius: 50%;
+}
+
+.ps-option input:checked + .ps-option__mark {
+  border-color: var(--ds-accent);
+}
+
+.ps-option input:checked + .ps-option__mark::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--ds-accent);
+}
+
+.ps-option input:focus-visible + .ps-option__mark {
+  box-shadow: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+}
+
+.ps-option__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ps-option__verdict {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font: var(--ds-type-label);
+}
+
+.ps-option[data-state='chosen'] {
+  background-color: var(--ds-accent-soft);
+}
+
+.ps-option[data-state='correct'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ps-option[data-state='wrong'] {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.ps-mcq__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-option {
+    transition: none;
+  }
+}

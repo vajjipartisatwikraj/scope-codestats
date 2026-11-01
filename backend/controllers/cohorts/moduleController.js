@@ -61,9 +61,7 @@ const getModules = async (req, res) => {
     }
 
     // For regular users, check eligibility
-    const isEligible = cohortExists.eligibleUsers.some(
-      (id) => id.toString() === userId.toString()
-    );
+    const isEligible = cohortExists.isOpenTo(userId);
     const isActive = cohortExists.isActive;
     const isDraft = cohortExists.isDraft;
 
@@ -132,7 +130,7 @@ const getModule = async (req, res) => {
     } else {
       cohort = await Cohort.findOne({
         _id: cohortId,
-        eligibleUsers: userId,
+        ...Cohort.accessFilter(userId),
         isDraft: false,
         $or: [{ isActive: true }, { mode: EXAM_MODE }],
       });

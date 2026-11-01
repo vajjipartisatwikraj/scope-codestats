@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Container, Typography, TextField, IconButton, InputAdornment, CircularProgress, List, ListItem, ListItemText, ListItemAvatar, Avatar, Divider, Paper } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -802,7 +803,8 @@ const SearchPage = () => {
                   opacity: 0.9
                 }}>
                   <img 
-                    src="/notFound.png" 
+                    src={brand.shared.notFound}
+ 
                     alt="No results found" 
                     style={{ 
                       width: '160px', 

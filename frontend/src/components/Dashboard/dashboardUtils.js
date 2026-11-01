@@ -1,3 +1,4 @@
+import brand from '../../brand';
 // Shared constants and utility functions for Dashboard components
 
 export const platforms = [
@@ -32,9 +33,9 @@ export const platforms = [
     color: "#333333",
   },
   {
-    name: "CodeStats",
+    name: brand.codeStats.name,
     key: "scopecodestats",
-    logo: "/codestats-color.png",
+    logo: brand.codeStats.logo,
     color: "#4503fc",
   },
 ];

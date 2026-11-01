@@ -1,0 +1,277 @@
+/*
+ * Questions panel (questions/)
+ *
+ * One flat surface card for the open module. Its top (module, bars, search and filters) stays in
+ * place and only the list below scrolls (from 900px; on a phone the page scrolls as a whole). Each
+ * question is a box of its own, with no lines between boxes. Only design tokens.
+ */
+
+.cdq {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cdq-top {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 12px;
+}
+
+.cdq-body {
+  min-height: 0;
+  padding: 0 16px 16px;
+}
+
+@media (min-width: 900px) {
+  .cdq {
+    flex: 1 1 auto;
+  }
+
+  .cdq-top {
+    padding: 20px 24px 16px;
+  }
+
+  .cdq-body {
+    flex: 1 1 auto;
+    padding: 4px 24px 24px;
+    overflow-y: auto;
+  }
+}
+
+/* ---- Header ---------------------------------------------------------------------------------- */
+
+.cdq-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cdq-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  width: 100%;
+}
+
+.cdq-title {
+  min-width: 0;
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+  overflow-wrap: anywhere;
+}
+
+.cdq-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cdq-description {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  overflow-wrap: anywhere;
+}
+
+/* "All modules" only exists where the list and the questions take turns */
+.cdq-back {
+  display: none;
+}
+
+@media (max-width: 899.95px) {
+  .cdq-back {
+    display: inline-flex;
+    margin-left: -8px;
+  }
+}
+
+/* ---- Solved by difficulty ------------------------------------------------------------------------ */
+
+.cdq-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 24px;
+}
+
+/* ---- Filters: search on the left, the selects on the right ------------------------------------------- */
+
+.cdq-filters {
+  margin: 0;
+}
+
+/* Smaller than the shared controls: a 32px search and 32px selects. Touch layouts keep the 44px targets. */
+@media (min-width: 900px) and (pointer: fine) {
+  .cdq-filters .ui-toolbar__grow {
+    flex-basis: 220px;
+    max-width: 300px;
+  }
+
+  .cdq-filters .ui-search__input {
+    height: 32px;
+    padding: 0 36px 0 36px;
+    font: var(--ds-type-body-sm);
+  }
+
+  .cdq-filters .ui-search__icon {
+    left: 12px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .cdq-filters .ui-search__clear {
+    width: 24px;
+    height: 24px;
+  }
+
+  .cdq-filters .ui-select[data-variant='pill'] .ui-select__control {
+    height: 32px;
+    padding: 0 30px 0 12px;
+    font: var(--ds-type-body-sm);
+    font-weight: 600;
+  }
+
+  .cdq-filters .ui-select[data-variant='pill'] .ui-select__caret {
+    right: 10px;
+  }
+
+  .cdq-filters .ui-button[data-size='sm'] {
+    height: 32px;
+    padding: 0 12px;
+  }
+}
+
+/* ---- Question boxes ------------------------------------------------------------------------------- */
+
+.cdqi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cdqi {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 92px;
+  padding: 20px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.cdqi:hover,
+.cdqi:focus-within {
+  background-color: var(--ds-high);
+}
+
+.cdqi-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cdqi-title {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Medium · Acceptance rate: 90% · Points: 300 */
+.cdqi-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.cdqi-meta > span + span::before {
+  content: '\00B7';
+  margin: 0 8px;
+}
+
+.cdqi-difficulty {
+  font-weight: 600;
+}
+
+.cdqi-difficulty[data-tone='success'] {
+  color: var(--ds-success);
+}
+
+.cdqi-difficulty[data-tone='warning'] {
+  color: var(--ds-warning);
+}
+
+.cdqi-difficulty[data-tone='danger'] {
+  color: var(--ds-danger);
+}
+
+/*
+ * One button in every state; only the word and the fill change: blue to solve, yellow when attempted,
+ * green when solved. The label is the surface colour (dark on Midnight, white on Daylight), which holds
+ * its contrast on all three fills in both themes. The hover rules name the colour too, because the
+ * button's own hover rule sets both fill and text.
+ */
+.ui-button.cdqi-action {
+  --cdqi-fill: var(--ds-accent);
+  --cdqi-fill-hover: var(--ds-accent-hover);
+  --cdqi-label: var(--ds-on-accent);
+
+  flex: none;
+  min-width: 104px;
+}
+
+.ui-button.cdqi-action[data-state='attempted'] {
+  --cdqi-fill: var(--ds-warning);
+  --cdqi-fill-hover: color-mix(in srgb, var(--ds-warning) 86%, var(--ds-text));
+  --cdqi-label: var(--ds-surface);
+}
+
+.ui-button.cdqi-action[data-state='solved'] {
+  --cdqi-fill: var(--ds-success);
+  --cdqi-fill-hover: color-mix(in srgb, var(--ds-success) 86%, var(--ds-text));
+  --cdqi-label: var(--ds-surface);
+}
+
+.ui-button.cdqi-action,
+.ui-button.cdqi-action:active:not(:disabled):not([aria-disabled='true']) {
+  background-color: var(--cdqi-fill);
+  color: var(--cdqi-label);
+}
+
+.ui-button.cdqi-action:hover:not(:disabled):not([aria-disabled='true']) {
+  background-color: var(--cdqi-fill-hover);
+  color: var(--cdqi-label);
+}
+
+@media (max-width: 479.95px) {
+  .cdqi {
+    gap: 12px;
+  }
+
+  .ui-button.cdqi-action {
+    min-width: 88px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdqi {
+    transition: none;
+  }
+}

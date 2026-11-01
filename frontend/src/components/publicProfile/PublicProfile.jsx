@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import './publicProfile.css';
@@ -53,7 +54,7 @@ export default function PublicProfile() {
   const [shareOpen, setShareOpen] = useState(false);
 
   const ready = status === 'ready' && profile;
-  useDocumentTitle(ready ? `${titleCase(profile.name)} | CodeStats` : undefined);
+  useDocumentTitle(ready ? `${titleCase(profile.name)} | ${brand.names.platform}` : undefined);
 
   const platforms = useMemo(() => (ready ? platformsOf(profile.codingProfiles) : []), [ready, profile]);
   const github = platforms.find((platform) => platform.key === 'github');
@@ -97,7 +98,8 @@ export default function PublicProfile() {
       <ProfileTopBar />
       <main className="pp-main">{body}</main>
       <footer className="pp-footer">
-        <p>Public profile on CodeStats. Platform numbers come from the student&rsquo;s linked accounts and may be a little behind.</p>
+        <p>Public profile on {brand.names.platform}. Platform
+ numbers come from the student&rsquo;s linked accounts and may be a little behind.</p>
       </footer>
     </div>
   );

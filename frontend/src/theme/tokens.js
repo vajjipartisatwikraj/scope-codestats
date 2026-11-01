@@ -75,11 +75,12 @@ export const midnight = {
   mode: "dark",
   ...accent,
   // Surfaces, from the page down to the highest step
-  canvas: "#131522",
-  surface: "#1D2030",
-  raised: "#272B3F",
-  high: "#323650",
-  line: "#2C3048",
+  canvas: "#040405",
+  chrome: "#0A0A0B", // the sidebar, the controls of the top bar and the search
+  surface: "#0D0D0F", // cards, panels, dialogs
+  raised: "#19191C",
+  high: "#1E1E22", // empty heatmap cells and inactive bars
+  line: "#1E1E22",
   fieldBorder: "#6A7096",
   // Text
   text: "#F1F3FB",
@@ -125,6 +126,7 @@ export const daylight = {
   mode: "light",
   ...accent,
   canvas: "#F1F2F7",
+  chrome: "#FDFDFF", // the same as surface in Daylight
   surface: "#FDFDFF",
   raised: "#F5F6FA",
   high: "#ECEEF5",

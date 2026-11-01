@@ -1,3 +1,4 @@
+import brand from '../brand';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { apiUrl } from '../config/apiConfig';
@@ -13,7 +14,8 @@ import { apiUrl } from '../config/apiConfig';
  * what every deployment said before this setting existed. The answer is kept for the life of the
  * page, so several screens share one request.
  */
-const FALLBACK = { loginMode: 'domain', domainHint: '@mlrit.ac.in or @mlrinstitutions.ac.in' };
+const FALLBACK = { loginMode: 'domain', domainHint: brand.institution.emailHint };
+
 
 let answer = null;
 let pending = null;

@@ -4,20 +4,10 @@ import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import LockClockIcon from "@mui/icons-material/LockClock";
 
-/** `2h 05m 09s`, dropping empty leading units. */
-export const formatDuration = (ms) => {
-  if (typeof ms !== "number" || ms < 0) return "--";
+import { formatDuration } from "../../utils/formatDuration";
 
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-
-  const pad = (n) => String(n).padStart(2, "0");
-  if (hours > 0) return `${hours}h ${pad(mins)}m ${pad(secs)}s`;
-  if (mins > 0) return `${mins}m ${pad(secs)}s`;
-  return `${secs}s`;
-};
+// Kept as an export of this file because ExamSessionBar imports it from here
+export { formatDuration };
 
 const formatMoment = (iso) => {
   if (!iso) return "--";

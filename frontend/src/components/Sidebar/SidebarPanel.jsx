@@ -1,3 +1,5 @@
+import brand from '../../brand';
+import BrandLogo, { hasBrandLogo } from '../custom-components/BrandLogo';
 import React, { forwardRef, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { SignOutIcon } from '@phosphor-icons/react/dist/csr/SignOut';
@@ -122,10 +124,23 @@ const SidebarPanel = forwardRef(function SidebarPanel(
       {...rest}
     >
       <div className="ds-sidebar__brand">
-        <span className="ds-sidebar__mark" aria-hidden="true">
-          <img className="ds-sidebar__logo" src="/codestats-color.png" alt="" />
-        </span>
-        <span className="ds-sidebar__brand-name">CodeStats</span>
+        {hasBrandLogo() ? (
+          <>
+            <span className="ds-sidebar__mark" aria-hidden="true">
+              <BrandLogo part="left" height={30} theme={themeName === 'daylight' ? 'light' : 'dark'} />
+            </span>
+            <span className="ds-sidebar__brand-name" aria-label={brand.names.platform}>
+              <BrandLogo part="right" height={30} theme={themeName === 'daylight' ? 'light' : 'dark'} />
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="ds-sidebar__mark" aria-hidden="true">
+              <img className="ds-sidebar__logo" src={brand.platform.logo} alt="" />
+            </span>
+            <span className="ds-sidebar__brand-name">{brand.names.platform}</span>
+          </>
+        )}
       </div>
 
       <nav ref={navRef} className="ds-sidebar__nav" aria-label="Main">

@@ -1,0 +1,43 @@
+/* Progress panel (progress/ProgressPanel.jsx): the standing tiles over the leaderboard card.
+   Only design tokens. The leaderboard is three columns, so the kit's 640px table minimum is lifted. */
+
+.cdl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cdp-gap);
+}
+
+.cdl .ui-table {
+  min-width: 0;
+}
+
+.cdl-rank-cell {
+  width: 72px;
+}
+
+.cdl-rank {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Places 1 to 3 are numerals in small tonal circles (DESIGN.md, Tables and leaderboards) */
+.cdl-rank[data-place] {
+  border-radius: 50%;
+}
+
+.cdl-rank[data-place='1'] {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.cdl-rank[data-place='2'] {
+  background-color: var(--ds-raised);
+}
+
+.cdl-rank[data-place='3'] {
+  background-color: var(--ds-high);
+}

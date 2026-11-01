@@ -14,6 +14,8 @@ const router = express.Router();
 
 // ─── User groups of a cohort (admin or teacher) ──────────────────────────────
 
+// Who can access the cohort: { accessType: "global" | "userGroups" }. Going back to "userGroups" removes students no group covers; ?preview=true shows what would go
+router.put("/:id/access", [auth, adminAuth], userGroupController.setAccessType);
 // The groups attached to a cohort
 router.get("/:id/user-groups", [auth, adminAuth], userGroupController.listCohortUserGroups);
 // Add students that joined the attached groups since they were attached. Never removes anyone

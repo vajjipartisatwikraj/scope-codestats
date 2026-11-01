@@ -1,3 +1,4 @@
+import brand from '../../brand';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
@@ -232,8 +233,9 @@ const SidebarNavigation = ({ darkMode, problemListOpen = false, onCloseProblemLi
           }}
         >
           <img 
-            src="/codestats-color.png" 
-            alt="Scope Logo" 
+            src={brand.platform.logo} 
+            alt={`${brand.names.platform} logo`}
+ 
             style={{ 
               maxHeight: '32px',
               maxWidth: '100%',

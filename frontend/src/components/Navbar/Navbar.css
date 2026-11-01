@@ -111,7 +111,7 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background-color: var(--ds-surface);
+  background-color: var(--ds-chrome);
   color: var(--ds-text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -162,7 +162,7 @@
   --fill-in: 520ms;
   --fill-out: 400ms;
 
-  background-color: var(--ds-surface);
+  background-color: var(--ds-chrome);
   background-image: radial-gradient(
     circle farthest-corner at var(--fill-x) 50%,
     var(--ds-spotlight) calc(var(--nb-fill) - 1px),
@@ -173,7 +173,7 @@
 /* ---- Circles --------------------------------------------------------------------------- */
 
 .ds-navbar__icon-button {
-  --nb-ring: var(--ds-surface);
+  --nb-ring: var(--ds-chrome);
 
   position: relative;
   display: grid;
@@ -390,7 +390,7 @@
   height: 44px;
   padding: 0 24px;
   border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-surface);
+  background-color: var(--ds-chrome);
   color: var(--ds-text);
   font: var(--ds-type-label);
   letter-spacing: var(--ds-tracking-label);

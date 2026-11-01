@@ -1,0 +1,19 @@
+/* Exam banner (shared/ExamBanner.jsx). The notice itself is the kit's; this only sets the paragraphs
+   and keeps the ticking numerals from shifting the text beside them. Only design tokens. */
+
+.cde p {
+  margin: 0;
+}
+
+.cde p + p {
+  margin-top: 4px;
+}
+
+.cde-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.cde-note {
+  color: inherit;
+  font: var(--ds-type-body-sm);
+}

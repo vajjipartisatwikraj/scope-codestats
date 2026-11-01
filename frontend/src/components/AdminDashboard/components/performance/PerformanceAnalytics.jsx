@@ -1,3 +1,4 @@
+import brand from '../../../../brand';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Box, Tab, Tabs, Typography, useTheme } from "@mui/material";
 import { adminAnalyticsApi, analyticsErrorMessage } from "../../../../services/adminAnalyticsApi";
@@ -112,7 +113,7 @@ const PerformanceAnalytics = () => {
           Student performance
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          CodeStats and the coding platforms: problems solved, scores, contests, ratings and GitHub activity of all students.
+          {brand.codeStats.name} and the coding platforms: problems solved, scores, contests, ratings and GitHub activity of all students.
         </Typography>
       </Box>
 

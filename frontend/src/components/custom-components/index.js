@@ -11,7 +11,7 @@
  *  - No Material UI. Plain CSS next to the component, Phosphor for icons.
  *  - The props are documented in the header comment of each component.
  *
- * Import from the folder:  import { BarChart, Gauge } from '../custom-components';
+ * Import from the folder:  import { BarChart, Gauge } from '.';
  */
 export { default as BarChart } from './BarChart';
 export { default as MiniBars } from './MiniBars';
@@ -23,6 +23,7 @@ export { default as PieChart } from './PieChart';
 export { default as ChartLegend } from './ChartLegend';
 export { default as ChartTip, TipTitle, TipValue, TipRow } from './ChartTip';
 export { default as PillTabs } from './PillTabs';
+export { default as ScrollRow } from './ScrollRow';
 export { default as PlatformIcon } from './PlatformIcon';
 export { default as TagInput } from './TagInput';
 export { default as AudioWaveform } from './AudioWaveform';
@@ -38,3 +39,5 @@ export { default as ScoreRing } from './ScoreRing';
 export { default as AnimatedCheck } from './AnimatedCheck';
 export { default as AudioClipPlayer } from './AudioClipPlayer';
 export { default as TimelineStrip } from './TimelineStrip';
+export { default as BrandLogo, hasBrandLogo } from './BrandLogo';
+export { default as RocketAnimation } from './RocketAnimation';

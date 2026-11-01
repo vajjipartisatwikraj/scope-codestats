@@ -1,0 +1,70 @@
+/*
+ * ReviewItem (ui/ReviewItem.jsx): one rating and comment as a flat row. Only design tokens.
+ * The list that holds the items draws the hairlines between them (.ui-reviews).
+ */
+
+.ui-reviews {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-reviews > li {
+  padding: 16px 0;
+  border-top: 1px solid var(--ds-line);
+}
+
+.ui-reviews > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ui-reviews > li:last-child {
+  padding-bottom: 0;
+}
+
+.ui-review {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  color: var(--ds-text);
+}
+
+.ui-review__body {
+  min-width: 0;
+}
+
+.ui-review__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-bottom: 2px;
+}
+
+.ui-review__name {
+  min-width: 0;
+  margin: 0;
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.ui-review__date {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* A comfortable measure, and the line breaks the author wrote */
+.ui-review__comment {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  font: var(--ds-type-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ui-review__comment--empty {
+  color: var(--ds-muted);
+}

@@ -1,0 +1,10 @@
+{
+  "name": "CodeStats",
+  "title": "{clubShort}-{platform}",
+  "description": "{platform} is the coding assessment and performance-analysis platform built by {builder} for the students of {institutionFull}.",
+  "manifestName": "{platform} - Coding Profile Analytics",
+  "themeColor": "#000000",
+  "manifestThemeColor": "#0088cc",
+  "manifestBackground": "#ffffff",
+  "demoVideo": "https://sritulasiseeds.sgp1.cdn.digitaloceanspaces.com/scopecodestats.mp4"
+}

@@ -237,11 +237,10 @@ html[data-theme='daylight'] .sd-card--ink {
   --sd-ink: var(--ds-canvas);
 }
 
-/* On Midnight the score and rank tiles (and the views they open into) are a dark navy that is
-   darker than the cards beside them (the heatmap is the `surface` tone). The colour was picked
-   from a sample the owner supplied. */
+/* On Midnight the score and rank tiles (and the views they open into) use the same `surface`
+   tone as the heatmap and the other cards, so the whole page is one black. */
 html[data-theme='midnight'] .sd {
-  --sd-ink-midnight: #171a2a;
+  --sd-ink-midnight: var(--ds-surface);
 }
 
 html[data-theme='midnight'] .sd-card--ink {

@@ -1,3 +1,4 @@
+import brand from '../brand';
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,10 +56,11 @@ const Footer = () => {
     <footer className="ds-footer" style={{ '--ds-footer-rail': `${rail}px` }}>
       <div className="ds-footer__inner">
         <div className="ds-footer__bar">
-          <img className="ds-footer__logo" src={darkMode ? '/footer-dark.png' : '/footer-light.png'} alt="SCOPE Club" />
+          <img className="ds-footer__logo" src={darkMode ? brand.institution.clubLogo.dark : brand.institution.clubLogo.light} alt={brand.names.club} />
           <p className="ds-footer__text">
             <span aria-hidden="true">&copy;</span>
-            <span className="ds-footer__sr"> Copyright</span> 2025 SCOPE club, All rights Reserved
+            <span className="ds-footer__sr"> Copyright</span> 2025 {brand.names.club}, All rights Reserved
+
           </p>
         </div>
       </div>

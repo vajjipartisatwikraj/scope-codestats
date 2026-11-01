@@ -1,3 +1,5 @@
+import brand from '../../brand';
+import BrandLogo from '../custom-components/BrandLogo';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MoonIcon } from '@phosphor-icons/react/dist/csr/Moon';
@@ -31,9 +33,16 @@ export default function ProfileTopBar() {
   return (
     <header className="pp-top">
       <div className="pp-top__inner">
-        <Link to="/" className="pp-brand" aria-label="CodeStats home">
-          <img className="pp-brand__logo" src="/codestats-color.png" alt="" />
-          <span className="pp-brand__name">CodeStats</span>
+        <Link to="/" className="pp-brand" aria-label={`${brand.names.platform} home`}>
+          <BrandLogo
+            height={32}
+            fallback={
+              <>
+                <img className="pp-brand__logo" src={brand.platform.logo} alt="" />
+                <span className="pp-brand__name">{brand.names.platform}</span>
+              </>
+            }
+          />
         </Link>
 
         <div className="pp-top__tools">

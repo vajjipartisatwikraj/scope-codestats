@@ -26,12 +26,12 @@ const getCohortStats = async (req, res) => {
     }
 
     // Get total eligible users for this cohort
-    const totalEnrolled = cohort.eligibleUsers
-      ? cohort.eligibleUsers.length
-      : 0;
-
     // Get users who have enrolled in the cohort
     const enrolledUsers = await UserCohort.countDocuments({ cohort: cohortId });
+
+    // A global cohort has no eligible list: everyone who joined is the total.
+    const totalEnrolled =
+      cohort.accessType === "global" ? enrolledUsers : cohort.eligibleUsers?.length || 0;
 
     // Get users who have completed the cohort
     const completedUsers = await UserCohort.countDocuments({

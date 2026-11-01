@@ -6,7 +6,9 @@
  * which checks the clone rules and does the cleanup for students who lose access.
  */
 const Cohort = require("../../models/Cohort");
+const UserCohort = require("../../models/UserCohort");
 const UserGroup = require("../../models/UserGroup");
+const cascadeService = require("../cohortCascadeService");
 const { applyEligibleUsers } = require("../cohorts/eligibilityService");
 const {
   memberIdsOf,
@@ -19,6 +21,15 @@ const { ServiceError } = require("../../utils/ServiceError");
 
 const idOf = (value) => String(value);
 
+/** Groups only decide access while the cohort is "userGroups"; a global cohort ignores them. */
+function refuseIfGlobal(cohort) {
+  if (cohort.accessType === "global") {
+    throw new ServiceError(409, "This cohort is open to all users. Switch it to user groups first.", {
+      reason: "open_to_all",
+    });
+  }
+}
+
 /** Cohorts a group is attached to. */
 function findAttachedCohorts(groupId) {
   return Cohort.find({ userGroups: groupId }).select("title isActive isDraft").lean();
@@ -27,15 +38,68 @@ function findAttachedCohorts(groupId) {
 /** The groups attached to a cohort, with how many roll numbers each one has. */
 async function listCohortGroups(cohort) {
   return {
+    accessType: cohort.accessType,
     userGroups: await describeAttachedGroups(cohort),
     totalEligibleUsers: cohort.eligibleUsers.length,
   };
+}
+
+/**
+ * Switch a cohort between "global" (every student) and "userGroups" (only the attached groups).
+ *
+ * Going global changes nothing stored, so it only checks the clone rule: everyone is eligible,
+ * which would break "one cohort per clone family" if a related cohort already has students.
+ * Going back keeps the old list plus everyone who joined meanwhile as the "current" students,
+ * so applyEligibleUsers removes (and, unless `preview`, cleans up after) those no group covers.
+ * @returns {Promise<{status: number, body: object}>}
+ */
+async function setAccessType({ cohort, accessType, preview = false }) {
+  if (!["global", "userGroups"].includes(accessType)) {
+    throw new ServiceError(400, 'accessType must be "global" or "userGroups"');
+  }
+  if (cohort.accessType === accessType) {
+    return { status: 200, body: { message: "Access type unchanged", accessType } };
+  }
+
+  if (accessType === "global") {
+    const related = await cascadeService.getRelatedCohorts(cohort._id);
+    const others = await Cohort.find({
+      _id: { $in: related.map((c) => c._id).filter((id) => idOf(id) !== idOf(cohort._id)) },
+    }).select("title accessType eligibleUsers");
+    const blocking = others.filter((c) => c.accessType === "global" || c.eligibleUsers.length > 0);
+    if (blocking.length > 0) {
+      throw new ServiceError(
+        409,
+        "A cohort can be open to all users only if its clones have no eligible students and are not global",
+        { reason: "clone_conflict", cohorts: blocking.map((c) => ({ _id: c._id, title: c.title })) }
+      );
+    }
+    if (!preview) {
+      cohort.accessType = "global";
+      await cohort.save();
+    }
+    return { status: 200, body: { message: `"${cohort.title}" is now open to all users`, accessType } };
+  }
+
+  const groups = await UserGroup.find({ _id: { $in: cohort.userGroups } }).select("rollNumbers");
+  const userIds = await eligibleListFor(cohort, groups);
+  const joined = await UserCohort.distinct("user", { cohort: cohort._id });
+  cohort.eligibleUsers = [...new Set([...cohort.eligibleUsers.map(idOf), ...joined.map(idOf)])];
+  if (!preview) cohort.accessType = "userGroups";
+
+  const result = await applyEligibleUsers({ cohort, userIds, preview });
+  if (result.status === 200 && !preview) {
+    result.body.message = `"${cohort.title}" is now limited to its user groups`;
+    result.body.accessType = accessType;
+  }
+  return result;
 }
 /**
  * Attach a group: its members become eligible.
  * @returns {Promise<{status: number, body: object}>}
  */
 async function attachGroup({ cohort, groupId, preview = false }) {
+  refuseIfGlobal(cohort);
   const group = await loadGroup(groupId);
 
   if (cohort.userGroups.some((id) => idOf(id) === idOf(group._id))) {
@@ -69,6 +133,7 @@ async function attachGroup({ cohort, groupId, preview = false }) {
  * @returns {Promise<{status: number, body: object}>}
  */
 async function detachGroup({ cohort, groupId, preview = false }) {
+  refuseIfGlobal(cohort);
   if (!cohort.userGroups.some((id) => idOf(id) === idOf(groupId))) {
     throw new ServiceError(404, "That user group is not attached to this cohort");
   }
@@ -98,6 +163,9 @@ async function detachGroup({ cohort, groupId, preview = false }) {
  * @returns {Promise<{status: number, body: object}>}
  */
 async function syncCohort(cohort) {
+  if (cohort.accessType === "global") {
+    return { status: 200, body: { usersAdded: 0, message: "Open to all users, nothing to sync" } };
+  }
   const groups = await UserGroup.find({ _id: { $in: cohort.userGroups } }).select("rollNumbers");
   const members = await memberIdsOf(groups);
   const userIds = [...new Set([...cohort.eligibleUsers.map(idOf), ...members])];
@@ -147,6 +215,7 @@ module.exports = {
   listCohortGroups,
   attachGroup,
   detachGroup,
+  setAccessType,
   syncCohort,
   syncAttachedCohorts,
 };

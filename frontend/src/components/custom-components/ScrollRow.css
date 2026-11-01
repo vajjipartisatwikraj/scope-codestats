@@ -1,0 +1,95 @@
+/*
+ * ScrollRow
+ *
+ * A flex row that scrolls sideways with scroll snapping. The track has a few pixels of padding that
+ * a negative margin takes back, so a focus ring or a hover tone at the edge of an item is not
+ * clipped by the scroll area. The previous and next buttons float over the row's two ends (the one
+ * place a shadow is allowed: a layer above the page) and are shown only for a pointer that can
+ * hover, and only while there is more to see in their direction. See ScrollRow.jsx for the props.
+ */
+
+.srow {
+  --sr-item: clamp(280px, 30%, 360px);
+  --sr-gap: 16px;
+  --sr-button-bg: var(--ds-surface);
+  --sr-button-text: var(--ds-text);
+
+  position: relative;
+  min-width: 0;
+}
+
+.srow__track {
+  display: flex;
+  gap: var(--sr-gap);
+  margin: -4px;
+  padding: 4px 4px 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  list-style: none;
+  scroll-padding-inline: 4px;
+  scroll-snap-type: x proximity;
+}
+
+/* Every item is the same width and, being a flex item of a row, the same height */
+.srow__track > * {
+  display: flex;
+  flex: 0 0 var(--sr-item);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.srow__track > * > * {
+  flex: 1 1 auto;
+}
+
+.srow__button {
+  position: absolute;
+  top: calc(50% - 6px);
+  z-index: 1;
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--sr-button-bg);
+  color: var(--sr-button-text);
+  box-shadow: var(--ds-shadow-float-sm);
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.srow__button[data-side='start'] {
+  left: -12px;
+}
+
+.srow__button[data-side='end'] {
+  right: -12px;
+}
+
+.srow__button:hover {
+  background-color: var(--ds-raised);
+}
+
+.srow__button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--sr-button-bg),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* Only a pointer that can hover gets the buttons; a finger swipes the row */
+@media (hover: hover) and (pointer: fine) {
+  .srow__button[data-visible='true'] {
+    display: grid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .srow__button {
+    transition: none;
+  }
+}

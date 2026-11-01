@@ -1,0 +1,32 @@
+/*
+ * Staff cohort dashboard (route /admin/cohorts). The page only adds the tab row; the cards, the
+ * form, the dialogs and the reviews have their own files. Built on the kit (components/ui/ui.css) and
+ * the student cohort list, so it looks like it. Only design tokens.
+ */
+
+/* The tabs sit on their own line and scroll sideways on a phone (PillTabs does) */
+.cmg-tabs {
+  display: flex;
+  margin: 0 0 var(--ui-gap);
+}
+
+.cmg-tabs .pt {
+  max-width: 100%;
+}
+
+/* The search under the tabs takes the full width on a phone */
+.cmg .ui-toolbar {
+  margin-bottom: var(--ui-gap);
+}
+
+@media (max-width: 599.95px) {
+  .cmg .ui-toolbar__grow {
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
+/* A loading card is a plain block; give the grid the same rhythm as the list */
+.cmg .ui-grid > .chc {
+  min-height: 0;
+}

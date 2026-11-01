@@ -50,7 +50,7 @@
   /* The card is its own layout and paint island: animating it never touches the page. */
   contain: layout paint;
   border-radius: var(--ds-radius-xl);
-  background-color: var(--ds-surface);
+  background-color: var(--ds-chrome);
   box-shadow: 0 16px 40px transparent;
   color: var(--ds-text);
   font-family: var(--ds-font);
@@ -246,7 +246,7 @@
 
 .ds-nav-item:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+  box-shadow: 0 0 0 2px var(--ds-chrome), 0 0 0 4px var(--ds-focus);
 }
 
 /* The current page: the highlight sits behind it, so the link itself stays clear */

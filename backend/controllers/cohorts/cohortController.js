@@ -27,7 +27,7 @@ const getAdminCohorts = async (req, res) => {
   try {
     const cohorts = await Cohort.find()
       .select(
-        `title description startDate endDate eligibleUsers userGroups createdBy createdAt isActive isDraft ${EXAM_LIST_FIELDS}`
+        `title description startDate endDate accessType eligibleUsers userGroups createdBy createdAt isActive isDraft ${EXAM_LIST_FIELDS}`
       )
       .populate("createdBy", "name email")
       .lean()
@@ -64,12 +64,12 @@ const getMyCohorts = async (req, res) => {
     // afterwards. Opening one is still gated by the window; this is visibility
     // only.
     const eligibleCohorts = await Cohort.find({
-      eligibleUsers: userId,
+      ...Cohort.accessFilter(userId),
       isDraft: false,
       $or: [{ isActive: true }, { mode: EXAM_MODE }],
     })
       .select(
-        `title description startDate endDate createdBy createdAt modules eligibleUsers averageRating feedbacks isActive ${EXAM_LIST_FIELDS}`
+        `title description startDate endDate createdBy createdAt modules accessType eligibleUsers averageRating feedbacks isActive ${EXAM_LIST_FIELDS}`
       ) // Include modules, eligibleUsers, rating and exam scheduling fields
       .populate("createdBy", "name email")
       .lean();
@@ -121,7 +121,7 @@ const getAdminCohort = async (req, res) => {
     // DO NOT populate eligibleUsers - the attached user groups are fetched on demand
     const cohort = await Cohort.findById(cohortId)
       .select(
-        `title description startDate endDate videoResource documentationUrl createdBy createdAt updatedAt isActive isDraft ${EXAM_LIST_FIELDS}`
+        `title description startDate endDate videoResource documentationUrl accessType createdBy createdAt updatedAt isActive isDraft ${EXAM_LIST_FIELDS}`
       )
       .populate("createdBy", "name email")
       .populate({
@@ -175,9 +175,7 @@ const getCohort = async (req, res) => {
 
     // If admin, skip the eligibility checks
     if (!isAdmin) {
-      const isEligible = cohortExists.eligibleUsers.some(
-        (id) => id.toString() === userId.toString()
-      );
+      const isEligible = cohortExists.isOpenTo(userId);
       const isActive = cohortExists.isActive;
       const isDraft = cohortExists.isDraft;
 
@@ -239,7 +237,7 @@ const getCohort = async (req, res) => {
     // Get the cohort with properly populated fields - INCLUDING modules array and feedbacks
     const cohort = await Cohort.findById(cohortId)
       .select(
-        `title description startDate endDate videoResource documentationUrl eligibleUsers modules createdBy createdAt updatedAt cloneGroupId feedbacks averageRating isActive isDraft ${EXAM_LIST_FIELDS}`
+        `title description startDate endDate videoResource documentationUrl accessType eligibleUsers modules createdBy createdAt updatedAt cloneGroupId feedbacks averageRating isActive isDraft ${EXAM_LIST_FIELDS}`
       )
       .populate("createdBy", "name email")
       .lean(); // Use lean() for better performance
@@ -281,9 +279,13 @@ const getCohort = async (req, res) => {
 
     // EXPLICITLY fetch the top 3 enrolled users with profile pictures
     // Convert ID strings to ObjectIds if necessary
-    const userIds = cohort.eligibleUsers.map((id) =>
-      typeof id === "string" ? mongoose.Types.ObjectId(id) : id
-    );
+    // A global cohort has no eligible list, so its avatars come from the leaderboard.
+    const userIds =
+      cohort.accessType === "global"
+        ? filteredLeaderboard.map((entry) => entry.user._id)
+        : cohort.eligibleUsers.map((id) =>
+            typeof id === "string" ? mongoose.Types.ObjectId(id) : id
+          );
 
     // Get top 3 eligible users with their profile pictures
     const enrolledUsers = await User.find({
@@ -351,6 +353,7 @@ const createCohort = async (req, res) => {
       examStartTime,
       examEndTime,
       examDurationMinutes,
+      accessType,
     } = req.body;
 
     // Validate required fields
@@ -382,6 +385,9 @@ const createCohort = async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       isDraft: isDraft !== undefined ? isDraft : true,
       createdBy: req.user.id,
+      // "global" or "userGroups"; anything else fails the schema's enum and answers 400.
+      // Changing it later goes through PUT /:id/access.
+      ...(accessType !== undefined && { accessType }),
       ...examFields.values,
     });
 
@@ -755,9 +761,7 @@ const enrollInCohort = async (req, res) => {
     }
 
     // Check if the user is eligible
-    const isEligible = cohort.eligibleUsers.some(
-      (id) => id.toString() === userId
-    );
+    const isEligible = cohort.isOpenTo(userId);
 
     if (!isEligible) {
       return res
