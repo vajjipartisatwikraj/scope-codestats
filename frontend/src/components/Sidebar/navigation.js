@@ -1,5 +1,6 @@
 import { BellIcon } from '@phosphor-icons/react/dist/csr/Bell';
 import { BookIcon } from '@phosphor-icons/react/dist/csr/Book';
+import { BooksIcon } from '@phosphor-icons/react/dist/csr/Books';
 import { BriefcaseIcon } from '@phosphor-icons/react/dist/csr/Briefcase';
 import { ChalkboardTeacherIcon } from '@phosphor-icons/react/dist/csr/ChalkboardTeacher';
 import { ChartBarIcon } from '@phosphor-icons/react/dist/csr/ChartBar';
@@ -132,6 +133,14 @@ const GROUPS = [
         // Teachers and admins: named roll number lists to attach to cohorts
         path: () => '/admin/user-groups',
         visible: (user) => isStaff(user),
+      },
+      {
+        id: 'bank-library',
+        label: 'Bank library',
+        icon: BooksIcon,
+        // Admins only: banks of questions kept in S3, imported into cohorts by admins and teachers
+        path: () => '/admin/bank-library',
+        visible: (user) => isAdminUser(user),
       },
       {
         id: 'notifications',

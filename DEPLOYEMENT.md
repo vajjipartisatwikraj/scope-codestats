@@ -331,6 +331,10 @@ These have sensible defaults. Add them only when you need to change one:
 | `LOG_FORMAT` | `pretty` | `json` for log shippers. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | generated into `backend/config/vapid-keys.json` | Push notification keys. To keep existing subscribers, copy the keys from your current server instead of generating new ones. |
 | `SQLJUDGE_GRADE_TIMEOUT_MS`, `SQLJUDGE_READ_TIMEOUT_MS`, `SPEECHJUDGE_SUBMIT_TIMEOUT_MS`, `SPEECHJUDGE_READ_TIMEOUT_MS` | `240000`, `30000`, `120000`, `20000` | How long to wait for the judge services. |
+| `BANK_LIBRARY_S3_BUCKET`, `BANK_LIBRARY_S3_REGION` | empty (library off), `ap-south-1` | The S3 bucket that holds the bank library (banks of questions) and its region. Leave the bucket empty to switch the library off. The server needs `s3:ListBucket` on the bucket and `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on its objects. |
+| `BANK_LIBRARY_S3_ACCESS_KEY_ID`, `BANK_LIBRARY_S3_SECRET_ACCESS_KEY` | empty | Only for a computer that is not on AWS. On EC2, leave both empty and attach an IAM role to the instance. |
+| `BANK_LIBRARY_S3_PREFIX` | empty | A folder inside the bucket, for example `prod/`, when the bucket is shared. |
+| `BANK_LIBRARY_IMPORT_CHUNK`, `BANK_LIBRARY_FETCH_CONCURRENCY`, `BANK_LIBRARY_IMPORT_JOBS`, `BANK_LIBRARY_IMPORT_MAX_QUESTIONS` | `50`, `10`, `2`, `5000` | Questions written to the database at once (1 to 100), questions read from S3 at once, imports that run at the same time, and the most questions one import may bring in. |
 
 ### Notes
 

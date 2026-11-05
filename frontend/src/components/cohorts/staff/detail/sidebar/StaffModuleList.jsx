@@ -1,4 +1,5 @@
 import React from 'react';
+import { CloudArrowDownIcon } from '@phosphor-icons/react/dist/csr/CloudArrowDown';
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
@@ -16,9 +17,10 @@ import './staffSidebar.css';
  *
  *   modules, selectedId, onSelect(moduleId)
  *   canEdit                    admins: show add, edit and delete (teachers manage content elsewhere)
+ *   canImport, onImport()      admins and teachers: import a bank from the bank library as new modules
  *   onAdd(), onEdit(module), onDelete(module)
  */
-export default function StaffModuleList({ modules, selectedId, onSelect, canEdit, onAdd, onEdit, onDelete }) {
+export default function StaffModuleList({ modules, selectedId, onSelect, canEdit, canImport = false, onImport, onAdd, onEdit, onDelete }) {
   const [listRef, scrolling] = useScrolling();
 
   return (
@@ -28,8 +30,13 @@ export default function StaffModuleList({ modules, selectedId, onSelect, canEdit
           Modules
         </h2>
         <Badge tone="neutral">{formatNumber(modules.length)}</Badge>
+        {canImport ? (
+          <IconButton className="cad-head__add" label="Import modules from the bank library" size="sm" tone="plain" onClick={onImport}>
+            <CloudArrowDownIcon size={20} weight="regular" aria-hidden="true" />
+          </IconButton>
+        ) : null}
         {canEdit ? (
-          <IconButton className="cad-head__add" label="Add module" size="sm" tone="plain" onClick={onAdd}>
+          <IconButton className={canImport ? undefined : 'cad-head__add'} label="Add module" size="sm" tone="plain" onClick={onAdd}>
             <PlusIcon size={20} weight="bold" aria-hidden="true" />
           </IconButton>
         ) : null}
@@ -42,10 +49,19 @@ export default function StaffModuleList({ modules, selectedId, onSelect, canEdit
           title="No modules yet"
           text={canEdit ? 'Add the first module to start building this cohort.' : 'No modules have been added to this cohort.'}
           action={
-            canEdit ? (
-              <Button variant="secondary" size="sm" startIcon={<PlusIcon size={16} weight="bold" aria-hidden="true" />} onClick={onAdd}>
-                Add module
-              </Button>
+            canEdit || canImport ? (
+              <div className="cad-empty-actions">
+                {canEdit ? (
+                  <Button variant="secondary" size="sm" startIcon={<PlusIcon size={16} weight="bold" aria-hidden="true" />} onClick={onAdd}>
+                    Add module
+                  </Button>
+                ) : null}
+                {canImport ? (
+                  <Button variant="secondary" size="sm" startIcon={<CloudArrowDownIcon size={16} weight="regular" aria-hidden="true" />} onClick={onImport}>
+                    Import a bank
+                  </Button>
+                ) : null}
+              </div>
             ) : undefined
           }
         />

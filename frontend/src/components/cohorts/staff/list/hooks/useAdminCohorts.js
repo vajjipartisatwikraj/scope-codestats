@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../../../../contexts/AuthContext';
 import * as api from '../api/cohortAdminApi';
+import { startImport } from '../../../../bankLibrary/api/bankLibraryApi';
+import { apiMessage } from '../../../../bankLibrary/model/bankLibrary';
 
 /**
  * The cohorts of the staff dashboard and what staff do to them: read the list, save (create or
@@ -10,7 +12,8 @@ import * as api from '../api/cohortAdminApi';
  *
  * Returns
  *   cohorts, loading, failed, reload
- *   save(form, id)        creates (no id) or updates; resolves true when it worked
+ *   save(form, id, { importBank })   creates (no id) or updates; resolves { ok, cohort } (cohort is the
+ *                         new one). A new cohort with importBank also starts that import (bank library).
  *   remove(cohort)        resolves 'ok', 'attached' (user groups are still attached) or 'failed'
  *   duplicate(cohort)     { cohort, step } in `duplicating` while it runs
  *   duplicating           null, or { cohort, step } for the progress dialog
@@ -54,18 +57,31 @@ export default function useAdminCohorts() {
   }, [reload]);
 
   const save = useCallback(
-    async (form, id) => {
+    async (form, id, { importBank } = {}) => {
+      let cohort = null;
       try {
         if (id) await api.updateCohort(token, id, form);
-        else await api.createCohort(token, form);
+        else cohort = (await api.createCohort(token, form)).data;
         toast.success(id ? 'Cohort updated successfully' : 'Cohort created successfully');
         reload();
-        return true;
       } catch (error) {
         console.error('Error saving cohort:', error);
         toast.error(error.response?.data?.message || 'Failed to save cohort');
-        return false;
+        return { ok: false };
       }
+
+      // A new cohort that asked for a bank from the library: the import runs on the server in the
+      // background, so this only starts it. The cohort exists either way; if the import cannot
+      // start, staff can run it again from the cohort page.
+      if (cohort && importBank) {
+        try {
+          await startImport(token, { cohortId: cohort._id, bankId: importBank.bankId, topicIds: importBank.allTopics ? [] : importBank.topicIds });
+          toast.info(`Importing ${importBank.bankName} in the background`);
+        } catch (error) {
+          toast.error(`The cohort was created, but the import did not start. ${apiMessage(error, 'Open the cohort and use Import.')}`);
+        }
+      }
+      return { ok: true, cohort };
     },
     [token, reload]
   );

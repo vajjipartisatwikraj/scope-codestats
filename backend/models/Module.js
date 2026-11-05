@@ -53,6 +53,19 @@ const moduleSchema = new mongoose.Schema({
     description:
       "The cohort that originally created this module (for tracking purposes only)",
   },
+  // Set when the module was made by an import from the bank library (which topic it came from)
+  importedFrom: {
+    type: new mongoose.Schema(
+      {
+        bankId: String,
+        topicId: String,
+        job: mongoose.Schema.Types.ObjectId,
+      },
+      { _id: false }
+    ),
+    default: undefined,
+    select: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

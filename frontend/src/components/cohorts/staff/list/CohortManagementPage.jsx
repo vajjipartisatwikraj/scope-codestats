@@ -75,11 +75,14 @@ export default function CohortManagementPage() {
 
   const openDrawer = (cohort = null) => setDrawer({ nonce: Date.now(), cohort });
 
-  const save = async (form) => {
+  const save = async (form, extras) => {
     setSaving(true);
-    const ok = await data.save(form, drawer.cohort ? drawer.cohort._id : undefined);
+    const { ok, cohort } = await data.save(form, drawer.cohort ? drawer.cohort._id : undefined, extras);
     setSaving(false);
-    if (ok) setDrawer(null);
+    if (!ok) return;
+    setDrawer(null);
+    // A cohort made with a bank from the library: its page shows the import while it runs
+    if (cohort && extras?.importBank) navigate(`/admin/cohorts/${cohort._id}`);
   };
 
   const askDelete = (cohort) => {

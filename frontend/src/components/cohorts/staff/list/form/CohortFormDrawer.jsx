@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button, Drawer, Notice, SelectField, TextField } from '../../../../ui';
+import BankChoice from '../../../../bankLibrary/picker/BankChoice';
+import { applyAutofill } from '../../../../bankLibrary/model/bankLibrary';
 import { FIELD_ORDER, emptyForm, formFromCohort, fromInput, timeOnly, toInput, validate } from '../model/cohortAdmin';
 import './cohortForm.css';
 
@@ -56,14 +58,28 @@ function ExamExplainer({ duration }) {
  *   cohort      the cohort to edit; null to create one
  *   saving      a save is in progress: the primary button spins and nothing can be closed
  *   onClose()
- *   onSave(form)   called with the form once it passes validation
+ *   onSave(form, { importBank })   called with the form once it passes validation. importBank is the
+ *               bank chosen from the bank library to fill a new cohort with (null for none).
  */
 export default function CohortFormDrawer({ cohort, saving, onClose, onSave }) {
   const editing = Boolean(cohort);
   const [form, setForm] = useState(() => (cohort ? formFromCohort(cohort) : emptyForm()));
   const [errors, setErrors] = useState({});
+  const [importBank, setImportBank] = useState(null);
+  const filledFromBank = useRef({}); // what choosing a bank last put in the title and description
 
   const change = (patch) => setForm((previous) => ({ ...previous, ...patch }));
+
+  // A bank brings its name and description with it. They go into the title and description unless
+  // the person has written their own there; choosing another bank replaces the ones it filled.
+  const chooseBank = (bank) => {
+    setImportBank(bank);
+    if (!bank) return;
+    const { form: next, filled } = applyAutofill(form, filledFromBank.current, { title: bank.bankName, description: bank.bankDescription });
+    filledFromBank.current = filled;
+    setForm(next);
+    setErrors((previous) => ({ ...previous, title: undefined, description: undefined }));
+  };
   const clearError = (field) => errors[field] && setErrors((previous) => ({ ...previous, [field]: undefined }));
 
   const text = (field) => (event) => {
@@ -85,7 +101,7 @@ export default function CohortFormDrawer({ cohort, saving, onClose, onSave }) {
       if (node) node.focus();
       return;
     }
-    onSave(form);
+    onSave(form, { importBank });
   };
 
   const exam = form.mode === 'exam';
@@ -139,6 +155,17 @@ export default function CohortFormDrawer({ cohort, saving, onClose, onSave }) {
             <TextField id="cohort-documentationUrl" type="url" inputMode="url" label="Documentation URL" placeholder="https://example.com/docs" value={form.documentationUrl} onChange={text('documentationUrl')} />
           </div>
         </section>
+
+        {/* Only a new cohort can be filled from a bank; an existing one imports from its own page */}
+        {!editing ? (
+          <section className="cmf-section" aria-labelledby="cohort-content">
+            <h3 className="cmf-section__title" id="cohort-content">
+              Content
+            </h3>
+            <p className="ui-field__hint">Optional. Import a bank from the bank library: its name and description fill the title and description above, and each of its topics becomes a module with its questions. The questions are copied in the background after the cohort is created.</p>
+            <BankChoice value={importBank} onChange={chooseBank} disabled={saving} />
+          </section>
+        ) : null}
 
         <section className="cmf-section" aria-labelledby="cohort-visibility">
           <h3 className="cmf-section__title" id="cohort-visibility">

@@ -30,6 +30,21 @@
   scroll-snap-type: x proximity;
 }
 
+/* The row has no scrollbar at all: the previous and next buttons, a swipe, a trackpad or Shift and
+   the wheel move it, and the next card peeking in says there is more. The selector is doubled so it
+   also wins over the page-wide bars (autoHideScrollbars.css draws one on every scroll area). */
+.srow .srow__track {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.srow .srow__track::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Every item is the same width and, being a flex item of a row, the same height */
 .srow__track > * {
   display: flex;

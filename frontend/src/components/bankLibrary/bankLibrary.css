@@ -1,0 +1,257 @@
+/*
+ * Bank library (page/, forms/)
+ *
+ * Plain CSS on the design tokens (--ds-*), in both themes, on top of the shared kit
+ * (components/ui/ui.css). The three levels (banks, topics, questions) are the same list of rows in
+ * one flat card; the picker has its own file (picker/picker.css). design/screens.md sections 8, 16
+ * and 17.
+ */
+
+.bl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap, 16px);
+}
+
+/* ---- The fixed top ---------------------------------------------------------------------------------------------
+ *
+ * The breadcrumb, the heading with its actions, and the search and filters stay in place while the
+ * list scrolls under them. <main> is the scroller: App.jsx makes the shell exactly as tall as the
+ * window on this route (isFixedTopPage), and <main> keeps 64px of padding for the fixed navbar, which
+ * a sticky element counts, so top is 0 and the block parks right under the navbar. Same recipe as the
+ * cohort list (cohorts/student/list/cohorts.css).
+ *
+ * It has the canvas colour so rows slide under it cleanly, and reaches the page's side padding so
+ * nothing shows at its edges. While it is stuck a hairline marks its lower edge (hooks/useStuck
+ * watches the marker). Sticky headers sit at z-index 10 (DESIGN.md). */
+
+.bl-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.bl-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0 calc(var(--ui-pad) * -1);
+  padding: 8px var(--ui-pad) 12px;
+  border-bottom: 1px solid transparent;
+  background-color: var(--ds-canvas);
+}
+
+.bl-top[data-stuck='true'] {
+  border-bottom-color: var(--ds-line);
+}
+
+.bl-top .ui-page-header {
+  margin: 0 0 12px;
+}
+
+.bl-top .ui-page-header__description {
+  max-width: 60ch;
+}
+
+.bl-top .bl-crumbs {
+  margin: 0 0 8px;
+}
+
+/* The page header is the last thing in the block on the bank level, which has no search */
+.bl-top > :last-child {
+  margin-bottom: 0;
+}
+
+/* A phone has little height to give: the caption goes, the title and the controls stay */
+@media (max-width: 599.95px) {
+  .bl-top .ui-page-header__description {
+    display: none;
+  }
+}
+
+/* The search and the filter on one line: the search takes what is left (up to 420px), the filter keeps its size at the right end */
+@media (min-width: 600px) {
+  .bl-top .ui-toolbar {
+    flex-wrap: nowrap;
+  }
+
+  .bl-top .ui-toolbar__grow {
+    flex: 0 1 420px;
+  }
+
+  .bl-top .ui-toolbar > :not(.ui-toolbar__grow) {
+    flex: none;
+  }
+
+  .bl-top .ui-toolbar__grow + * {
+    margin-left: auto;
+  }
+}
+
+.bl-status {
+  margin: 0;
+}
+
+/* ---- Where you are ------------------------------------------------------------------------------------------ */
+
+.bl-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--ds-type-body-sm);
+}
+
+.bl-crumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bl-crumbs a {
+  color: var(--ds-accent-text);
+  text-decoration: none;
+}
+
+.bl-crumbs a:hover {
+  color: var(--ds-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.bl-crumbs a:focus-visible {
+  border-radius: var(--ds-radius-xs);
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 2px;
+}
+
+.bl-crumbs [aria-current='page'] {
+  color: var(--ds-muted);
+  overflow-wrap: anywhere;
+}
+
+.bl-crumbs__sep {
+  color: var(--ds-subtle);
+}
+
+/* ---- The list ------------------------------------------------------------------------------------------------- */
+
+.bl-card {
+  overflow: visible;
+}
+
+.bl-rows {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.bl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 0 8px 0 0;
+  border-radius: var(--ds-radius-md);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.bl-row + .bl-row {
+  margin-top: 2px;
+}
+
+.bl-row:hover,
+.bl-row:focus-within {
+  background-color: var(--ds-raised);
+}
+
+.bl-row__main {
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 64px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background: none;
+  color: var(--ds-text);
+  text-align: left;
+  cursor: pointer;
+  justify-content: center;
+}
+
+.bl-row__main[data-static='true'] {
+  cursor: default;
+}
+
+.bl-row__main:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-focus);
+}
+
+.bl-row__title {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.bl-row__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.bl-row__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-row__side {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 0 0 0 16px;
+}
+
+/* On a phone the badges and the menu sit under the text, so the title keeps the whole width */
+@media (max-width: 599.95px) {
+  .bl-row {
+    flex-wrap: wrap;
+    padding: 0 8px 8px;
+  }
+
+  .bl-row__main {
+    flex-basis: 100%;
+  }
+
+  .bl-row__side {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0 8px;
+  }
+}
+
+/* ---- Forms ------------------------------------------------------------------------------------------------------ */
+
+.bl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}

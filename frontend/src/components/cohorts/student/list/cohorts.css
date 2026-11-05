@@ -9,7 +9,7 @@
 /* ---- Sticky top: the heading, the search and the filters stay in place while the list scrolls ------
  *
  * For this to work <main> has to be the element that scrolls: App.jsx makes the shell exactly as tall
- * as the window on this route (isCohortListPage). <main> keeps 64px of padding at its top for the
+ * as the window on this route (isFixedTopPage). <main> keeps 64px of padding at its top for the
  * fixed navbar and a sticky element counts that padding (measured in Chrome: top 0 lands 64px down),
  * so top is 0 and the block parks right under the navbar.
  *

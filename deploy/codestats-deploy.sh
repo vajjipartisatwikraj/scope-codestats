@@ -42,8 +42,8 @@ set -Eeuo pipefail
 # Settings. Change these, or override any of them from the command line, e.g.
 #   DOMAIN=example.com ./codestats-deploy.sh
 # -----------------------------------------------------------------------------
-SERVER_IP="${SERVER_IP:-18.60.93.102}"
-DOMAIN="${DOMAIN:-satwikraj.tech}"
+SERVER_IP="${SERVER_IP:-16.112.172.65}"
+DOMAIN="${DOMAIN:-codestats.thehouseofabundance.org}"
 REPO_URL="${REPO_URL:-https://github.com/vajjipartisatwikraj/scope-codestats.git}"
 RELEASE_BRANCH="${RELEASE_BRANCH:-version-4.0.0}"
 GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-216142909688-8en3rcpij9aak9tccckram3jf6b2r8ti.apps.googleusercontent.com}"
@@ -78,6 +78,14 @@ MAIL_PORT="${MAIL_PORT:-465}"
 MAIL_USER="${MAIL_USER:-}"
 MAIL_PASS="${MAIL_PASS:-}"
 MAIL_TO="${MAIL_TO:-}"
+
+# Bank library (questions kept in an S3 bucket). Leave the keys empty on EC2 and give the instance
+# an IAM role instead. An empty bucket switches the library off.
+BANK_LIBRARY_S3_BUCKET="${BANK_LIBRARY_S3_BUCKET:-}"
+BANK_LIBRARY_S3_REGION="${BANK_LIBRARY_S3_REGION:-ap-south-1}"
+BANK_LIBRARY_S3_ACCESS_KEY_ID="${BANK_LIBRARY_S3_ACCESS_KEY_ID:-}"
+BANK_LIBRARY_S3_SECRET_ACCESS_KEY="${BANK_LIBRARY_S3_SECRET_ACCESS_KEY:-}"
+BANK_LIBRARY_S3_PREFIX="${BANK_LIBRARY_S3_PREFIX:-}"
 
 # Things you normally leave alone. The deploy workflow expects PROJECT_DIR and WEB_ROOT.
 PROJECT_DIR="${PROJECT_DIR:-$HOME/scope-cohorts}"
@@ -596,6 +604,13 @@ write_backend_env() {
     env_optional MAIL_USER "$MAIL_USER"
     env_optional MAIL_PASS "$MAIL_PASS"
     env_optional MAIL_TO "$MAIL_TO"
+    echo
+    echo "# Bank library: banks of questions in S3 (leave the keys empty to use the instance's IAM role)"
+    env_optional BANK_LIBRARY_S3_BUCKET "$BANK_LIBRARY_S3_BUCKET"
+    env_optional BANK_LIBRARY_S3_REGION "$BANK_LIBRARY_S3_REGION"
+    env_optional BANK_LIBRARY_S3_ACCESS_KEY_ID "$BANK_LIBRARY_S3_ACCESS_KEY_ID"
+    env_optional BANK_LIBRARY_S3_SECRET_ACCESS_KEY "$BANK_LIBRARY_S3_SECRET_ACCESS_KEY"
+    env_optional BANK_LIBRARY_S3_PREFIX "$BANK_LIBRARY_S3_PREFIX"
   } >"$1"
   chmod 600 "$1"
 }

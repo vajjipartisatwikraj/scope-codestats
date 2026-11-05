@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 import { Button, Drawer, PillTabs, Prose, TextField } from '../../../../ui';
+import { useAuth } from '../../../../../contexts/AuthContext';
+import { getTopic } from '../../../../bankLibrary/api/bankLibraryApi';
+import { applyAutofill, apiMessage } from '../../../../bankLibrary/model/bankLibrary';
+import TopicChoice from '../../../../bankLibrary/picker/TopicChoice';
 import { MODULE_FIELD_ORDER, emptyModuleForm, moduleFormFrom, validateModule } from '../model/staffContent';
 import './dialogs.css';
 
@@ -29,13 +34,43 @@ const NOTES_EXAMPLE = `<h2>Module overview</h2>
  *   module     the module to edit; null to create one
  *   order      the position a new module starts at (the number of modules now)
  *   saving     a save is in progress
- *   onClose(), onSave(form)   onSave is called once the form passes its checks
+ *   onClose(), onSave(form, { importTopic })   onSave is called once the form passes its checks.
+ *               importTopic is the library topic chosen for a new module (null for none): the form
+ *               is filled from it, and the page imports its questions once the module exists.
  */
 export default function ModuleDrawer({ module, order, saving, onClose, onSave }) {
+  const { token } = useAuth();
   const editing = Boolean(module);
   const [form, setForm] = useState(() => (module ? moduleFormFrom(module) : emptyModuleForm(order)));
   const [errors, setErrors] = useState({});
   const [view, setView] = useState('edit');
+  const [importTopic, setImportTopic] = useState(null);
+  const [readingTopic, setReadingTopic] = useState(false);
+  const filledFromTopic = useRef({}); // what choosing a topic last put in the form
+
+  // A topic brings its name, description, video and notes. They go into the module's fields unless
+  // the person has written their own there; choosing another topic replaces the ones it filled.
+  const chooseTopic = async (topic) => {
+    setImportTopic(topic);
+    if (!topic) return;
+    setReadingTopic(true);
+    try {
+      const full = await getTopic(token, topic.bankId, topic.topicId);
+      const { form: next, filled } = applyAutofill(form, filledFromTopic.current, {
+        title: full.name,
+        description: full.description || full.name,
+        videoResource: full.videoResource,
+        documentationUrl: full.documentationUrl,
+      });
+      filledFromTopic.current = filled;
+      setForm(next);
+      setErrors({});
+    } catch (error) {
+      toast.error(apiMessage(error, 'Could not read the topic. Its questions will still be imported.'));
+    } finally {
+      setReadingTopic(false);
+    }
+  };
 
   const text = (field) => (event) => {
     setForm((previous) => ({ ...previous, [field]: event.target.value }));
@@ -54,7 +89,7 @@ export default function ModuleDrawer({ module, order, saving, onClose, onSave })
     }
     // An empty order field means the start of the list, not "not a number"
     const parsed = parseInt(form.order, 10);
-    onSave({ ...form, order: Number.isNaN(parsed) ? 0 : parsed });
+    onSave({ ...form, order: Number.isNaN(parsed) ? 0 : parsed }, { importTopic });
   };
 
   return (
@@ -77,6 +112,17 @@ export default function ModuleDrawer({ module, order, saving, onClose, onSave })
       }
     >
       <form id={FORM_ID} className="cad-form" onSubmit={submit} noValidate>
+        {/* Only a new module can start from a library topic */}
+        {!editing ? (
+          <section className="cad-form__section" aria-labelledby="module-library">
+            <h3 className="cad-form__title" id="module-library">
+              From the bank library
+            </h3>
+            <p className="cad-form__hint">Optional. A topic fills the title, description, video and notes below, and its questions are imported into the module once it is created.</p>
+            <TopicChoice value={importTopic} onChange={chooseTopic} disabled={saving} loading={readingTopic} />
+          </section>
+        ) : null}
+
         <section className="cad-form__section" aria-labelledby="module-basics">
           <h3 className="cad-form__title" id="module-basics">
             Basics

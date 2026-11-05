@@ -1,10 +1,16 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowLeft';
 import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
 import { Button, Card, EmptyState, Skeleton } from '../../../ui';
 import { useAuth } from '../../../../contexts/AuthContext';
 import ExamBanner from '../../student/detail/shared/ExamBanner';
+import ImportBanner from '../../../bankLibrary/picker/ImportBanner';
+import ImportDrawer from '../../../bankLibrary/picker/ImportDrawer';
+import useCohortImports from '../../../bankLibrary/hooks/useCohortImports';
+import { startImport } from '../../../bankLibrary/api/bankLibraryApi';
+import { apiMessage, jobSummary } from '../../../bankLibrary/model/bankLibrary';
 import ModuleNotes from '../../student/detail/questions/ModuleNotes';
 import useModuleQuestions from '../../student/detail/hooks/useModuleQuestions';
 import useModuleSelection from '../../student/detail/hooks/useModuleSelection';
@@ -62,6 +68,11 @@ function PageSkeleton() {
  * confirm it (hooks/useSharedConfirm, dialogs/SharedContentDialog). Admins edit; teachers publish,
  * look at progress and issues, view questions and export them.
  *
+ * Admins and teachers can import content from the bank library (components/bankLibrary): a whole
+ * bank as new modules (the button in the module list) or topics and single questions into the open
+ * module (Import in the questions header). An import runs on the server in the background; a strip at
+ * the top shows it while it runs, and the module list and questions reload when it finishes.
+ *
  * Still on Material UI, loaded only when opened: the question form, the bulk upload and the progress
  * table. The folder is organised by job: sidebar/, questions/, dialogs/, hooks/ (data and actions),
  * api/ (every request) and model/ (rules, no React).
@@ -69,12 +80,22 @@ function PageSkeleton() {
 export default function CohortAdminPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const isAdmin = user?.userType === 'admin';
 
   const { cohort, modules, loading, reload } = useStaffCohort(id);
   const { selected, selectModule, panel, setPanel, showPanel, view, setView } = useModuleSelection(modules);
   const questions = useModuleQuestions(id, selected);
+  const imports = useCohortImports(id, {
+    onSettled: (job) => {
+      if (job.status === 'done') toast.success(`Import finished: ${jobSummary(job)}`);
+      else if (job.status === 'cancelled') toast.info('The import was cancelled');
+      else toast.warn(`The import stopped: ${jobSummary(job)}`);
+      // The modules and questions it brought in
+      reload();
+      questions.reload();
+    },
+  });
   const shared = useSharedConfirm();
   const actions = useStaffActions({ id, cohort, shared, reload, reloadQuestions: questions.reload });
 
@@ -82,16 +103,41 @@ export default function CohortAdminPage() {
   const [savingModule, setSavingModule] = useState(false);
   const [questionSheet, setQuestionSheet] = useState(null); // { module, question, form } while open
   const [uploadModule, setUploadModule] = useState(null); // the module receiving a JSON upload
+  const [importDrawer, setImportDrawer] = useState(null); // { nonce, module, view } while open; a null module imports whole topics as new modules
+  const [dismissedImport, setDismissedImport] = useState('');
 
   if (loading || !cohort) return <PageSkeleton />;
 
+  const openImport = (module = null, view = 'pick') => setImportDrawer({ nonce: Date.now(), module, view });
+
+  const retryImport = async () => {
+    try {
+      await imports.retry();
+    } catch (error) {
+      toast.error(apiMessage(error, 'Could not retry the import'));
+    }
+  };
+
   const openModuleDrawer = (module = null) => setModuleDrawer({ nonce: Date.now(), module });
 
-  const saveModule = async (form) => {
+  const saveModule = async (form, extras) => {
     setSavingModule(true);
-    const ok = await actions.saveModule(form, moduleDrawer.module);
+    const saved = await actions.saveModule(form, moduleDrawer.module);
     setSavingModule(false);
-    if (ok) setModuleDrawer(null);
+    if (!saved) return;
+    setModuleDrawer(null);
+
+    // A new module made from a library topic: its questions come in as a background import
+    const topic = extras?.importTopic;
+    if (topic && saved._id) {
+      try {
+        const job = await startImport(token, { cohortId: id, bankId: topic.bankId, topicIds: [topic.topicId], moduleId: saved._id });
+        imports.adopt(job);
+        toast.info(`Importing the questions of ${topic.topicName} in the background`);
+      } catch (error) {
+        toast.error(`The module was created, but its questions were not imported. ${apiMessage(error, 'Use Import in the module to try again.')}`);
+      }
+    }
   };
 
   const addQuestion = () => setQuestionSheet({ module: selected, question: null, form: emptyQuestionForm() });
@@ -148,6 +194,7 @@ export default function CohortAdminPage() {
         onBack={() => setView('modules')}
         onAdd={addQuestion}
         onUpload={() => setUploadModule(selected)}
+        onImport={() => openImport(selected)}
         onExport={() => actions.exportModule(selected)}
         onIssues={() => navigate(`/cohorts/${selected.cohort || id}/reports`)}
         onEdit={editQuestion}
@@ -164,6 +211,15 @@ export default function CohortAdminPage() {
         </div>
       ) : null}
 
+      <ImportBanner
+        className="cdp-banner"
+        job={imports.latest}
+        dismissed={dismissedImport}
+        onView={() => openImport(null, 'progress')}
+        onRetry={retryImport}
+        onDismiss={(job) => setDismissedImport(`${job.id}:${job.status}`)}
+      />
+
       <div className="cdp-grid">
         <aside className="cdp-left" aria-label="Cohort and modules">
           <StaffSidebar
@@ -176,6 +232,8 @@ export default function CohortAdminPage() {
             selectedId={panel === 'questions' || panel === 'notes' ? selected?._id : undefined}
             onSelect={selectModule}
             canEdit={isAdmin}
+            canImport
+            onImport={() => openImport(null)}
             onAdd={() => openModuleDrawer()}
             onEdit={openModuleDrawer}
             onDelete={actions.removeModule}
@@ -196,6 +254,8 @@ export default function CohortAdminPage() {
 
       <QuestionSheet state={questionSheet} saving={actions.busy} cohortId={id} onClose={() => setQuestionSheet(null)} onSave={saveQuestion} onBulkUpload={uploadFromForm} />
       <BulkUploadSheet module={uploadModule} uploading={actions.busy} onClose={() => setUploadModule(null)} onUpload={upload} />
+
+      {importDrawer ? <ImportDrawer key={importDrawer.nonce} cohortId={id} module={importDrawer.module} imports={imports} initialView={importDrawer.view} onClose={() => setImportDrawer(null)} /> : null}
 
       <SharedContentDialog dialog={shared.dialog} />
     </div>

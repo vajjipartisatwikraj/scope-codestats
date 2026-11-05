@@ -27,3 +27,11 @@
 .cdq-head__actions {
   justify-content: flex-end;
 }
+
+/* The buttons of an empty list: side by side, wrapping on a narrow card */
+.cad-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}

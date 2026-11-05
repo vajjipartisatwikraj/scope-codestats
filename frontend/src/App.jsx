@@ -58,6 +58,7 @@ import ManageUsers from "./components/manageUsers";
 import UserGroups from "./components/userGroupManagement";
 import TeacherRequests from "./components/teacherRequests";
 import AccessList from "./components/accessList";
+import BankLibrary from "./components/bankLibrary";
 import TeacherAccess from "./components/TeacherAccess";
 import AcademicYearConfigAdmin from "./components/academicYearConfig";
 import PublicProfile, { PublicProfileRedirect } from "./components/publicProfile";
@@ -243,7 +244,11 @@ const MainContent = () => {
   // min-height 100vh, <main> grows to fit its content and the window scrolls instead, so nothing
   // could stick. A shell exactly as tall as the window makes <main> the scroller. This page has no
   // footer, so nothing is lost below it. dvh keeps the last card clear of a phone's browser bars.
-  const isCohortListPage = location.pathname === "/cohorts" || location.pathname === "/admin/cohorts";
+  // The bank library (all three levels) fixes its heading and search the same way.
+  const isFixedTopPage =
+    location.pathname === "/cohorts" ||
+    location.pathname === "/admin/cohorts" ||
+    location.pathname.startsWith("/admin/bank-library");
 
   // Check if current path should not show footer
   const isNoFooterPage =
@@ -254,6 +259,7 @@ const MainContent = () => {
     // The student dashboard is one screen that fits the window; a footer below it would make it scroll
     location.pathname === "/dashboard" ||
     isCohortPage || // All cohort pages (list, detail, admin)
+    location.pathname.startsWith("/admin/bank-library") || // a window-high page: only its list scrolls
     isTestPage;
 
   // List of valid routes (excluding dynamic routes)
@@ -286,6 +292,7 @@ const MainContent = () => {
     "/admin/user-groups",
     "/admin/teacher-requests",
     "/admin/access-list",
+    "/admin/bank-library",
     "/practice-arena",
     "/cohorts",
     "/admin/practice-arena",
@@ -300,6 +307,7 @@ const MainContent = () => {
     !location.pathname.startsWith("/notifications/") &&
     !location.pathname.startsWith("/cohorts/") &&
     !location.pathname.startsWith("/admin/cohorts/") &&
+    !location.pathname.startsWith("/admin/bank-library/") &&
     !location.pathname.startsWith("/practice-arena/") &&
     !location.pathname.startsWith("/speech-tests/") &&
     !location.pathname.startsWith("/admin/communication-tests/") &&
@@ -378,7 +386,7 @@ const MainContent = () => {
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
-          ...(isCohortListPage && { height: "100vh", "@supports (height: 100dvh)": { height: "100dvh" } }),
+          ...(isFixedTopPage && { height: "100vh", "@supports (height: 100dvh)": { height: "100dvh" } }),
           backgroundColor: "transparent", // Allow theme background to show through for Liquid Glass UI
         }}
       >
@@ -702,6 +710,32 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true} strictAdmin={true}>
                       <AccessList />
+                    </PrivateRoute>
+                  }
+                />
+                {/* Banks of questions kept in S3 (bank > topic > question). Admins manage them here;
+                    teachers import from them inside a cohort. */}
+                <Route
+                  path="/admin/bank-library"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <BankLibrary />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/bank-library/:bankId"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <BankLibrary />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/bank-library/:bankId/:topicId"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <BankLibrary />
                     </PrivateRoute>
                   }
                 />

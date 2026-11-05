@@ -289,6 +289,23 @@ const questionSchema = new mongoose.Schema({
     },
   },
 
+  // Where the question came from when it was imported from the bank library (a copy, not a link:
+  // later edits in the library do not reach it). The import uses it to leave out a question that is
+  // already in the module. Never sent to students, so it is hidden unless asked for.
+  importedFrom: {
+    type: new mongoose.Schema(
+      {
+        bankId: String,
+        topicId: String,
+        questionId: String,
+        job: mongoose.Schema.Types.ObjectId,
+      },
+      { _id: false }
+    ),
+    default: undefined,
+    select: false,
+  },
+
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -303,6 +320,9 @@ const questionSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+// "Is this library question already in this module?" (bank library import)
+questionSchema.index({ module: 1, "importedFrom.questionId": 1 }, { sparse: true });
 
 // ✅ SQL VALIDATION: a SQL question is only usable if it points at a published
 // SQLJudge question, since that is where its testcases and expected output live.

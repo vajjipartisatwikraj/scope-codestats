@@ -70,7 +70,8 @@ export default function useStaffActions({ id, cohort, shared, reload, reloadQues
         if (!result) return false;
         toast.success(module ? `Module updated across ${count(result)} cohort(s)` : `Module created and added to ${count(result)} cohort(s)`);
         await reload();
-        return true;
+        // A new module comes back so the page can fill it (bank library import); an edit is just true
+        return result.module || true;
       }),
     [working, token, id, shared, reload]
   );

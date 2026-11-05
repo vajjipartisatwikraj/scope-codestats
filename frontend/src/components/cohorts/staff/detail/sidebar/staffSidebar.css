@@ -40,3 +40,11 @@
 .cad-module__row[data-active='true'] {
   padding-right: 96px;
 }
+
+/* The buttons of an empty list: side by side, wrapping on a narrow card */
+.cad-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}

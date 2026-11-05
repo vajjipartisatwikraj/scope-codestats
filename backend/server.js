@@ -277,6 +277,14 @@ mongoose.connection.once("open", async () => {
   } catch (error) {
     logger.error("SPEECH-SWEEPER", error, { note: "failed to start" });
   }
+
+  // A bank library import that was running when the server stopped can never finish by itself.
+  // Close it as "interrupted" so the cohort page offers Retry instead of showing it as running.
+  try {
+    await require("./services/bankLibrary/importService").recoverInterrupted();
+  } catch (error) {
+    logger.error("BANK-LIBRARY", error, { note: "failed to close interrupted imports" });
+  }
 });
 
 // Initialize Web Push
@@ -398,6 +406,7 @@ app.use("/api/compiler", compilerRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/dashboard", require("./routes/heatmap")); // activity heatmap
 app.use("/api/search", require("./routes/search"));
+app.use("/api/bank-library", require("./routes/bankLibrary")); // banks of questions in S3, and importing them into cohorts
 
 // NOTE: the CodeChef/LeetCode test routes and /api/profiles/verify were removed.
 // Platform fetching now lives in services/platformScraper and is only reachable

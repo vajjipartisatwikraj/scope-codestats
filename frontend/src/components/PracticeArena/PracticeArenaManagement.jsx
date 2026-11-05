@@ -53,6 +53,7 @@ import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import FolderIcon from "@mui/icons-material/Folder";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import DownloadIcon from "@mui/icons-material/Download";
 import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 import { apiUrl } from "../../config/apiConfig";
@@ -116,6 +117,7 @@ const PracticeArenaManagement = () => {
   // State for view mode
   const [viewMode, setViewMode] = useState("cards"); // 'list' or 'cards' - default to cards
   const [questionBankStats, setQuestionBankStats] = useState([]);
+  const [downloadingBank, setDownloadingBank] = useState(null); // name of the bank being zipped
   const [loadingBankStats, setLoadingBankStats] = useState(false);
 
   // State for question banks management dialog
@@ -323,6 +325,47 @@ const PracticeArenaManagement = () => {
   const handleAddQuestion = () => {
     setEditingQuestion(null);
     setFormOpen(true);
+  };
+
+  // Downloads every question of a bank as JSON files in one zip (the server builds the zip)
+  const handleDownloadBank = async (bankName) => {
+    setDownloadingBank(bankName);
+    try {
+      const response = await axios.get(
+        `${apiUrl}/practice-arena/question-banks/export`,
+        {
+          params: { bank: bankName },
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+          timeout: 120000,
+        }
+      );
+      const fileName = `${bankName.replace(/[^a-zA-Z0-9._ -]+/g, "_").trim().slice(0, 80) || "question-bank"}.zip`;
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: "application/zip" })
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`${bankName} downloaded`);
+    } catch (error) {
+      console.error("Error downloading question bank:", error);
+      // A failed download comes back as a blob, so the message has to be read out of it
+      let message = "Failed to download the question bank";
+      try {
+        const text = await error.response?.data?.text?.();
+        if (text) message = JSON.parse(text).message || message;
+      } catch (parseError) {
+        // keep the general message
+      }
+      toast.error(message);
+    } finally {
+      setDownloadingBank(null);
+    }
   };
 
   const handleOpenBanksDialog = async () => {
@@ -1460,6 +1503,27 @@ const PracticeArenaManagement = () => {
                                 {bank.totalQuestions !== 1 ? "s" : ""}
                               </Typography>
                             </Box>
+                            {/* Download the whole bank as JSON files in a zip */}
+                            <Tooltip title="Download bank (zip of JSON files)">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  aria-label={`Download ${bank.name} as a zip`}
+                                  disabled={downloadingBank === bank.name}
+                                  onClick={(event) => {
+                                    event.stopPropagation(); // the card itself opens the bank
+                                    handleDownloadBank(bank.name);
+                                  }}
+                                  sx={{ ml: 1, flexShrink: 0 }}
+                                >
+                                  {downloadingBank === bank.name ? (
+                                    <CircularProgress size={20} />
+                                  ) : (
+                                    <DownloadIcon />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                           </Box>
 
                           {/* Difficulty Stats */}
@@ -2084,6 +2148,25 @@ const PracticeArenaManagement = () => {
                           />
                         </TableCell>
                         <TableCell align="center">
+                          <Tooltip title="Download bank (zip of JSON files)">
+                            <span>
+                              <IconButton
+                                size="small"
+                                aria-label={`Download ${bank.name} as a zip`}
+                                disabled={
+                                  bank.questionCount === 0 ||
+                                  downloadingBank === bank.name
+                                }
+                                onClick={() => handleDownloadBank(bank.name)}
+                              >
+                                {downloadingBank === bank.name ? (
+                                  <CircularProgress size={20} />
+                                ) : (
+                                  <DownloadIcon />
+                                )}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
                           <Tooltip
                             title={bank.isVisible ? "Hide Bank" : "Show Bank"}
                           >

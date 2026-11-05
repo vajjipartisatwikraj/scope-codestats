@@ -307,31 +307,50 @@ function mongooseIssues(error) {
     .map((path) => issue(path, error.errors[path].message));
 }
 
+/**
+ * Every problem with one question, and the Question document it would become (not saved). The one
+ * place that decides whether a question is valid: the bulk upload and the bank library both use it.
+ */
+async function checkQuestion(question, { moduleId, createdBy }) {
+  const commonIssues = validateCommonFields(question);
+  const typeIssues = question?.type === "mcq"
+    ? validateMcq(question)
+    : question?.type === "programming"
+      ? validateProgramming(question)
+      : [];
+  const issues = [...commonIssues, ...typeIssues];
+
+  // Always exercise the model's complete validation for this item as part of
+  // preflight, even when explicit domain checks have already found issues.
+  const document = new Question(mapQuestion(question, moduleId, createdBy));
+  try {
+    await document.validate();
+  } catch (error) {
+    for (const modelIssue of mongooseIssues(error)) {
+      if (!issues.some((existing) => existing.path === modelIssue.path && existing.message === modelIssue.message)) {
+        issues.push(modelIssue);
+      }
+    }
+  }
+  return { issues, document };
+}
+
+/**
+ * A question reduced to the fields a cohort question has (no module, author or statistics): the
+ * shape kept in the bank library and the one the cohort export produces.
+ */
+function toPortableQuestion(question) {
+  // eslint-disable-next-line no-unused-vars
+  const { module, createdBy, stats, ...portable } = mapQuestion(question);
+  return JSON.parse(JSON.stringify(portable)); // drops the undefined fields
+}
+
 async function prepareBulkQuestionUpload(payload, { moduleId, createdBy }) {
   const items = normalizePayload(payload);
   const documents = [];
 
   for (const item of items) {
-    const commonIssues = validateCommonFields(item.question);
-    const typeIssues = item.question?.type === "mcq"
-      ? validateMcq(item.question)
-      : item.question?.type === "programming"
-        ? validateProgramming(item.question)
-        : [];
-    const issues = [...commonIssues, ...typeIssues];
-
-    // Always exercise the model's complete validation for this item as part of
-    // preflight, even when explicit domain checks have already found issues.
-    const document = new Question(mapQuestion(item.question, moduleId, createdBy));
-    try {
-      await document.validate();
-    } catch (error) {
-      for (const modelIssue of mongooseIssues(error)) {
-        if (!issues.some((existing) => existing.path === modelIssue.path && existing.message === modelIssue.message)) {
-          issues.push(modelIssue);
-        }
-      }
-    }
+    const { issues, document } = await checkQuestion(item.question, { moduleId, createdBy });
     if (issues.length > 0) throw validationError(item, issues);
     documents.push(document);
   }
@@ -488,4 +507,6 @@ module.exports = {
   TransactionsUnavailableError,
   prepareBulkQuestionUpload,
   persistBulkQuestions,
+  checkQuestion,
+  toPortableQuestion,
 };

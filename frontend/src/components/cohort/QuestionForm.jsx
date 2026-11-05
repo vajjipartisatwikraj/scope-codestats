@@ -33,7 +33,10 @@ import {
   validateSqlTestcases,
   toSqlErrorMessage,
 } from "../../services/sqlQuestionApi";
+import QuestionImportTab from "../bankLibrary/picker/QuestionImportTab";
 
+// libraryImport: show the Import tab (fill the form from a question of the bank library). It is
+// only offered for a new question; the bank library's own editor switches it off.
 const QuestionForm = ({
   initialData,
   onSave,
@@ -43,6 +46,7 @@ const QuestionForm = ({
   isEdit = false,
   onBulkUpload,
   bulkUploading = false,
+  libraryImport = true,
 }) => {
   // Main state
   const [activeTab, setActiveTab] = useState(0);
@@ -173,17 +177,18 @@ const QuestionForm = ({
     (event, newValue) => {
       // SQL and MCQ share the same tab count: they have no Test Cases tab and
       // no bulk upload, so their last index is 5.
+      // The Import tab (bank library) comes after Search Questions and before Bulk Upload.
+      const showImport = !isEdit && libraryImport;
+      const searchIndex = formData.type === "programming" ? 6 : 5;
       const maxTabIndex =
-        formData.type === "programming"
-          ? !isEdit && onBulkUpload
-            ? 7
-            : 6
-          : 5;
+        searchIndex +
+        (showImport ? 1 : 0) +
+        (formData.type === "programming" && !isEdit && onBulkUpload ? 1 : 0);
       if (newValue <= maxTabIndex) {
         setActiveTab(newValue);
       }
     },
-    [formData.type, isEdit, onBulkUpload]
+    [formData.type, isEdit, onBulkUpload, libraryImport]
   );
 
   /** Keeps the SQL authoring block in form state and invalidates stale results. */
@@ -1009,9 +1014,29 @@ const QuestionForm = ({
     }
   }, [formData]);
 
+  // Tabs after Search Questions, in this order: Import (new questions), Bulk Upload (new programming questions)
+  const searchTabIndex = formData.type === "programming" ? 6 : 5;
+  const importTabIndex = !isEdit && libraryImport ? searchTabIndex + 1 : -1;
   const bulkUploadTabIndex =
-    formData.type === "programming" && !isEdit && onBulkUpload ? 7 : -1;
+    formData.type === "programming" && !isEdit && onBulkUpload
+      ? searchTabIndex + (importTabIndex >= 0 ? 2 : 1)
+      : -1;
   const isBulkUploadActive = activeTab === bulkUploadTabIndex;
+
+  // A question picked in the Import tab fills the form the same way an uploaded JSON file does
+  const handleLibraryImport = (questionData) => {
+    const { formData: updatedFormData, error } = buildFormDataFromQuestionJson(
+      questionData,
+      moduleId
+    );
+    if (error) {
+      toast.error(`Invalid question format. ${error}.`);
+      return;
+    }
+    setFormData(updatedFormData);
+    toast.success("Question loaded from the bank library");
+    setActiveTab(0);
+  };
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%" }}>
@@ -1041,6 +1066,7 @@ const QuestionForm = ({
         <Tab label="Editorial" />
         <Tab label="Upload JSON" />
         <Tab label="Search Questions" />
+        {importTabIndex >= 0 && <Tab label="Import" />}
         {formData.type === "programming" && !isEdit && onBulkUpload && (
           <Tab label="Bulk Upload" />
         )}
@@ -1169,6 +1195,12 @@ const QuestionForm = ({
           onLoadQuestion={handleLoadQuestion}
         />
       </TabPanel>
+
+      {importTabIndex >= 0 && (
+        <TabPanel value={activeTab} index={importTabIndex}>
+          <QuestionImportTab onImport={handleLibraryImport} />
+        </TabPanel>
+      )}
 
       {bulkUploadTabIndex >= 0 && (
         <TabPanel value={activeTab} index={bulkUploadTabIndex}>

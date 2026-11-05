@@ -1,0 +1,454 @@
+/*
+ * Bank library picker (picker/BankPicker.jsx) and the import progress (picker/ImportProgress.jsx).
+ *
+ * Plain CSS on the design tokens (--ds-*), in both themes, on top of the shared kit (components/ui).
+ * It sits inside a drawer, a dialog or the question form, so it takes the colour of whatever is
+ * behind it: rows are on the `raised` role, the chosen row on `accent-soft`.
+ */
+
+.blp-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.blp-list,
+.blp-topics,
+.blp-questions,
+.blp-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blp-results {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.blp-group {
+  margin: 0 0 8px;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+.blp-note {
+  margin: 0;
+  padding: 8px 16px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- A bank, topic or question found by browsing or searching ------------------------------------------- */
+
+.blp-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.blp-pick:hover {
+  background-color: var(--ds-high);
+}
+
+.blp-pick:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.blp-pick__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.blp-pick__title {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blp-pick__meta {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Inside a bank ------------------------------------------------------------------------------------------ */
+
+.blp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.blp-head__text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.blp-head__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.blp-head__meta {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.blp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.blp-tools > :first-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.blp-tools__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.blp-topics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blp-topic {
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.blp-topic__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 56px;
+  padding: 4px 8px 4px 12px;
+}
+
+.blp-topic__row > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* A topic chosen with a radio button (one topic at a time) */
+.blp-radio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 8px;
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+}
+
+.blp-radio[data-checked='true'] .blp-topic__meta {
+  color: var(--ds-accent-text);
+}
+
+.blp-topic__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.blp-topic__title {
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.blp-topic__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.blp-topic__toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: transparent;
+  color: var(--ds-accent-text);
+  font: var(--ds-type-label);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.blp-topic__toggle:hover {
+  background-color: var(--ds-accent-soft);
+}
+
+.blp-topic__toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.blp-topic__toggle svg {
+  transition: transform var(--ds-duration-fast) var(--ds-ease);
+}
+
+.blp-topic[data-open='true'] .blp-topic__toggle svg {
+  transform: rotate(180deg);
+}
+
+/* ---- Questions of an opened topic ----------------------------------------------------------------------------- */
+
+.blp-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+}
+
+.blp-q {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.blp-q:hover {
+  background-color: var(--ds-high);
+}
+
+.blp-q[data-checked='true'] {
+  background-color: var(--ds-accent-soft);
+}
+
+.blp-q[data-disabled='true'] {
+  cursor: default;
+}
+
+.blp-q__input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ds-accent);
+}
+
+.blp-q__input:focus-visible {
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 2px;
+}
+
+.blp-q__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.blp-q__title {
+  font: var(--ds-type-body);
+  overflow-wrap: anywhere;
+}
+
+.blp-q__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.blp-q[data-checked='true'] .blp-q__meta {
+  color: var(--ds-accent-text);
+}
+
+/* ---- Import progress ------------------------------------------------------------------------------------------- */
+
+.blp-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.blp-progress__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.blp-progress__bank {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.blp-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.blp-count {
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.blp-count dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.blp-count dd {
+  margin: 2px 0 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.blp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blp-step-row {
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.blp-step-row__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.blp-step-row__name {
+  min-width: 0;
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.blp-step-row__meta {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.blp-failures {
+  margin: 8px 0 0;
+  padding: 0 0 0 20px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.blp-failures li + li {
+  margin-top: 2px;
+}
+
+@media (max-width: 479.95px) {
+  .blp-counts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- The bank chosen in the create cohort form ------------------------------------------------------------------ */
+
+.blp-chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+}
+
+.blp-chosen__text {
+  min-width: 0;
+}
+
+.blp-chosen__title {
+  margin: 0;
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+}
+
+.blp-chosen__meta {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* The picker inside the Material UI question form */
+.blp-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.blp-tab__intro {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.blp-tab__actions {
+  display: flex;
+  justify-content: flex-end;
+}

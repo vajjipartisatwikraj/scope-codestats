@@ -5,6 +5,7 @@ const PAQuestion = require("../models/PAQuestion");
 const PATest = require("../models/PATest");
 const PASubmission = require("../models/PASubmission");
 const QuestionBank = require("../models/QuestionBank");
+const archiver = require("archiver");
 const auth = require("../middleware/auth");
 const adminAuth = require("../middleware/adminAuth");
 const {
@@ -390,6 +391,83 @@ router.get("/question-banks", auth, adminAuth, async (req, res) => {
     res
       .status(500)
       .json({ message: "Error fetching question banks", error: error.message });
+  }
+});
+
+// ---- Download a question bank --------------------------------------------------------------------
+//
+// GET /question-banks/export?bank=<name>  (admin or teacher)
+// A zip with one folder, named after the bank, holding the bank's questions as JSON files of at most
+// 100 questions each ({ "questions": [ ... ] }, the shape the bulk upload reads). A question keeps
+// everything an author wrote, including its solutions and test cases; ids, the author, dates and the
+// submission statistics are left out.
+
+const EXPORT_QUESTIONS_PER_FILE = 100;
+
+/** The value without any "_id" key at any depth (sub-documents get one from Mongoose) */
+function withoutIds(value) {
+  if (Array.isArray(value)) return value.map(withoutIds);
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== "_id")
+        .map(([key, inner]) => [key, withoutIds(inner)])
+    );
+  }
+  return value;
+}
+
+/** A name that is safe as a folder and file name on every system */
+const safeFileName = (name) =>
+  String(name || "")
+    .replace(/[^a-zA-Z0-9._ -]+/g, "_")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80) || "question-bank";
+
+router.get("/question-banks/export", auth, adminAuth, async (req, res) => {
+  try {
+    const bank = String(req.query.bank || "").trim();
+    if (!bank) {
+      return res.status(400).json({ message: "Say which question bank to download" });
+    }
+
+    const questions = await PAQuestion.find({ questionBank: bank })
+      .sort({ createdAt: 1, _id: 1 })
+      .select("-__v -createdBy -createdAt -updatedAt -stats")
+      .lean();
+    if (questions.length === 0) {
+      return res.status(404).json({ message: "This question bank has no questions" });
+    }
+
+    const name = safeFileName(bank);
+    res.set({
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${name}.zip"`,
+      "Cache-Control": "no-store",
+    });
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.on("error", (error) => {
+      log.error("Error building the question bank zip:", error);
+      // Once the zip has started there is no way to send a status; closing the connection tells the browser it failed
+      if (res.headersSent) res.destroy(error);
+      else res.status(500).json({ message: "Could not build the zip" });
+    });
+    archive.pipe(res);
+
+    const parts = Math.ceil(questions.length / EXPORT_QUESTIONS_PER_FILE);
+    for (let part = 0; part < parts; part += 1) {
+      const slice = questions.slice(part * EXPORT_QUESTIONS_PER_FILE, (part + 1) * EXPORT_QUESTIONS_PER_FILE);
+      const file = `${name}_part-${String(part + 1).padStart(2, "0")}.json`;
+      archive.append(JSON.stringify({ questions: slice.map(withoutIds) }, null, 2), { name: `${name}/${file}` });
+    }
+    await archive.finalize();
+  } catch (error) {
+    log.error("Error exporting question bank:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Error downloading the question bank", error: error.message });
+    }
   }
 });
 

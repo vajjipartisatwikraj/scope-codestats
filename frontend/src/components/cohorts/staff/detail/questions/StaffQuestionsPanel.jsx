@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { BugIcon } from '@phosphor-icons/react/dist/csr/Bug';
+import { CloudArrowDownIcon } from '@phosphor-icons/react/dist/csr/CloudArrowDown';
 import { DownloadSimpleIcon } from '@phosphor-icons/react/dist/csr/DownloadSimple';
 import { FunnelXIcon } from '@phosphor-icons/react/dist/csr/FunnelX';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
@@ -20,16 +21,17 @@ const NO_FILTER = { search: '', difficulty: 'all' };
  * header (its name, description, Video and Notes) with the staff buttons beside them, a search and a
  * difficulty filter, and the questions as rows. The top stays in place and only the rows scroll.
  *
- * Staff buttons: Issues (reports on the questions) and Export for everyone; Upload JSON and Add
- * question for admins (teachers manage content elsewhere).
+ * Staff buttons: Issues (reports on the questions), Import (topics and questions from the bank
+ * library) and Export for everyone; Upload JSON and Add question for admins (teachers manage content
+ * elsewhere).
  *
  *   cohortId, module, questions   the open module and { questions, loading, error, reload } from useModuleQuestions
  *   isAdmin    the viewer is an admin (not a teacher)
  *   onNotes, onBack               as ModuleHeader
- *   onAdd(), onUpload(), onExport(), onIssues()
+ *   onAdd(), onUpload(), onImport(), onExport(), onIssues()
  *   onEdit(question), onDelete(question)
  */
-export default function StaffQuestionsPanel({ cohortId, module, questions: state, isAdmin, onNotes, onBack, onAdd, onUpload, onExport, onIssues, onEdit, onDelete }) {
+export default function StaffQuestionsPanel({ cohortId, module, questions: state, isAdmin, onNotes, onBack, onAdd, onUpload, onImport, onExport, onIssues, onEdit, onDelete }) {
   const { questions, loading, error, reload } = state;
   const [filters, setFilters] = useState(NO_FILTER);
   const visible = useMemo(() => filterStaffQuestions(questions, filters), [questions, filters]);
@@ -46,6 +48,9 @@ export default function StaffQuestionsPanel({ cohortId, module, questions: state
           Export
         </Button>
       ) : null}
+      <Button size="sm" startIcon={<CloudArrowDownIcon size={18} weight="regular" aria-hidden="true" />} onClick={onImport}>
+        Import
+      </Button>
       {isAdmin ? (
         <>
           <Button size="sm" startIcon={<UploadSimpleIcon size={18} weight="regular" aria-hidden="true" />} onClick={onUpload}>
@@ -82,13 +87,18 @@ export default function StaffQuestionsPanel({ cohortId, module, questions: state
         compact
         icon={<QuestionIcon size={28} weight="regular" />}
         title="No questions in this module"
-        text={isAdmin ? 'Add the first question, or upload several as JSON.' : 'No questions have been added to this module yet.'}
+        text={isAdmin ? 'Add the first question, upload several as JSON, or import a topic from the bank library.' : 'No questions have been added to this module yet. You can import a topic from the bank library.'}
         action={
-          isAdmin ? (
-            <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={onAdd}>
-              Add question
+          <div className="cad-empty-actions">
+            {isAdmin ? (
+              <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={onAdd}>
+                Add question
+              </Button>
+            ) : null}
+            <Button variant={isAdmin ? 'secondary' : 'primary'} startIcon={<CloudArrowDownIcon size={18} weight="regular" aria-hidden="true" />} onClick={onImport}>
+              Import from the library
             </Button>
-          ) : undefined
+          </div>
         }
       />
     );
