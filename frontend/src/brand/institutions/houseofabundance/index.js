@@ -14,6 +14,8 @@
  *   landing.numberLocale     how the numbers are grouped, e.g. "en-IN" shows 1,00,000
  *   landing.hideHeroFooter   true removes the "built by ..." line and the student/teacher/admin counts
  *                            at the bottom of the landing hero
+ *   landing.hideInstitutionsHeading  true removes the "Institutions / Collaborated with institutions."
+ *                            heading above the institution logo
  *   landing.footerTitle      the name at the top of the landing footer
  *   landing.stats.<key>      { value, label } for "students", "questions" or "teachers" in the stats row;
  *                            a value here replaces the count the server reports

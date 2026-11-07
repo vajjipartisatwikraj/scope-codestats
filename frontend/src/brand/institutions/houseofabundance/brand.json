@@ -8,10 +8,11 @@
   "landing": {
     "numberLocale": "en-IN",
     "hideHeroFooter": true,
+    "hideInstitutionsHeading": true,
     "footerTitle": "Codestats, House of Abundance",
     "stats": {
       "students": { "value": 100000, "label": "Students registered" },
-      "teachers": { "value": 50, "label": "Industrial mentors onboarded" }
+      "teachers": { "value": 50, "label": "Industry mentors onboarded" }
     }
   },
   "about": {

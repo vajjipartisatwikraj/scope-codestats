@@ -627,13 +627,17 @@ const Landing = () => {
       {/* 3. CAMPUSES Section */}
       <section className="lp-sec lp-pad bg-black">
         <div className="mx-auto max-w-5xl text-center">
-          <div className="mb-6 text-xs uppercase tracking-[0.25em] text-white/60">
-            Institutions
-          </div>
-          <h2 className="lp-h2 lp-h2-sm font-display">
-            Collaborated with <span className="italic text-white/70">institutions.</span>
-          </h2>
-          <div className="mt-10 flex flex-col items-center text-center md:mt-12">
+          {!landing.hideInstitutionsHeading ? (
+            <>
+              <div className="mb-6 text-xs uppercase tracking-[0.25em] text-white/60">
+                Institutions
+              </div>
+              <h2 className="lp-h2 lp-h2-sm font-display">
+                Collaborated with <span className="italic text-white/70">institutions.</span>
+              </h2>
+            </>
+          ) : null}
+          <div className={`flex flex-col items-center text-center ${landing.hideInstitutionsHeading ? '' : 'mt-10 md:mt-12'}`}>
             <img
               src={brand.institution.logo}
               alt={brand.names.institutionFull}
