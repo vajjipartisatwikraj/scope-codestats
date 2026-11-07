@@ -1,10 +1,20 @@
-import brand from '../brand';
+import brand, { fill } from '../brand';
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowForward, LocationCity, Lightbulb, EmojiEvents, Groups } from '@mui/icons-material';
 
 const About = () => {
   const navigate = useNavigate();
+
+  // Wording the institution sets for this page (src/brand/institutions/<name>/brand.json, "about").
+  // Whatever it leaves out keeps the default text below.
+  const custom = brand.institution.about || {};
+  const customParagraphs = (Array.isArray(custom.text) ? custom.text : custom.text ? [custom.text] : []).map(fill);
+  // "A, B" is shown as "A," on the first line and B in italics on the second, like the default heading
+  const customTitle = custom.title ? fill(custom.title) : '';
+  const commaAt = customTitle.indexOf(',');
+  const titleFirst = commaAt === -1 ? customTitle : customTitle.slice(0, commaAt + 1);
+  const titleSecond = commaAt === -1 ? '' : customTitle.slice(commaAt + 1).trim();
 
   // Add landing-page class to body element
   useEffect(() => {
@@ -32,15 +42,35 @@ const About = () => {
           <div className="relative mx-auto max-w-5xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-1.5 text-xs uppercase tracking-[0.25em] text-white/70">
               <span className="h-1.5 w-1.5 rounded-full bg-[rgb(120,200,255)] shadow-[0_0_8px_rgba(0,170,255,0.9)]" />
-              About {brand.names.platform}
+              {custom.eyebrow ? fill(custom.eyebrow) : `About ${brand.names.platform}`}
             </div>
-            <h1 className="font-display text-3xl leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
-              Built by {brand.names.builder}, <br />
-              <span className="italic text-white/70">for {brand.names.institution} students.</span>
-            </h1>
-            <p className="mx-auto mt-7 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
-              {brand.names.platform} is the coding assessment platform built by {brand.names.builder}{brand.institution.clubName ? `, the central coding club of ${brand.names.institutionFull}` : ` for the students of ${brand.names.institutionFull}`}.
-            </p>
+            {customTitle ? (
+              <h1 className="font-display text-3xl leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
+                {titleFirst}
+                {titleSecond ? (
+                  <>
+                    <br />
+                    <span className="italic text-white/70">{titleSecond}</span>
+                  </>
+                ) : null}
+              </h1>
+            ) : (
+              <h1 className="font-display text-3xl leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
+                Built by {brand.names.builder}, <br />
+                <span className="italic text-white/70">for {brand.names.institution} students.</span>
+              </h1>
+            )}
+            {customParagraphs.length > 0 ? (
+              <div className="mx-auto mt-7 max-w-2xl space-y-4 text-sm leading-relaxed text-white/70 md:text-base">
+                {customParagraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="mx-auto mt-7 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
+                {brand.names.platform} is the coding assessment platform built by {brand.names.builder}{brand.institution.clubName ? `, the central coding club of ${brand.names.institutionFull}` : ` for the students of ${brand.names.institutionFull}`}.
+              </p>
+            )}
           </div>
         </section>
 

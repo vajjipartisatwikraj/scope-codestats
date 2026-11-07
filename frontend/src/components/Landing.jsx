@@ -19,7 +19,7 @@ import useLoginConfig from '../hooks/useLoginConfig';
 import { motion, useScroll, useTransform, useInView, useReducedMotion } from 'framer-motion';
 
 // CountUp Component
-const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '' }) => {
+const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '', locale }) => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-15% 0px' });
   const reduced = useReducedMotion();
@@ -46,7 +46,7 @@ const CountUp = ({ end, duration = 2200, suffix = '', prefix = '', className = '
   return (
     <span ref={ref} className={className}>
       {prefix}
-      {value.toLocaleString()}
+      {value.toLocaleString(locale)}
       {suffix}
     </span>
   );
@@ -389,6 +389,14 @@ const Landing = () => {
   const itemsPerPage = 5;
   const demoVideo = brand.platform.demoVideo;
 
+  // Wording the institution sets for this page (src/brand/institutions/<name>/brand.json, "landing").
+  // Whatever it leaves out keeps the default below.
+  const landing = brand.institution.landing || {};
+  const statOf = (key, value, label) => ({
+    value: landing.stats?.[key]?.value ?? value,
+    label: fill(landing.stats?.[key]?.label ?? label),
+  });
+
   // Add landing-page class to body element
   useEffect(() => {
     document.body.classList.add('landing-page');
@@ -485,6 +493,10 @@ const Landing = () => {
 
   if (token) return null;
 
+  const studentsStat = statOf('students', stats.students, 'Students registered');
+  const questionsStat = statOf('questions', 400, 'Coding questions available');
+  const teachersStat = statOf('teachers', stats.teachers, 'Teachers onboarded');
+
   const footerColumns = [
     { title: 'Platform', links: ['Assessments', 'Cohorts', 'Practice Arena', 'Leaderboard'] },
     { title: brand.names.club, links: ['About', 'Contact', 'Workshops', 'Hackathons'] },
@@ -538,19 +550,21 @@ const Landing = () => {
             </div>
           </div>
 
-          <div className="lp-hero-foot">
-            <div className="lp-built">
-              <Code aria-hidden="true" />
-              <span>Built by {brand.names.builder} for {brand.names.institution}</span>
+          {!landing.hideHeroFooter ? (
+            <div className="lp-hero-foot">
+              <div className="lp-built">
+                <Code aria-hidden="true" />
+                <span>Built by {brand.names.builder} for {brand.names.institution}</span>
+              </div>
+              <div className="lp-hero-stats">
+                <span>3,000+ students</span>
+                <span className="lp-sep" aria-hidden="true" />
+                <span>50+ teachers</span>
+                <span className="lp-sep" aria-hidden="true" />
+                <span>10+ admins</span>
+              </div>
             </div>
-            <div className="lp-hero-stats">
-              <span>3,000+ students</span>
-              <span className="lp-sep" aria-hidden="true" />
-              <span>50+ teachers</span>
-              <span className="lp-sep" aria-hidden="true" />
-              <span>10+ admins</span>
-            </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
@@ -579,30 +593,33 @@ const Landing = () => {
 
       {/* 2. STATS Section */}
       <section className="lp-sec lp-pad bg-black">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-y-0 md:divide-x">
+        <div className="mx-auto flex max-w-6xl flex-col divide-y divide-white/10 md:flex-row md:justify-center md:divide-y-0 md:divide-x">
           <div className="lp-stat">
             <CountUp
-              end={stats.students}
+              end={studentsStat.value}
               suffix="+"
+              locale={landing.numberLocale}
               className="lp-stat-num font-display text-white"
             />
-            <div className="mt-4 text-sm tracking-wide text-white/60">Students registered</div>
+            <div className="mt-4 text-sm tracking-wide text-white/60">{studentsStat.label}</div>
           </div>
           <div className="lp-stat">
             <CountUp
-              end={400}
+              end={questionsStat.value}
               suffix="+"
+              locale={landing.numberLocale}
               className="lp-stat-num font-display text-white"
             />
-            <div className="mt-4 text-sm tracking-wide text-white/60">Coding questions available</div>
+            <div className="mt-4 text-sm tracking-wide text-white/60">{questionsStat.label}</div>
           </div>
           <div className="lp-stat">
             <CountUp
-              end={stats.teachers}
+              end={teachersStat.value}
               suffix="+"
+              locale={landing.numberLocale}
               className="lp-stat-num font-display text-white"
             />
-            <div className="mt-4 text-sm tracking-wide text-white/60">Teachers onboarded</div>
+            <div className="mt-4 text-sm tracking-wide text-white/60">{teachersStat.label}</div>
           </div>
         </div>
       </section>
@@ -622,7 +639,8 @@ const Landing = () => {
               alt={brand.names.institutionFull}
               className="h-auto w-full object-contain"
               style={{ maxWidth: 'min(100%, 600px)' }}
-            />
+            />
+
             {brand.institution.address ? (
               <p className="mt-2 max-w-md text-sm leading-relaxed text-white/60">
                 {brand.institution.address}
@@ -832,7 +850,7 @@ const Landing = () => {
         <div className="mx-auto max-w-6xl">
           <div className="lp-foot-grid">
             <div className="lp-foot-brand">
-              <span className="font-display text-2xl italic tracking-tight">{brand.names.platform}</span>
+              <span className="font-display text-2xl italic tracking-tight">{fill(landing.footerTitle || '{platform}')}</span>
               <p className="mt-4 max-w-xs text-sm text-white/60">
                 The coding assessment and performance-analysis platform built by {brand.names.builder} for the students of {brand.names.institutionFull}.
               </p>

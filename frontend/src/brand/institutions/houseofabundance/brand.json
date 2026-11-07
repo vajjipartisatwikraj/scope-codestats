@@ -4,5 +4,19 @@
   "contactEmail": "",
   "address": "",
   "linkedin": "",
-  "emailHint": ""
+  "emailHint": "",
+  "landing": {
+    "numberLocale": "en-IN",
+    "hideHeroFooter": true,
+    "footerTitle": "Codestats, House of Abundance",
+    "stats": {
+      "students": { "value": 100000, "label": "Students registered" },
+      "teachers": { "value": 50, "label": "Industrial mentors onboarded" }
+    }
+  },
+  "about": {
+    "eyebrow": "About CodeStats",
+    "title": "Codestats, House of Abundance",
+    "text": "CodeStats, designed to equip students with the skills and capabilities that employers value. Through a holistic learning and assessment experience, students strengthen their coding proficiency, cognitive abilities, English communication and problem-solving skills while tackling real-world, company-specific assignments"
+  }
 }

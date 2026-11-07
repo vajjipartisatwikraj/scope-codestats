@@ -278,6 +278,8 @@ SUDO="${SUDO-sudo}"
 
 conf_set_bind() {
   local file=$1
+  # bindIpAll: true overrides bindIp, so switch it off
+  $SUDO sed -i -E 's/^([[:space:]]*)bindIpAll:.*/\1bindIpAll: false/' "$file"
   if grep -Eq '^[[:space:]]*bindIp:[[:space:]]*127\.0\.0\.1[[:space:]]*$' "$file"; then
     return 0
   elif grep -Eq '^[[:space:]]*bindIp:' "$file"; then
@@ -507,6 +509,13 @@ step_mongo_secure() {
     wait_for_mongo
   else
     say "Authentication is already on"
+    # A re-run may find MongoDB bound to a public address (an earlier run or a manual edit). Fix it here.
+    if ! only_local "$MONGO_PORT"; then
+      say "MongoDB listens on a public address, so net.bindIp is set to 127.0.0.1 now"
+      conf_set_bind "$conf"
+      sudo systemctl restart mongod
+      wait_for_mongo
+    fi
   fi
 
   verify_app_user
@@ -795,6 +804,13 @@ step_https() {
 
   if have_cert; then
     say "A certificate for $DOMAIN already exists"
+    # A rewritten Nginx site has no HTTPS block. Attach the existing certificate without asking for a new one.
+    if ! grep -q 'ssl_certificate' "$site"; then
+      say "The Nginx site has no HTTPS yet, so the existing certificate is installed into it"
+      if ! sudo timeout 120 certbot install --nginx --cert-name "$DOMAIN" --redirect --non-interactive; then
+        warn_step "Could not install the certificate into Nginx. Run: sudo certbot install --nginx --cert-name $DOMAIN --redirect"
+      fi
+    fi
   else
     resolved=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1 {print $1}' || true)
     if [[ $resolved != "$SERVER_IP" && $FORCE_CERTBOT != 1 ]]; then
@@ -815,7 +831,7 @@ step_https() {
     grep -q "$block" "$site" || warn "\"$block\" is missing from $site after Certbot. Compare it with DEPLOYEMENT.md, section 15."
   done
   sudo systemctl reload nginx
-  if sudo certbot renew --dry-run >/dev/null 2>&1; then say "Automatic renewal test passed"; else warn "The renewal test failed. Check: sudo certbot renew --dry-run"; fi
+  if sudo timeout 180 certbot renew --dry-run >/dev/null 2>&1; then say "Automatic renewal test passed"; else warn "The renewal test failed. Check: sudo certbot renew --dry-run"; fi
   say "HTTPS is active: https://$DOMAIN"
 }
 

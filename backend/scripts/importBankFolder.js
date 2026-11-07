@@ -7,6 +7,10 @@
  *
  *   node scripts/importBankFolder.js <folder> [--manifest <file.json>] [--status published|draft] [--dry-run]
  *
+ * Instead of a manifest, the folder can hold bankInfo.json ({ name, description, status, tags }) and each
+ * topic folder a topicInfo.json ({ name, description, order }); every other .json in a topic folder is
+ * a question file ({ "questions": [...] }, a list, or one question). See "Java Practice Lab".
+ *
  * The manifest names the bank and its topics (see indiaBix_scrape/bank-info/arithmetic-aptitude.json):
  *   { "name", "description", "status", "tags": [], "topics": { "<folder name>": { "name", "description" } } }
  * Topics are created in the order of the manifest. A folder that is not in the manifest is added at
@@ -47,13 +51,18 @@ function readArgs(argv) {
 
 const BATCH = 250; // questions written per call (the library accepts up to 500)
 
+// Optional info files inside the folder: bankInfo.json next to the topic folders, topicInfo.json in a topic folder
+const INFO_FILE = { bank: "bankInfo.json", topic: "topicInfo.json" };
+
+const readJsonIfThere = (file) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : null);
+
 const titleCase = (slug) => slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 // ---- Reading the folder ------------------------------------------------------------------------------
 
 /** The questions of one topic folder, in file order, in the shape the library keeps */
 function readTopicQuestions(folder) {
-  const files = fs.readdirSync(folder).filter((name) => name.toLowerCase().endsWith(".json")).sort();
+  const files = fs.readdirSync(folder).filter((name) => name.toLowerCase().endsWith(".json") && name !== INFO_FILE.topic).sort();
   const questions = [];
   files.forEach((file) => {
     const data = JSON.parse(fs.readFileSync(path.join(folder, file), "utf8"));
@@ -71,13 +80,16 @@ function readTopicQuestions(folder) {
 function plan(args) {
   const root = path.resolve(args.folder);
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) throw new Error(`${root} is not a folder`);
-  const manifest = args.manifest ? JSON.parse(fs.readFileSync(path.resolve(args.manifest), "utf8")) : {};
+  const manifest = args.manifest ? JSON.parse(fs.readFileSync(path.resolve(args.manifest), "utf8")) : readJsonIfThere(path.join(root, INFO_FILE.bank)) || {};
   const present = fs.readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 
+  // Each topic folder may carry its own topicInfo.json ({ name, description, order }); the manifest wins if it names the topic
+  const infoOf = (slug) => readJsonIfThere(path.join(root, slug, INFO_FILE.topic)) || {};
   const listed = Object.keys(manifest.topics || {});
   const missing = listed.filter((slug) => !present.includes(slug));
   if (missing.length > 0) throw new Error(`The manifest names topics that are not in the folder: ${missing.join(", ")}`);
-  const order = [...listed, ...present.filter((slug) => !listed.includes(slug))];
+  const rest = present.filter((slug) => !listed.includes(slug)).sort((a, b) => (infoOf(a).order ?? 1e9) - (infoOf(b).order ?? 1e9) || a.localeCompare(b));
+  const order = [...listed, ...rest];
 
   return {
     name: manifest.name || titleCase(path.basename(root)),
@@ -86,8 +98,8 @@ function plan(args) {
     tags: manifest.tags || [],
     topics: order.map((slug) => ({
       slug,
-      name: manifest.topics?.[slug]?.name || titleCase(slug),
-      description: manifest.topics?.[slug]?.description || "",
+      name: manifest.topics?.[slug]?.name || infoOf(slug).name || titleCase(slug),
+      description: manifest.topics?.[slug]?.description || infoOf(slug).description || "",
       questions: readTopicQuestions(path.join(root, slug)),
     })),
   };
