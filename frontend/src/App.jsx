@@ -57,6 +57,7 @@ import NotificationManagement from "./components/notificationManagement";
 import ManageUsers from "./components/manageUsers";
 import UserGroups from "./components/userGroupManagement";
 import TeacherRequests from "./components/teacherRequests";
+import SuspendAccounts from "./components/suspendAccounts";
 import AccessList from "./components/accessList";
 import BankLibrary from "./components/bankLibrary";
 import TeacherAccess from "./components/TeacherAccess";
@@ -289,6 +290,7 @@ const MainContent = () => {
     "/admin/opportunities",
     "/admin/notifications",
     "/admin/manage-users",
+    "/admin/suspend-accounts",
     "/admin/user-groups",
     "/admin/teacher-requests",
     "/admin/access-list",
@@ -701,6 +703,15 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true} strictAdmin={true}>
                       <TeacherRequests />
+                    </PrivateRoute>
+                  }
+                />
+                {/* Remove a student's coding profiles and all their history. Admins only. */}
+                <Route
+                  path="/admin/suspend-accounts"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <SuspendAccounts />
                     </PrivateRoute>
                   }
                 />

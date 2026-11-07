@@ -13,6 +13,7 @@ import { SquaresFourIcon } from '@phosphor-icons/react/dist/csr/SquaresFour';
 import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
 import { TargetIcon } from '@phosphor-icons/react/dist/csr/Target';
 import { UserGearIcon } from '@phosphor-icons/react/dist/csr/UserGear';
+import { UserMinusIcon } from '@phosphor-icons/react/dist/csr/UserMinus';
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree';
 import {
   getDashboardPath,
@@ -163,6 +164,14 @@ const GROUPS = [
         label: 'Manage users',
         icon: UserGearIcon,
         path: () => '/admin/manage-users',
+        visible: (user) => isAdminUser(user),
+      },
+      {
+        id: 'suspend-accounts',
+        label: 'Suspend accounts',
+        icon: UserMinusIcon,
+        // Admins only: remove a student's coding profiles and all history stored with them
+        path: () => '/admin/suspend-accounts',
         visible: (user) => isAdminUser(user),
       },
       {

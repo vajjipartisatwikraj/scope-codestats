@@ -1,0 +1,112 @@
+/*
+ * Suspend accounts
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Only what
+ * the kit does not have lives here: the filter bar, the platform badges, the numeric column, the
+ * confirmation list and the rows that replace the table on a phone. design/screens.md sections 16 and 19.
+ */
+
+.sa-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.sa-search {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.sa-body {
+  min-height: 160px;
+  outline: none;
+}
+
+.sa-pad {
+  padding: 16px;
+}
+
+/* ---- Table cells ------------------------------------------------------------------------------- */
+
+.sa .ui-table {
+  min-width: 860px;
+}
+
+.sa .ui-table td {
+  vertical-align: middle;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.sa-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sa-role {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.sa-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Confirmation ------------------------------------------------------------------------------ */
+
+.sa-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sa-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 16px 12px 32px;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Rows on a phone --------------------------------------------------------------------------- */
+
+.sa-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.sa-item:last-child {
+  border-bottom: 0;
+}
+
+.sa-item .ui-table__cell-main {
+  width: 100%;
+}
+
+.sa-item__meta {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sa-item .ui-button {
+  width: 100%;
+  margin-top: 4px;
+}

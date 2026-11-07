@@ -398,6 +398,7 @@ app.use("/api/user-groups", require("./routes/userGroups")); // named roll numbe
 app.use("/api/teacher-requests", require("./routes/teacherRequests")); // teacher access requests (admin approves)
 app.use("/api/platform-progress", require("./routes/platformProgress")); // dashboard Progress tab (platform history, GitHub timeline)
 app.use("/api/admin/access-list", require("./routes/accessList")); // admin: who may sign in (LOGIN_MODE=allowlist)
+app.use("/api/admin/suspend-accounts", require("./routes/accountSuspension")); // admin: remove a student's coding profiles and history
 app.use("/api/admin/rankings", require("./routes/rankings")); // admin: score and rank calculation
 app.use("/api/admin/analytics", require("./routes/adminAnalytics")); // admin: student performance over the platforms
 app.use("/api/speech-tests", require("./routes/speechTests"));
