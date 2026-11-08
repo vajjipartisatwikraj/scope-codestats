@@ -1,0 +1,374 @@
+/*
+ * The public portfolio tile film (PortfolioDemo.jsx). Uses the colours of FeatureShowcase.css.
+ *
+ * The stage has one fixed minimum height and each step is laid over it (position: absolute) and centred,
+ * so the tile never changes size while the picture changes.
+ * The scan line (2200ms, starting 700ms in) and the loading line (1800ms, starting 350ms in) run in CSS:
+ * their times match SCAN_START, SCAN_MS and SEARCH_MS in the component.
+ */
+
+.lp .fx-folio {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lp .fx-folio-stage {
+  position: relative;
+  flex: 1;
+  min-height: 14rem;
+}
+
+.lp .fx-folio .fx-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* ---- Step 1: the QR code and the scan line ------------------------------------------------------------- */
+
+/* Same specificity as the rule above, later in the file: the step is centred in the tile, not stretched */
+.lp .fx-folio .fx-scanlayer {
+  align-items: center;
+}
+
+.lp .fx-scanbox {
+  position: relative;
+  width: 7.25rem;
+  height: 7.25rem;
+}
+
+/* The QR code: white squares straight on the tile, no container behind them */
+.lp .fx-qr {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: #ffffff;
+}
+
+/* The line that sweeps down over the code and back up */
+.lp .fx-scanline {
+  position: absolute;
+  top: 0;
+  left: -0.5rem;
+  right: -0.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--fx-accent-text);
+  box-shadow: 0 0 14px 2px rgba(102, 191, 255, 0.5);
+  opacity: 0;
+  animation: fx-scan 2200ms cubic-bezier(0.45, 0, 0.55, 1) 700ms both;
+}
+
+@keyframes fx-scan {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  6% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(7.1rem);
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+/* ---- Step 2: the address bar, with a loading line along its bottom edge --------------------------------- */
+
+.lp .fx-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--fx-raised);
+}
+
+.lp .fx-search__globe {
+  flex: none;
+  color: var(--fx-subtle);
+}
+
+.lp .fx-search__text {
+  display: flex;
+  min-width: 0;
+  color: var(--fx-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The address can be long: the first part gives way (with dots) and the end of it always stays */
+.lp .fx-search__host {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp .fx-search__path {
+  flex: none;
+  color: var(--fx-subtle);
+}
+
+/* Like a browser: it starts quickly, slows down towards the end, finishes, and is gone */
+.lp .fx-search__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--fx-accent-text);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: fx-pageload 1800ms linear 350ms both;
+}
+
+@keyframes fx-pageload {
+  0% {
+    opacity: 1;
+    transform: scaleX(0);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  42% {
+    transform: scaleX(0.6);
+    animation-timing-function: ease-out;
+  }
+  78% {
+    transform: scaleX(0.86);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  92% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+/* ---- Step 3: the portfolio, as skeletons that fill in --------------------------------------------------- */
+
+.lp .fx-pagelayer {
+  justify-content: center;
+  gap: 1.375rem;
+}
+
+/* A section holds its skeleton and its content in the same place */
+.lp .fx-sec {
+  display: grid;
+  min-width: 0;
+}
+
+.lp .fx-sec > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.lp .fx-sk {
+  transition: opacity 360ms ease-out;
+}
+
+.lp .fx-ct {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 480ms ease-out 120ms, transform 560ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
+}
+
+.lp .fx-sec[data-loaded='true'] .fx-sk {
+  opacity: 0;
+}
+
+.lp .fx-sec[data-loaded='true'] .fx-ct {
+  opacity: 1;
+  transform: none;
+}
+
+/* The grey placeholders, with a light that passes over them */
+.lp .fx-sk-block {
+  display: block;
+  height: 0.625rem;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--fx-high) 0%, #2d2d33 50%, var(--fx-high) 100%);
+  background-size: 220% 100%;
+  animation: fx-shimmer 1500ms ease-in-out infinite;
+}
+
+@keyframes fx-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+.lp .fx-sk-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lp .fx-sk-circle {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+}
+
+.lp .fx-sk-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lp .fx-sk-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.lp .fx-sk-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lp .fx-sk-marks {
+  display: flex;
+  gap: 1rem;
+}
+
+.lp .fx-sk-dot {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 6px;
+}
+
+/* ---- The sections once they are loaded ------------------------------------------------------------------ */
+
+.lp .fx-who {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lp .fx-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--fx-accent);
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.lp .fx-who__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.lp .fx-who__text strong {
+  color: var(--fx-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.lp .fx-who__text small {
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.lp .fx-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-figures li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.lp .fx-figures b {
+  color: var(--fx-text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-figures span {
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+}
+
+.lp .fx-folio-marks {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-folio-marks li {
+  display: inline-flex;
+}
+
+/* The logos come in one after another once their section has loaded */
+.lp .fx-sec[data-loaded='true'] .fx-folio-marks li {
+  animation: fx-mark-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--n) * 90ms + 180ms);
+}
+
+@keyframes fx-mark-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp .fx-sk-block,
+  .lp .fx-folio-marks li,
+  .lp .fx-scanline,
+  .lp .fx-search__progress {
+    animation: none !important;
+  }
+  .lp .fx-ct,
+  .lp .fx-sk {
+    transition: none;
+  }
+}

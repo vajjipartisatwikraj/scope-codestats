@@ -7,5 +7,8 @@
   "contactEmail": "scopeclub@mlrinstitutions.ac.in",
   "address": "Dundigal, Hyderabad, Telangana",
   "linkedin": "https://www.linkedin.com/school/mlr-institute-of-technology/",
-  "emailHint": "@mlrit.ac.in or @mlrinstitutions.ac.in"
+  "emailHint": "@mlrit.ac.in or @mlrinstitutions.ac.in",
+  "landing": {
+    "heroStats": ["3,000+ students", "50+ teachers", "10+ admins"]
+  }
 }

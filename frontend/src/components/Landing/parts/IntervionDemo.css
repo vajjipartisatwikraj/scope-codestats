@@ -1,0 +1,177 @@
+/*
+ * The Intervion tile film (IntervionDemo.jsx). Colours from FeatureShowcase.css; the blue is the one accent.
+ *
+ * The AI mesh is the tile's background (WaveMesh); the audio chat is in front of it: the interviewer's\n * messages sit at the left edge of the tile and the student's at the right edge.
+ * Every message is always in the page and held invisible until their turn, so the tile
+ * never changes size while the conversation grows. The finished conversation is the plain style of each
+ * part; the states below only hide it or move it on the way in.
+ */
+
+.lp .fx-iv {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.875rem;
+  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+  transition: opacity 500ms ease;
+}
+
+.lp .fx-iv[data-leave='true'] {
+  opacity: 0;
+}
+
+/* ---- The AI mesh: the tile's background ----------------------------------------------------------------- */
+
+/* The canvas fills the whole tile (the tile is the positioned parent). It fades into the tile on its own, row
+   by row, so nothing here masks it: the far end of the wave simply melts into the dark. --wm-bg is the colour of
+   the tile; the other colours are the platform blues of the other pictures. */
+.lp .fx-iv-mesh {
+  --wm-bg: var(--fx-surface);
+  --wm-deep: #0a5a94;
+  --wm-mid: #0585e0;
+  --wm-bright: #66bfff;
+  --wm-peak: #e6f5ff;
+}
+/* The title and the sentence stay above the mesh */
+.lp .fx-tile[data-key='intervion'] > div:first-child {
+  position: relative;
+  z-index: 1;
+}
+
+/* Just the words, centred between the two sides of the chat */
+.lp .fx-iv-status {
+  align-self: center;
+  margin: 0;
+  color: var(--fx-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+/* ---- The audio chat ------------------------------------------------------------------------------------ */
+
+.lp .fx-iv-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.lp .fx-iv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-iv-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 25rem;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.lp .fx-iv-msg[data-who='you'] {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.lp .fx-iv-msg[data-on='true'] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 480ms ease-out,
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lp .fx-iv-who {
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+}
+
+.lp .fx-iv-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 14px;
+  background: var(--fx-raised);
+  color: var(--fx-text);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.lp .fx-iv-msg[data-who='you'] .fx-iv-bubble {
+  background: var(--fx-accent-card);
+  color: #ffffff;
+}
+
+.lp .fx-iv-text {
+  min-width: 0;
+}
+
+.lp .fx-iv-time {
+  flex: none;
+  margin-left: auto;
+  padding-left: 0.25rem;
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-iv-msg[data-who='you'] .fx-iv-time {
+  color: #ffffff;
+}
+
+/* The little equaliser of a message: still when it is finished, moving while it is being spoken */
+.lp .fx-iv-eq {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 1rem;
+}
+
+.lp .fx-iv-eq i {
+  display: block;
+  width: 2px;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--fx-accent-text);
+  transform: scaleY(var(--h));
+  transform-origin: center;
+}
+
+.lp .fx-iv-msg[data-who='you'] .fx-iv-eq i {
+  background: #ffffff;
+}
+
+.lp .fx-iv-msg[data-live='true'] .fx-iv-eq i {
+  animation: fx-iv-eq 640ms ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -140ms);
+}
+
+@keyframes fx-iv-eq {
+  from {
+    transform: scaleY(0.2);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp .fx-iv-eq i {
+    animation: none !important;
+  }
+  .lp .fx-iv,
+  .lp .fx-iv-msg {
+    transition: none !important;
+  }
+}

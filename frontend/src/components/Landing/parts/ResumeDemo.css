@@ -1,0 +1,187 @@
+/*
+ * The resume builder tile film (ResumeDemo.jsx). Colours from FeatureShowcase.css; the resume is a light page
+ * (the one light thing in the tile), written in the platform's blue and soft greys.
+ *
+ * The plain styles are the FINISHED resume. Under [data-play='false'] the empty page is held, and under
+ * [data-play='true'] each part is written from it (fill-mode: both). Everything is timed from --k, the order in
+ * which the part is written: 190ms apart from 250ms. The PDF button comes in at 2300ms. With reduced motion the
+ * animations are off, which leaves the finished resume.
+ */
+
+.lp .fx-rs {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+  transition: opacity 500ms ease;
+}
+
+.lp .fx-rs[data-leave='true'] {
+  opacity: 0;
+}
+
+.lp .fx-rs-paper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  width: 100%;
+  max-width: 19rem;
+  min-height: 15.5rem;
+  padding: 1.125rem;
+  border-radius: 14px;
+  background: #f1f3fb;
+  color: #12141f;
+}
+
+.lp .fx-rs-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lp .fx-rs-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--fx-accent);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.lp .fx-rs-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.lp .fx-rs-who b {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.lp .fx-rs-pdf {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.625rem;
+  padding: 0 0.625rem;
+  border-radius: 999px;
+  background: var(--fx-accent-card);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lp .fx-rs-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lp .fx-rs-h {
+  color: #035fa0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* A line of text, drawn from its left end */
+.lp .fx-rs-line {
+  display: block;
+  width: var(--w);
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #cfd5e6;
+  transform-origin: left center;
+}
+
+.lp .fx-rs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.lp .fx-rs-chip {
+  display: block;
+  width: var(--cw);
+  height: 1.25rem;
+  border-radius: 999px;
+  background: #cfe3f5;
+}
+
+/* ---- Starting state: an empty page ------------------------------------------------------------------------ */
+
+.lp .fx-rs[data-play='false'] .fx-rs-avatar,
+.lp .fx-rs[data-play='false'] .fx-rs-who b,
+.lp .fx-rs[data-play='false'] .fx-rs-h,
+.lp .fx-rs[data-play='false'] .fx-rs-pdf,
+.lp .fx-rs[data-play='false'] .fx-rs-chip {
+  opacity: 0;
+}
+
+.lp .fx-rs[data-play='false'] .fx-rs-line {
+  transform: scaleX(0);
+}
+
+/* ---- Playing ---------------------------------------------------------------------------------------------- */
+
+.lp .fx-rs[data-play='true'] .fx-rs-avatar,
+.lp .fx-rs[data-play='true'] .fx-rs-who b {
+  animation: fx-rs-pop 520ms cubic-bezier(0.22, 1, 0.36, 1) both 250ms;
+}
+
+.lp .fx-rs[data-play='true'] .fx-rs-h {
+  animation: fx-rs-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both calc(var(--k) * 190ms + 250ms);
+}
+
+.lp .fx-rs[data-play='true'] .fx-rs-line {
+  animation: fx-rs-write 620ms cubic-bezier(0.45, 0, 0.25, 1) both calc(var(--k) * 190ms + 250ms);
+}
+
+.lp .fx-rs[data-play='true'] .fx-rs-chip {
+  animation: fx-rs-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both calc(var(--k) * 190ms + 250ms);
+}
+
+.lp .fx-rs[data-play='true'] .fx-rs-pdf {
+  animation: fx-rs-pop 520ms cubic-bezier(0.22, 1, 0.36, 1) both 2300ms;
+}
+
+@keyframes fx-rs-write {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes fx-rs-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp .fx-rs {
+    transition: none;
+  }
+  .lp .fx-rs *,
+  .lp .fx-rs-line,
+  .lp .fx-rs-chip {
+    animation: none !important;
+  }
+}

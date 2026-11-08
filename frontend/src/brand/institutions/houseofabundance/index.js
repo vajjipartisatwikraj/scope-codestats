@@ -9,6 +9,10 @@
  * It has no testimonials, so the landing page leaves that section out. Fill in contactEmail,
  * address and linkedin in brand.json to show them on the landing and contact pages.
  *
+ * Its own landing page: "landingPage": "houseofabundance" in brand.json makes the build show
+ * components/Landing/HouseOfAbundanceLanding.jsx instead of the default landing page.
+ *   landing.video            { src, title } the video section of that page (left out when missing)
+ *
  * Optional wording for the public pages, all in brand.json (an institution without them keeps the
  * default text; strings may use the {platform} {institution} {institutionFull} {club} {builder} tokens):
  *   landing.numberLocale     how the numbers are grouped, e.g. "en-IN" shows 1,00,000

@@ -254,7 +254,35 @@ const setUserType = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/users/stats
+ * Public by design: the landing page shows how many students, teachers and coding questions the platform has to
+ * visitors who are not signed in. Only three counts are exposed. The counts are kept for five minutes, so a
+ * page that is shared widely does not become a stream of count queries.
+ */
+const PUBLIC_STATS_TTL_MS = 5 * 60 * 1000;
+let publicStatsCache = { at: 0, body: null };
+
+const getPublicStats = async (req, res) => {
+  try {
+    if (publicStatsCache.body && Date.now() - publicStatsCache.at < PUBLIC_STATS_TTL_MS) {
+      return res.json(publicStatsCache.body);
+    }
+    const Question = require("../models/Question");
+    const [totalStudents, totalTeachers, totalQuestions] = await Promise.all([
+      User.countDocuments({ userType: "user" }),
+      User.countDocuments({ userType: "teacher" }),
+      Question.countDocuments({}),
+    ]);
+    publicStatsCache = { at: Date.now(), body: { totalStudents, totalTeachers, totalQuestions } };
+    return res.json(publicStatsCache.body);
+  } catch (error) {
+    log.error("Error fetching public stats:", error);
+    return res.status(500).json({ message: "Error fetching statistics" });
+  }
+};
 module.exports = {
+  getPublicStats,
   getCurrentUser,
   getPublicProfile,
   getProfileImage,

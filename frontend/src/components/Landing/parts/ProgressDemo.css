@@ -1,0 +1,54 @@
+/*
+ * The analytics and progress tile film (ProgressDemo.jsx): only the app's own charts, one after another.
+ *
+ * The stage has one fixed size and each chart is laid over it and centred, so the tile never changes size while
+ * the chart changes. The charts (custom-components BarChart, PieChart, LineChart) take their colours from CSS
+ * variables whose defaults follow the app's theme; the landing page is always dark, so they are set here, from the
+ * platform's blues in FeatureShowcase.css: the bars are the mid blue with the last one in the main blue, and the
+ * line and its dot are the main blue.
+ */
+
+.lp .fx-prog {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lp .fx-prog-stage {
+  position: relative;
+  flex: 1;
+  min-height: 14rem;
+}
+
+.lp .fx-prog-stage .fx-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp .fx-prog-layer > .cc {
+  width: 100%;
+  /* A picture, not a control: no hover card or dimming when the pointer passes over it */
+  pointer-events: none;
+}
+.lp .fx-prog .bc {
+  --bc-bar: var(--fx-accent-mid);
+  --bc-bar-highlight: var(--fx-accent);
+}
+
+.lp .fx-prog .lc {
+  --lc-line: var(--fx-accent);
+  --lc-area: var(--fx-accent);
+  --lc-dot: var(--fx-accent-text);
+  --lc-dot-ring: var(--fx-surface);
+}
+
+.lp .fx-prog .pc {
+  --pc-track: var(--fx-high);
+  --pc-text: var(--fx-text);
+  --pc-muted: var(--fx-muted);
+}

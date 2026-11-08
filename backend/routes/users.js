@@ -6,6 +6,7 @@
  * services/userProfileService.
  */
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const auth = require("../middleware/auth");
 const staffOnly = require("../middleware/staffOnly");
 const adminOnly = require("../middleware/adminOnly");
@@ -14,6 +15,17 @@ const userController = require("../controllers/userController");
 
 const router = express.Router();
 
+// ─── Public numbers (landing page) ──────────────────────────────────────────
+// Three counts, open to everyone and limited per IP. Declared before the profile routes so that "stats" is never
+// read as a username.
+const publicStatsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please try again shortly." },
+});
+router.get("/stats", publicStatsLimiter, userController.getPublicStats);
 // ─── Signed-in user ─────────────────────────────────────────────────────────
 
 router.get("/me", auth, userController.getCurrentUser);

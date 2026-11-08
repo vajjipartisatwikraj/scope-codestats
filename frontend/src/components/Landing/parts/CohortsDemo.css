@@ -1,0 +1,190 @@
+/*
+ * The cohorts tile film (CohortsDemo.jsx). Builds on the editor look in FeatureShowcase.css.
+ *
+ * .fx-demo is deliberately not positioned, so the layer of effects (.fx-demo-fx) fills the whole tile
+ * (.fx-tile is the positioned ancestor), and the rocket and the fog can cross the tile's title and text too.
+ * The tile clips whatever leaves it.
+ */
+
+/* ---- The editor while it is being typed -------------------------------------------------------- */
+
+/* Text that is not typed yet keeps its place, invisible, so the tile never changes size */
+.lp .fx-ghost {
+  color: transparent;
+}
+
+.lp .fx-caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1.15em;
+  vertical-align: text-bottom;
+}
+
+.lp .fx-caret::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--fx-accent-text);
+}
+
+.lp .fx-caret[data-blinking='true']::after {
+  animation: fx-blink 1s steps(1, end) infinite;
+}
+
+@keyframes fx-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---- Run ---------------------------------------------------------------------------------------- */
+
+.lp .fx-demo-run {
+  gap: 0.375rem;
+  transition: transform 120ms ease-out, background-color 200ms ease-out, color 200ms ease-out;
+}
+
+.lp .fx-demo-run[data-state='press'] {
+  transform: scale(0.9);
+  background: var(--fx-accent-card);
+}
+
+.lp .fx-demo-run[data-state='running'] {
+  background: var(--fx-accent-deep);
+}
+
+.lp .fx-demo-run[data-state='done'] {
+  background: var(--fx-success);
+  color: #0d0d0f;
+}
+
+.lp .fx-demo-run [data-spin='true'] {
+  animation: fx-spin 800ms linear infinite;
+}
+
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A ring that opens from the button when it is pressed */
+.lp .fx-demo-run {
+  position: relative;
+}
+
+.lp .fx-demo-run[data-state='press']::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  border: 2px solid var(--fx-accent-text);
+  animation: fx-ring 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fx-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+/* ---- Test cases: hidden until the fog has gone, then in one after another ---------------------- */
+
+.lp .fx-demo-cases[data-show='false'] .fx-case {
+  opacity: 0;
+}
+
+.lp .fx-demo-cases[data-show='true'] .fx-case {
+  animation: fx-case-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 160ms);
+}
+
+@keyframes fx-case-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The tile fades out between two runs and the code starts again from an empty editor */
+.lp .fx-demo-shot {
+  transition: opacity 300ms ease-out;
+}
+
+.lp .fx-demo[data-phase='reset'] .fx-demo-shot {
+  opacity: 0;
+  transition-duration: 600ms;
+}
+
+/* ---- The layer that fills the tile --------------------------------------------------------------- */
+
+.lp .fx-demo-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* The mouse pointer */
+.lp .fx-pointer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  width: 22px;
+  height: 24px;
+  opacity: 0;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  transition: opacity 180ms ease-out;
+  will-change: transform;
+}
+
+.lp .fx-pointer[data-show='true'] {
+  opacity: 1;
+}
+
+.lp .fx-pointer[data-animate='true'] {
+  transition: transform 1000ms cubic-bezier(0.65, 0, 0.25, 1), opacity 180ms ease-out;
+}
+
+.lp .fx-pointer svg {
+  display: block;
+  transform-origin: 3px 2px;
+  transition: transform 110ms ease-out;
+}
+
+.lp .fx-pointer[data-down='true'] svg {
+  transform: scale(0.8);
+}
+
+/* People who asked for less motion get the finished picture and none of this */
+@media (prefers-reduced-motion: reduce) {
+  .lp .fx-demo-fx {
+    display: none;
+  }
+  .lp .fx-demo-cases .fx-case {
+    animation: none;
+    opacity: 1;
+  }
+  .lp .fx-demo-shot,
+  .lp .fx-demo-run {
+    animation: none;
+    transition: none;
+  }
+}

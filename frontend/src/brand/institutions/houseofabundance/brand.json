@@ -5,14 +5,18 @@
   "address": "",
   "linkedin": "",
   "emailHint": "",
+  "landingPage": "houseofabundance",
   "landing": {
     "numberLocale": "en-IN",
-    "hideHeroFooter": true,
     "hideInstitutionsHeading": true,
     "footerTitle": "Codestats, House of Abundance",
     "stats": {
       "students": { "value": 100000, "label": "Students registered" },
       "teachers": { "value": 50, "label": "Industry mentors onboarded" }
+    },
+    "video": {
+      "src": "https://res.cloudinary.com/dpimdnvpr/video/upload/v1794116881/Untitled_design_chpinh.mp4",
+      "title": "CodeStats at House of Abundance"
     }
   },
   "about": {

@@ -1,0 +1,245 @@
+/*
+ * The animated pictures of the feature tiles (AnimatedPictures.jsx). They build on the looks in
+ * FeatureShowcase.css, which are always the FINISHED picture. Here:
+ *
+ *   .fx-a[data-play='false']  the starting state, held while the picture is off screen
+ *   .fx-a[data-play='true']   an animation from that state to the finished picture (fill-mode: both)
+ *
+ * The delays come from per-element variables (--n, --c) set in the markup. With reduced motion the
+ * component sets data-play="true" and the animations below are switched off, which leaves the finished
+ * picture (the starting states are only under data-play="false").
+ */
+
+/* ---- A line of the picture that fades up (used by many) ----------------------------------------- */
+
+.lp .fx-a[data-play='false'] .fx-r {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.lp .fx-a[data-play='true'] .fx-r {
+  animation: fx-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--n, 0) * 140ms + 200ms);
+}
+
+@keyframes fx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- Heatmap: a wave of days fills in across the weeks, then the days of this week light up ------- */
+
+/* Each day appears small and dim, settles, and takes its colour. The delay follows a diagonal
+   (week by week, and a little down each week), so the picture is painted by one soft wave. */
+.lp .fx-a[data-play='false'] .fx-heat i {
+  opacity: 0;
+}
+
+.lp .fx-a[data-play='true'] .fx-heat i {
+  animation: fx-cell 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--c) * 38ms + var(--r) * 12ms + 150ms);
+}
+
+@keyframes fx-cell {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    background: var(--fx-high);
+  }
+  45% {
+    opacity: 1;
+    transform: none;
+    background: var(--fx-high);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    background: var(--lv);
+  }
+}
+
+/* The seven circles of the week pop in one after another, then the days that were practised fill with blue
+   while the count goes up with them */
+.lp .fx-a[data-play='false'] .fx-days li {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.lp .fx-a[data-play='false'] .fx-days li[data-on='true'] {
+  background: var(--fx-high);
+  color: var(--fx-subtle);
+}
+
+.lp .fx-a[data-play='true'] .fx-days li {
+  animation: fx-day-in 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--n) * 70ms + 1350ms);
+}
+
+.lp .fx-a[data-play='true'] .fx-days li[data-on='true'] {
+  animation:
+    fx-day-in 440ms cubic-bezier(0.22, 1, 0.36, 1) both calc(var(--n) * 70ms + 1350ms),
+    fx-day-on 460ms ease-out both calc(var(--k) * 240ms + 2000ms);
+}
+
+@keyframes fx-day-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fx-day-on {
+  from {
+    background: var(--fx-high);
+    color: var(--fx-subtle);
+  }
+  to {
+    background: var(--fx-accent);
+    color: #ffffff;
+  }
+}
+
+.lp .fx-a[data-play='false'] .fx-week-head {
+  opacity: 0;
+}
+
+.lp .fx-a[data-play='true'] .fx-week-head {
+  animation: fx-fade 400ms ease-out 1500ms both;
+}
+/* ---- Practice arena: the questions come in one by one -------------------------------------------- */
+
+.lp .fx-a[data-play='false'] .fx-step {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.lp .fx-a[data-play='true'] .fx-step {
+  animation: fx-step-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--n) * 260ms + 300ms);
+}
+
+@keyframes fx-step-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- Communication tests: the recording grows and is played through ------------------------------ */
+
+.lp .fx-a[data-play='false'] .fx-wave i {
+  transform: scaleY(0.1);
+}
+
+.lp .fx-a[data-play='false'] .fx-wave i[data-played='true'] {
+  background: var(--fx-high);
+}
+
+.lp .fx-a[data-play='true'] .fx-wave i {
+  animation: fx-wave-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--n) * 26ms + 150ms);
+}
+
+.lp .fx-a[data-play='true'] .fx-wave i[data-played='true'] {
+  animation: fx-wave-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both, fx-sweep 280ms linear both;
+  animation-delay: calc(var(--n) * 26ms + 150ms), calc(var(--n) * 58ms + 1200ms);
+}
+
+@keyframes fx-wave-in {
+  from {
+    transform: scaleY(0.1);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes fx-sweep {
+  from {
+    background: var(--fx-high);
+  }
+  to {
+    background: var(--fx-accent-text);
+  }
+}
+
+/* ---- CodePad: the output is typed ----------------------------------------------------------------- */
+
+.lp .fx-out__caret {
+  display: inline-block;
+  width: 7px;
+  height: 0.95em;
+  margin-left: 2px;
+  background: var(--fx-success);
+  vertical-align: text-bottom;
+  animation: fx-blink-block 900ms steps(1, end) infinite;
+}
+
+.lp .fx-out__caret[data-done='true'] {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes fx-blink-block {
+  50% {
+    opacity: 0;
+  }
+}
+
+
+
+/* ---- Analytics: the bars grow ---------------------------------------------------------------------- */
+
+.lp .fx-bar-track i {
+  transform-origin: left center;
+}
+
+.lp .fx-a[data-play='false'] .fx-bar-track i {
+  transform: scaleX(0);
+}
+
+.lp .fx-a[data-play='true'] .fx-bar-track i {
+  animation: fx-grow 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--n) * 110ms + 250ms);
+}
+
+@keyframes fx-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp .fx-a *,
+  .lp .fx-a *::before,
+  .lp .fx-a *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

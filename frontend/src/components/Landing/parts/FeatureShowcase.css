@@ -1,0 +1,664 @@
+/*
+ * Feature showcase (landing page): one tile per thing CodeStats does, each with a small picture of the
+ * product itself instead of an icon. Scoped to .lp .fx so nothing else on the page changes.
+ *
+ * The landing page is always black, whatever theme the signed-in app uses, so the colours below are the
+ * Midnight roles of DESIGN.md written out once here (the --ds-* variables follow the visitor's theme and
+ * would turn this section light for someone in Daylight).
+ */
+
+.lp .fx {
+  --fx-surface: #08080a;
+  --fx-raised: #19191c;
+  --fx-high: #1e1e22;
+  --fx-line: #26262b;
+  --fx-edge-hover: #8c91a3;
+  --fx-text: #f1f3fb;
+  --fx-muted: #a9adc9;
+  --fx-subtle: #9ea3c2;
+  --fx-accent: #0585e0;
+  --fx-accent-card: #0476c8;
+  --fx-accent-text: #66bfff;
+  --fx-accent-soft: #123954;
+  --fx-accent-mid: #0a5a94;
+  --fx-accent-deep: #0365aa;
+  --fx-accent-pale: #b8e0ff;
+  --fx-success: #52d6a0;
+  --fx-spot: #f1f3fb;
+  --fx-on-spot: #12141f;
+  --fx-on-spot-muted: #4b5066;
+  --fx-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', Menlo, Consolas, monospace;
+}
+
+/* ---- Heading ------------------------------------------------------------------------------------ */
+
+.lp .fx-head {
+  max-width: 46rem;
+  margin: 0 auto clamp(2rem, 6vw, 3.5rem);
+  text-align: center;
+}
+
+.lp .fx-lead {
+  max-width: 36rem;
+  margin: 1.25rem auto 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* ---- Grid: one column on a phone, six from 768px, twelve from 1024px ------------------------------ */
+
+.lp .fx-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .lp .fx-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+  .lp .fx-tile[data-md='3'] {
+    grid-column: span 3;
+  }
+  .lp .fx-tile[data-md='6'] {
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lp .fx-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .lp .fx-tile[data-lg='3'] {
+    grid-column: span 3;
+  }
+  .lp .fx-tile[data-lg='4'] {
+    grid-column: span 4;
+  }
+  .lp .fx-tile[data-lg='5'] {
+    grid-column: span 5;
+  }
+  .lp .fx-tile[data-lg='6'] {
+    grid-column: span 6;
+  }
+  .lp .fx-tile[data-lg='7'] {
+    grid-column: span 7;
+  }
+  .lp .fx-tile[data-lg='8'] {
+    grid-column: span 8;
+  }
+  .lp .fx-tile[data-lg='12'] {
+    grid-column: span 12;
+  }
+}
+
+/* ---- Tile --------------------------------------------------------------------------------------- */
+
+.lp .fx-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+  --fx-pad: clamp(1.25rem, 3vw, 1.75rem);
+  --fx-title-size: clamp(1.375rem, 2.2vw, 1.75rem);
+  padding: var(--fx-pad);
+  overflow: hidden;
+  border: 1px solid var(--fx-line);
+  border-radius: 24px;
+  background: var(--fx-surface);
+  color: var(--fx-text);
+  transition: border-color 180ms ease;
+}
+
+/* On hover the edge turns grey and doubles in weight: the card's 1px border changes colour and a second 1px ring just
+   inside it (drawn over the card's content, which a border is not) joins it, 2px in all. The ring is inside the card
+   because the card clips whatever falls outside its inner edge. It takes no room, so nothing moves. */
+.lp .fx-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 1px solid transparent;
+  border-radius: 23px;
+  pointer-events: none;
+  transition: border-color 180ms ease;
+}
+
+.lp .fx-tile:hover {
+  border-color: var(--fx-edge-hover);
+}
+
+.lp .fx-tile:hover::after {
+  border-color: var(--fx-edge-hover);
+}
+.lp .fx-title {
+  margin: 0;
+  color: var(--fx-text);
+  font-family: var(--font-display);
+  font-size: var(--fx-title-size);
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+
+/* A tag stuck to the right edge of a card, level with its title ("Coming soon"): rounded on the left, square where it
+   meets the card's edge. Its box is as tall as the title's line, so the text is centred on the title. */
+.lp .fx-soon {
+  position: absolute;
+  top: calc((1.12 * var(--fx-title-size) - 1.75rem) / 2);
+  right: calc(var(--fx-pad) * -1);
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 1rem 0 0.875rem;
+  border-radius: 10px 0 0 10px;
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lp .fx-copy {
+  max-width: 44ch;
+  margin: 0.625rem 0 0;
+  color: var(--fx-muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+/* The picture of the product sits at the bottom of the tile */
+.lp .fx-shot {
+  margin-top: auto;
+  min-width: 0;
+  padding: 1rem;
+  border-radius: 14px;
+  background: var(--fx-raised);
+}
+
+/* The blue tile: the rank. White on this blue is 4.8:1, so all of its text stays white, at full strength. */
+.lp .fx-tile[data-tone='accent'] {
+  border-color: transparent;
+  background: var(--fx-accent-card);
+  color: #ffffff;
+}
+
+.lp .fx-tile[data-tone='accent']:hover,
+.lp .fx-tile[data-tone='accent']:hover::after {
+  border-color: transparent;
+}
+
+.lp .fx-tile[data-tone='accent'] .fx-title,
+.lp .fx-tile[data-tone='accent'] .fx-copy {
+  color: #ffffff;
+}
+/* ---- Small parts shared by the pictures --------------------------------------------------------- */
+
+.lp .fx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.75rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: var(--fx-high);
+  color: var(--fx-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.lp .fx-ok {
+  color: var(--fx-success);
+  flex: none;
+}
+
+.lp .fx-label {
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* ---- Cohorts: the editor ------------------------------------------------------------------------ */
+
+.lp .fx-editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.lp .fx-file {
+  color: var(--fx-subtle);
+  font-family: var(--fx-mono);
+  font-size: 0.75rem;
+}
+
+.lp .fx-run {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  background: var(--fx-accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lp .fx-code {
+  margin: 0;
+  overflow-x: auto;
+  color: rgba(241, 243, 251, 0.88);
+  font-family: var(--fx-mono);
+  font-size: 0.75rem;
+  line-height: 1.75;
+  tab-size: 4;
+}
+
+.lp .fx-code .k {
+  color: var(--fx-accent-text);
+}
+
+.lp .fx-code .f {
+  color: var(--fx-accent-pale);
+}
+
+.lp .fx-code .n {
+  color: var(--fx-accent);
+}
+
+.lp .fx-cases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0.875rem 0 0;
+  padding: 0.875rem 0 0;
+  border-top: 1px solid var(--fx-line);
+  list-style: none;
+}
+
+.lp .fx-case {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--fx-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ---- Rank (the inverted tile) ------------------------------------------------------------------- */
+
+.lp .fx-rank {
+  margin-top: auto;
+}
+
+.lp .fx-rank-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 7vw, 4.75rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-rank-of {
+  display: block;
+  margin-top: 0.375rem;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.lp .fx-rank-list {
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-rank-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.32);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-rank-list span:first-child {
+  color: #ffffff;
+}
+
+/* ---- Practice arena ----------------------------------------------------------------------------- */
+
+.lp .fx-timer {
+  display: block;
+  font-size: clamp(2.5rem, 5vw, 3rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--fx-high);
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-step[data-state='done'] {
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text);
+}
+
+.lp .fx-step[data-state='current'] {
+  background: var(--fx-accent);
+  color: #fff;
+}
+
+/* ---- Communication: the waveform ---------------------------------------------------------------- */
+
+.lp .fx-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.lp .fx-wave i {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 999px;
+  background: var(--fx-high);
+}
+
+.lp .fx-wave i[data-played='true'] {
+  background: var(--fx-accent-text);
+}
+
+/* ---- Consistency: the heatmap, then the days of this week --------------------------------------- */
+
+/* No container: the picture sits straight on the tile and takes the room the text leaves */
+.lp .fx-heatpic {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  min-width: 0;
+  transition: opacity 500ms ease;
+}
+
+.lp .fx-heatpic[data-leave='true'] {
+  opacity: 0;
+}
+
+/* Every day is a square: a fixed number of weeks share the width, and the height follows from it */
+.lp .fx-heat {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, auto);
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.lp .fx-heat i {
+  --lv: var(--fx-high);
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--lv);
+}
+
+.lp .fx-heat i[data-l='1'] {
+  --lv: var(--fx-accent-soft);
+}
+
+.lp .fx-heat i[data-l='2'] {
+  --lv: var(--fx-accent-mid);
+}
+
+.lp .fx-heat i[data-l='3'] {
+  --lv: var(--fx-accent);
+}
+
+.lp .fx-heat i[data-l='4'] {
+  --lv: var(--fx-accent-text);
+}
+
+.lp .fx-week {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lp .fx-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--fx-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.lp .fx-days {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-days li {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 999px;
+  background: var(--fx-high);
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lp .fx-days li[data-on='true'] {
+  background: var(--fx-accent);
+  color: #ffffff;
+}
+
+.lp .fx-week-count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* ---- Scores: three figures with a thin meter under each (VocalQ and Intervion) ------------------- */
+
+.lp .fx-scores {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-scores li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.lp .fx-scores b {
+  color: var(--fx-text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-scores span {
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+}
+
+.lp .fx-meter {
+  display: block;
+  height: 3px;
+  margin-top: 0.375rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--fx-high);
+}
+
+.lp .fx-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fx-accent-text);
+  transform: scaleX(var(--v));
+  transform-origin: left center;
+}
+
+@keyframes fx-meter-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(var(--v));
+  }
+}
+/* ---- CodePad ------------------------------------------------------------------------------------ */
+
+.lp .fx-out {
+  margin: 0.875rem 0 0;
+  padding: 0.75rem 0.875rem;
+  border-radius: 10px;
+  background: var(--fx-surface);
+  color: var(--fx-success);
+  font-family: var(--fx-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.lp .fx-out span {
+  display: block;
+  color: var(--fx-subtle);
+}
+
+/* ---- Mentors and admins: the wide tile ---------------------------------------------------------- */
+
+.lp .fx-wide {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.lp .fx-nowrap {
+  white-space: nowrap;
+}
+
+.lp .fx-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp .fx-bar {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--fx-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp .fx-bar-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--fx-high);
+  overflow: hidden;
+}
+
+.lp .fx-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--fx-accent-text);
+}
+
+.lp .fx-bar b {
+  color: var(--fx-muted);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ---- Under the grid ----------------------------------------------------------------------------- */
+
+.lp .fx-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  margin-top: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.lp .fx-more p {
+  margin: 0 0.5rem 0 0;
+  color: var(--fx-muted);
+  font-size: 0.875rem;
+}
+
+.lp .fx-note {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  color: var(--fx-subtle);
+  font-size: 0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp .fx-tile {
+    transition: none;
+  }
+}

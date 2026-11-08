@@ -1,5 +1,4 @@
-/* Import Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+/* Fonts: Inter and Instrument Serif are loaded once for the whole app, by frontend/index.html */
 
 /* Root Variables */
 :root {
@@ -2278,4 +2277,118 @@ body.landing-page .MuiAccordionDetails-root {
 /* A black page behind the landing pages, so a page fading out never shows the light theme background */
 body.landing-shell {
   background-color: #000 !important;
+}
+
+/* =====================================================================================
+   Scrolling: smooth scroll, depth, and the room a screen needs
+   ===================================================================================== */
+
+/* Lenis (parts/smoothScroll.js) scrolls the window. The page hid its sideways overflow with `overflow-x: hidden`, which
+   would make <body> a scroll box of its own; `clip` hides the same overflow without that. */
+html.lenis,
+html.lenis body {
+  overflow-x: clip;
+}
+
+.lp {
+  --lp-accent: #0585e0;
+}
+
+/* The line along the top that fills as the page is read (parts/ScrollProgress.jsx) */
+.lp .lp-progress {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2000;
+  height: 3px;
+  background: var(--lp-accent);
+  pointer-events: none;
+  transform-origin: 0 50%;
+}
+
+/* The hero's video travels on its own layer (parts/HeroScroll.jsx) */
+.lp .lp-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform-origin: 50% 35%;
+  will-change: transform;
+}
+
+/* Room for the notch and the rounded corners of a phone held sideways */
+.lp .lp-pad {
+  padding-left: max(var(--lp-pad), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--lp-pad), env(safe-area-inset-right, 0px));
+}
+
+/* On a very wide screen the hero's words stay with the rest of the page instead of hugging the left edge */
+.lp .lp-hero-inner {
+  max-width: 100rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 1800px) {
+  .lp .lp-h1 {
+    font-size: 8.5rem;
+  }
+}
+
+/* A phone (or a small window) on its side: little height, so the hero gives up some of its room */
+@media (max-height: 560px) and (orientation: landscape) {
+  .lp .lp-hero-top {
+    height: 3.75rem;
+  }
+
+  .lp .lp-h1 {
+    font-size: clamp(2rem, 11vh, 4rem);
+  }
+
+  .lp .lp-lead {
+    margin-top: 0.5rem;
+  }
+
+  .lp .lp-cta-row {
+    margin-top: 1rem;
+  }
+}
+
+/* The page rises into view and its backgrounds drift as it scrolls, driven by the scroll itself (CSS scroll
+   timelines), so there is no script to run for it. Browsers without them show the page as it is. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .lp .lp-backdrop--parallax video {
+      scale: 1.18;
+      animation: lp-drift linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+
+    .lp .lp-h2,
+    .lp .fx-lead {
+      animation: lp-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 65%;
+    }
+
+    @keyframes lp-drift {
+      from {
+        transform: translateY(-7%);
+      }
+      to {
+        transform: translateY(7%);
+      }
+    }
+
+    @keyframes lp-rise {
+      from {
+        opacity: 0;
+        transform: translateY(2rem);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
 }

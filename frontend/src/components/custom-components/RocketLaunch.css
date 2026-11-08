@@ -1,0 +1,107 @@
+/*
+ * RocketLaunch (custom-components/RocketLaunch.jsx). The rocket's colours are variables: the nose and fins
+ * follow the accent (the Midnight and Daylight accent from --ds-accent), and their light and dark shades
+ * are derived from it. The hull, steel and glass are fixed, because a rocket does not change with the theme.
+ */
+
+.rl {
+  --rl-accent: var(--ds-accent, #0585e0);
+  --rl-accent-light: color-mix(in srgb, var(--rl-accent) 55%, #ffffff);
+  --rl-accent-dark: color-mix(in srgb, var(--rl-accent) 55%, #000000);
+
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rl-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rl-canvas--back {
+  z-index: 1;
+}
+
+.rl-canvas--front {
+  z-index: 3;
+}
+
+.rl-rocket {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  visibility: hidden;
+  will-change: transform;
+}
+
+.rl-rocket__art {
+  --rl-fire: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rl-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* How lit the engine is, and the flicker of each layer of the flame at its own pace */
+.rl-fire {
+  transform: scale(calc(0.55 + var(--rl-fire, 0) * 0.45), var(--rl-fire, 0));
+  opacity: calc(var(--rl-fire, 0) * 1.4);
+}
+
+.rl-flicker {
+  transform-origin: 60px 258px;
+}
+
+.rl-flicker--a {
+  animation: rl-flicker-a 130ms ease-in-out infinite alternate;
+}
+
+.rl-flicker--b {
+  animation: rl-flicker-b 95ms ease-in-out infinite alternate;
+}
+
+.rl-flicker--c {
+  animation: rl-flicker-c 70ms ease-in-out infinite alternate;
+}
+
+@keyframes rl-flicker-a {
+  from {
+    transform: scale(0.94, 0.88);
+  }
+  to {
+    transform: scale(1.05, 1.1);
+  }
+}
+
+@keyframes rl-flicker-b {
+  from {
+    transform: scale(1.04, 0.92);
+  }
+  to {
+    transform: scale(0.95, 1.08);
+  }
+}
+
+@keyframes rl-flicker-c {
+  from {
+    transform: scale(0.92, 0.9);
+  }
+  to {
+    transform: scale(1.06, 1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rl {
+    display: none;
+  }
+}

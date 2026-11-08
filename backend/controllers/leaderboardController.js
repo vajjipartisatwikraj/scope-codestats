@@ -297,7 +297,8 @@ const getAcademicYearConfig = async (req, res) => {
 /**
  * GET /api/leaderboard/public/top10
  * Public by design: the landing page shows the top 10 to visitors who are not
- * signed in. Only name, department, year and score are exposed.
+ * signed in. Only name, roll number (for the profile link), department, year and score are exposed. The institution
+ * is not part of the answer: the page that shows it knows its own name.
  */
 const getPublicTop10 = async (req, res) => {
   try {
@@ -322,7 +323,6 @@ const getPublicTop10 = async (req, res) => {
         department: user.department,
         graduatingYear: user.graduatingYear,
         score: user.totalScore,
-        institution: "MLRIT",
       }))
     );
   } catch (error) {
