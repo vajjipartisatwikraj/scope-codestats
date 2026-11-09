@@ -5,6 +5,7 @@ import { ArrowForward, Code, PlayArrow, Star, StarHalf, StarBorder } from '@mui/
 import AboutSection from './parts/AboutSection';
 import { BackdropVideo, DemoVideo } from './parts/Videos';
 import StatsSection from './parts/StatsSection';
+import FeatureShowcase from './parts/FeatureShowcase';
 import InstitutionsSection from './parts/InstitutionsSection';
 import LeaderboardSection from './parts/LeaderboardSection';
 import FaqSection from './parts/FaqSection';
@@ -233,6 +234,9 @@ const DefaultLanding = () => {
 
       {/* 2. STATS Section */}
       <StatsSection />
+
+      {/* EVERYTHING CODESTATS OFFERS: the animated feature tiles, on every landing page */}
+      <FeatureShowcase />
 
       {/* 3. CAMPUSES Section */}
       <InstitutionsSection />

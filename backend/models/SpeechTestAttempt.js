@@ -9,6 +9,9 @@ const Schema = mongoose.Schema;
  *                                    ^          |
  *                                    +- failed -+   (retry puts it back to queued)
  *
+ * `unscored` is set when the student ends the test while the section is still open, waiting for
+ * its score or failed. It never gets a score and counts as 0 in the final score.
+ *
  * `queued` means the student has submitted but the answers have not yet been
  * accepted by SpeechJudge (or the judge was unreachable and will be retried).
  * `scoring` means the judge holds a job for it.
@@ -23,6 +26,7 @@ const SECTION_STATUS = [
   "scoring",
   "scored",
   "failed",
+  "unscored",
 ];
 
 const questionResultSchema = new Schema(

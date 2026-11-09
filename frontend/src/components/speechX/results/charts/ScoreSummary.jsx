@@ -4,10 +4,10 @@ import { Reveal } from "../../shared";
 import { STAGE } from "../resultsMeta";
 
 /**
- * The one spotlight tile of the page: the section score as the figure the student came for,
+ * The section score tile (a plain card): the section score as the figure the student came for,
  * in Numeral XL inside a ring (the custom ScoreRing, whose number counts up), with its band as a
  * word and an icon and how many questions were answered. The ring is in the accent on the
- * inverted tile; its track and text come from the spotlight roles, so it reads in both themes.
+ * card; its track and text come from the normal text roles, so it reads in both themes.
  */
 const ScoreSummary = ({ questions, score }) => {
   const answered = questions.filter((question) => question.answered).length;

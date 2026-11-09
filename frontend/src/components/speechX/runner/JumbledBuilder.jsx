@@ -65,7 +65,7 @@ const JumbledBuilder = ({ words, arrangement, interactive, disabled, status, onA
 
   return (
     <div>
-      <PromptText>
+      <PromptText className="sxr-prompt--small">
         {interactive
           ? "Press the words in the correct order to build the sentence."
           : "Put these words in the correct order, then say the full sentence aloud."}

@@ -83,6 +83,7 @@ import PATestResults from "./components/PracticeArena/PATestResults";
 
 // Import speech (communication) test components
 import { SpeechTestDashboard } from "./components/speechX/dashboard";
+import useExamFullscreen from "./components/speechX/shared/useExamFullscreen";
 import { SpeechTestOverview } from "./components/speechX/overview";
 import { SpeechTestSetup } from "./components/speechX/setup";
 import SpeechSectionRunner from "./components/speechX/runner";
@@ -202,6 +203,8 @@ const MainContent = () => {
     : null;
 
   // Check if current path is a test page
+  // A speech test the student is sitting (instructions, section list, running section) holds the whole screen
+  useExamFullscreen(location.pathname);
   const isTestPage = location.pathname.startsWith("/practice-arena/tests/");
 
   // A running speech-test section has its own fixed header: no app navbar or

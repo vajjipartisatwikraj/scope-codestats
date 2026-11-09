@@ -31,7 +31,7 @@ const FeedbackForm = ({ form }) => {
         </Reveal>
 
         <Reveal y={8} delay={0.2}>
-          <StarRating value={form.rating} onChange={form.setRating} label="Overall rating" labels={RATING_LABELS.slice(1)} size={32} />
+          <StarRating value={form.rating} onChange={form.setRating} label="Overall rating" labels={RATING_LABELS.slice(1)} size={28} emptyWeight="fill" />
         </Reveal>
 
         <div className="sxf-scales">
@@ -51,12 +51,13 @@ const FeedbackForm = ({ form }) => {
           <TextField
             multiline
             rows={4}
-            label="Suggestions"
+            className="sxf-comment"
+            aria-label="Suggestions (optional)"
             value={form.comment}
             onChange={(event) => form.setComment(event.target.value)}
             maxLength={COMMENT_LIMIT}
             placeholder="Please give your valuable suggestions to improve ourselves."
-            hint={nearLimit ? `${form.comment.length} / ${COMMENT_LIMIT}` : "Optional"}
+            hint={nearLimit ? `${form.comment.length} / ${COMMENT_LIMIT}` : undefined}
           />
         </Reveal>
       </fieldset>

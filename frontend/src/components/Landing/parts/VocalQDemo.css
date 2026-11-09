@@ -1,12 +1,6 @@
 /*
- * The VocalQ tile film (VocalQDemo.jsx). Colours from FeatureShowcase.css; the blue is the platform's one
- * accent (--fx-accent), the same as the buttons and the highlights of the other tiles.
- *
- * The stage has one fixed size; each step is laid over it and centred, so the tile never changes size while
- * the picture changes. The drawing, the arcs and the bars run in CSS, with these times: the face draws
- * 0 to 1500ms and the arcs start at 1100ms and repeat every 1800ms; every bar grows from a dot into its
- * line, starting from the middle (28ms per bar away from it) and then moves like a live voice.
- * The finished waveform is the plain style of each part; the animations only start from an earlier state.
+ * The VocalQ tile (VocalQDemo.jsx). The film itself is custom-components/SpeakingFilm; here it gets the landing page's
+ * colours: the face in the page's white, the sound waves and the bars in the platform's one accent blue.
  */
 
 .lp .fx-vq {
@@ -16,133 +10,10 @@
   min-width: 0;
 }
 
-.lp .fx-vq-stage {
-  position: relative;
-  flex: 1;
-  min-height: 11rem;
-}
-
-.lp .fx-vq-stage .fx-layer {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ---- Step 1: a face in profile, speaking ---------------------------------------------------------------- */
-
-.lp .fx-vq-face {
-  display: block;
-  width: auto;
-  height: 11.5rem;
-  max-height: 92%;
-  overflow: visible;
-  fill: none;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* The outline draws itself from the forehead down to the neck */
-.lp .fx-vq-line {
-  stroke: var(--fx-text);
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-  animation: fx-vq-draw 1500ms cubic-bezier(0.45, 0, 0.25, 1) both;
-}
-
-@keyframes fx-vq-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* The sound waves leave the mouth one after another, and again and again */
-.lp .fx-vq-arc {
-  stroke: var(--fx-accent);
-  opacity: 0;
-  animation: fx-vq-wave 1800ms cubic-bezier(0.3, 0.6, 0.3, 1) infinite;
-  animation-delay: calc(var(--i) * 200ms + 1100ms);
-}
-
-@keyframes fx-vq-wave {
-  0% {
-    opacity: 0;
-    transform: scale(0.82);
-  }
-  28% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  62% {
-    opacity: 1;
-    transform: scale(1.03);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.1);
-  }
-}
-
-/* ---- Step 2: the waveform, every bar growing from a dot ------------------------------------------------ */
-
-.lp .fx-vq-wave {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: 5rem;
-}
-
-.lp .fx-vq-wave i {
-  flex: 0 1 0.3125rem;
-  min-width: 2px;
-  height: var(--h);
-  border-radius: 999px;
-  background: var(--fx-accent);
-  transform-origin: center;
-  animation:
-    fx-vq-grow 720ms cubic-bezier(0.22, 1, 0.36, 1) both calc(var(--d) * 28ms + 200ms),
-    fx-vq-live 1500ms ease-in-out infinite alternate calc(var(--d) * 28ms + 1200ms);
-}
-
-.lp .fx-vq-wave i:nth-child(3n) {
-  animation-duration: 720ms, 1150ms;
-}
-
-.lp .fx-vq-wave i:nth-child(2n) {
-  animation-duration: 720ms, 1750ms;
-}
-
-/* A dot, then the line */
-@keyframes fx-vq-grow {
-  from {
-    height: 0.3125rem;
-  }
-  to {
-    height: var(--h);
-  }
-}
-
-/* Once grown, the bars rise and fall a little, each at its own pace, like a voice */
-@keyframes fx-vq-live {
-  from {
-    transform: scaleY(1);
-  }
-  to {
-    transform: scaleY(0.6);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lp .fx-vq-line,
-  .lp .fx-vq-arc,
-  .lp .fx-vq-wave i {
-    animation: none !important;
-  }
+.lp .fx-vq-film {
+  --sf-line: var(--fx-text);
+  --sf-accent: var(--fx-accent);
+  --sf-face-height: 11.5rem;
+  --sf-wave-height: 5rem;
+  --sf-min: 11rem;
 }

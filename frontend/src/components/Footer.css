@@ -58,6 +58,47 @@
   background-color: var(--ds-surface);
 }
 
+/* The logo and the line of text stay together, centred, whatever is at the ends */
+.ds-footer__brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+/* During a running speech test: connection at the left end, battery at the right end, the brand between them. The bar
+   stays one row on every screen (a three-column grid), so its height does not change. */
+.ds-footer__bar[data-status='true'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px 16px;
+  padding-right: 16px;
+  padding-left: 16px;
+}
+
+.ds-footer__end {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ds-footer__end--start {
+  justify-self: start;
+}
+
+.ds-footer__end--end {
+  justify-self: end;
+}
+
+/* Little room: the line of text goes, the logo stays between the two indicators */
+@media (max-width: 759.95px) {
+  .ds-footer__bar[data-status='true'] .ds-footer__text {
+    display: none;
+  }
+}
+
 .ds-footer__logo {
   display: block;
   height: 32px;

@@ -132,7 +132,7 @@ const SpeechTestSetup = () => {
 
   return (
     <>
-      <FocusHeader subtitle="Speech Judge" />
+      <FocusHeader subtitle="VocalQ" />
 
       {loading ? (
         <FocusPage wide aria-busy="true">
@@ -158,7 +158,7 @@ const SpeechTestSetup = () => {
                       </Button>
                     ) : null}
                     <Button variant={error ? "ghost" : "secondary"} onClick={() => navigate("/speech-tests")}>
-                      Back to speech tests
+                      Back to VocalQ
                     </Button>
                   </div>
                 }

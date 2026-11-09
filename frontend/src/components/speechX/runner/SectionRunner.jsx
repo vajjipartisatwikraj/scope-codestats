@@ -15,7 +15,6 @@ import ReviewPage from "./review/ReviewPage";
 import { SubmitDialog, SubmittingOverlay } from "./SubmitDialogs";
 import useSectionRunner, { hasContent } from "./useSectionRunner";
 import useQuestionMarks from "./useQuestionMarks";
-import useDelayedFlag from "./useDelayedFlag";
 import "./runner.css";
 
 /**
@@ -36,7 +35,7 @@ const reasonFor = ({ busy, timeUp, speaking }) => {
 /** Loading: the real layout as skeletons, so nothing jumps when the section opens. */
 const LoadingScreen = () => (
   <div className="sxr-root">
-    <FocusHeader subtitle="Speech Judge" locked compact />
+    <FocusHeader subtitle="VocalQ" locked compact />
     <RunnerStage layout="split" aria-busy="true" aria-label="Opening your section">
       <div className="sxr-palette sxr-skeleton" aria-hidden="true">
         <Skeleton width={120} height={20} />
@@ -68,7 +67,7 @@ const LoadingScreen = () => (
 /** Error: what happened and the way back. */
 const ErrorScreen = ({ message, onBack }) => (
   <div className="sxr-root">
-    <FocusHeader subtitle="Speech Judge" />
+    <FocusHeader subtitle="VocalQ" />
     <FocusPage narrow center>
       <SpeechCard icon={WarningCircleIcon} hue="coral" title="We could not open this section" description={message} headingAs="h1" divided={false}>
         <div className="sxr-actions">
@@ -91,7 +90,7 @@ const ErrorScreen = ({ message, onBack }) => (
  * on the left (a block on top on phones) and the current question on the right. The page itself
  * never scrolls. The Review button swaps the stage for the review page (opened from the palette or
  * the last question) without leaving the route, so the timer, answers and leave guard keep
- * running. All behaviour lives in `useSectionRunner`.
+ * running. The app keeps the window in full screen for the whole test (useExamFullscreen, called by App.jsx) and its footer shows the connection and the battery. All behaviour lives in `useSectionRunner`.
  */
 const SectionRunner = () => {
   const { id, sectionId } = useParams();
@@ -101,10 +100,6 @@ const SectionRunner = () => {
   const [view, setView] = useState("questions"); // questions | review
   const { phase, session, answers, index, remainingMs, dialog, setDialog, recorderRef } = runner;
   const scrollRef = useRef(null);
-
-  // The unsaved notice waits a moment, so a quick save never flashes a message and shifts the page.
-  const unsaved = session ? Object.values(answers).filter((a) => a.status !== "saved").length : 0;
-  const showSaving = useDelayedFlag(unsaved > 0, 1500);
 
   // A new question starts at the top of its column.
   useEffect(() => {
@@ -132,7 +127,6 @@ const SectionRunner = () => {
     state: tileState({ current: false, mark: marks[q._id], answered: hasContent(answers[q._id]) }),
   }));
   const answeredCount = questions.filter((q) => hasContent(answers[q._id])).length;
-  const segments = questions.map((q, i) => (i === index ? "active" : hasContent(answers[q._id]) ? "done" : "idle"));
 
   const isUiJumble = section.type === "JUMBLED" && question.mode === "ui";
   const hasRecorder = !isUiJumble && !isTextOnly(section.type);
@@ -140,8 +134,8 @@ const SectionRunner = () => {
   // One accent (primary) button per view: the record button has it until the question is answered.
   const nextIsPrimary = !hasRecorder || Boolean(audioAnswer);
   const label = section.position
-    ? `Speech test · Section ${section.position} of ${section.totalSections}`
-    : `Speech test · ${typeLabel(section.type)}`;
+    ? `VocalQ · Section ${section.position} of ${section.totalSections}`
+    : `VocalQ · ${typeLabel(section.type)}`;
 
   // Never lose a recording that is still going when the student changes screen.
   const openReview = async () => {
@@ -159,8 +153,6 @@ const SectionRunner = () => {
       <RunnerNavbar
         label={label}
         title={section.title}
-        segments={segments}
-        progressLabel={`${answeredCount} of ${questions.length} questions answered`}
         remainingMs={remainingMs}
       />
 
@@ -187,12 +179,6 @@ const SectionRunner = () => {
             <div className="sxr-main__scroll" ref={scrollRef}>
               <div className="sxr-main__inner">
                 {timeUp && <Notice tone="warning">Time is up. Submitting your answers…</Notice>}
-                {showSaving && !timeUp && (
-                  <Notice tone="info">
-                    Saving your answers… If your connection dropped, they are kept on this device and sent again
-                    automatically.
-                  </Notice>
-                )}
 
                 <div className="sxr-question" key={question._id}>
                   <QuestionPrompt
@@ -207,6 +193,7 @@ const SectionRunner = () => {
                     onPlay={runner.playPrompt}
                     onArrange={(next) => runner.handleArrange(question, next)}
                     onText={(text, options) => runner.handleTextAnswer(question, text, options)}
+                    onTextCommit={() => runner.commitTextAnswer(question)}
                   />
 
                   {hasRecorder && (

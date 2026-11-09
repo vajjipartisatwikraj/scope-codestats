@@ -9,8 +9,10 @@ import HouseOfAbundanceLanding from './HouseOfAbundanceLanding';
  * An institution that names none, or a page that is not listed here, gets the default page.
  *
  * To give another institution its own page:
- *   1. add <Name>Landing.jsx next to this file (copy HouseOfAbundanceLanding.jsx; the sections both
- *      pages share are in ./parts),
+ *   1. add <Name>Landing.jsx next to this file (copy HouseOfAbundanceLanding.jsx; the sections the
+ *      pages share are in ./parts). Keep the shared pieces in it: useLandingShell (smooth scrolling),
+ *      ScrollProgress, the hero scroll effects (HeroScroll) and <FeatureShowcase />, the animated feature
+ *      tiles that every landing page shows,
  *   2. list it below under the name you will use,
  *   3. put  "landingPage": "<name>"  in that institution's brand.json.
  */

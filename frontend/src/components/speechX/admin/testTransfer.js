@@ -63,7 +63,7 @@ export const toDuplicatePayload = (test) =>
 export const fromImportData = (data) => {
   const test = data?.test || data;
   if (!test || typeof test.title !== "string" || !test.title.trim() || !Array.isArray(test.sections)) {
-    throw new Error("This file is not a speech test export. It needs a title and a list of sections.");
+    throw new Error("This file is not a VocalQ test export. It needs a title and a list of sections.");
   }
   return withUsableWindow(toTransferTest(test));
 };

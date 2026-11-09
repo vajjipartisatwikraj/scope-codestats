@@ -1,74 +1,115 @@
 /*
  * Test feedback (route /speech-tests/:id/feedback), prefix sxf-
  *
- * Plain CSS on the design tokens (--ds-*), built on the speechX shared kit. Two flat cards side by
- * side from 900px: the confirmation with the final score (the one spotlight tile) on the left, the
- * form on the right; stacked on a phone. The one filled button is Submit feedback (or Back to the
- * test once it is sent). Components: SpeechTestFeedbackPage.jsx, CompletionPanel.jsx,
- * FeedbackForm.jsx, ScaleRow.jsx, ThankYou.jsx.
+ * Plain CSS on the design tokens (--ds-*), built on the speechX shared kit. One card with a hairline
+ * outline, in two panels from 760px: the confirmation with the final score, sections and time on a
+ * blue-tinted panel on the left, the form on the right; stacked on a phone. The one filled button
+ * is Submit feedback (or Back to the test once it is sent). Components: SpeechTestFeedbackPage.jsx,
+ * CompletionPanel.jsx, FeedbackForm.jsx, ScaleRow.jsx, ThankYou.jsx.
  */
 
-.sxf-layout {
+.sxf-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--sx-gap);
-  align-items: start;
   width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-surface);
+  overflow: hidden;
 }
 
-@media (min-width: 900px) {
-  .sxf-layout {
-    grid-template-columns: 300px minmax(0, 1fr);
-    align-items: stretch;
+@media (min-width: 760px) {
+  .sxf-card {
+    grid-template-columns: 280px minmax(0, 1fr);
   }
 }
 
+/* ---- The confirmation (left) ------------------------------------------------------------------- */
+
 .sxf-complete {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sx-gap);
   min-width: 0;
+  padding: 24px;
+  background-color: color-mix(in srgb, var(--ds-accent-soft) 45%, var(--ds-surface));
+}
+
+@media (min-width: 760px) {
+  .sxf-complete {
+    border-right: 1px solid var(--ds-line);
+  }
 }
 
 .sxf-title {
-  margin: 20px 0 0;
-  font: var(--ds-type-headline);
-  letter-spacing: var(--ds-tracking-headline);
+  margin: 16px 0 0;
+  font: var(--ds-type-title);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-title);
 }
 
 .sxf-lead {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--ds-muted);
-  font: var(--ds-type-body);
+  font: var(--ds-type-body-sm);
 }
 
 .sxf-facts {
-  margin: 0;
+  margin: 20px 0 0;
   padding: 0;
-  list-style: none;
 }
+
+.sxf-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--ds-line);
+}
+
+.sxf-fact__label {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.sxf-fact__value {
+  margin: 0;
+  font: var(--ds-type-body-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sxf-skeleton {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* ---- The form (right) --------------------------------------------------------------------------- */
 
 .sxf-side {
   display: flex;
   min-width: 0;
 }
 
-.sxf-side > .sx-card {
+.sxf-side > * {
   flex: 1 1 auto;
+  min-width: 0;
+  padding: 24px;
 }
-
-/* ---- The form ----------------------------------------------------------------------------------- */
 
 .sxf-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .sxf-fieldset {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -78,61 +119,56 @@
 .sxf-form__title {
   margin: 0;
   font: var(--ds-type-title);
+  font-weight: 700;
   letter-spacing: var(--ds-tracking-title);
 }
 
 .sxf-form__lead {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--ds-muted);
   font: var(--ds-type-body-sm);
+}
+
+/* Solid stars, a touch smaller gap, the word ("Good") beside them; the first star lines up with the title */
+.sxf-form .sr {
+  --sr-empty: color-mix(in srgb, var(--ds-text) 22%, var(--ds-surface));
+
+  margin-left: -8px;
+  gap: 4px 8px;
+}
+
+.sxf-form .sr__word {
+  min-width: 0;
+  font: var(--ds-type-caption);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-caption);
 }
 
 .sxf-scales {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-/* A question: the label (and the answer in words) above the five segments; side by side from 600px */
+/* A question: its label, then the five numbers; side by side from 600px */
 .sxf-scale {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px 16px;
+  gap: 6px 16px;
   align-items: center;
 }
 
 @media (min-width: 600px) {
   .sxf-scale {
-    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-columns: 170px minmax(0, 1fr);
   }
 }
 
 .sxf-scale__label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0 12px;
   margin: 0;
-  font: var(--ds-type-label);
-  letter-spacing: var(--ds-tracking-label);
-}
-
-.sxf-scale__value {
-  color: var(--ds-muted);
   font: var(--ds-type-caption);
+  font-weight: 700;
   letter-spacing: var(--ds-tracking-caption);
-  font-variant-numeric: tabular-nums;
-}
-
-@media (min-width: 600px) {
-  .sxf-scale__label {
-    display: block;
-  }
-
-  .sxf-scale__value {
-    display: block;
-  }
 }
 
 .sxf-scale__steps {
@@ -142,14 +178,15 @@
 }
 
 .sxf-step {
-  height: 44px;
+  height: 28px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--ds-radius-md);
-  background-color: var(--ui-control-bg, var(--ds-raised));
+  border-radius: var(--ds-radius-xs);
+  background-color: var(--ds-raised);
   color: var(--ds-muted);
-  font: var(--ds-type-label);
+  font: var(--ds-type-caption);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition:
@@ -157,17 +194,11 @@
     color var(--ds-duration-fast) var(--ds-ease);
 }
 
-/* Filling ripples to the right; emptying is immediate */
+/* Every number up to the chosen one is filled blue; filling ripples to the right, emptying is immediate */
 .sxf-step[data-on='true'] {
-  background-color: var(--ds-accent-soft);
-  color: var(--ds-accent-text);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
   transition-delay: calc(var(--sxf-i, 1) * 25ms), 0ms;
-}
-
-/* The chosen segment: a ring and a heavier number, so the answer is not colour alone */
-.sxf-step[data-chosen='true'] {
-  box-shadow: inset 0 0 0 2px var(--ds-accent-text);
-  font-weight: 800;
 }
 
 .sxf-step:hover:not(:disabled) {
@@ -175,7 +206,7 @@
 }
 
 .sxf-step[data-on='true']:hover:not(:disabled) {
-  background-color: var(--ds-accent-soft);
+  background-color: var(--ds-accent-hover);
 }
 
 .sxf-step:focus-visible {
@@ -185,15 +216,15 @@
     0 0 0 4px var(--ds-focus);
 }
 
-.sxf-step[data-chosen='true']:focus-visible {
-  box-shadow:
-    inset 0 0 0 2px var(--ds-accent-text),
-    0 0 0 2px var(--ds-surface),
-    0 0 0 4px var(--ds-focus);
-}
-
 .sxf-step:disabled {
   cursor: default;
+}
+
+/* Touch screens get the full 44px target */
+@media (pointer: coarse) {
+  .sxf-step {
+    height: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -202,17 +233,27 @@
   }
 }
 
+/* The suggestions box: no fill, a hairline outline */
+.sxf-comment .ui-input {
+  min-height: 96px;
+  border-color: var(--ds-line);
+  border-radius: var(--ds-radius-sm);
+  background-color: transparent;
+  font: var(--ds-type-body-sm);
+}
+
 .sxf-actions {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
 }
 
 .sxf-why {
-  margin: 0;
+  margin: 0 auto 0 0;
   color: var(--ds-muted);
-  font: var(--ds-type-body-sm);
-  text-align: right;
+  font: var(--ds-type-caption);
 }
 
 .sxf-buttons {
@@ -222,9 +263,23 @@
   gap: 8px;
 }
 
+/* Rounded rectangles rather than pills, as in the design of this screen */
+.sxf-buttons > .ui-button {
+  border-radius: var(--ds-radius-sm);
+}
+
+.sxf-buttons > .ui-button[data-variant='secondary'] {
+  border: 1px solid var(--ds-line);
+  background-color: var(--ds-canvas);
+}
+
+.sxf-buttons > .ui-button[data-variant='secondary']:hover:not(:disabled) {
+  background-color: var(--ds-raised);
+}
+
 @media (max-width: 599.95px) {
-  .sxf-why {
-    text-align: left;
+  .sxf-buttons {
+    width: 100%;
   }
 
   .sxf-buttons > .ui-button {

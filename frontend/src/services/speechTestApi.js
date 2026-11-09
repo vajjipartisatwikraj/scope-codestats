@@ -28,6 +28,8 @@ export const adminApi = {
   deleteAttempt: (id, attemptId) => unwrap(axios.delete(`${base}/admin/${id}/attempts/${attemptId}`)),
   judgeStatus: () => unwrap(axios.get(`${base}/admin/judge/status`)),
   feedbackSummary: (id) => unwrap(axios.get(`${base}/admin/${id}/feedback`)),
+  /** The complete results workbook (.xlsx). Resolves with the whole response (a blob and its headers). */
+  exportResults: (id) => axios.get(`${base}/admin/${id}/export`, { responseType: "blob", timeout: 120000 }),
 };
 
 // ---- shared ----------------------------------------------------------------

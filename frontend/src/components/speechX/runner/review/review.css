@@ -60,32 +60,6 @@
   white-space: nowrap;
 }
 
-.sxr-statebar {
-  display: flex;
-  gap: 4px;
-  width: 100%;
-}
-
-.sxr-statebar__segment {
-  flex: 1 1 0;
-  min-width: 2px;
-  height: 8px;
-  border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-high);
-}
-
-.sxr-statebar__segment[data-state='answered'] {
-  background-color: var(--ds-accent);
-}
-
-.sxr-statebar__segment[data-state='later'] {
-  background-color: var(--ds-warning);
-}
-
-.sxr-statebar__segment[data-state='review'] {
-  background-color: var(--sx-state-fg);
-}
-
 .sxr-summary .sxr-summary__legend {
   gap: 8px 24px;
 }

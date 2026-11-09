@@ -18,6 +18,8 @@ import { clamp, cx, finiteOr } from './chartUtils';
  *   max (5)           how many stars
  *   readOnly (false)  display only. A fractional value is shown with a half star.
  *   size (28)         px, the icon (the target is at least 44px when interactive)
+ *   emptyWeight ('regular')  the Phosphor weight of the stars that are not chosen: 'regular' (outline)
+ *                     or 'fill' (solid, in the empty colour)
  *   label ('Rating')  the name of the group
  *   labels            array of words, one per star: ['Poor', 'Fair', 'Good', 'Very good', 'Excellent'].
  *                     The word of the previewed or chosen star is printed beside the stars and
@@ -35,6 +37,7 @@ export default function StarRating({
   max = 5,
   readOnly = false,
   size = 28,
+  emptyWeight = 'regular',
   label = 'Rating',
   labels,
   showValue = false,
@@ -149,7 +152,7 @@ export default function StarRating({
                 if (event.pointerType === 'mouse') setHover(n);
               }}
             >
-              <StarIcon size={size} weight={on ? 'fill' : 'regular'} aria-hidden="true" />
+              <StarIcon size={size} weight={on ? 'fill' : emptyWeight} aria-hidden="true" />
             </button>
           );
         })}

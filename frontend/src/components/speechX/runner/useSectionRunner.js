@@ -491,8 +491,11 @@ const useSectionRunner = (id, sectionId) => {
 
   // ---- typed and chosen answers ---------------------------------------------------
   // The text is kept and drafted on every keystroke; the upload waits until typing
-  // pauses, so a long email is not sent once per letter.
+  // pauses, so a long email is not sent once per letter. A short answer in a box of its
+  // own (fill in the blank) waits even longer: it is uploaded once, when the student
+  // leaves the box (commitTextAnswer), when they move to another question, or on submit.
   const typingTimers = useRef({});
+  const untilBlur = useRef(new Set());
 
   const flushTyping = useCallback(() => {
     Object.entries(typingTimers.current).forEach(([id, timer]) => {
@@ -500,6 +503,8 @@ const useSectionRunner = (id, sectionId) => {
       scheduleUpload(id);
     });
     typingTimers.current = {};
+    untilBlur.current.forEach((id) => scheduleUpload(id));
+    untilBlur.current.clear();
   }, [scheduleUpload]);
 
   flushTypingRef.current = flushTyping;
@@ -507,10 +512,11 @@ const useSectionRunner = (id, sectionId) => {
   /**
    * @param {object} question the question being answered
    * @param {string} text     what was typed, or the chosen option ids joined by commas
-   * @param {{ immediate?: boolean }} options immediate = upload now (a choice, not typing)
+   * @param {{ immediate?: boolean, untilBlur?: boolean }} options immediate = upload now (a choice,
+   *   not typing); untilBlur = do not upload while typing, wait for commitTextAnswer()
    */
   const handleTextAnswer = useCallback(
-    (question, text, { immediate = false } = {}) => {
+    (question, text, { immediate = false, untilBlur: waitForBlur = false } = {}) => {
       const previous = answersRef.current[question._id];
       answersRef.current[question._id] = {
         kind: "text",
@@ -532,7 +538,11 @@ const useSectionRunner = (id, sectionId) => {
       clearTimeout(typingTimers.current[question._id]);
       if (immediate) {
         delete typingTimers.current[question._id];
+        untilBlur.current.delete(question._id);
         scheduleUpload(question._id);
+      } else if (waitForBlur) {
+        delete typingTimers.current[question._id];
+        untilBlur.current.add(question._id);
       } else {
         typingTimers.current[question._id] = setTimeout(() => {
           delete typingTimers.current[question._id];
@@ -541,6 +551,15 @@ const useSectionRunner = (id, sectionId) => {
       }
     },
     [commitAnswers, scheduleUpload, sectionId]
+  );
+
+  /** Uploads an answer that was waiting for the student to leave its box. */
+  const commitTextAnswer = useCallback(
+    (question) => {
+      if (!untilBlur.current.delete(question._id)) return;
+      scheduleUpload(question._id);
+    },
+    [scheduleUpload]
   );
 
   useEffect(
@@ -579,6 +598,7 @@ const useSectionRunner = (id, sectionId) => {
     handleRecorded,
     handleArrange,
     handleTextAnswer,
+    commitTextAnswer,
     flushTyping,
     backToOverview: () => navigate(`/speech-tests/${id}`, { replace: true }),
   };

@@ -4,8 +4,8 @@ import { CaretRightIcon } from "@phosphor-icons/react/dist/csr/CaretRight";
 import { Button } from "../../ui";
 import TipCard from "./TipCard";
 
-const MAX_CARD = 420;
-const MIN_CARD = 240;
+const MAX_CARD = 340;
+const MIN_CARD = 220;
 /** Room kept at both ends so a neighbouring card peeks in */
 const PEEK = 56;
 
@@ -67,7 +67,7 @@ const TipsCarousel = ({ tips }) => {
       </div>
 
       <div className="sxs-carousel__controls">
-        <Button startIcon={<CaretLeftIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => go(index - 1)} disabled={index === 0}>
+        <Button size="sm" startIcon={<CaretLeftIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => go(index - 1)} disabled={index === 0}>
           Previous
         </Button>
 
@@ -87,7 +87,7 @@ const TipsCarousel = ({ tips }) => {
           ))}
         </div>
 
-        <Button endIcon={<CaretRightIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => go(index + 1)} disabled={index === tips.length - 1}>
+        <Button size="sm" endIcon={<CaretRightIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => go(index + 1)} disabled={index === tips.length - 1}>
           Next
         </Button>
       </div>

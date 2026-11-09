@@ -3,10 +3,9 @@ import React, { useRef, useState } from "react";
 const STEPS = [1, 2, 3, 4, 5];
 
 /**
- * One question with a 1 to 5 scale: a label, the chosen number in words ("4 of 5"), and five
- * segments. Choosing a number fills every segment up to it (left to right, in a quick ripple);
- * the chosen segment also carries a ring and the number, so the answer is not colour alone. The
- * chosen number can be pressed again to clear it. A radio group: Tab enters it, the arrow keys
+ * One question with a 1 to 5 scale: a label and five numbered segments. Choosing a number fills
+ * every segment up to it (left to right, in a quick ripple), so the number itself says what was
+ * chosen. The chosen number can be pressed again to clear it. A radio group: Tab enters it, the arrow keys
  * move the choice, Home and End jump to the ends. Every segment is a 44px target.
  *
  * Props: label, value (0 or null for none), onChange(value | null), disabled
@@ -39,7 +38,6 @@ const ScaleRow = ({ label, value, onChange, disabled = false }) => {
     <div className="sxf-scale" ref={groupRef} role="radiogroup" aria-label={label} onMouseLeave={() => setHover(0)}>
       <p className="sxf-scale__label" aria-hidden="true">
         {label}
-        <span className="sxf-scale__value">{chosen ? `${chosen} of 5` : "Not rated"}</span>
       </p>
 
       <div className="sxf-scale__steps">

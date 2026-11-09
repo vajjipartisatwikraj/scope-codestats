@@ -19,7 +19,7 @@ import useSpeakerCheck, { SPEAKER_PHRASE } from "./useSpeakerCheck";
 const SpeakerCheckStep = ({ onBack, onContinue }) => {
   const { supported, playing, played, heard, error, canContinue, play, confirm } = useSpeakerCheck();
 
-  const caption = playing ? "Playing\u2026" : played ? "Tap to play again" : "Tap to play";
+  const caption = playing ? "Playing\u2026" : "";
 
   return (
     <div className="sxs-narrow">
@@ -88,7 +88,7 @@ const SpeakerCheckStep = ({ onBack, onContinue }) => {
         )}
       </SpeechCard>
 
-      <StepNav onBack={onBack} nextLabel="Continue" onNext={onContinue} nextDisabled={!canContinue} reason="Play the sound and confirm you heard it to continue." />
+      <StepNav onBack={onBack} nextLabel="Continue" onNext={onContinue} nextDisabled={!canContinue} />
     </div>
   );
 };

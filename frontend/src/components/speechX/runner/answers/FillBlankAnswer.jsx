@@ -8,8 +8,11 @@ const GAP = /_{2,}/;
 /**
  * The sentence with its gap turned into a text box. If the teacher did not mark a gap with
  * underscores, the sentence is shown as it is and the box goes below.
+ *
+ * `onChange` runs on every keystroke (the text is kept and drafted on this device); `onCommit` runs
+ * when the student leaves the box, which is when the answer is saved to the server.
  */
-const FillBlankAnswer = ({ question, answer, disabled, onChange }) => {
+const FillBlankAnswer = ({ question, answer, disabled, onChange, onCommit }) => {
   const value = answer?.text || "";
   const maxChars = question.maxChars || 500;
 
@@ -26,6 +29,7 @@ const FillBlankAnswer = ({ question, answer, disabled, onChange }) => {
       disabled={disabled}
       maxLength={maxChars}
       onChange={(event) => onChange(event.target.value)}
+      onBlur={() => onCommit?.()}
       autoComplete="off"
       autoCapitalize="off"
       spellCheck={false}
@@ -39,14 +43,14 @@ const FillBlankAnswer = ({ question, answer, disabled, onChange }) => {
   return (
     <div>
       {match ? (
-        <PromptText>
+        <PromptText className="sxr-prompt--medium">
           {before}
           {input}
           {after}
         </PromptText>
       ) : (
         <>
-          <PromptText>{question.text}</PromptText>
+          <PromptText className="sxr-prompt--medium">{question.text}</PromptText>
           <div className="sxr-prompt-gap">{input}</div>
         </>
       )}

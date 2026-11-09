@@ -79,7 +79,7 @@ const GROUPS = [
       },
       {
         id: 'speech-test',
-        label: 'Speech test',
+        label: 'VocalQ',
         icon: MicrophoneIcon,
         // Students: the tests scheduled for them
         path: () => '/speech-tests',

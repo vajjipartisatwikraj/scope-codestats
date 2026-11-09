@@ -13,7 +13,7 @@ const EmailAnswer = ({ question, answer, disabled, onChange }) => {
 
   return (
     <div>
-      <PromptText>{question.text}</PromptText>
+      <PromptText className="sxr-prompt--medium">{question.text}</PromptText>
 
       <div className="sxr-email">
         <TextField

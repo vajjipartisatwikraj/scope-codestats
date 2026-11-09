@@ -4,6 +4,28 @@ import PromptText from "../PromptText";
 import SaveStatusLine from "./SaveStatusLine";
 import "./answers.css";
 
+/**
+ * The question with each run of underscores ("______") drawn as one unbroken line, so a blank
+ * reads as a long dash instead of a row of separate marks. The line grows with the run, within
+ * limits, and is announced as "blank".
+ */
+const withBlanks = (text) =>
+  String(text || "")
+    .split(/(_{2,})/)
+    .map((part, index) =>
+      /^_{2,}$/.test(part) ? (
+        <span
+          key={index}
+          className="sxr-gap"
+          role="img"
+          aria-label="blank"
+          style={{ width: `${Math.min(Math.max(part.length, 4), 14) * 0.6}em` }}
+        />
+      ) : (
+        part
+      )
+    );
+
 /** The answer is stored as the chosen option ids, comma separated. */
 const parseSelected = (text) => (text ? text.split(",").filter(Boolean) : []);
 
@@ -27,7 +49,7 @@ const McqAnswer = ({ question, answer, disabled, onChange }) => {
 
   return (
     <div>
-      <PromptText>{question.text}</PromptText>
+      <PromptText className="sxr-prompt--medium">{withBlanks(question.text)}</PromptText>
       <p className="sxr-hint">{limit === 1 ? "Choose one answer." : "Choose two answers."}</p>
 
       <div className="sxr-options" role={limit === 1 ? "radiogroup" : "group"} aria-label="Answer options">

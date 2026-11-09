@@ -25,6 +25,7 @@ const ICONS = {
   scoring: HourglassIcon,
   scored: CheckCircleIcon,
   failed: WarningCircleIcon,
+  unscored: MinusCircleIcon,
 };
 
 /**
@@ -36,7 +37,7 @@ const ICONS = {
  *                              'not_attempted' Not attempted | 'ended' Ended | 'closed' Closed
  *            a section status: 'not_started' Not started | 'in_progress' In progress |
  *                              'queued' / 'scoring' Waiting for score | 'scored' Score ready |
- *                              'failed' Scoring failed
+ *                              'failed' Scoring failed | 'unscored' Not scored (the test was ended first)
  *            (examStatusOf(windowState, attempt) returns a test status.) An unknown status renders nothing.
  *   className   passed to the badge
  *

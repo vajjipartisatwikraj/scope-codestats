@@ -337,7 +337,7 @@ const Login = ({ variant = 'student' }) => {
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 1.5, sm: 0 }, mb: 2 }}>
               <Box 
                 component="img" 
-                src={brand.platform.logo} 
+                src={brand.shared.authIcon} 
                 alt={`${brand.names.platform} logo`}
                 sx={{ 
                   width: { xs: '48px', sm: '64px', md: '72px' },

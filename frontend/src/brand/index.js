@@ -58,8 +58,8 @@ const brand = {
   // CodeStats itself, whatever the platform and the institution are. The student's own coding work
   // (cohorts and the practice arena) is always "CodeStats" in the platform stats, the leaderboard and the profile.
   codeStats: { name: 'CodeStats', logo: codeStatsLogo },
-  // Pictures every platform and institution uses: the not-found art and the sign-in and sign-up carousel
-  shared: { notFoundDark, notFoundLight, notFound: notFoundPicture, carousel: [carousel1, carousel2, carousel3, carousel4] },
+  // Pictures every platform and institution uses: the not-found art, the sign-in and sign-up carousel, and the white CodeStats icon above the sign-in and sign-up headings (a file in frontend/public)
+  shared: { notFoundDark, notFoundLight, notFound: notFoundPicture, authIcon: `${env.BASE_URL}codestats-white.png`, carousel: [carousel1, carousel2, carousel3, carousel4] },
   fill,
 };
 

@@ -27,6 +27,7 @@ const QuestionPrompt = ({
   onPlay,
   onArrange,
   onText,
+  onTextCommit,
 }) => {
   const { type } = section;
 
@@ -40,14 +41,22 @@ const QuestionPrompt = ({
 
       <PromptHeading number={number} total={total} cue={PROMPT_CUE[type] || "Answer"} />
 
-      {(type === "READING" || type === "QUESTION_ANSWER" || type === "STORYTELLING") && (
-        <PromptText>{question.text}</PromptText>
+      {/* Only the sentence to read aloud is set large; other questions are smaller, instructions smallest */}
+      {type === "READING" && <PromptText>{question.text}</PromptText>}
+      {(type === "QUESTION_ANSWER" || type === "STORYTELLING") && (
+        <PromptText className="sxr-prompt--medium">{question.text}</PromptText>
       )}
 
       {type === "REPEAT" && <RepeatControls speaking={speaking} disabled={busy} onPlay={onPlay} />}
 
       {type === "FILL_BLANKS" && (
-        <FillBlankAnswer question={question} answer={answer} disabled={busy} onChange={(text) => onText(text)} />
+        <FillBlankAnswer
+          question={question}
+          answer={answer}
+          disabled={busy}
+          onChange={(text) => onText(text, { untilBlur: true })}
+          onCommit={onTextCommit}
+        />
       )}
       {type === "MCQ" && (
         <McqAnswer

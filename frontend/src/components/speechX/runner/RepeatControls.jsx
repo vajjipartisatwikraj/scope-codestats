@@ -7,7 +7,9 @@ import PromptText from "./PromptText";
 import "./runner.css";
 
 /**
- * Listen-then-repeat prompt. The browser reads the sentence aloud and the text is never shown.
+ * Listen-then-repeat prompt. The browser reads the sentence aloud and the text is never shown. The
+ * instruction above the buttons is set small, since there is nothing to read; "Play sentence" is the
+ * strong (white on Midnight) button.
  * Recording is disabled by the parent while it plays.
  */
 const RepeatControls = ({ speaking, disabled, onPlay }) => {
@@ -23,9 +25,10 @@ const RepeatControls = ({ speaking, disabled, onPlay }) => {
 
   return (
     <div>
-      <PromptText>Listen carefully, then repeat the sentence exactly as you heard it.</PromptText>
+      <PromptText className="sxr-prompt--small">Listen carefully, then repeat the sentence exactly as you heard it.</PromptText>
       <div className="sxr-actions">
         <Button
+          variant="spotlight"
           loading={speaking}
           disabled={disabled}
           startIcon={<SpeakerHighIcon size={18} weight="regular" aria-hidden="true" />}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Reveal, formatClock, formatDateTime, formatShortDateTime, typeLabel } from "../../shared";
+import { Reveal, formatClock, typeLabel } from "../../shared";
 import Collapsible from "./Collapsible";
 import RibbonItem from "./RibbonItem";
 import RibbonBackButton from "./RibbonBackButton";
@@ -8,11 +8,10 @@ import RibbonBackButton from "./RibbonBackButton";
  * The details band across the full width under the top bar (a flat surface with a hairline
  * below, no longer a blue fill). A back button returns to the section list.
  *
- * Open: the test name with when it ran and was submitted on the left, and the section's type,
- * time limit, time taken and answered count on the right. `collapsed` (set while the results are
- * scrolled, from 900px wide) folds it to a slim strip: only the "Speech test" name stays on the
- * left and only the "Section type" on the right, and everything else folds away as the band
- * shrinks. Under 900px the page scrolls as a whole and the band is never folded.
+ * Open: the test name on the left, and the section's type, time limit, time taken and answered
+ * count on the right. `collapsed` (set while the results are scrolled, from 900px wide) folds it
+ * to a slim strip: the "VocalQ" name stays on the left and only the "Section type" on the
+ * right, and the other figures fold away as the band shrinks. Under 900px the page scrolls as a whole and the band is never folded.
  */
 const ResultsRibbon = ({ report, collapsed = false, onBack }) => {
   const { test, section } = report;
@@ -31,16 +30,8 @@ const ResultsRibbon = ({ report, collapsed = false, onBack }) => {
             <RibbonBackButton onClick={onBack} />
           </Reveal>
           <Reveal y={8} delay={0.1} className="sxe-ribbon__title">
-            <p className="sxe-ribbon__kicker">Speech test</p>
+            <p className="sxe-ribbon__kicker">VocalQ</p>
             <h1 className="sxe-ribbon__name">{test.title}</h1>
-            <Collapsible open={!collapsed}>
-              <div className="sxe-ribbon__when">
-                <RibbonItem label="Available">
-                  {formatShortDateTime(test.startTime)} to {formatShortDateTime(test.endTime)}
-                </RibbonItem>
-                <RibbonItem label="Submitted">{formatDateTime(section.submittedAt)}</RibbonItem>
-              </div>
-            </Collapsible>
           </Reveal>
         </div>
 

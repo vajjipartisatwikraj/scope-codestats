@@ -192,15 +192,20 @@
   min-height: 0;
 }
 
-/* The tips sit in the vertical middle of the column, level with the middle of the summary card;
-   the acknowledge card stays at the bottom, level with the bottom of the summary card */
+/* The tips heading sits at the top, level with the top of the summary card, and the carousel
+   takes the middle of the room left; the acknowledge card stays at the bottom, level with the
+   bottom of the summary card. In the summary card, "Covers" sits at the bottom. */
 @media (min-width: 900px) {
   .sxs-instructions__main .sxs-tips {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 0;
+  }
+
+  .sxs-instructions__main .sxs-tips .sxs-carousel {
+    margin-block: auto;
   }
 
   .sxs-instructions__main .sxs-ack-card {
@@ -209,7 +214,13 @@
   }
 
   .sxs-instructions__summary .sxs-summary > .sx-card__body {
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
+  }
+
+  .sxs-summary .sxs-covers {
+    margin-top: auto;
   }
 }
 
@@ -870,14 +881,15 @@
 .sxs-timer {
   margin: 0;
   color: var(--ds-text);
-  font: var(--ds-type-numeral-m);
+  font: var(--ds-type-title);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--ds-tracking-numeral-m);
+  letter-spacing: var(--ds-tracking-title);
 }
 
 .sxs-timer__limit {
   color: var(--ds-muted);
-  font: var(--ds-type-body);
+  font: var(--ds-type-caption);
   letter-spacing: 0;
 }
 
@@ -921,28 +933,28 @@
 .sxs-transcript__title {
   margin: 0;
   color: var(--ds-muted);
-  font: var(--ds-type-label);
-  letter-spacing: var(--ds-tracking-label);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
 }
 
 .sxs-transcript__quote {
   margin: 0;
-  font: var(--ds-type-title);
+  font: var(--ds-type-title-sm);
   font-weight: 500;
-  letter-spacing: var(--ds-tracking-title);
+  letter-spacing: var(--ds-tracking-title-sm);
   overflow-wrap: anywhere;
 }
 
 .sxs-transcript__text {
   margin: 0;
-  font: var(--ds-type-body-lg);
+  font: var(--ds-type-body);
 }
 
 .sxs-transcript__issues {
   margin: 8px 0 0;
   padding-left: 20px;
   color: var(--ds-muted);
-  font: var(--ds-type-body);
+  font: var(--ds-type-body-sm);
 }
 
 /* ---- Checklist ----------------------------------------------------------------------------------- */
@@ -1136,4 +1148,118 @@
   .sxs-dot__bar {
     transition: none;
   }
+}
+
+/* ---- Step 1, a size smaller ----------------------------------------------------------------------
+   The instructions page is a compact screen: smaller heading, figures, chips, tip cards, buttons and
+   spacing, so everything sits comfortably in one window. Only the instructions flow is affected. */
+
+.sxs-flow--instructions {
+  gap: 14px;
+}
+
+.sxs-flow--instructions .sxs-head__title {
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxs-flow--instructions .sxs-instructions {
+  gap: 12px;
+}
+
+.sxs-flow--instructions .sxs-instructions__main {
+  gap: 12px;
+}
+
+/* The summary card */
+.sxs-flow--instructions .sxs-figures {
+  gap: 8px;
+}
+
+.sxs-flow--instructions .sxs-figure__value {
+  font: var(--ds-type-title-sm);
+  font-weight: 700;
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxs-flow--instructions .sxs-facts {
+  gap: 10px;
+}
+
+.sxs-flow--instructions .sxs-skills__label {
+  margin-bottom: 6px;
+}
+
+.sxs-flow--instructions .sxs-skills__list {
+  gap: 6px;
+}
+
+/* The skill chips */
+.sxs-flow--instructions .sxs-skills .ui-chip {
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* The tips */
+.sxs-flow--instructions .sxs-section-title {
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxs-flow--instructions .sxs-section-text {
+  margin: 2px 0 8px;
+  font: var(--ds-type-body-sm);
+}
+
+.sxs-flow--instructions .sxs-carousel {
+  gap: 10px;
+}
+
+.sxs-flow--instructions .sxs-carousel__track {
+  --sxs-gap: 12px;
+}
+
+.sxs-flow--instructions .sxs-tip {
+  padding: 16px;
+}
+
+.sxs-flow--instructions .sxs-tip__mark {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 10px;
+}
+
+.sxs-flow--instructions .sxs-tip__title {
+  margin: 2px 0 4px;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxs-flow--instructions .sxs-tip__text {
+  font: var(--ds-type-body);
+}
+
+/* The acknowledge card */
+.sxs-flow--instructions .sxs-ack-card {
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+@media (min-width: 600px) {
+  .sxs-flow--instructions .sxs-ack-card {
+    padding: 10px 16px;
+  }
+}
+
+/* ---- Audio check card, a size smaller ------------------------------------------------------------ */
+
+.sxs-recorder .sxs-stephead__text {
+  font: var(--ds-type-body);
+}
+
+.sxs-recorder .sxs-caption {
+  font: var(--ds-type-body-sm);
 }

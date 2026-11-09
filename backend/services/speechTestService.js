@@ -564,6 +564,37 @@ async function pollSection(attemptId, sectionId, now = new Date()) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Called when a student ends the test early. Every section that is still open, waiting for its
+ * score or failed is marked `unscored`: it will never be sent to (or collected from) the judge and
+ * counts as 0. Its stored answers and recordings are deleted, as they are after scoring.
+ * Sections that were never started stay `not_started` and also count as 0.
+ *
+ * Each change is compare-and-set on the section's current status, so a result that arrives at the
+ * same moment cannot overwrite it.
+ */
+async function discardUnscoredSections(attemptId) {
+  const attempt = await SpeechTestAttempt.findById(attemptId).select("sections");
+  if (!attempt) return;
+
+  const OPEN_STATES = ["in_progress", "queued", "scoring", "failed"];
+  const discarded = [];
+  for (const section of attempt.sections) {
+    if (!OPEN_STATES.includes(section.status)) continue;
+    const changed = await setSectionFields(attemptId, section.sectionId, section.status, {
+      status: "unscored",
+      judgeJobId: null,
+      lockedUntil: null,
+      lastError: "",
+    });
+    if (changed) discarded.push(section.sectionId);
+  }
+
+  if (discarded.length > 0) {
+    await SpeechTestAnswer.deleteMany({ attempt: toId(attemptId), sectionId: { $in: discarded.map(toId) } });
+  }
+}
+
+/**
  * Ends an attempt and fixes the final score: the mean of the section scores,
  * out of 100. A section that was never started or never scored counts as 0.
  */
@@ -749,6 +780,7 @@ module.exports = {
   dispatchSection,
   pollSection,
   finalizeAttempt,
+  discardUnscoredSections,
   runSweep,
   startSpeechTestSweeper,
   stopSpeechTestSweeper,

@@ -10,7 +10,7 @@ import { FocusHeader } from "../shared";
  * the details band below.
  */
 const ResultsNavbar = ({ title }) => (
-  <FocusHeader subtitle="Speech Judge">
+  <FocusHeader subtitle="VocalQ">
     <p className="sxe-nav__title sx-hide-phone">{title} results</p>
     <Badge tone="success" icon={<CheckCircleIcon size={14} weight="bold" aria-hidden="true" />}>
       Result ready

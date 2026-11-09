@@ -110,8 +110,8 @@ const AudioCheckStep = ({ testId, test, state, starting, onBack, onStart }) => {
         <SpeechCard className="sxs-recorder" aria-labelledby="sxs-audio-title" fill>
           <StepHead
             id="sxs-audio-title"
-            icon={MicrophoneIcon}
             title="Test your audio"
+            hideTitle
             description="Say your name clearly, then select Check audio. Nothing from this check is saved."
           />
 

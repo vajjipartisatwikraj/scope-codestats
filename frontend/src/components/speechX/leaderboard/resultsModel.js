@@ -73,20 +73,6 @@ export const sortEntries = (entries, sort) => {
     .map((item) => item.entry);
 };
 
-/** Figures for the summary tiles. */
-export const summaryOf = (entries, currentUserId) => {
-  const finished = entries.filter((entry) => entry.status === "completed");
-  const scores = finished.map((entry) => entry.finalScore).filter((score) => typeof score === "number");
-  return {
-    started: entries.length,
-    finished: finished.length,
-    inProgress: entries.length - finished.length,
-    average: scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null,
-    top: scores.length ? Math.max(...scores) : null,
-    mine: currentUserId ? entries.find((entry) => entry.user._id === currentUserId) || null : null,
-  };
-};
-
 /** The score of one section of an entry, found by section id (the API lists them in section order). */
 export const sectionScoreOf = (entry, section, index) => {
   const list = entry.sectionScores || [];

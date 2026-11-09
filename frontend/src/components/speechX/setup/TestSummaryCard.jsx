@@ -1,13 +1,14 @@
 import React from "react";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
-import { StarIcon } from "@phosphor-icons/react/dist/csr/Star";
-import { LockSimpleIcon } from "@phosphor-icons/react/dist/csr/LockSimple";
+import { FlagIcon } from "@phosphor-icons/react/dist/csr/Flag";
+
+
 import { Chip, formatNumber } from "../../ui";
-import { SpeechCard, InfoLine, formatDuration, formatShortDateTime, typeLabel } from "../shared";
+import { SpeechCard, InfoLine, formatShortDateTime, typeLabel } from "../shared";
 
 /**
  * Everything a student should know about a test before starting: a banner, headline figures
- * (sections, questions, time), when it is open, how it is scored and which skills it covers. All
+ * (sections, questions, time in minutes), when it is open and which skills it covers. All
  * values come from the test.
  *
  * The test's own name is the page heading (h1), so the banner here says what the card is.
@@ -40,20 +41,19 @@ const TestSummaryCard = ({ test }) => {
         </div>
         <div className="sxs-figure">
           <dt className="sxs-figure__label">Total time</dt>
-          <dd className="sxs-figure__value">{formatDuration(totalMinutes)}</dd>
+          <dd className="sxs-figure__value">{formatNumber(totalMinutes)} min</dd>
         </div>
       </dl>
 
       <hr className="sx-divider" />
 
       <div className="sxs-facts">
-        <InfoLine icon={CalendarBlankIcon} label="Available" value={`${formatShortDateTime(test.startTime)} to ${formatShortDateTime(test.endTime)}`} />
-        <InfoLine icon={StarIcon} label="Scoring" value="Out of 100" />
-        <InfoLine icon={LockSimpleIcon} label="Attempts" value="One attempt" />
+        <InfoLine icon={CalendarBlankIcon} label="From" value={formatShortDateTime(test.startTime)} />
+        <InfoLine icon={FlagIcon} label="To" value={formatShortDateTime(test.endTime)} />
       </div>
 
       {skills.length > 0 ? (
-        <>
+        <div className="sxs-covers">
           <hr className="sx-divider" />
           <div className="sxs-skills">
             <p className="sxs-skills__label">Covers</p>
@@ -65,7 +65,7 @@ const TestSummaryCard = ({ test }) => {
               ))}
             </ul>
           </div>
-        </>
+        </div>
       ) : null}
     </SpeechCard>
   );

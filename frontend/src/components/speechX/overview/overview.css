@@ -7,48 +7,39 @@
  * TestInfoCard.jsx, ProgressPanel.jsx, SectionDialogs.jsx.
  */
 
-/* ---- Header strip ---------------------------------------------------------------------------- */
-
-.sxv-bar {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 24px;
-  min-width: 0;
-}
-
-.sxv-bar__label {
-  margin: 0;
-  overflow: hidden;
-  color: var(--ds-muted);
-  font: var(--ds-type-label);
-  letter-spacing: var(--ds-tracking-label);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sxv-bar__progress {
-  flex: 0 1 280px;
-  min-width: 120px;
-}
 
 /* ---- Layout ----------------------------------------------------------------------------------- */
 
 .sxv-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
+  gap: 16px;
   align-items: start;
 }
 
 @media (min-width: 900px) {
   .sxv-layout {
     grid-template-columns: minmax(0, 1fr) 360px;
-    gap: 32px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 16px 32px;
+  }
+
+  /* The title and its line sit over the section list alone; the side column starts level with the
+     top of the list card, not with the title */
+  .sxv-intro {
+    grid-area: 1 / 1;
+  }
+
+  .sxv-main {
+    grid-area: 2 / 1;
+  }
+
+  .sxv-aside {
+    grid-area: 2 / 2;
   }
 }
 
+.sxv-intro,
 .sxv-main,
 .sxv-aside {
   min-width: 0;
@@ -63,7 +54,6 @@
 @media (min-width: 900px) and (min-height: 560px) {
   .sxv-layout {
     align-items: stretch;
-    grid-template-rows: minmax(0, 1fr);
     height: calc(var(--sx-stage) - 2 * var(--sx-pad));
   }
 
@@ -71,11 +61,6 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-  }
-
-  .sxv-title,
-  .sxv-lead {
-    flex: none;
   }
 
   .sxv-list-card {
@@ -95,7 +80,6 @@
     overscroll-behavior: contain;
   }
 }
-
 .sxv-title {
   margin: 0;
   font: var(--ds-type-headline);
@@ -103,7 +87,7 @@
 }
 
 .sxv-lead {
-  margin: 4px 0 16px;
+  margin: 4px 0 0;
   color: var(--ds-muted);
   font: var(--ds-type-body);
 }
@@ -112,7 +96,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 24px;
 }
 
 /* A single card in the middle of the page (no attempt, or an error) */
@@ -218,13 +201,6 @@
   padding-left: 60px;
 }
 
-.sxv-row__score {
-  margin: 0;
-  font: var(--ds-type-numeral-m);
-  letter-spacing: var(--ds-tracking-numeral-m);
-  font-variant-numeric: tabular-nums;
-}
-
 .sxv-row__action {
   display: flex;
   flex-direction: column;
@@ -240,10 +216,6 @@
   letter-spacing: var(--ds-tracking-caption);
 }
 
-.sxv-row__notice {
-  grid-column: 1 / -1;
-}
-
 @media (min-width: 600px) {
   .sxv-row {
     padding: 16px 24px;
@@ -254,20 +226,19 @@
   }
 
   .sxv-row__action > .ui-button {
-    min-width: 160px;
+    min-width: 152px;
   }
 }
 
 @media (min-width: 900px) {
   .sxv-row {
-    grid-template-columns: 44px minmax(0, 1fr) auto 176px;
+    grid-template-columns: 44px minmax(0, 1fr) auto 168px;
     grid-template-areas: 'mark text status action';
     gap: 16px;
   }
 
   .sxv-row__status {
     justify-content: flex-end;
-    min-width: 168px;
     padding-left: 0;
   }
 
@@ -315,13 +286,6 @@
   margin: 8px 0 0;
 }
 
-.sxv-progress__why {
-  margin: 0;
-  color: var(--ds-muted);
-  font: var(--ds-type-body-sm);
-  text-align: center;
-}
-
 /* ---- Dialogs ------------------------------------------------------------------------------------ */
 
 .sxv-dialog {
@@ -333,4 +297,60 @@
 .sxv-dialog__text {
   margin: 0;
   font: var(--ds-type-body);
+}
+
+/* ---- The side column, a size smaller -------------------------------------------------------------- */
+
+.sxv-side .sx-banner__title {
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.sxv-side .sx-banner__description {
+  font: var(--ds-type-body-sm);
+}
+
+.sxv-side .sx-info__label {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxv-side .sx-info__value {
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+}
+
+.sxv-note {
+  font: var(--ds-type-body-sm);
+}
+
+/* The blue progress tile: smaller label and context, the context in medium weight so the longer
+   sentence stays easy to read */
+.sxv-progress .ui-stat__label {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxv-progress .ui-stat[data-tone] .ui-stat__context {
+  font: var(--ds-type-caption);
+  font-weight: 500;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sxv-dialog__list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* The "Scoring failed" chip holds the reason as a tooltip, so it can take keyboard focus */
+.sxv-row__chip {
+  display: inline-flex;
+  border-radius: var(--ds-radius-pill);
+  outline: none;
+}
+
+.sxv-row__chip:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
 }

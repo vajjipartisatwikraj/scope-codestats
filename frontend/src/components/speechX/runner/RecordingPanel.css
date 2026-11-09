@@ -1,14 +1,14 @@
 /*
  * RecordingPanel
  *
- * A raised tile (18px) on the question card: a head with the status and the limit, the waveform (or
+ * Sits straight on the question card, with no container of its own: a head with the status and the limit, the waveform (or
  * the player once there is an answer), and a row with the 72px round record button, what it will do,
  * and the live input level while recording. See RecordingPanel.jsx.
  *
  * The record button is one element in every state (so keyboard focus stays on it):
  *   start       accent fill, a microphone (this is the view's one accent button until answered)
  *   recording   danger fill, a square
- *   again       surface fill on the raised tile, a replay arrow
+ *   again       raised fill, a replay arrow
  *   disabled    the high fill with a subtle icon (aria-disabled, so it keeps focus)
  */
 
@@ -17,15 +17,11 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-  padding: 16px;
-  border-radius: var(--ds-radius-lg);
-  background-color: var(--ds-raised);
 }
 
 @media (min-width: 600px) {
   .sxr-rec {
     gap: 20px;
-    padding: 20px 24px;
   }
 }
 
@@ -134,7 +130,7 @@
 }
 
 .sxr-rec__button[data-mode='again'] {
-  background-color: var(--ds-surface);
+  background-color: var(--ds-raised);
   color: var(--ds-text);
 }
 
@@ -149,7 +145,7 @@
 .sxr-rec__button:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px var(--ds-raised),
+    0 0 0 2px var(--ds-surface),
     0 0 0 4px var(--ds-focus);
 }
 

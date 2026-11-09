@@ -17,7 +17,7 @@ const WIDTHS = ["narrow", "reading", "wide", "full"];
  *   as ('main')        the element; use 'div' where the screen already has a <main>
  *   className, style, ...rest   passed to the element
  *
- * Example:  <FocusHeader subtitle="Speech Judge" /><FocusPage wide gap><SpeechCard .../></FocusPage>
+ * Example:  <FocusHeader subtitle="VocalQ" /><FocusPage wide gap><SpeechCard .../></FocusPage>
  */
 const FocusPage = ({ as: Component = "main", width = "reading", narrow = false, wide = false, center = false, gap = false, className, children, ...rest }) => {
   const size = narrow ? "narrow" : wide ? "wide" : WIDTHS.includes(width) ? width : "reading";

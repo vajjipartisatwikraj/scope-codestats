@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Skeleton, formatNumber } from "../../ui";
-import { FocusHeader, FocusPage, Reveal, SpeechCard, formatScore, useNotFoundRedirect } from "../shared";
+import { FocusHeader, FocusPage, Reveal, formatScore, useNotFoundRedirect } from "../shared";
 import { studentApi } from "../../../services/speechTestApi";
 import CompletionPanel from "./CompletionPanel";
 import FeedbackForm from "./FeedbackForm";
@@ -18,8 +18,8 @@ const timeSpent = (seconds) => {
 };
 
 /**
- * Shown right after a student ends a speech test (route /speech-tests/:id/feedback): a
- * confirmation with their final score on the left and a short feedback form on the right. It also
+ * Shown right after a student ends a speech test (route /speech-tests/:id/feedback): one card with
+ * a confirmation and their final score on the left and a short feedback form on the right. It also
  * opens for a test that finished on its own (the window closed) until the student answers or
  * skips. Sending or skipping returns to the section list.
  *
@@ -60,14 +60,10 @@ const SpeechTestFeedbackPage = () => {
   if (loading) {
     return (
       <>
-        <FocusHeader subtitle="Speech Judge" locked />
+        <FocusHeader subtitle="VocalQ" locked />
         <FocusPage center role="status" aria-label="Loading">
-          <div className="sxf-layout">
-            <div className="sxf-complete">
-              <Skeleton height={200} radius="var(--ds-radius-xl)" />
-              <Skeleton height={150} radius="var(--ds-radius-xl)" />
-            </div>
-            <Skeleton height={520} radius="var(--ds-radius-xl)" />
+          <div className="sxf-skeleton">
+            <Skeleton height={480} radius="var(--ds-radius-lg)" />
           </div>
         </FocusPage>
       </>
@@ -84,20 +80,18 @@ const SpeechTestFeedbackPage = () => {
 
   return (
     <>
-      <FocusHeader subtitle="Speech Judge" locked />
+      <FocusHeader subtitle="VocalQ" locked />
       <FocusPage center>
-        <div className="sxf-layout">
+        <div className="sxf-card">
           <CompletionPanel
             finalScore={formatScore(attempt.finalScore)}
-            sections={`${formatNumber(scored)} of ${formatNumber(total)} sections scored`}
-            timeSpent={`${timeSpent(attempt.totalTimeUsedSeconds)} spent`}
+            sections={`${formatNumber(scored)} of ${formatNumber(total)}`}
+            timeSpent={timeSpent(attempt.totalTimeUsedSeconds)}
           />
 
           {/* Remounted on a change of phase, so the new card plays its entrance */}
           <Reveal key={form.phase} y={form.phase === "form" ? 12 : 8} className="sxf-side">
-            <SpeechCard as="div" fill>
-              {form.phase === "form" ? <FeedbackForm form={form} /> : <ThankYou onDone={leave} />}
-            </SpeechCard>
+            {form.phase === "form" ? <FeedbackForm form={form} /> : <ThankYou onDone={leave} />}
           </Reveal>
         </div>
       </FocusPage>

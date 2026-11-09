@@ -123,22 +123,6 @@
   line-height: 1.3;
 }
 
-.sxr-bar__progress {
-  display: flex;
-  flex: 1 1 0;
-  justify-content: center;
-  min-width: 80px;
-}
-
-.sxr-bar__progress .sp {
-  max-width: 560px;
-}
-
-/* A section with many questions: thinner segments so the row never outgrows the bar */
-.sxr-bar__progress .sp__segment {
-  min-width: 2px;
-}
-
 /* ---- Timer pill ------------------------------------------------------------------------------------ */
 
 .sxr-timer {
@@ -274,14 +258,28 @@
   gap: 8px;
   align-content: start;
   min-height: 0;
-  margin: -4px;
-  padding: 4px;
+  margin: -6px;
+  padding: 6px;
+  /* Never a sideways scroll; if the tiles are taller than the room they still scroll up and down,
+     with no scrollbar drawn */
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.sxr-palette__tiles::-webkit-scrollbar {
+  display: none;
 }
 
 @media (min-width: 900px) {
   .sxr-palette__tiles {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  /* Five tiles share the column's width, so they may be a little under 44px instead of pushing the row wider than the column */
+  .sxr-palette__tiles .sxr-tile {
+    min-width: 0;
+    min-height: 0;
   }
 }
 
@@ -470,6 +468,22 @@
   letter-spacing: var(--ds-tracking-headline);
   text-wrap: pretty;
   overflow-wrap: break-word;
+}
+
+/* A question that is not the sentence to read aloud: regular title size, in the text colour */
+.sxr-prompt.sxr-prompt--medium {
+  margin-top: 8px;
+  font: var(--ds-type-title-sm);
+  font-weight: 500;
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+/* An instruction: small and muted */
+.sxr-prompt.sxr-prompt--small {
+  margin-top: 8px;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  letter-spacing: 0;
 }
 
 .sxr-hint {

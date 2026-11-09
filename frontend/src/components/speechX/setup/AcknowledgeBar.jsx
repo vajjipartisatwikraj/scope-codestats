@@ -25,6 +25,7 @@ const AcknowledgeBar = ({ checked, onChange, label, actionLabel, onAction, disab
         ) : null}
         <Button
           variant="primary"
+          size="sm"
           onClick={onAction}
           disabled={blocked}
           loading={loading}

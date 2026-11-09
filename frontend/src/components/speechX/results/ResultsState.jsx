@@ -15,7 +15,7 @@ import { FocusHeader, FocusPage, Reveal } from "../shared";
  */
 const ResultsState = ({ loading, notReady, error, onRetry, onBack }) => (
   <>
-    <FocusHeader subtitle="Speech Judge" />
+    <FocusHeader subtitle="VocalQ" />
     <FocusPage wide gap aria-busy={loading || undefined}>
       <h1 className="sx-sr">Section results</h1>
       <div className="sxe-live" aria-live="polite">

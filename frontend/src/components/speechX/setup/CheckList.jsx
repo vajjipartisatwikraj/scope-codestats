@@ -7,8 +7,7 @@ import { MinusCircleIcon } from "@phosphor-icons/react/dist/csr/MinusCircle";
 import { SpinnerGapIcon } from "@phosphor-icons/react/dist/csr/SpinnerGap";
 import { WrenchIcon } from "@phosphor-icons/react/dist/csr/Wrench";
 import { Badge } from "../../ui";
-import { SegmentedProgress, LevelMeter } from "../../custom-components";
-import { SEGMENT_STATE, SEGMENT_WORDS } from "./audioChecks";
+import { LevelMeter } from "../../custom-components";
 
 /** Icon, badge tone and level of emphasis for each status. Every status has a word as well (the badge). */
 const STATUS = {
@@ -23,7 +22,7 @@ const STATUS = {
 /**
  * The checklist of the audio step (design/screens.md section 11): each check is a row with a status
  * icon, its name and one line, a badge with a word, and, when something is wrong, a "How to fix"
- * explanation. A SegmentedProgress on top shows how many checks have passed.
+ * explanation. A line on top says how many checks have passed.
  *
  * Props
  *   checks   from buildChecks() in audioChecks.js
@@ -40,12 +39,6 @@ const CheckList = ({ checks, level, peak, recording }) => {
         <p className="sxs-checks__count">
           <span className="sxs-checks__figure">{passed}</span> of {checks.length} checks passed
         </p>
-        <SegmentedProgress
-          label="Checks"
-          animate={false}
-          stateLabels={SEGMENT_WORDS}
-          segments={checks.map((check) => ({ key: check.key, state: SEGMENT_STATE[check.status], label: check.title }))}
-        />
       </div>
 
       <ul className="sxs-checks__list">

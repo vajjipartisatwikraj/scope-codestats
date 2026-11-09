@@ -22,6 +22,7 @@ const engine = require("../services/speechTestService");
 const { buildSectionReport } = require("../services/speechTestReport");
 const SpeechTestFeedback = require("../models/SpeechTestFeedback");
 const feedbackService = require("../services/speechTestFeedback");
+const exportService = require("../services/speechTestExportService");
 const userGroupController = require("../controllers/speechTestUserGroupController");
 const log = require("../utils/logger").scope("SPEECH-TESTS");
 
@@ -172,7 +173,7 @@ function serializeAttempt(attempt, test) {
     totalTimeUsedSeconds: attempt.totalTimeUsedSeconds,
     sections,
     allScored,
-    canEnd: attempt.status === "in_progress" && allScored,
+    canEnd: attempt.status === "in_progress",
   };
 }
 
@@ -703,6 +704,30 @@ router.get(
 );
 
 /**
+ * The complete results of a test as an Excel workbook: the leaderboard of every eligible student with
+ * all section scores, a sheet per section and per question, and the feedback students sent.
+ */
+router.get(
+  "/admin/:id/export",
+  [auth, adminAuth],
+  route(async (req, res) => {
+    if (!isValidId(req.params.id)) throw new HttpError(404, "Test not found");
+    const test = await SpeechTest.findById(req.params.id).lean();
+    if (!test) throw new HttpError(404, "Test not found");
+
+    const entries = await buildLeaderboard(test, { includeInProgress: true });
+    const buffer = await exportService.buildSpeechTestWorkbook({ test, entries });
+    const filename = exportService.exportFileName(test);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+    res.setHeader("Content-Length", buffer.length);
+    res.send(Buffer.from(buffer));
+  })
+);
+
+/**
  * Deletes one student's submission (their attempt and any saved answers).
  *
  * The student is no longer shown as having taken the test, so they can start it
@@ -1211,7 +1236,11 @@ router.post(
   })
 );
 
-/** Ends the test. Only possible once every section has been scored. */
+/**
+ * Ends the test, whatever state the sections are in. Scored sections keep their score; sections
+ * that are open, waiting for a score or failed become `unscored`, and sections never started stay
+ * as they are. All of them count as 0 in the final score.
+ */
 router.post(
   "/:id/end",
   auth,
@@ -1221,14 +1250,9 @@ router.post(
     if (!attempt) throw new HttpError(409, "You have not started this test");
 
     if (attempt.status === "in_progress") {
-      const summary = serializeAttempt(attempt, test);
-      if (!summary.allScored) {
-        throw new HttpError(
-          409,
-          "Submit every section and wait for all results before ending the test."
-        );
-      }
-      await engine.finalizeAttempt(attempt, test, "student");
+      await engine.discardUnscoredSections(attempt._id);
+      const current = await SpeechTestAttempt.findById(attempt._id);
+      await engine.finalizeAttempt(current, test, "student");
     }
 
     const fresh = await SpeechTestAttempt.findById(attempt._id);

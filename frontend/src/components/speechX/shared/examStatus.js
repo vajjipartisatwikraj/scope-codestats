@@ -38,4 +38,5 @@ export const SECTION_STATUS_BADGE_META = {
   scoring: { label: "Waiting for score", tone: "warning", pulse: true },
   scored: { label: "Score ready", tone: "success", pulse: false },
   failed: { label: "Scoring failed", tone: "danger", pulse: false },
+  unscored: { label: "Not scored", tone: "neutral", pulse: false },
 };

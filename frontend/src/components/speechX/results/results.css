@@ -41,8 +41,15 @@
  * scrolls as a whole and the band never folds.
  */
 @media (min-width: 900px) {
+  /* Pinned between the top bar and the footer instead of being sized to fit them in the page flow:
+     the page itself then has nothing to scroll, however the shell around it is sized, and the only
+     scrollbar left is the one of the area under the band */
   .sxe-stage {
-    height: var(--sx-stage);
+    position: fixed;
+    top: var(--sx-header);
+    right: 0;
+    bottom: var(--sx-footer);
+    left: 0;
     overflow: hidden;
   }
 
@@ -94,8 +101,8 @@
 /* ---- Details band ------------------------------------------------------------------------------- */
 .sxe-ribbon {
   flex: none;
-  border-bottom: 1px solid var(--ds-line);
-  background-color: var(--ds-surface);
+  background-color: var(--ds-accent-press);
+  color: var(--ds-on-accent);
 }
 
 .sxe-ribbon__inner {
@@ -136,13 +143,6 @@
   transition:
     font-size var(--ds-duration-base) var(--ds-ease),
     line-height var(--ds-duration-base) var(--ds-ease);
-}
-
-.sxe-ribbon__when {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 32px;
-  padding-top: 12px;
 }
 
 .sxe-ribbon__stats {
@@ -330,7 +330,7 @@
   min-height: 0;
 }
 
-/* The score tile: the one spotlight of the page */
+/* The score tile: a plain card like its neighbours */
 .sxe-score {
   display: flex;
   flex-direction: column;
@@ -338,8 +338,8 @@
   min-width: 0;
   padding: 16px 20px;
   border-radius: var(--ds-radius-xl);
-  background-color: var(--ds-spotlight);
-  color: var(--ds-on-spotlight);
+  background-color: var(--ds-surface);
+  color: var(--ds-text);
 }
 
 .sxe-score__head {
@@ -352,7 +352,7 @@
 
 .sxe-score__label {
   margin: 0;
-  color: var(--ds-on-spotlight-muted);
+  color: var(--ds-muted);
   font: var(--ds-type-body-sm);
 }
 
@@ -364,9 +364,9 @@
 }
 
 .sxe-score__ring .ga {
-  --ga-text: var(--ds-on-spotlight);
-  --ga-label: var(--ds-on-spotlight-muted);
-  --ga-track: color-mix(in srgb, var(--ds-on-spotlight) 16%, var(--ds-spotlight));
+  --ga-text: var(--ds-text);
+  --ga-label: var(--ds-muted);
+  --ga-track: var(--ds-high);
 }
 
 /* The figure the student came for, in Numeral XL */
@@ -377,7 +377,7 @@
 
 .sxe-score__context {
   margin: 0;
-  color: var(--ds-on-spotlight-muted);
+  color: var(--ds-muted);
   font: var(--ds-type-body-sm);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -1195,4 +1195,34 @@
   .sxe-table--align td {
     animation: none;
   }
+}
+
+/* ---- Details band on the blue fill ------------------------------------------------------------------
+   The darker blue (accent-press) keeps white text above 4.5:1, the same in Midnight and Daylight.
+   Secondary lines are a mix toward the band, never a lowered opacity. */
+.sxe-ribbon__kicker,
+.sxe-ribbon .sxe-item__label {
+  color: color-mix(in srgb, var(--ds-on-accent) 86%, var(--ds-accent-press));
+}
+
+@media (min-width: 900px) {
+  .sxe-ribbon__fold .sxe-ribbon__stat {
+    border-left-color: color-mix(in srgb, var(--ds-on-accent) 28%, var(--ds-accent-press));
+  }
+}
+
+.sxe-ribbon .ui-button {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.sxe-ribbon .ui-button:hover:not(:disabled) {
+  background-color: var(--ds-accent-hover);
+  color: var(--ds-on-accent);
+}
+
+.sxe-ribbon .ui-button:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-accent-press),
+    0 0 0 4px var(--ds-on-accent);
 }

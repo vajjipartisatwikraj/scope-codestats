@@ -12,10 +12,10 @@ import { MicRecorder, blobToWav16k } from "../../../utils/speechAudio";
 import "./RecordingPanel.css";
 
 /**
- * The clip player sits on the raised recording tile, so it takes the surface tone, and its play
+ * The clip player sits straight on the question card, so it takes the raised tone, and its play
  * circle a soft accent tint: the view's one accent fill is the record button.
  */
-const PLAYER_COLORS = { bg: "var(--ds-surface)", button: "var(--ds-accent-soft)", onButton: "var(--ds-accent-text)" };
+const PLAYER_COLORS = { bg: "var(--ds-raised)", button: "var(--ds-accent-soft)", onButton: "var(--ds-accent-text)" };
 
 /** The live level next to the record button. Its own component, so ten updates a second never re-render the panel. */
 const InputMeter = ({ analyser }) => {

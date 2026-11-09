@@ -1,0 +1,64 @@
+/*
+ * BatteryIndicator (BatteryIndicator.jsx). Colours are --bi-* variables whose defaults are design tokens.
+ * The symbol is drawn in currentColor for its outline and in --bi-fill for the charge.
+ */
+.bi {
+  --bi-fill: var(--ds-success);
+  --bi-text: var(--ds-muted);
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--bi-text);
+}
+
+.bi[data-low='true'] {
+  --bi-fill: var(--ds-danger);
+  --bi-text: var(--ds-danger);
+}
+
+.bi__icon {
+  display: block;
+  width: 28px;
+  height: 14px;
+  overflow: visible;
+}
+
+.bi__body {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.bi__fill {
+  fill: var(--bi-fill);
+}
+
+.bi__cap {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.bi__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bi[data-low='true'] .bi__text {
+  font-weight: 700;
+}
+
+.bi__bolt {
+  flex: none;
+}

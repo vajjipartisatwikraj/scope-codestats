@@ -1,32 +1,60 @@
 /*
  * Speech tests dashboard (route /speech-tests), prefix sxd-
  *
- * Plain CSS on the design tokens (--ds-*). A test is one flat container (name, time, status) that
- * opens a drawer from the right with the details.
+ * Plain CSS on the design tokens (--ds-*). A test is a card in the style of the cohort cards (status,
+ * name, description, size, schedule, progress) that opens a drawer from the right with the details.
  * Components: SpeechTestDashboard.jsx, TestCard.jsx, TestDetails.jsx.
  */
 
 /* ---- The list ---------------------------------------------------------------------------------- */
 
-/* "Your tests" at the left, the status filter at the right; they wrap on a narrow screen */
-.sxd-list__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 12px;
+/* The search at the left, the status pills at the right (the same row as the cohort list) */
+.sxd-filters {
+  margin: 0 0 16px;
 }
 
-.sxd-list__title {
-  margin: 0;
-  font: var(--ds-type-title);
-  letter-spacing: var(--ds-tracking-title);
+[data-theme='daylight'] .sxd-filters {
+  --ui-control-bg: var(--ds-surface);
+}
+
+[data-theme='daylight'] .sxd-filters .pt {
+  --pt-bg: var(--ds-surface);
+}
+
+.sxd-filters .pt {
+  margin-left: auto;
+}
+
+.sxd-count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 600px) {
+  .sxd-filters {
+    flex-wrap: nowrap;
+  }
+
+  .sxd-filters .ui-toolbar__grow {
+    flex: 0 1 420px;
+  }
+
+  .sxd-filters .pt,
+  .sxd-filters .ui-button {
+    flex: none;
+  }
+}
+
+@media (max-width: 599.95px) {
+  .sxd-filters .pt {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 .sxd-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: var(--ui-gap, 12px);
   margin: 0;
   padding: 0;
@@ -38,94 +66,153 @@
   min-width: 0;
 }
 
-/* ---- A test container -------------------------------------------------------------------------- */
-
-.sxd-item {
-  display: flex;
+.sxd-cell > * {
   flex: 1 1 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  box-sizing: border-box;
-  width: 100%;
   min-width: 0;
-  min-height: 44px;
-  margin: 0;
-  padding: 20px 24px;
-  border: 0;
-  border-radius: var(--ds-radius-xl);
-  background-color: var(--ds-surface);
-  color: var(--ds-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
-.sxd-item:hover {
+/* ---- A test card (the cohort card pattern) ------------------------------------------------------
+   Flat surface, 24px corners, no border and no shadow. Hovering or focusing the card moves it one
+   tone up; the neutral pieces inside move up with it. Cards of a row share a height and the foot
+   sits at the bottom of each. The title is a button stretched over the whole card. */
+
+.sxd-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: var(--ds-text);
+}
+
+/* Named with .ui-page in front so it beats the kit's "no transition on children" rule whatever the load order */
+.ui-page .sxd-card {
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sxd-card:hover,
+.sxd-card:focus-within {
   background-color: var(--ds-raised);
 }
 
-.sxd-item:focus-visible {
+.sxd-card:hover .ui-badge[data-tone='neutral'],
+.sxd-card:focus-within .ui-badge[data-tone='neutral'] {
+  background-color: var(--ds-high);
+}
+
+.sxd-card__status {
+  margin-bottom: 4px;
+}
+
+.sxd-card__title {
+  margin: 0;
+  max-width: 100%;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+/* The button is the title; its ::after is the card-sized hit area and carries the focus ring */
+.sxd-card__open {
+  display: -webkit-box;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.sxd-card__open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ds-radius-xl);
+}
+
+.sxd-card__open:focus-visible {
   outline: none;
+}
+
+.sxd-card__open:focus-visible::after {
   box-shadow: 0 0 0 2px var(--ds-focus);
 }
 
-.sxd-item--skeleton {
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 12px;
-  cursor: default;
+.sxd-card__description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
-.sxd-item--skeleton:hover {
-  background-color: var(--ds-surface);
-}
-
-.sxd-item__main {
+/* Pushed to the bottom so the foots of a row line up whatever the text above is */
+.sxd-card__foot {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
-.sxd-item__title {
-  overflow: hidden;
-  font: var(--ds-type-title);
-  letter-spacing: var(--ds-tracking-title);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Start and end side by side when they fit, one under the other when they do not */
-.sxd-item__times {
+/* "7 sections · 28 questions" */
+.sxd-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
 }
 
-.sxd-item__time {
-  display: inline-flex;
-  align-items: center;
+.sxd-card__meta li + li::before {
+  content: '\00B7';
+  margin: 0 8px;
+}
+
+.sxd-card__schedule {
+  display: flex;
+  align-items: flex-start;
   gap: 6px;
+  margin: 0;
   color: var(--ds-muted);
   font: var(--ds-type-body-sm);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
-.sxd-item__time > svg {
+.sxd-card__schedule svg {
   flex: none;
+  margin-top: 2px;
 }
 
-.sxd-item__end {
+.sxd-card__lines {
   display: flex;
-  flex: none;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  color: var(--ds-muted);
+  width: 100%;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ui-page .sxd-card {
+    transition: none;
+  }
+}
 /* ---- The line about timing in the detail panel (the panel itself is the ui DetailPanel) ---------- */
 
 .sxd-note {
@@ -145,4 +232,35 @@
 
 .sxd-note > svg {
   flex: none;
+}
+
+/* ---- Nothing scheduled: the speaking film and a sentence ---------------------------------------- */
+.sxd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+  text-align: center;
+}
+
+.sxd-empty__film {
+  --sf-face-height: 10rem;
+  --sf-wave-height: 4.5rem;
+  --sf-min: 14rem;
+  flex: none;
+  margin-bottom: 8px;
+}
+
+.sxd-empty__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.sxd-empty__text {
+  margin: 8px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
 }

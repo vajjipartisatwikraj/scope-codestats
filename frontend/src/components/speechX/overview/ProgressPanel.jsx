@@ -5,16 +5,16 @@ import { Button, StatTile } from "../../ui";
 import { ProgressBar } from "../../custom-components";
 import { formatClock, formatScore } from "../shared";
 
-// Bar colours on the inverted (spotlight) tile, from the tile's own roles
-const ON_SPOTLIGHT = {
-  fill: "var(--ds-on-spotlight)",
-  track: "color-mix(in srgb, var(--ds-on-spotlight) 18%, var(--ds-spotlight))",
+// Bar colours on the blue (accent) tile, from the tile's own roles
+const ON_ACCENT = {
+  fill: "var(--ds-on-accent)",
+  track: "color-mix(in srgb, var(--ds-on-accent) 28%, var(--ds-accent))",
 };
 
 /**
- * Progress and finish controls of the side column. The spotlight tile is the figure the student
+ * Progress and finish controls of the side column. The blue tile is the figure the student
  * wants: sections scored while the test is under way (with a bar), the final score after it.
- * Below it the End test button (available once every section is scored; the one filled button
+ * Below it the End test button (always available while the test is open; the one filled button
  * when nothing else is left to do) or, after the test, View leaderboard.
  *
  * Props: scored, total, completed, finalScore, timeUsedSeconds, canEnd, endIsNext, onEnd, onLeaderboard
@@ -24,8 +24,9 @@ const ProgressPanel = ({ scored, total, completed, finalScore, timeUsedSeconds, 
     return (
       <div className="sxv-progress">
         <StatTile
-          tone="spotlight"
-          label="Final score"
+          tone="accent"
+          size="m"
+        label="Final score"
           value={formatScore(finalScore)}
           context={
             <span>
@@ -44,12 +45,13 @@ const ProgressPanel = ({ scored, total, completed, finalScore, timeUsedSeconds, 
   return (
     <div className="sxv-progress">
       <StatTile
-        tone="spotlight"
+        tone="accent"
+        size="m"
         label="Your progress"
         value={`${scored} of ${total}`}
         context={
           <div className="sxv-progress__context">
-            <ProgressBar value={scored} max={total} label="Sections scored" hideLabel valueLabel={null} colors={ON_SPOTLIGHT} />
+            <ProgressBar value={scored} max={total} label="Sections scored" hideLabel valueLabel={null} colors={ON_ACCENT} />
             <p>
               sections scored. A section's timer runs only while you are inside it. You can start the next section without waiting for
               scores.
@@ -58,20 +60,14 @@ const ProgressPanel = ({ scored, total, completed, finalScore, timeUsedSeconds, 
         }
       />
       <Button
-        variant={canEnd && endIsNext ? "primary" : "secondary"}
+        variant={endIsNext ? "primary" : "secondary"}
         fullWidth
         startIcon={<FlagCheckeredIcon size={18} aria-hidden="true" />}
         onClick={onEnd}
         disabled={!canEnd}
-        aria-describedby={canEnd ? undefined : "sxv-end-why"}
       >
         End test
       </Button>
-      {!canEnd ? (
-        <p className="sxv-progress__why" id="sxv-end-why">
-          Available once every section is scored.
-        </p>
-      ) : null}
     </div>
   );
 };

@@ -9,7 +9,7 @@
  * ---------------------------------------------------------------------------------------------
  * THE SHELL OF A FOCUS SCREEN
  *
- *   <FocusHeader subtitle="Speech Judge">{right-hand slot}</FocusHeader>
+ *   <FocusHeader subtitle="VocalQ">{right-hand slot}</FocusHeader>
  *   <FocusPage wide gap> ...cards... </FocusPage>
  *
  * App.jsx hides the navbar and sidebar on these routes and keeps the footer. The header is fixed at
@@ -26,14 +26,14 @@
  * COMPONENTS
  *
  * FocusHeader  (FocusHeader.jsx)
- *   subtitle, to="/speech-tests", locked=false, backLabel="Back to speech tests", children,
+ *   subtitle, to="/speech-tests", locked=false, backLabel="Back to VocalQ", children,
  *   tools=true, profileInteractive (default !locked), compact=false, className.
  *   `locked` makes the brand plain text and the profile not pressable (a running section).
  *   children is the middle slot (right-aligned flex row; give a child flex:1 to fill it).
  *   Built in at the right: connection (SignalBars + Online/Offline, a live region), theme toggle,
  *   profile badge. Logo: the platform logo (blue mark
 , transparent, legible in both themes).
- *   <FocusHeader subtitle="Speech Judge" locked><TimerPill .../></FocusHeader>
+ *   <FocusHeader subtitle="VocalQ" locked><TimerPill .../></FocusHeader>
  *
  * FocusPage  (FocusPage.jsx)
  *   width="reading" ('narrow' 760 | 'reading' 880 | 'wide' 1100 | 'full' 1280), narrow, wide (shortcuts),
@@ -120,6 +120,8 @@
 import "./speechX.css";
 
 export { default as FocusHeader } from "./FocusHeader";
+export { default as ConnectionStatus } from "./ConnectionStatus";
+export { default as useExamFullscreen, isExamPath } from "./useExamFullscreen";
 export { default as FocusPage } from "./FocusPage";
 export { default as Reveal } from "./Reveal";
 export { default as SpeechCard } from "./SpeechCard";

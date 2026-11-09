@@ -4,64 +4,41 @@ import { WarningCircleIcon } from "@phosphor-icons/react/dist/csr/WarningCircle"
 import { toast } from "react-toastify";
 import { studentApi, apiErrorMessage } from "../../../services/speechTestApi";
 import { Button, EmptyState, Skeleton, formatDateTime } from "../../ui";
-import { SegmentedProgress } from "../../custom-components";
 import { FocusHeader, FocusPage, Reveal, SpeechCard, examStatusOf } from "../shared";
 import SectionRow from "./SectionRow";
 import TestInfoCard from "./TestInfoCard";
 import { StartSectionDialog, EndTestDialog } from "./SectionDialogs";
+import { enterFullscreen } from "../../../utils/fullscreen";
 import useTestOverview from "./useTestOverview";
 import "./overview.css";
-
-/** One segment per section for the progress strip in the header. */
-const toSegments = (sections) =>
-  sections.map((s) => ({
-    key: s.sectionId,
-    label: s.title,
-    state:
-      s.status === "scored"
-        ? "done"
-        : s.status === "in_progress"
-        ? "current"
-        : s.status === "queued" || s.status === "scoring"
-        ? "review"
-        : "todo",
-  }));
-
-// The strip's own wording for the five states it can show
-const SEGMENT_WORDS = { done: "Scored", current: "In progress", review: "Waiting for score", todo: "Not started" };
-
-/** "Speech test \u00b7 section 2 of 4": the section being worked on, or the next one. */
-const toHeaderLabel = (sections, completed) => {
-  if (completed) return "Speech test \u00b7 completed";
-  const at = sections.findIndex((s) => s.status === "in_progress");
-  const next = at >= 0 ? at : sections.findIndex((s) => s.status === "not_started");
-  if (next < 0) return "Speech test \u00b7 all sections submitted";
-  return `Speech test \u00b7 section ${next + 1} of ${sections.length}`;
-};
 
 /** The list and the side card while the test loads, in the shape of the real page. */
 const LoadingLayout = () => (
   <div className="sxv-layout" role="status" aria-label="Loading the test">
-    <div className="sxv-main">
+    <div className="sxv-intro">
       <Skeleton width={220} height={32} />
       <Skeleton width="60%" height={18} style={{ marginTop: 8 }} />
+    </div>
+    <div className="sxv-main">
       <div className="sxv-skeleton-rows">
         {[0, 1, 2, 3].map((key) => (
           <Skeleton key={key} height={76} radius="var(--ds-radius-xl)" />
         ))}
       </div>
     </div>
-    <div className="sxv-side">
-      <Skeleton height={220} radius="var(--ds-radius-xl)" />
-      <Skeleton height={180} radius="var(--ds-radius-xl)" />
+    <div className="sxv-aside">
+      <div className="sxv-side">
+        <Skeleton height={220} radius="var(--ds-radius-xl)" />
+        <Skeleton height={180} radius="var(--ds-radius-xl)" />
+      </div>
     </div>
   </div>
 );
 
 /**
  * The student's section list for a test they have started (route /speech-tests/:id): what to do
- * next, each section's state and score, and how to finish. A focus screen: the fixed FocusHeader
- * (with the segmented progress of the sections), the list on the left and the test card with the
+ * next, each section's state and score, and how to finish. A focus screen: the fixed FocusHeader,
+ * the list on the left and the test card with the
  * progress tile on the right (stacked on a phone). The footer comes from the app shell.
  *
  * Behaviour as before: a live test the student has not started goes to /setup; a finished test
@@ -92,6 +69,8 @@ const SpeechTestOverview = () => {
   const completed = attempt?.status === "completed";
   const running = sections.find((s) => s.status === "in_progress");
   const scoredCount = sections.filter((s) => s.status === "scored").length;
+  const unfinishedCount = sections.filter((s) => ["in_progress", "queued", "scoring", "failed"].includes(s.status)).length;
+  const notStartedCount = sections.filter((s) => s.status === "not_started").length;
 
   const startableReason = (section) => {
     if (completed) return "You have ended this test";
@@ -109,6 +88,8 @@ const SpeechTestOverview = () => {
 
   const openSection = (section) => {
     setConfirmSection(null);
+    // Asked here, in the click that opens the section: a browser only allows full screen after a click or a key press
+    enterFullscreen();
     navigate(`/speech-tests/${id}/sections/${section.sectionId}`);
   };
 
@@ -140,7 +121,6 @@ const SpeechTestOverview = () => {
   };
 
   const examStatus = examStatusOf(windowState, attempt);
-  const showBar = !loading && test && attempt;
 
   let body;
   if (loading) {
@@ -157,7 +137,7 @@ const SpeechTestOverview = () => {
               <div className="sxv-buttons">
                 <Button onClick={reload}>Retry</Button>
                 <Button variant="ghost" onClick={() => navigate("/speech-tests")}>
-                  Back to speech tests
+                  Back to VocalQ
                 </Button>
               </div>
             }
@@ -179,21 +159,23 @@ const SpeechTestOverview = () => {
           }
         />
         <Button variant="ghost" onClick={() => navigate("/speech-tests")}>
-          Back to speech tests
+          Back to VocalQ
         </Button>
       </Reveal>
     );
   } else {
     body = (
       <div className="sxv-layout">
-        <Reveal className="sxv-main" delay={0.04}>
+        <Reveal className="sxv-intro" delay={0.04}>
           <h1 className="sxv-title">{completed ? "Your sections" : "Choose a section"}</h1>
           <p className="sxv-lead">
             {completed
               ? "Your test is complete. Open a section to see its scores."
               : "Start any section when you are ready. One section can be open at a time."}
           </p>
+        </Reveal>
 
+        <Reveal className="sxv-main" delay={0.08}>
           <SpeechCard as="div" padded={false} className="sxv-list-card">
             <ol className="sxv-list" aria-label="Sections">
               {sections.map((section, index) => {
@@ -238,21 +220,21 @@ const SpeechTestOverview = () => {
 
   return (
     <>
-      <FocusHeader subtitle="Speech Judge">
-        {showBar ? (
-          <div className="sxv-bar">
-            <p className="sxv-bar__label sx-hide-phone">{toHeaderLabel(sections, completed)}</p>
-            <div className="sxv-bar__progress sx-hide-narrow">
-              <SegmentedProgress segments={toSegments(sections)} label="Sections" stateLabels={SEGMENT_WORDS} />
-            </div>
-          </div>
-        ) : null}
-      </FocusHeader>
+      <FocusHeader subtitle="VocalQ" />
 
       <FocusPage width="full">{body}</FocusPage>
 
       <StartSectionDialog section={confirmSection} onClose={() => setConfirmSection(null)} onConfirm={() => openSection(confirmSection)} />
-      <EndTestDialog open={confirmEnd} busy={ending} total={sections.length} onClose={() => setConfirmEnd(false)} onConfirm={endTest} />
+      <EndTestDialog
+        open={confirmEnd}
+        busy={ending}
+        total={sections.length}
+        scored={scoredCount}
+        unfinished={unfinishedCount}
+        notStarted={notStartedCount}
+        onClose={() => setConfirmEnd(false)}
+        onConfirm={endTest}
+      />
     </>
   );
 };

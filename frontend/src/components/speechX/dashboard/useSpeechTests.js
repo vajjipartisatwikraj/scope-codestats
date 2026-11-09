@@ -28,7 +28,7 @@ const useSpeechTests = () => {
       setTests(data.tests || []);
       setError("");
     } catch (err) {
-      const message = apiErrorMessage(err, "Could not load your speech tests");
+      const message = apiErrorMessage(err, "Could not load your VocalQ tests");
       // One toast at a time, so a failing 30 second poll does not pile them up
       toast.error(message, { toastId: "speech-tests-load" });
       setError(message);

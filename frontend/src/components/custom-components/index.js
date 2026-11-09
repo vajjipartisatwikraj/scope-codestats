@@ -43,3 +43,5 @@ export { default as BrandLogo, hasBrandLogo } from './BrandLogo';
 export { default as RocketAnimation } from './RocketAnimation';
 export { default as RocketLaunch } from './RocketLaunch';
 export { default as WaveMesh } from './WaveMesh';
+export { default as SpeakingFilm } from './SpeakingFilm';
+export { default as BatteryIndicator } from './BatteryIndicator';

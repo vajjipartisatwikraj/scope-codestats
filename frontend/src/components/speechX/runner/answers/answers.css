@@ -312,3 +312,12 @@
   letter-spacing: var(--ds-tracking-caption);
   white-space: nowrap;
 }
+
+/* A blank in a multiple-choice question: one unbroken line on the text baseline */
+.sxr-gap {
+  display: inline-block;
+  max-width: 100%;
+  height: 0;
+  margin: 0 0.25em;
+  border-bottom: 2px solid currentColor;
+}
