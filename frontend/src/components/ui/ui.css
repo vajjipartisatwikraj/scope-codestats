@@ -2690,3 +2690,272 @@ button.ui-stepper__pill:focus-visible {
   height: 100%;
   object-fit: contain;
 }
+
+
+/* ---- Admin top (the fixed heading and controls of every admin screen) ------------------------------------------------ *
+ *
+ * AdminTop.jsx. Sticks right under the navbar: <main> keeps 64px of padding for it and a sticky element counts that
+ * padding, so top is 0. The canvas fill lets rows slide under it cleanly and the negative margin reaches the page's side
+ * padding so nothing shows at its edges. A hairline marks its lower edge once the list has scrolled beneath it (the
+ * marker before it tells, hooks/useStuck). Sticky headers sit at z-index 10 (DESIGN.md).
+ *
+ * Row 1: the heading and the primary action. Row 2: the search at the left, the dropdowns or tabs at the right. From 600px
+ * row 2 never wraps (the search gives way first); on a phone the search takes a line and the controls take the next. */
+
+.ui-admintop-marker {
+  height: 1px;
+  margin-bottom: -1px;
+  pointer-events: none;
+}
+
+/* The negative top margin cancels what sits above the block at rest (the page's 4px of top padding, 16px more below
+   900px where the shell pads the page, and the 1px marker), so the block rests exactly where it sticks (top: 0) and
+   does not jump when the list starts to scroll. */
+.ui-admintop {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: -5px calc(var(--ui-pad, 0px) * -1) var(--ui-gap, 12px);
+  padding: 8px var(--ui-pad, 0px) 12px;
+  border-bottom: 1px solid transparent;
+  background-color: var(--ds-canvas);
+}
+
+.ui-admintop[data-stuck='true'] {
+  border-bottom-color: var(--ds-line);
+}
+
+.ui-admintop .ui-page-header {
+  margin: 0 0 12px;
+}
+
+.ui-admintop .ui-page-header:last-child {
+  margin-bottom: 0;
+}
+
+/* The tagline is one line, cut with an ellipsis when it is longer than the room */
+.ui-admintop .ui-page-header__description {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 899.95px) {
+  .ui-admintop {
+    margin-top: -21px;
+  }
+}
+
+/* The path above the heading: "/ User groups / Group name". Every step before the last is a link in the
+   muted (light grey) colour that turns to the text colour (white on Midnight) on hover and keyboard focus;
+   the last is the current page in the text colour. 12px of space separates the path from the title. */
+.ui-admintop__crumbs {
+  margin: 0 0 12px;
+}
+
+.ui-admintop__crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--ds-type-body-sm);
+}
+
+.ui-admintop__crumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ui-admintop__crumbs a {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ds-radius-xs);
+  color: var(--ds-muted);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 150ms var(--ds-ease);
+}
+
+.ui-admintop__crumbs a:hover,
+.ui-admintop__crumbs a:focus-visible {
+  color: var(--ds-text);
+  text-decoration: none;
+}
+
+.ui-admintop__crumbs a:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-canvas),
+    0 0 0 4px var(--ds-focus);
+}
+
+.ui-admintop__sep {
+  color: var(--ds-subtle);
+}
+
+.ui-admintop__here {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--ds-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* On a touch screen the links keep a 44px target */
+@media (pointer: coarse) {
+  .ui-admintop__crumbs a {
+    min-height: 44px;
+  }
+}
+
+.ui-admintop__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ui-admintop__search {
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 420px;
+}
+
+.ui-admintop__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* With a search at the left, the controls go to the right end of the row; with no search they start at the left */
+.ui-admintop__filters[data-end='true'] {
+  margin-left: auto;
+}
+
+/* Daylight: the search and the controls are white (the surface role) on the page, not the grey raised role */
+[data-theme='daylight'] .ui-admintop {
+  --ui-control-bg: var(--ds-surface);
+}
+
+[data-theme='daylight'] .ui-admintop .pt {
+  --pt-bg: var(--ds-surface);
+}
+
+/* From 900px the row never wraps (the search gives way first); on a narrower screen the controls may take a second line */
+@media (min-width: 900px) {
+  .ui-admintop__bar {
+    flex-wrap: nowrap;
+  }
+
+  .ui-admintop__search {
+    flex: 0 1 420px;
+  }
+
+  .ui-admintop__filters {
+    flex-wrap: nowrap;
+    flex: none;
+  }
+}
+
+/* A phone has little height to give: the tagline goes, the title and the controls stay */
+@media (max-width: 599.95px) {
+  .ui-admintop .ui-page-header__description {
+    display: none;
+  }
+
+  .ui-admintop__search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .ui-admintop__filters {
+    flex: 1 1 100%;
+  }
+
+  /* Dropdowns share the line; tabs take it whole and scroll sideways */
+  .ui-admintop__filters > .ui-field-inline {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .ui-admintop__filters .ui-select {
+    width: 100%;
+  }
+
+  .ui-admintop__filters > .pt {
+    width: 100%;
+  }
+}
+
+
+/* ---- Band table (the table with no box around it) ------------------------------------------------------------------------ *
+ *
+ * The table of the admin list screens (teacher requests; the students of a user group carry the identical look as .ug-table).
+ * No card around it: the header is a quiet band in the raised tone with rounded ends, the rows are 64px with a hairline
+ * between them, and a row lights up in the raised tone on hover. Put it in a .ui-table-wrap. Numbers use tabular figures
+ * (.ui-num). Below 900px a screen swaps it for a list of rows. */
+
+.ui-band-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font: var(--ds-type-body);
+}
+
+.ui-band-table th {
+  height: 44px;
+  padding: 0 16px;
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ui-band-table th:first-child {
+  border-radius: var(--ds-radius-md) 0 0 var(--ds-radius-md);
+}
+
+.ui-band-table th:last-child {
+  border-radius: 0 var(--ds-radius-md) var(--ds-radius-md) 0;
+}
+
+.ui-band-table td {
+  height: 64px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--ds-line);
+  vertical-align: middle;
+}
+
+.ui-band-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ui-band-table tbody tr:hover td {
+  background-color: var(--ds-raised);
+}
+
+.ui-band-table tbody tr:hover td:first-child {
+  border-radius: var(--ds-radius-md) 0 0 var(--ds-radius-md);
+}
+
+.ui-band-table tbody tr:hover td:last-child {
+  border-radius: 0 var(--ds-radius-md) var(--ds-radius-md) 0;
+}
+
+.ui-band-table .ui-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

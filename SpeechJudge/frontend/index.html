@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speech Judge – Test Console</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="top">
+    <div>
+      <h1>Speech Judge <span class="muted">test console</span></h1>
+      <p class="muted small">Internal testing tool. Audio is converted to 16 kHz WAV in your browser and sent through the local proxy.</p>
+    </div>
+    <div class="top-right">
+      <div id="ready" class="row" aria-label="Backend status"></div>
+    </div>
+  </header>
+
+  <nav id="tabs" role="tablist" aria-label="Test types"></nav>
+  <main id="content" tabindex="-1"></main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

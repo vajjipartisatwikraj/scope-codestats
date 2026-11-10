@@ -38,6 +38,7 @@ export default function BankDrawer({ bank, saving, onClose, onSave }) {
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={saving}
       title={editing ? 'Edit bank' : 'Create bank'}

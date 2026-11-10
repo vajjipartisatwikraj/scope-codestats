@@ -9,14 +9,14 @@ import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash';
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Menu, Notice, PageHeader, PillTabs, SearchField, SkeletonRows, Toolbar, formatDate, pluralize } from '../../ui';
+import { AdminTop, Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Menu, Notice, PillTabs, SearchField, SkeletonRows, formatDate, pluralize } from '../../ui';
 import { useAuth } from '../../../contexts/AuthContext';
 import * as api from '../api/bankLibraryApi';
 import BankDrawer from '../forms/BankDrawer';
 import useDebounced from '../hooks/useDebounced';
 import useLibraryRequest from '../hooks/useLibraryRequest';
 import { apiMessage, bankStatusInfo, countOf } from '../model/bankLibrary';
-import { LIBRARY_PATH, LibraryRow, LibraryTop, RowMenu } from './LibraryParts';
+import { LIBRARY_PATH, LibraryRow, RowMenu } from './LibraryParts';
 
 const TABS = [
   { key: 'all', label: 'All banks' },
@@ -187,11 +187,10 @@ export default function BanksView() {
 
   return (
     <>
-      <LibraryTop>
-        <PageHeader
+      <AdminTop
           title="Bank library"
           count={banks.data && !query && tab === 'all' ? pluralize(list.length, 'bank') : undefined}
-          description="Banks of questions kept in cloud storage. Teachers import a bank, a topic or single questions into their cohorts."
+          description="Question banks that teachers import into their cohorts."
           actions={
             <>
               <Menu
@@ -218,12 +217,10 @@ export default function BanksView() {
               </Button>
             </>
           }
+          label="Search and filter banks"
+          search={<SearchField value={search} onChange={setSearch} placeholder="Search banks" label="Search banks by name, description or tag" />}
+          filters={<PillTabs items={TABS} value={tab} onChange={setTab} label="Show banks" role="radiogroup" />}
         />
-
-        <Toolbar label="Search and filter banks" search={<SearchField value={search} onChange={setSearch} placeholder="Search banks" label="Search banks by name, description or tag" />}>
-          <PillTabs items={TABS} value={tab} onChange={setTab} label="Show banks" role="radiogroup" size="sm" />
-        </Toolbar>
-      </LibraryTop>
 
       <Card flush className="bl-card" aria-busy={banks.loading ? 'true' : 'false'}>
         {body}

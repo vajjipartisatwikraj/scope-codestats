@@ -6,7 +6,7 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGl
 import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users';
 import { useAuth } from '../../contexts/AuthContext';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, Skeleton, SkeletonRows, formatNumber, pluralize } from '../ui';
+import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, Skeleton, SkeletonRows, formatNumber, pluralize } from '../ui';
 import UserDrawer from './UserDrawer';
 import UserTable, { RoleBadge } from './UserTable';
 import { ROLES, consequenceOf, roleInfo } from './manageUsersModel';
@@ -70,25 +70,50 @@ export default function ManageUsers() {
     { key: 'admin', label: 'Admins', value: counts.admin, context: `${percent(counts.admin, counts.total)} of all users` },
   ];
 
-  const clearFilters = (
-    <Button variant="ghost" onClick={data.clearFilters}>
-      Clear filters
-    </Button>
-  );
-
   return (
     <Page className="mu-page">
-      <PageHeader
+      <AdminTop
         title="Manage users"
         count={firstLoad ? undefined : data.filtering ? `${formatNumber(filtered.length)} of ${pluralize(users.length, 'user')}` : pluralize(users.length, 'user')}
-        description="See everyone on the platform and change who has student, teacher or admin access."
+        description="See everyone on the platform and change their role."
         actions={
           <Button onClick={data.reload} loading={loading && users.length > 0} startIcon={<ArrowsClockwiseIcon size={18} weight="regular" aria-hidden="true" />}>
             Refresh
           </Button>
         }
+        label="Filter users"
+        search={
+          <SearchField
+            value={filters.query}
+            onChange={(value) => data.setFilter('query', value)}
+            label="Search users"
+            placeholder="Search by name, email, roll number or department"
+          />
+        }
+        filters={
+          <>
+            <SelectField
+              variant="pill"
+              aria-label="Role"
+              value={filters.role}
+              onChange={(event) => data.setFilter('role', event.target.value)}
+              options={[{ value: 'all', label: 'All roles' }, ...ROLES.map((role) => ({ value: role.value, label: role.label }))]}
+            />
+            <SelectField
+              variant="pill"
+              aria-label="Department"
+              value={filters.department}
+              onChange={(event) => data.setFilter('department', event.target.value)}
+              options={[{ value: 'all', label: 'All departments' }, ...data.departments.map((name) => ({ value: name, label: name }))]}
+            />
+            {data.filtering ? (
+              <Button variant="ghost" size="sm" onClick={data.clearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </>
+        }
       />
-
       <section className="mu-stats" aria-label="Summary">
         {tiles.map((tile) => (
           <div key={tile.key} className="mu-stat" data-spotlight={tile.spotlight ? 'true' : 'false'}>
@@ -98,31 +123,6 @@ export default function ManageUsers() {
           </div>
         ))}
       </section>
-
-      <div className="ui-toolbar" role="search" aria-label="Filter users">
-        <SearchField
-          className="ui-toolbar__grow"
-          value={filters.query}
-          onChange={(value) => data.setFilter('query', value)}
-          label="Search users"
-          placeholder="Search by name, email, roll number or department"
-        />
-        <SelectField
-          variant="pill"
-          aria-label="Role"
-          value={filters.role}
-          onChange={(event) => data.setFilter('role', event.target.value)}
-          options={[{ value: 'all', label: 'All roles' }, ...ROLES.map((role) => ({ value: role.value, label: role.label }))]}
-        />
-        <SelectField
-          variant="pill"
-          aria-label="Department"
-          value={filters.department}
-          onChange={(event) => data.setFilter('department', event.target.value)}
-          options={[{ value: 'all', label: 'All departments' }, ...data.departments.map((name) => ({ value: name, label: name }))]}
-        />
-        {data.filtering ? <div className="ui-toolbar__end">{clearFilters}</div> : null}
-      </div>
 
       <Card flush className="mu-card">
         {firstLoad || (loading && users.length === 0) ? (

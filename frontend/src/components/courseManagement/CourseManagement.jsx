@@ -3,7 +3,7 @@ import { GraduationCapIcon } from '@phosphor-icons/react/dist/csr/GraduationCap'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { FunnelSimpleIcon } from '@phosphor-icons/react/dist/csr/FunnelSimple';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, SkeletonRows, pluralize } from '../ui';
+import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, Pagination, SearchField, SelectField, SkeletonRows, pluralize } from '../ui';
 import CourseDrawer from './CourseDrawer';
 import CourseTable from './CourseTable';
 import { CATEGORIES, LEVELS, levelLabel, matches, sortCourses } from './courseModel';
@@ -135,37 +135,11 @@ export default function CourseManagement() {
           </div>
         ) : null}
 
-        {courses.length > 0 ? (
-          <div className="ui-toolbar cm-toolbar">
-            <SearchField className="ui-toolbar__grow" value={search} onChange={(text) => { setSearch(text); setPage(1); }} placeholder="Search by title or description" label="Search courses" />
-            <SelectField
-              variant="pill"
-              aria-label="Filter by level"
-              value={level}
-              onChange={filterBy(setLevel)}
-              options={[{ value: '', label: 'Any level' }, ...LEVELS.map((entry) => ({ value: entry, label: levelLabel(entry) }))]}
-            />
-            <SelectField
-              variant="pill"
-              aria-label="Filter by category"
-              value={category}
-              onChange={filterBy(setCategory)}
-              options={[{ value: '', label: 'Any category' }, ...CATEGORIES]}
-            />
-            {filtering ? (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
         {courses.length === 0 ? (
           <EmptyState
             icon={<GraduationCapIcon size={28} weight="regular" />}
             title="No courses yet"
             text="Add the first course and students will see it on their Courses page."
-            action={addButton}
           />
         ) : visible.length === 0 ? (
           <EmptyState
@@ -200,11 +174,42 @@ export default function CourseManagement() {
 
   return (
     <Page className="cm-page">
-      <PageHeader
+      <AdminTop
         title="Course management"
         count={!loading && !(failed && courses.length === 0) && courses.length > 0 ? pluralize(courses.length, 'course') : undefined}
-        description="Add, edit and remove the courses students see on their Courses page."
-        actions={courses.length > 0 || loading ? addButton : undefined}
+        description="Add, edit and remove the courses students see."
+        actions={addButton}
+        label="Search and filter courses"
+        search={
+          (
+            <SearchField value={search} onChange={(text) => { setSearch(text); setPage(1); }} placeholder="Search by title or description" label="Search courses" />
+          )
+        }
+        filters={
+          (
+            <>
+              <SelectField
+                variant="pill"
+                aria-label="Filter by level"
+                value={level}
+                onChange={filterBy(setLevel)}
+                options={[{ value: '', label: 'Any level' }, ...LEVELS.map((entry) => ({ value: entry, label: levelLabel(entry) }))]}
+              />
+              <SelectField
+                variant="pill"
+                aria-label="Filter by category"
+                value={category}
+                onChange={filterBy(setCategory)}
+                options={[{ value: '', label: 'Any category' }, ...CATEGORIES]}
+              />
+              {filtering ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              ) : null}
+            </>
+          )
+        }
       />
 
       <p className="ui-sr" aria-live="polite">

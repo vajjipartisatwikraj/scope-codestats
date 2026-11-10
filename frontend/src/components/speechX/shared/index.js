@@ -138,4 +138,5 @@ export { examStatusOf, EXAM_STATUS_META, SECTION_STATUS_BADGE_META } from "./exa
 export * from "./speechTestMeta";
 export { default as useNotFoundRedirect, NOT_FOUND_PATH } from "./useNotFoundRedirect";
 export { default as useOnlineStatus } from "./useOnlineStatus";
+export { normalizeQuery, testMatchesQuery } from "./testSearch";
 export { PROMPT_CUE, ANSWER_HINT } from "./runnerCopy";

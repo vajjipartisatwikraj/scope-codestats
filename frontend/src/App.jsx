@@ -55,7 +55,9 @@ import CourseManagement from "./components/courseManagement";
 import OpportunityManagement from "./components/opportunityManagement";
 import NotificationManagement from "./components/notificationManagement";
 import ManageUsers from "./components/manageUsers";
-import UserGroups from "./components/userGroupManagement";
+import Monitoring from "./components/monitoring";
+import UserGroups, { UserGroupPage } from "./components/userGroupManagement";
+import ControlPanel from "./components/controlPanel";
 import TeacherRequests from "./components/teacherRequests";
 import SuspendAccounts from "./components/suspendAccounts";
 import AccessList from "./components/accessList";
@@ -68,7 +70,7 @@ import CodePad from "./components/CodePad/index.js";
 import TestGoogleImage from "./components/TestGoogleImage";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 import NotificationPage from "./pages/NotificationPage";
-import SearchPage from "./pages/SearchPage";
+import { SearchPage } from "./components/search";
 import NotFound from "./components/NotFound";
 import MobileRestrictedRoute from "./components/MobileRestrictedRoute";
 import PageTransition from "./components/PageTransition";
@@ -248,11 +250,28 @@ const MainContent = () => {
   // min-height 100vh, <main> grows to fit its content and the window scrolls instead, so nothing
   // could stick. A shell exactly as tall as the window makes <main> the scroller. This page has no
   // footer, so nothing is lost below it. dvh keeps the last card clear of a phone's browser bars.
-  // The bank library (all three levels) fixes its heading and search the same way.
-  const isFixedTopPage =
-    location.pathname === "/cohorts" ||
-    location.pathname === "/admin/cohorts" ||
-    location.pathname.startsWith("/admin/bank-library");
+  // The bank library (all three levels) fixes its heading and search the same way, and so do the
+  // user groups (the list and a group's page): every admin screen has a fixed top (AdminTop).
+  // Every admin list screen has the same fixed top (AdminTop): these are its routes. A page opened from a
+  // list (a user group, a bank) is under its list's prefix; the communication test editor is not a list.
+  const hasAdminTop =
+    [
+      "/admin/dashboard",
+      "/admin/teacher-requests",
+      "/admin/control-panel",
+      "/admin/courses",
+      "/course-management",
+      "/admin/opportunities",
+      "/opportunity-management",
+      "/admin/communication-tests",
+      "/admin/manage-users",
+      "/admin/monitoring",
+      "/admin/suspend-accounts",
+      "/admin/access-list",
+    ].includes(location.pathname) ||
+    location.pathname.startsWith("/admin/bank-library") ||
+    location.pathname.startsWith("/admin/user-groups");
+  const isFixedTopPage = location.pathname === "/cohorts" || location.pathname === "/admin/cohorts" || hasAdminTop;
 
   // Check if current path should not show footer
   const isNoFooterPage =
@@ -263,7 +282,7 @@ const MainContent = () => {
     // The student dashboard is one screen that fits the window; a footer below it would make it scroll
     location.pathname === "/dashboard" ||
     isCohortPage || // All cohort pages (list, detail, admin)
-    location.pathname.startsWith("/admin/bank-library") || // a window-high page: only its list scrolls
+    hasAdminTop || // a window-high page with a fixed top (AdminTop): only its list scrolls
     isTestPage;
 
   // List of valid routes (excluding dynamic routes)
@@ -293,9 +312,11 @@ const MainContent = () => {
     "/admin/opportunities",
     "/admin/notifications",
     "/admin/manage-users",
+    "/admin/monitoring",
     "/admin/suspend-accounts",
     "/admin/user-groups",
     "/admin/teacher-requests",
+    "/admin/control-panel",
     "/admin/access-list",
     "/admin/bank-library",
     "/practice-arena",
@@ -313,6 +334,7 @@ const MainContent = () => {
     !location.pathname.startsWith("/cohorts/") &&
     !location.pathname.startsWith("/admin/cohorts/") &&
     !location.pathname.startsWith("/admin/bank-library/") &&
+    !location.pathname.startsWith("/admin/user-groups/") &&
     !location.pathname.startsWith("/practice-arena/") &&
     !location.pathname.startsWith("/speech-tests/") &&
     !location.pathname.startsWith("/admin/communication-tests/") &&
@@ -702,10 +724,27 @@ const MainContent = () => {
                   }
                 />
                 <Route
+                  path="/admin/monitoring"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <Monitoring />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
                   path="/admin/teacher-requests"
                   element={
                     <PrivateRoute adminOnly={true} strictAdmin={true}>
                       <TeacherRequests />
+                    </PrivateRoute>
+                  }
+                />
+                {/* The profile sync and the calculation of scores and ranks. Admins only. */}
+                <Route
+                  path="/admin/control-panel"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <ControlPanel />
                     </PrivateRoute>
                   }
                 />
@@ -757,9 +796,15 @@ const MainContent = () => {
                   path="/admin/user-groups"
                   element={
                     <PrivateRoute adminOnly={true}>
-                      <MobileRestrictedRoute pageName="User Groups">
-                        <UserGroups />
-                      </MobileRestrictedRoute>
+                      <UserGroups />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/user-groups/:groupId"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <UserGroupPage />
                     </PrivateRoute>
                   }
                 />

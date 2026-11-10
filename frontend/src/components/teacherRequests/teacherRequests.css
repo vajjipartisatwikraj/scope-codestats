@@ -2,41 +2,20 @@
  * Teacher requests
  *
  * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Only what
- * the kit does not have lives here: the filter bar, the note cell, the decision cell and the rows
- * that replace the table on a phone. design/screens.md sections 16 and 19.
+ * the kit does not have lives here: the note cell, the decision cell and the rows that replace the
+ * table on a phone. The fixed top is AdminTop and the table is the kit's band table. design/screens.md sections 16 and 19.
  */
-
-.tr-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid var(--ds-line);
-}
 
 .tr-body {
   min-height: 160px;
   outline: none;
 }
 
-.tr-pad {
-  padding: 16px;
-}
-
 /* ---- Table cells ------------------------------------------------------------------------------- */
 
-.tr .ui-table {
+.tr .ui-band-table {
   min-width: 760px;
 }
-
-.tr .ui-table td {
-  vertical-align: top;
-  padding-top: 12px;
-  padding-bottom: 12px;
-}
-
 .tr-note-cell {
   width: 34%;
   min-width: 220px;
@@ -81,7 +60,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding: 16px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--ds-line);
 }
 

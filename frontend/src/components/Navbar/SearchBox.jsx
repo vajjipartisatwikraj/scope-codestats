@@ -1,107 +1,35 @@
 import brand from '../../brand';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { BriefcaseIcon } from '@phosphor-icons/react/dist/csr/Briefcase';
-import { GraduationCapIcon } from '@phosphor-icons/react/dist/csr/GraduationCap';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass';
 import { SpinnerGapIcon } from '@phosphor-icons/react/dist/csr/SpinnerGap';
-import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiUrl } from '../../config/apiConfig';
+import { SEARCH_SECTIONS as SECTIONS } from '../search/searchSections';
+import useGlobalSearch from '../search/useGlobalSearch';
 import Avatar from './Avatar';
 import useDismiss from './useDismiss';
-import { describeStudent } from './formatters';
-
-const SEARCH_DELAY_MS = 300;
-
-// The order here is the order of the sections and of keyboard navigation.
-const SECTIONS = [
-  {
-    key: 'users',
-    title: 'Users',
-    icon: null, // people get their photo or initials
-    path: (item) => `/public-profile/${encodeURIComponent(item.username)}`,
-    label: (item) => item.name,
-    detail: describeStudent,
-  },
-  {
-    key: 'cohorts',
-    title: 'Cohorts',
-    icon: StackIcon,
-    path: (item) => `/cohorts/${item._id}`,
-    label: (item) => item.title,
-  },
-  {
-    key: 'opportunities',
-    title: 'Opportunities',
-    icon: BriefcaseIcon,
-    path: (item) => `/opportunities/${item._id}`,
-    label: (item) => item.title,
-    detail: (item) => item.company,
-  },
-  {
-    key: 'courses',
-    title: 'Courses',
-    icon: GraduationCapIcon,
-    path: (item) => `/courses/${item._id}`,
-    label: (item) => item.title,
-    detail: (item) => item.instructor,
-  },
-];
 
 /**
  * The search pill with its results panel.
  *
- * Typing searches users, cohorts, opportunities and courses (after a short pause, and a newer
- * search cancels an older one). The panel works as a combobox: arrow keys move through the
- * results, Enter opens the highlighted one (or the first), Escape closes the panel.
+ * Typing searches users, cohorts, VocalQ tests, opportunities and courses (after a short pause,
+ * and a newer search cancels an older one). The panel works as a combobox: arrow keys move
+ * through the results, Enter opens the highlighted one (or the first), Escape closes the panel.
+ * What is searched and where a result leads is in ../search/searchSections.js.
  */
 const SearchBox = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const baseId = useId();
   const rootRef = useRef(null);
   const inputRef = useRef(null);
 
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const trimmed = query.trim();
-
-  // Search a moment after typing stops. Changing the text cancels the search in flight.
-  useEffect(() => {
-    if (!token || !trimmed) {
-      setResults(null);
-      setLoading(false);
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`${apiUrl}/search`, {
-          params: { query: trimmed },
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        setResults(response.data);
-      } catch (error) {
-        if (!axios.isCancel(error)) console.error('Search error:', error);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, SEARCH_DELAY_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [trimmed, token]);
+  const { results, loading } = useGlobalSearch(token, trimmed);
 
   // Every result in display order, with the id the combobox points at.
   const rows = useMemo(
@@ -133,9 +61,8 @@ const SearchBox = () => {
   });
 
   const choose = (row) => {
-    navigate(row.section.path(row.item));
+    navigate(row.section.path(row.item, user));
     setQuery('');
-    setResults(null);
     setOpen(false);
     setActiveIndex(-1);
     inputRef.current?.blur();
@@ -208,7 +135,7 @@ const SearchBox = () => {
                 </p>
                 {groupRows.map((row) => {
                   const Icon = section.icon;
-                  const detail = section.detail?.(row.item);
+                  const detail = section.detail?.(row.item, user);
                   return (
                     <div
                       key={row.id}

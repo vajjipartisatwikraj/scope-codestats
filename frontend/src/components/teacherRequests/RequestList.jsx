@@ -10,7 +10,7 @@ function Person({ user }) {
   const person = user || {};
   return (
     <div className="ui-table__cell-main">
-      <Avatar name={person.name} src={person.profilePicture || undefined} size={36} />
+      <Avatar name={person.name} src={person.profilePicture || undefined} size={40} />
       <div className="ui-table__cell-text">
         <span className="ui-table__title">{person.name || 'Unknown person'}</span>
         <span className="ui-table__meta">{person.email}</span>
@@ -91,7 +91,7 @@ export default function RequestList({ requests, pending, compact, onDecide }) {
 
   return (
     <div className="ui-table-wrap">
-      <table className="ui-table" data-density="compact">
+      <table className="ui-band-table">
         <caption className="ui-sr">{pending ? 'Requests waiting for a decision' : 'Requests that have been decided'}</caption>
         <thead>
           <tr>

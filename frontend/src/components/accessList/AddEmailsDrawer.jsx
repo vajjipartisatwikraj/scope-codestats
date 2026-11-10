@@ -97,6 +97,7 @@ export default function AddEmailsDrawer({ onAdded, onClose }) {
     return (
       <Drawer
         open
+        tone="accent"
         onClose={onClose}
         title="Addresses added"
         footer={
@@ -130,6 +131,7 @@ export default function AddEmailsDrawer({ onAdded, onClose }) {
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={saving}
       title="Add email addresses"

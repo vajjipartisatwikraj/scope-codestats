@@ -40,6 +40,7 @@ export default function UserDrawer({ open, onClose, person, isOwn, onChangeRole 
   return (
     <Drawer
       open={open}
+      tone="accent"
       onClose={onClose}
       title={person.name}
       description={person.email}

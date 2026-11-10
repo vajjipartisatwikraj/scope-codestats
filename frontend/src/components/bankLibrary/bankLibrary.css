@@ -16,132 +16,33 @@
 
 /* ---- The fixed top ---------------------------------------------------------------------------------------------
  *
- * The breadcrumb, the heading with its actions, and the search and filters stay in place while the
- * list scrolls under them. <main> is the scroller: App.jsx makes the shell exactly as tall as the
- * window on this route (isFixedTopPage), and <main> keeps 64px of padding for the fixed navbar, which
- * a sticky element counts, so top is 0 and the block parks right under the navbar. Same recipe as the
- * cohort list (cohorts/student/list/cohorts.css).
- *
- * It has the canvas colour so rows slide under it cleanly, and reaches the page's side padding so
- * nothing shows at its edges. While it is stuck a hairline marks its lower edge (hooks/useStuck
- * watches the marker). Sticky headers sit at z-index 10 (DESIGN.md). */
+ * The top of the three levels is AdminTop from the kit (ui/AdminTop.jsx): the path, the heading with its
+ * actions, and the search and filters, fixed under the navbar while the list scrolls. The page here is
+ * a flex column with its own gap, so the marker of AdminTop must not take a gap of its own and the top
+ * needs no bottom margin. */
 
-.bl-marker {
+.bl > .ui-admintop-marker {
   position: absolute;
   top: 0;
   left: 0;
   width: 1px;
-  height: 1px;
-  pointer-events: none;
+  margin: 0;
 }
 
-.bl-top {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  margin: 0 calc(var(--ui-pad) * -1);
-  padding: 8px var(--ui-pad) 12px;
-  border-bottom: 1px solid transparent;
-  background-color: var(--ds-canvas);
-}
-
-.bl-top[data-stuck='true'] {
-  border-bottom-color: var(--ds-line);
-}
-
-.bl-top .ui-page-header {
-  margin: 0 0 12px;
-}
-
-.bl-top .ui-page-header__description {
-  max-width: 60ch;
-}
-
-.bl-top .bl-crumbs {
-  margin: 0 0 8px;
-}
-
-/* The page header is the last thing in the block on the bank level, which has no search */
-.bl-top > :last-child {
+.bl > .ui-admintop {
+  margin-top: -4px;
   margin-bottom: 0;
 }
 
-/* A phone has little height to give: the caption goes, the title and the controls stay */
-@media (max-width: 599.95px) {
-  .bl-top .ui-page-header__description {
-    display: none;
-  }
-}
-
-/* The search and the filter on one line: the search takes what is left (up to 420px), the filter keeps its size at the right end */
-@media (min-width: 600px) {
-  .bl-top .ui-toolbar {
-    flex-wrap: nowrap;
-  }
-
-  .bl-top .ui-toolbar__grow {
-    flex: 0 1 420px;
-  }
-
-  .bl-top .ui-toolbar > :not(.ui-toolbar__grow) {
-    flex: none;
-  }
-
-  .bl-top .ui-toolbar__grow + * {
-    margin-left: auto;
+@media (max-width: 899.95px) {
+  .bl > .ui-admintop {
+    margin-top: -20px;
   }
 }
 
 .bl-status {
   margin: 0;
 }
-
-/* ---- Where you are ------------------------------------------------------------------------------------------ */
-
-.bl-crumbs ol {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font: var(--ds-type-body-sm);
-}
-
-.bl-crumbs li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.bl-crumbs a {
-  color: var(--ds-accent-text);
-  text-decoration: none;
-}
-
-.bl-crumbs a:hover {
-  color: var(--ds-accent-text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.bl-crumbs a:focus-visible {
-  border-radius: var(--ds-radius-xs);
-  outline: 2px solid var(--ds-focus);
-  outline-offset: 2px;
-}
-
-.bl-crumbs [aria-current='page'] {
-  color: var(--ds-muted);
-  overflow-wrap: anywhere;
-}
-
-.bl-crumbs__sep {
-  color: var(--ds-subtle);
-}
-
 /* ---- The list ------------------------------------------------------------------------------------------------- */
 
 .bl-card {

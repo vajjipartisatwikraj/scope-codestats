@@ -55,6 +55,7 @@ export default function OpportunityDrawer({ opportunity, saving, locked, onClose
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={saving || locked}
       title={editing ? 'Edit opportunity' : 'Add opportunity'}

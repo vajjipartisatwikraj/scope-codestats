@@ -278,6 +278,13 @@ mongoose.connection.once("open", async () => {
     logger.error("SPEECH-SWEEPER", error, { note: "failed to start" });
   }
 
+  // Admin Monitoring: start writing the API counters and take today's first database snapshot.
+  try {
+    await require("./services/monitoring").start();
+  } catch (error) {
+    logger.error("MONITORING", error, { note: "failed to start" });
+  }
+
   // A bank library import that was running when the server stopped can never finish by itself.
   // Close it as "interrupted" so the cohort page offers Retry instead of showing it as running.
   try {
@@ -361,6 +368,10 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Counts every request for the admin Monitoring page. In memory only; written to the database
+// in one batch a minute (services/monitoring).
+app.use(require("./middleware/requestMetrics")());
+
 // One log block per request (method, route, status, time, size, waits, main error).
 // Replaces the old middleware that printed every request body.
 app.use(logger.requestLogger());
@@ -401,6 +412,7 @@ app.use("/api/admin/access-list", require("./routes/accessList")); // admin: who
 app.use("/api/admin/suspend-accounts", require("./routes/accountSuspension")); // admin: remove a student's coding profiles and history
 app.use("/api/admin/rankings", require("./routes/rankings")); // admin: score and rank calculation
 app.use("/api/admin/analytics", require("./routes/adminAnalytics")); // admin: student performance over the platforms
+app.use("/api/admin/monitoring", require("./routes/monitoring")); // admin: API traffic and database size
 app.use("/api/speech-tests", require("./routes/speechTests"));
 app.use("/api/practice-arena", practiceArenaRoutes);
 app.use("/api/compiler", compilerRoutes);
@@ -452,6 +464,12 @@ const shutdown = (signal) => {
 
   // io.close() also closes the HTTP server it is attached to.
   io.close(async () => {
+    try {
+      // Write the request counters that are still in memory before the database closes
+      await require("./services/monitoring").stop();
+    } catch (error) {
+      logger.error("MONITORING", error, { note: "writing the last counters" });
+    }
     try {
       await mongoose.connection.close();
     } catch (error) {

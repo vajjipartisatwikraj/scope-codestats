@@ -610,8 +610,32 @@ async function submitCodeCombined(
   }
 }
 
+/** True when the engine's address is set (JUDGE0_HOST). */
+const isConfigured = () => Boolean(JUDGE0_API_URL);
+
+/**
+ * One of Judge0's own read-only reports, exactly as Judge0 answers it: JSON for most, plain text
+ * for /isolate and /version. Unlike the other functions this one throws, because the monitoring
+ * page wants to say why a report is missing. The error has `.status` (HTTP status, when Judge0
+ * answered) or `.code` (the network error, when it did not).
+ *
+ * @param {string} path     e.g. "/statistics"
+ * @param {{params?: object, timeoutMs?: number}} [options]
+ */
+async function readReport(path, { params, timeoutMs = 15000 } = {}) {
+  assertConfigured();
+  const response = await axios.get(`${JUDGE0_API_URL}${path}`, {
+    headers: JUDGE0_HEADERS,
+    params,
+    timeout: timeoutMs,
+  });
+  return response.data;
+}
+
 module.exports = {
   run: runCode,
   submit: submitCode,
   submitCombined: submitCodeCombined,
+  isConfigured,
+  read: readReport,
 };

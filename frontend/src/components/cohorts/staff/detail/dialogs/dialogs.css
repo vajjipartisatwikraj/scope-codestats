@@ -133,7 +133,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 20px 16px 16px 24px;
-  border-bottom: 1px solid var(--ds-line);
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
 }
 
 .cad-sheet__title {
@@ -144,8 +145,26 @@
 
 .cad-sheet__description {
   margin: 4px 0 0;
-  color: var(--ds-muted);
+  color: color-mix(in srgb, var(--ds-on-accent) 86%, var(--ds-accent));
   font: var(--ds-type-body);
+}
+
+/* The sheet holds a form that creates or edits something, so its header is the platform blue like every
+   edit panel (DESIGN.md, "Edit panel"): white text and a darker blue close button, the same in both themes */
+.cad-sheet__head .ui-icon-button {
+  --ui-ring-gap: var(--ds-accent);
+
+  background-color: var(--ds-accent-hover);
+  color: var(--ds-on-accent);
+}
+
+.cad-sheet__head .ui-icon-button:hover:not(:disabled) {
+  background-color: var(--ds-accent-press);
+}
+
+.cad-sheet__head .ui-icon-button:disabled {
+  background-color: var(--ds-accent-hover);
+  color: color-mix(in srgb, var(--ds-on-accent) 70%, var(--ds-accent));
 }
 
 .cad-sheet__body {

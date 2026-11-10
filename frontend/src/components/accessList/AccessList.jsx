@@ -6,7 +6,7 @@ import { ShieldCheckIcon } from '@phosphor-icons/react/dist/csr/ShieldCheck';
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree';
 import { useAuth } from '../../contexts/AuthContext';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { BulkBar, Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, SkeletonRows, StatGrid, StatTile, Toolbar, formatNumber, pluralize } from '../ui';
+import { AdminTop, BulkBar, Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, SkeletonRows, StatGrid, StatTile, formatNumber, pluralize } from '../ui';
 import AccessTable from './AccessTable';
 import AddEmailsDrawer from './AddEmailsDrawer';
 import useAccessList from './useAccessList';
@@ -99,10 +99,10 @@ export default function AccessList() {
 
   return (
     <Page className="acl">
-      <PageHeader
+      <AdminTop
         title="Access control list"
         count={firstLoad || error ? undefined : data.total === counts.total ? pluralize(counts.total, 'address', 'addresses') : `${formatNumber(data.total)} of ${pluralize(counts.total, 'address', 'addresses')}`}
-        description="The email addresses that can sign in with Google, from any domain. Admins can always sign in."
+        description="Email addresses that can sign in with Google. Admins always can."
         actions={
           <>
             <Button startIcon={<UsersThreeIcon size={18} weight="regular" aria-hidden="true" />} onClick={() => setImporting(true)}>
@@ -111,6 +111,28 @@ export default function AccessList() {
             <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => setAdding(true)}>
               Add emails
             </Button>
+          </>
+        }
+        label="Filter the list"
+        search={<SearchField value={list.query} onChange={list.setQuery} label="Search the list" placeholder="Search by email or note" />}
+        filters={
+          <>
+            <SelectField
+              variant="pill"
+              aria-label="Role"
+              value={list.role}
+              onChange={(event) => list.setRole(event.target.value)}
+              options={[
+                { value: 'all', label: 'All roles' },
+                { value: 'student', label: 'Students' },
+                { value: 'teacher', label: 'Teachers' },
+              ]}
+            />
+            {list.filtering ? (
+              <Button variant="ghost" size="sm" onClick={list.clearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -126,30 +148,6 @@ export default function AccessList() {
         <StatTile size="m" label="Students" value={firstLoad ? '\u2013' : counts.students} context="Regular accounts" />
         <StatTile size="m" label="Teachers" value={firstLoad ? '\u2013' : counts.teachers} context="Staff access on first sign-in" />
       </StatGrid>
-
-      <Toolbar
-        label="Filter the list"
-        search={<SearchField value={list.query} onChange={list.setQuery} label="Search the list" placeholder="Search by email or note" />}
-        end={
-          list.filtering ? (
-            <Button variant="ghost" onClick={list.clearFilters}>
-              Clear filters
-            </Button>
-          ) : null
-        }
-      >
-        <SelectField
-          variant="pill"
-          aria-label="Role"
-          value={list.role}
-          onChange={(event) => list.setRole(event.target.value)}
-          options={[
-            { value: 'all', label: 'All roles' },
-            { value: 'student', label: 'Students' },
-            { value: 'teacher', label: 'Teachers' },
-          ]}
-        />
-      </Toolbar>
 
       <Card flush className="acl-card">
         <h2 className="ui-sr">Addresses</h2>

@@ -3,7 +3,7 @@ import { BriefcaseIcon } from '@phosphor-icons/react/dist/csr/Briefcase';
 import { FunnelSimpleIcon } from '@phosphor-icons/react/dist/csr/FunnelSimple';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, SkeletonRows, pluralize } from '../ui';
+import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, Pagination, SearchField, SelectField, SkeletonRows, pluralize } from '../ui';
 import OpportunityDrawer from './OpportunityDrawer';
 import OpportunityTable from './OpportunityTable';
 import { CATEGORIES, STATUSES, categoryLabel, matches, sortOpportunities, statusLabel } from './opportunityModel';
@@ -131,45 +131,11 @@ export default function OpportunityManagement() {
           </div>
         ) : null}
 
-        {opportunities.length > 0 ? (
-          <div className="ui-toolbar om-toolbar">
-            <SearchField
-              className="ui-toolbar__grow"
-              value={search}
-              onChange={(text) => {
-                setSearch(text);
-                setPage(1);
-              }}
-              placeholder="Search by title, description or organizer"
-              label="Search opportunities"
-            />
-            <SelectField variant="pill" aria-label="Filter by category" value={category} onChange={filterBy(setCategory)} options={[{ value: '', label: 'Any category' }, ...CATEGORIES]} />
-            <SelectField variant="pill" aria-label="Filter by status" value={status} onChange={filterBy(setStatus)} options={[{ value: '', label: 'Any status' }, ...STATUSES]} />
-            <SelectField
-              variant="pill"
-              aria-label="Filter by registration"
-              value={registration}
-              onChange={filterBy(setRegistration)}
-              options={[
-                { value: '', label: 'Any registration' },
-                { value: 'open', label: 'Registration open' },
-                { value: 'closed', label: 'Registration closed' },
-              ]}
-            />
-            {filtering ? (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
         {opportunities.length === 0 ? (
           <EmptyState
             icon={<BriefcaseIcon size={28} weight="regular" />}
             title="No opportunities yet"
             text="Add the first hackathon, internship or competition and students will see it on their Opportunities page."
-            action={addButton}
           />
         ) : visible.length === 0 ? (
           <EmptyState
@@ -204,13 +170,50 @@ export default function OpportunityManagement() {
 
   return (
     <Page className="om-page">
-      <PageHeader
+      <AdminTop
         title="Opportunity management"
         count={!loading && opportunities.length > 0 ? pluralize(opportunities.length, 'opportunity', 'opportunities') : undefined}
-        description="Add, edit and remove the hackathons, internships and competitions students see."
-        actions={opportunities.length > 0 || loading ? addButton : undefined}
+        description="Add, edit and remove hackathons, internships and competitions."
+        actions={addButton}
+        label="Search and filter opportunities"
+        search={
+          (
+            <SearchField
+              value={search}
+              onChange={(text) => {
+                setSearch(text);
+                setPage(1);
+              }}
+              placeholder="Search by title, description or organizer"
+              label="Search opportunities"
+            />
+          )
+        }
+        filters={
+          (
+            <>
+              <SelectField variant="pill" aria-label="Filter by category" value={category} onChange={filterBy(setCategory)} options={[{ value: '', label: 'Any category' }, ...CATEGORIES]} />
+              <SelectField variant="pill" aria-label="Filter by status" value={status} onChange={filterBy(setStatus)} options={[{ value: '', label: 'Any status' }, ...STATUSES]} />
+              <SelectField
+                variant="pill"
+                aria-label="Filter by registration"
+                value={registration}
+                onChange={filterBy(setRegistration)}
+                options={[
+                  { value: '', label: 'Any registration' },
+                  { value: 'open', label: 'Registration open' },
+                  { value: 'closed', label: 'Registration closed' },
+                ]}
+              />
+              {filtering ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              ) : null}
+            </>
+          )
+        }
       />
-
       <p className="ui-sr" aria-live="polite">
         {!loading && opportunities.length > 0 ? `${pluralize(visible.length, 'opportunity', 'opportunities')} shown` : ''}
       </p>

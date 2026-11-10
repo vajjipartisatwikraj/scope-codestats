@@ -38,6 +38,7 @@ export default function TopicDrawer({ topic, saving, onClose, onSave }) {
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={saving}
       width="lg"

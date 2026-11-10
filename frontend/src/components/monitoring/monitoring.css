@@ -1,0 +1,526 @@
+/*
+ * Monitoring (route /admin/monitoring), prefix mon-
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css).
+ * Staff density: compact tables, 44px touch targets on a phone, the one inverted tile is the
+ * figure the admin came for (requests, or the size of the database). Cards are flat.
+ * design/screens.md sections 15 and 16.
+ */
+
+.mon-tabs {
+  margin: 0 0 var(--ui-gap);
+}
+
+.mon-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+  min-width: 0;
+}
+
+/* ---- The range row ---------------------------------------------------------------------------- */
+
+.mon-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.mon-bar__range {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.mon-bar__end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mon-bar__caption {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+@media (max-width: 599.95px) {
+  .mon-bar__hint {
+    display: none;
+  }
+}
+
+.mon-spin {
+  animation: mon-rotate 800ms linear infinite;
+}
+
+@keyframes mon-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mon-spin {
+    animation: none;
+  }
+}
+
+.mon-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+}
+
+/* ---- Charts ------------------------------------------------------------------------------------- */
+
+.mon-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-gap);
+}
+
+@media (min-width: 1100px) {
+  .mon-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mon-chart--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.mon-chart {
+  min-width: 0;
+}
+
+/* ---- Cards with a table ---------------------------------------------------------------------------- */
+
+.mon-card {
+  margin: 0;
+}
+
+.mon-card__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mon-search {
+  width: min(100%, 280px);
+}
+
+@media (max-width: 599.95px) {
+  .mon-card .ui-card__actions,
+  .mon-search {
+    width: 100%;
+  }
+}
+
+.mon-state {
+  padding: 16px;
+}
+
+.mon-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.mon-note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- Tables ------------------------------------------------------------------------------------------- */
+
+.mon-table {
+  min-width: 760px;
+}
+
+.mon-table td {
+  white-space: nowrap;
+}
+
+.mon-table__row {
+  cursor: pointer;
+}
+
+.mon-table__route {
+  max-width: 0;
+  width: 38%;
+}
+
+.mon-table__num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A server error count above zero reads bolder and in the danger text colour; the column says 5xx */
+.mon-table__num[data-problem='true'] {
+  color: var(--ds-danger);
+  font-weight: 600;
+}
+
+.mon-table__muted {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.mon-table__message {
+  max-width: 280px;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-overflow: ellipsis;
+}
+
+.mon-table__share {
+  width: 200px;
+}
+
+/* One column goes first when the table is short of room */
+@media (max-width: 1199.95px) {
+  .mon-wide {
+    display: none;
+  }
+}
+
+.mon-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ds-text);
+  font: var(--ds-type-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mon-route--static {
+  cursor: default;
+}
+
+.mon-route:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+  border-radius: var(--ds-radius-xs);
+}
+
+.mon-route__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-method {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Rows on a phone ---------------------------------------------------------------------------------- */
+
+.mon-row {
+  display: block;
+  padding: 0;
+}
+
+.mon-row__open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 72px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  background-color: transparent;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mon-row__open:active {
+  background-color: var(--ds-raised);
+}
+
+@media (hover: hover) {
+  .mon-row__open:hover {
+    background-color: var(--ds-raised);
+  }
+}
+
+.mon-row__open:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-focus);
+}
+
+.mon-row .mon-row__text {
+  padding: 12px 16px;
+}
+
+.mon-row__open .mon-row__text {
+  padding: 0;
+}
+
+.mon-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mon-row__route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font: var(--ds-type-label);
+}
+
+.mon-row__meta {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-row__caret {
+  color: var(--ds-muted);
+}
+
+.mon-problem {
+  align-items: flex-start;
+}
+
+.mon-problem__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mon-problem__message {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Status codes, response types, drawer ---------------------------------------------------------------- */
+
+.mon-codes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mon-codes--card {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.mon-codes__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 56px;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.mon-codes__row:last-child {
+  border-bottom: 0;
+}
+
+.mon-codes__row .ui-badge {
+  justify-self: start;
+}
+
+.mon-codes__count,
+.mon-codes__share {
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mon-codes__share {
+  color: var(--ds-muted);
+}
+
+.mon-kinds {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mon-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mon-drawer__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-line);
+}
+
+.mon-drawer__heading {
+  margin: 0;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+}
+
+.mon-facts {
+  margin: 0;
+}
+
+.mon-facts__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.mon-facts__row:last-child {
+  border-bottom: 0;
+}
+
+.mon-facts dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.mon-facts dd {
+  margin: 0;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---- VocalQ API: the judge usage card ------------------------------------------------------------------- */
+
+.mon-judge .mon-facts {
+  margin-top: 0;
+}
+
+.mon-judge__notice {
+  margin-top: 16px;
+}
+
+/* ---- VocalQ API: readiness checks in one row, and the two-column facts ---------------------------------- */
+
+.mon-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mon-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 8px 6px 16px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-surface);
+  font: var(--ds-type-label);
+}
+
+.mon-check__name {
+  white-space: nowrap;
+}
+
+/* Facts side by side from 900px, in the order they are written down each column */
+@media (min-width: 900px) {
+  .mon-facts--columns {
+    column-count: 2;
+    column-gap: 48px;
+  }
+
+  .mon-facts--columns .mon-facts__row {
+    break-inside: avoid;
+  }
+}
+
+/* ---- VocalQ API: the twelve summary tiles, small, in two rows ------------------------------------------- */
+
+/* Six to a row from 1200px, so twelve tiles make two rows. Narrower screens show fewer per row
+   (three from 700px, two on a phone), because six would be too small to read there. */
+.ui-stats.mon-stats--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 700px) {
+  .ui-stats.mon-stats--compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .ui-stats.mon-stats--compact {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.mon-stats--compact .ui-stat {
+  gap: 2px;
+  padding: 14px 16px;
+}
+
+.mon-stats--compact .ui-stat__label {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.mon-stats--compact .ui-stat__context {
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* ---- Judge0 API: two cards side by side, and a bar with no range to choose ------------------------------ */
+
+.mon-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-gap);
+}
+
+@media (min-width: 1100px) {
+  .mon-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Without a range switch the reload button and the caption sit at the right, like on the other tabs */
+.mon-bar__end[data-alone='true'] {
+  margin-left: auto;
+}

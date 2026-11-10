@@ -1,0 +1,407 @@
+/*
+ * Admin dashboard (routes /admin and /admin/dashboard), prefix ad-
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). The fixed
+ * top is AdminTop; the figures are StatTile; the charts are the custom components; the tables are the
+ * band table. Staff density. Only what the kit does not have lives here: the grid of cards, the
+ * filters row, the ranked lists and the wide tables. design/screens.md sections 15, 16 and 19.
+ */
+
+.ad-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+  min-width: 0;
+}
+
+.ad-note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* ---- The grid of cards ------------------------------------------------------------------------------------- *
+ * One column on a phone and a tablet, two from 1100px. A card marked wide takes the whole row. Cards in a
+ * row share a height (the grid stretches them). */
+
+.ad-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-gap);
+}
+
+@media (min-width: 1100px) {
+  .ad-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ad-card--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.ad-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ad-card > .ui-card__header {
+  margin-bottom: 0;
+}
+
+/* Controls in the header of a card: dropdowns that wrap, and on a phone take the whole line */
+.ad-card__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 599.95px) {
+  .ad-card .ui-card__actions,
+  .ad-card__tools {
+    width: 100%;
+  }
+
+  .ad-card__tools > .ui-field-inline {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .ad-card__tools .ui-select {
+    width: 100%;
+  }
+}
+
+/* ---- Loading ------------------------------------------------------------------------------------------------ */
+
+.ad-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+}
+
+.ad-skeleton__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-gap);
+}
+
+@media (min-width: 1200px) {
+  .ad-skeleton__tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ad-skeleton__chart {
+  margin-top: 16px;
+}
+
+/* ---- The filters of the performance screens ------------------------------------------------------------------ */
+
+.ad-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.ad-filters__selects {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.ad-filters__period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ad-filters__label {
+  flex: none;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* On a phone the dropdowns share the line and the period takes the next one */
+@media (max-width: 599.95px) {
+  .ad-filters__selects {
+    width: 100%;
+  }
+
+  .ad-filters__selects > .ui-field-inline {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .ad-filters__selects .ui-select {
+    width: 100%;
+  }
+
+  .ad-filters__period {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .ad-filters__period .pt {
+    width: 100%;
+  }
+}
+
+/* ---- Ranked lists (top scorers, leaders, top students) ---------------------------------------------------------- */
+
+.ad-people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ds-line);
+}
+
+.ad-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ad-person:last-child {
+  border-bottom: 0;
+}
+
+/* A place is a numeral in a small tonal circle: no medals (DESIGN.md, Tables and leaderboards) */
+.ad-person__rank {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-person:nth-child(1) .ad-person__rank {
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.ad-person__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ad-person__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-person__meta {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-person__value {
+  flex: none;
+  font: var(--ds-type-title-sm);
+  letter-spacing: var(--ds-tracking-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- A row of figures inside a card (ratings) -------------------------------------------------------------------- */
+
+.ad-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+
+@media (min-width: 600px) {
+  .ad-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ad-facts > div {
+  min-width: 0;
+}
+
+.ad-facts dt {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ad-facts dd {
+  margin: 0;
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-facts dd.ad-facts__note {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* ---- Tables ------------------------------------------------------------------------------------------------------- *
+ * The band table of the kit. Wide analytics tables scroll sideways inside their card, with the name in view. */
+
+.ad-wrap {
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.ad-table {
+  min-width: 820px;
+}
+
+.ad-table--narrow {
+  min-width: 380px;
+}
+
+.ad-table--students {
+  min-width: 1100px;
+}
+
+.ad-table td {
+  white-space: nowrap;
+}
+
+.ad-table th[data-sortable='true'] {
+  padding: 0;
+}
+
+.ad-table th .ui-table__sort {
+  min-height: 44px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.ad-strong {
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.ad-none {
+  color: var(--ds-subtle);
+}
+
+/* The first column stays in view while the others scroll under it */
+.ad-table .ad-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--ds-surface);
+}
+
+.ad-table thead .ad-sticky {
+  z-index: 2;
+  background-color: var(--ds-raised);
+}
+
+.ad-table tbody tr:hover .ad-sticky {
+  background-color: var(--ds-raised);
+}
+
+/* A change: the sign says the direction; the colour only agrees with it */
+.ad-table [data-gain='up'] {
+  color: var(--ds-success);
+}
+
+.ad-table [data-gain='down'] {
+  color: var(--ds-danger);
+}
+
+.ad-table td[data-problem='true'] {
+  color: var(--ds-danger);
+  font-weight: 600;
+}
+
+.ad-row {
+  cursor: pointer;
+}
+
+.ad-row[data-selected='true'] td {
+  background-color: var(--ds-accent-soft);
+}
+
+.ad-platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background-color: transparent;
+  color: inherit;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  cursor: pointer;
+}
+
+.ad-platform:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.ad-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ds-radius-pill);
+}
+
+/* ---- The students table bar ----------------------------------------------------------------------------------------- */
+
+.ad-students-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.ad-students-bar .pt {
+  max-width: 100%;
+}
+
+.ad-students-bar__search {
+  flex: 0 1 280px;
+  min-width: 0;
+}
+
+@media (max-width: 599.95px) {
+  .ad-students-bar .pt,
+  .ad-students-bar__search {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}

@@ -104,6 +104,7 @@ export default function ImportDrawer({ cohortId, module = null, imports, initial
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={starting}
       width="lg"

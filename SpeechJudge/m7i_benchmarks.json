@@ -1,0 +1,130 @@
+{
+  "cpu": {
+    "name": "Intel Xeon Scalable processor - m7i.2xlarge",
+    "ram_gb": 16,
+    "vCPU": 8
+  },
+  "components": {
+    "whisper": {
+      "sequential_10_audio_seconds": 11.142,
+      "batch_10_audio_seconds": 12.894,
+      "speedup": 0.86,
+      "clips": 10,
+      "repeats": 3,
+      "audio_seconds_total": 99.6,
+      "transcripts_identical": "10/10",
+      "sequential_gpu": {},
+      "batch_gpu": {},
+      "model": "small.en",
+      "compute_type": "int8",
+      "device": "cpu",
+      "measured_at": "2026-10-11T09:40:40+00:00"
+    },
+    "phoneme": {
+      "sequential_10_audio_seconds": 10.697,
+      "batch_10_audio_seconds": 11.633,
+      "speedup": 0.92,
+      "clips": 10,
+      "repeats": 3,
+      "audio_seconds_total": 99.6,
+      "max_score_difference_batch_vs_sequential": 0.0,
+      "sequential_gpu": {},
+      "batch_gpu": {},
+      "model": "accent profile model",
+      "device": "cpu",
+      "measured_at": "2026-10-11T09:42:27+00:00"
+    }
+  },
+  "sections": {
+    "reading": {
+      "questions": 10,
+      "total_seconds": 20.729,
+      "average_question_seconds": 2.073,
+      "server_processing_seconds": 20.622,
+      "runs_total_seconds": [
+        20.729
+      ],
+      "questions_scored": 10,
+      "section_score": 0.900531,
+      "status": "ok",
+      "measured_at": "2026-10-11T09:43:13+00:00"
+    },
+    "repeat": {
+      "questions": 10,
+      "total_seconds": 22.703,
+      "average_question_seconds": 2.27,
+      "server_processing_seconds": 22.573,
+      "runs_total_seconds": [
+        22.703
+      ],
+      "questions_scored": 10,
+      "section_score": 0.909058,
+      "status": "ok",
+      "measured_at": "2026-10-11T08:18:24+00:00"
+    },
+    "jumbled": {
+      "questions": 10,
+      "total_seconds": 0.26,
+      "average_question_seconds": 0.026,
+      "server_processing_seconds": 0.005,
+      "runs_total_seconds": [
+        0.26
+      ],
+      "questions_scored": 10,
+      "section_score": 0.921364,
+      "status": "ok",
+      "measured_at": "2026-10-11T08:19:50+00:00"
+    },
+    "question_answer": {
+      "questions": 10,
+      "total_seconds": 15.541,
+      "average_question_seconds": 1.554,
+      "server_processing_seconds": 15.321,
+      "runs_total_seconds": [
+        15.541
+      ],
+      "questions_scored": 10,
+      "section_score": 0.930448,
+      "status": "ok",
+      "measured_at": "2026-10-11T08:20:57+00:00"
+    },
+    "story_telling": {
+      "questions": 10,
+      "total_seconds": 0,
+      "average_question_seconds": 0
+    }
+  },
+  "students": {
+    "students": 10,
+    "students_ok": 10,
+    "students_failed": 0,
+    "questions_per_student": 10,
+    "questions_total": 100,
+    "questions_scored": 100,
+    "wall_seconds": 205.678,
+    "questions_per_minute": 29.17,
+    "average_question_seconds": 2.057,
+    "student_seconds": {
+      "min": 21.959,
+      "median": 116.814,
+      "p95": 205.618,
+      "max": 205.618,
+      "mean": 116.007
+    },
+    "queue_wait_seconds_avg": 75.699,
+    "queue_wait_seconds_max": 168.266,
+    "server_processing_seconds_avg": 39.499,
+    "submit_seconds_max": 0.799,
+    "rejected_submits": 0,
+    "errors": [],
+    "section": "reading",
+    "runs_wall_seconds": [
+      205.678
+    ],
+    "status": "ok",
+    "measured_at": "2026-10-11T09:47:54+00:00",
+    "audio_seconds_each": 9.96,
+    "audio_seconds_total": 995.9
+  },
+  "updated_at": "2026-10-11T09:47:54+00:00"
+}

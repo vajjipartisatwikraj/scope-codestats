@@ -15,6 +15,8 @@
  *   POST /api/v1/evaluate/section       202 { job_id, request_id, status }
  *   GET  /api/v1/jobs/{job_id}          { status, section_score, results[], reason }
  *                                       each result also carries `detail` (the full evaluation)
+ *   GET  /api/v1/metrics/{name}         usage monitoring: status, summary, timeseries, routes,
+ *                                       question-types, storage, recent (the admin Monitoring page)
  * Auth: `Authorization: Bearer <SJ_SERVICE_CREDENTIALS entry>`.
  *
  * Scores come back on a 0..1 scale.
@@ -29,6 +31,8 @@ const API_KEY = process.env.SPEECHJUDGE_API_KEY || "";
 // Submitting a section uploads every recording, so allow a generous window.
 const SUBMIT_TIMEOUT_MS = Number(process.env.SPEECHJUDGE_SUBMIT_TIMEOUT_MS) || 120000;
 const READ_TIMEOUT_MS = Number(process.env.SPEECHJUDGE_READ_TIMEOUT_MS) || 20000;
+// Usage queries scan the judge's database, so they get more time than a job read.
+const METRICS_TIMEOUT_MS = Number(process.env.SPEECHJUDGE_METRICS_TIMEOUT_MS) || 30000;
 
 class SpeechJudgeError extends Error {
   constructor(message, { status = 502, code = "SPEECHJUDGE_ERROR", details = null } = {}) {
@@ -176,9 +180,41 @@ function evaluate({ requestId, questionType, audio, expectedText, question }) {
   });
 }
 
+/**
+ * One of the judge's usage monitoring reports (GET /api/v1/metrics/<name>), as the judge answers it.
+ * @param {string} name   status | summary | timeseries | routes | question-types | storage | recent
+ * @param {object} params query parameters, e.g. { range: "24h" }; empty values are left out
+ */
+function metrics(name, params = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([key, value]) => [key, String(value)])
+  ).toString();
+  return request(`/api/v1/metrics/${encodeURIComponent(name)}${query ? `?${query}` : ""}`, { timeoutMs: METRICS_TIMEOUT_MS });
+}
+
 /** Job state. A 404 means the job expired or the judge was restarted. */
 function getJob(jobId) {
   return request(`/api/v1/jobs/${encodeURIComponent(jobId)}`);
+}
+
+/**
+ * One of the judge's usage monitoring reports (GET /api/v1/metrics/<name>), exactly as the judge
+ * answers it.
+ *
+ * @param {string} name   status | summary | timeseries | routes | question-types | storage | recent
+ * @param {object} params query parameters, e.g. { range: "24h" }; empty values are left out
+ */
+function metrics(name, params = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([key, value]) => [key, String(value)])
+  ).toString();
+  return request(`/api/v1/metrics/${encodeURIComponent(name)}${query ? `?${query}` : ""}`, {
+    timeoutMs: METRICS_TIMEOUT_MS,
+  });
 }
 
 module.exports = {
@@ -190,4 +226,5 @@ module.exports = {
   submitSection,
   evaluate,
   getJob,
+  metrics,
 };

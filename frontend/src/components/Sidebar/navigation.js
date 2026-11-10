@@ -8,7 +8,9 @@ import { ChatsIcon } from '@phosphor-icons/react/dist/csr/Chats';
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText';
 import { MicrophoneIcon } from '@phosphor-icons/react/dist/csr/Microphone';
+import { PulseIcon } from '@phosphor-icons/react/dist/csr/Pulse';
 import { ShieldCheckIcon } from '@phosphor-icons/react/dist/csr/ShieldCheck';
+import { SlidersHorizontalIcon } from '@phosphor-icons/react/dist/csr/SlidersHorizontal';
 import { SquaresFourIcon } from '@phosphor-icons/react/dist/csr/SquaresFour';
 import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
 import { TargetIcon } from '@phosphor-icons/react/dist/csr/Target';
@@ -40,6 +42,7 @@ const GROUPS = [
     items: [
       {
         id: 'dashboard',
+        adminGroup: 'overview', // admins have no Practice or Grow: this item sits under overview for them
         label: 'Dashboard',
         icon: SquaresFourIcon,
         // Staff go to /admin/dashboard, everyone else to /dashboard.
@@ -50,6 +53,7 @@ const GROUPS = [
       },
       {
         id: 'leaderboard',
+        adminGroup: 'overview', // admins have no Practice or Grow: this item sits under overview for them
         label: 'Leaderboard',
         icon: ChartBarIcon,
         path: () => '/leaderboard',
@@ -65,6 +69,7 @@ const GROUPS = [
       },
       {
         id: 'cohorts',
+        adminGroup: 'manage', // admins have no Practice or Grow: this item sits under manage for them
         label: 'Cohorts',
         icon: StackIcon,
         path: (user) => getResourcePath(user, 'cohorts'),
@@ -72,6 +77,7 @@ const GROUPS = [
       },
       {
         id: 'practice-arena',
+        adminGroup: 'manage', // admins have no Practice or Grow: this item sits under manage for them
         label: 'Practice arena',
         icon: TargetIcon,
         path: (user) => getResourcePath(user, 'practice-arena'),
@@ -93,6 +99,7 @@ const GROUPS = [
     items: [
       {
         id: 'courses',
+        adminGroup: 'manage', // admins have no Practice or Grow: this item sits under manage for them
         label: 'Courses',
         icon: BookIcon,
         path: (user) => getResourcePath(user, 'courses'),
@@ -100,6 +107,7 @@ const GROUPS = [
       },
       {
         id: 'opportunities',
+        adminGroup: 'manage', // admins have no Practice or Grow: this item sits under manage for them
         label: 'Opportunities',
         icon: BriefcaseIcon,
         path: (user) => getResourcePath(user, 'opportunities'),
@@ -115,6 +123,7 @@ const GROUPS = [
       },
     ],
   },
+  // Staff only from here: what teachers and admins use to run the courses, who is on the platform, and the platform itself.
   {
     id: 'manage',
     title: 'Manage',
@@ -150,6 +159,12 @@ const GROUPS = [
         path: (user) => getResourcePath(user, 'notifications'),
         visible: (user) => isAdminUser(user),
       },
+    ],
+  },
+  {
+    id: 'admin',
+    title: 'Admin',
+    items: [
       {
         id: 'teacher-requests',
         label: 'Teacher requests',
@@ -167,14 +182,6 @@ const GROUPS = [
         visible: (user) => isAdminUser(user),
       },
       {
-        id: 'suspend-accounts',
-        label: 'Suspend accounts',
-        icon: UserMinusIcon,
-        // Admins only: remove a student's coding profiles and all history stored with them
-        path: () => '/admin/suspend-accounts',
-        visible: (user) => isAdminUser(user),
-      },
-      {
         id: 'access-list',
         label: 'Access control list',
         icon: ShieldCheckIcon,
@@ -182,35 +189,89 @@ const GROUPS = [
         path: () => '/admin/access-list',
         visible: (user, { loginMode } = {}) => isAdminUser(user) && loginMode === 'allowlist',
       },
+      {
+        id: 'suspend-accounts',
+        label: 'Suspend accounts',
+        icon: UserMinusIcon,
+        // Admins only: remove a student's coding profiles and all history stored with them
+        path: () => '/admin/suspend-accounts',
+        visible: (user) => isAdminUser(user),
+      },
+    ],
+  },
+  {
+    id: 'system',
+    title: 'System',
+    items: [
+      {
+        id: 'control-panel',
+        label: 'Control panel',
+        icon: SlidersHorizontalIcon,
+        // Admins only: run the profile sync and recalculate scores and ranks
+        path: () => '/admin/control-panel',
+        visible: (user) => isAdminUser(user),
+      },
+      {
+        id: 'monitoring',
+        label: 'Monitoring',
+        icon: PulseIcon,
+        // Admins only: API traffic and database size
+        path: () => '/admin/monitoring',
+        visible: (user) => isAdminUser(user),
+      },
     ],
   },
 ];
 
+// The headings of the groups. Students and teachers see Practice and Grow; admins do not (they manage the
+// platform, they do not practise on it), so for them the shared items are moved by `adminGroup`.
+const GROUP_TITLES = {
+  overview: 'Overview',
+  practice: 'Practice',
+  grow: 'Grow',
+  manage: 'Manage',
+  admin: 'Admin',
+  system: 'System',
+};
+const MEMBER_ORDER = ['practice', 'grow', 'manage', 'admin', 'system'];
+const ADMIN_ORDER = ['overview', 'manage', 'admin', 'system'];
+
 /**
  * The groups this user can see, with paths resolved and counts filled in.
  * Groups with nothing visible are left out.
+ *
+ * Students and teachers: Practice, Grow, then (staff) Manage. Admins: Overview (Dashboard,
+ * Leaderboard), Manage (cohorts, practice arena, courses, opportunities and the other content
+ * screens), Admin (people and access) and System (control panel, monitoring).
  *
  * @param {Object} user  The signed-in user (needs `userType`).
  * @param {{ teacherRequestCount?: number, loginMode?: string }} [context]  Numbers shown on badges,
  *        and how the server lets people in ('domain' | 'allowlist'), which some entries depend on.
  */
 export function buildNavigation(user, { teacherRequestCount = 0, loginMode } = {}) {
-  return GROUPS.map((group) => ({
-    id: group.id,
-    title: group.title,
-    items: group.items
-      .filter((item) => item.visible(user, { loginMode }))
-      .map((item) => ({
+  const admin = isAdminUser(user);
+  const order = admin ? ADMIN_ORDER : MEMBER_ORDER;
+  const buckets = new Map(order.map((id) => [id, []]));
+
+  GROUPS.forEach((group) => {
+    group.items.forEach((item) => {
+      if (!item.visible(user, { loginMode })) return;
+      const target = admin && item.adminGroup ? item.adminGroup : group.id;
+      const bucket = buckets.get(target);
+      if (!bucket) return;
+      bucket.push({
         id: item.id,
         label: item.label,
         icon: item.icon,
         path: item.path(user),
         matchPaths: item.matchPaths,
         badgeCount: item.badge === 'teacherRequests' ? teacherRequestCount : 0,
-      })),
-  })).filter((group) => group.items.length > 0);
-}
+      });
+    });
+  });
 
+  return order.map((id) => ({ id, title: GROUP_TITLES[id], items: buckets.get(id) })).filter((group) => group.items.length > 0);
+}
 /**
  * Whether an entry represents the current page.
  *

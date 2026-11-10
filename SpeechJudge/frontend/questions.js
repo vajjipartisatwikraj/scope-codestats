@@ -1,0 +1,101 @@
+// Question bank for manual testing. Add or edit freely.
+// level: Easy | Medium | Hard (only a label for you)
+
+export const TEST_TYPES = [
+  { id: 'READING', label: 'Reading', hint: 'Read the sentence aloud.' },
+  { id: 'REPEAT', label: 'Repeat', hint: 'Listen to the sentence, then repeat it from memory.' },
+  { id: 'JUMBLED', label: 'Jumbled', hint: 'Rebuild the sentence from the scrambled words.' },
+  { id: 'QUESTION_ANSWER', label: 'Question & Answer', hint: 'Answer the question in your own words.' },
+  { id: 'STORYTELLING', label: 'Storytelling', hint: 'Tell a short story about the topic.' },
+  // Text-only types (kind: 'text'): no audio, the answer is typed or selected.
+  { id: 'FILL_BLANKS', label: 'Fill blanks', kind: 'text',
+    hint: 'Type the missing word(s). Case and extra spaces are ignored; the spelling must be exact (100% or 0%).' },
+  { id: 'MCQ', label: 'MCQ', kind: 'text',
+    hint: 'Listen to the audio (or read the text), then pick the correct option(s). Full 100%, only some of the correct ones 50%, otherwise 0%.' },
+  { id: 'EMAIL_WRITING', label: 'Email writing', kind: 'text',
+    hint: 'Write the email in the box. It is rated by the language model on relevance, structure, tone, grammar, vocabulary, coherence and completeness.' },
+];
+
+export const QUESTIONS = {
+  READING: [
+    { level: 'Easy', text: 'The weather is beautiful today.' },
+    { level: 'Easy', text: 'My brother plays football every Saturday morning.' },
+    { level: 'Medium', text: 'The doctor suggested that the apple is good for your health.' },
+    { level: 'Medium', text: 'Please remember to submit your assignment before the deadline on Friday.' },
+    { level: 'Hard', text: 'Thorough preparation and consistent practice usually lead to remarkable improvement.' },
+    { level: 'Hard', text: 'The international conference on renewable energy attracted thousands of participants.' },
+  ],
+  REPEAT: [
+    { level: 'Easy', text: 'I would like a glass of water.' },
+    { level: 'Easy', text: 'She walks to school with her friends.' },
+    { level: 'Medium', text: 'The train to the city centre leaves at a quarter past nine.' },
+    { level: 'Medium', text: 'He forgot his umbrella, so he got completely wet in the rain.' },
+    { level: 'Hard', text: 'Although the project was challenging, the team completed it ahead of schedule.' },
+    { level: 'Hard', text: 'The manager asked whether anyone had considered an alternative solution.' },
+  ],
+  JUMBLED: [
+    { level: 'Easy', text: 'The cat sat on the mat.' },
+    { level: 'Easy', text: 'We are going to the market today.' },
+    { level: 'Medium', text: 'She has been learning English for three years.' },
+    { level: 'Medium', text: 'My teacher gave us a lot of homework yesterday.' },
+    { level: 'Hard', text: 'If it rains tomorrow, we will postpone the picnic until next week.' },
+    { level: 'Hard', text: 'The company announced that it would open a new office in Berlin.' },
+  ],
+  QUESTION_ANSWER: [
+    { level: 'Easy', text: 'What do you usually do on weekends?' },
+    { level: 'Easy', text: 'Describe your favourite food and why you like it.' },
+    { level: 'Medium', text: 'Tell me about a person who has influenced you and explain how.' },
+    { level: 'Medium', text: 'What are the advantages and disadvantages of studying online?' },
+    { level: 'Hard', text: 'Do you think technology has made people more connected or more isolated? Explain your view.' },
+    { level: 'Hard', text: 'If you could change one thing about your city, what would it be and why?' },
+  ],
+  STORYTELLING: [
+    { level: 'Easy', text: 'Tell a story about a memorable holiday.' },
+    { level: 'Easy', text: 'Tell a story about a day when you helped someone.' },
+    { level: 'Medium', text: 'Tell a story about a time you faced a difficult challenge and how you handled it.' },
+    { level: 'Medium', text: 'Tell a story that begins with: "I never expected to find a key in my pocket."' },
+    { level: 'Hard', text: 'Tell a story about a decision that changed your life.' },
+  ],
+  // text = the sentence with the blank, answer = the correct word(s) sent as expected_text,
+  // alternatives (optional) = further correct answers sent as accepted_answers
+  FILL_BLANKS: [
+    { level: 'Easy', text: 'He ________ (watch) movies every day.', answer: 'watches' },
+    { level: 'Easy', text: 'They ________ (go) to school by bus yesterday.', answer: 'went' },
+    { level: 'Easy', text: 'Please be quiet, the baby ________ (sleep) right now.', answer: 'is sleeping', alternatives: ['sleeping'] },
+    { level: 'Medium', text: 'She ________ (study) English for three years.', answer: 'has been studying', alternatives: ['has studied'] },
+    { level: 'Medium', text: 'If it rains tomorrow, we ________ (stay) at home.', answer: 'will stay' },
+    { level: 'Medium', text: 'My brother is taller ________ (than / then) me.', answer: 'than' },
+    { level: 'Hard', text: 'By the time we arrived, the film ________ (already / start).', answer: 'had already started' },
+    { level: 'Hard', text: 'Neither of the students ________ (be) ready for the test.', answer: 'was' },
+  ],
+  // passage = what the student hears / reads, text = the question, options[].correct = answer key (1 or 2 correct)
+  MCQ: [
+    { level: 'Easy', passage: 'The meeting has been moved from Monday to Wednesday at three o\'clock in Room 204.',
+      text: 'When is the meeting now?',
+      options: [{ text: 'Monday at three', correct: false }, { text: 'Wednesday at three', correct: true },
+        { text: 'Wednesday at ten', correct: false }, { text: 'Friday at three', correct: false }] },
+    { level: 'Easy', passage: 'Sam said that he would rather take the train than drive, because the roads are always busy in the morning.',
+      text: 'Does Sam prefer to drive?',
+      options: [{ text: 'Yes', correct: false }, { text: 'No', correct: true }] },
+    { level: 'Medium', passage: 'To apply, please bring your passport and the signed application form. A photocopy of your birth certificate is optional.',
+      text: 'Which two items must the applicant bring?',
+      options: [{ text: 'Passport', correct: true }, { text: 'Signed application form', correct: true },
+        { text: 'Photocopy of the birth certificate', correct: false }, { text: 'A recent photograph', correct: false }] },
+    { level: 'Medium', passage: 'The library opens at nine on weekdays and at ten on Saturdays. It is closed on Sundays and public holidays.',
+      text: 'On which days is the library closed?',
+      options: [{ text: 'Saturdays', correct: false }, { text: 'Sundays', correct: true }, { text: 'Mondays', correct: false },
+        { text: 'Public holidays', correct: true }, { text: 'Fridays', correct: false }, { text: 'Weekday mornings', correct: false }] },
+    { level: 'Hard', passage: 'Although the first prototype failed twice during testing, the engineers decided to continue because the fault was traced to a cheap connector rather than to the design itself.',
+      text: 'Why did the engineers continue with the project?',
+      options: [{ text: 'The design itself was found to be sound', correct: true }, { text: 'The prototype passed the third test', correct: false },
+        { text: 'A cheaper design was available', correct: false }, { text: 'The deadline had been extended', correct: false },
+        { text: 'The testing team was replaced', correct: false }] },
+  ],
+  EMAIL_WRITING: [
+    { level: 'Easy', text: 'Write an email to your HR manager requesting two days of leave next week.' },
+    { level: 'Easy', text: 'Write an email to your teacher asking for an extension on your assignment.' },
+    { level: 'Medium', text: 'Write an email to a customer apologising for a delayed delivery and explaining what you will do to fix it.' },
+    { level: 'Medium', text: 'Write an email to your manager to report that you are unwell and will work from home tomorrow.' },
+    { level: 'Hard', text: 'Write an email to a colleague declining their invitation to join a project and suggesting someone else who could help.' },
+  ],
+};

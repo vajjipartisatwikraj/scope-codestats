@@ -1,0 +1,11 @@
+{
+  "name": "speech-judge-frontend-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node audio.test.mjs && node benchmarks.test.mjs && node text_types.test.mjs && node usage.test.mjs && node render.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

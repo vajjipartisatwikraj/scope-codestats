@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { FunnelXIcon } from '@phosphor-icons/react/dist/csr/FunnelX';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
-import { Button, EmptyState, Notice, Page, PageHeader, PillTabs, SearchField, Toolbar, formatNumber, pluralize } from '../../../ui';
+import { AdminTop, Button, EmptyState, Notice, Page, PillTabs, SearchField, formatNumber, pluralize } from '../../../ui';
 import { ScrollRow } from '../../../custom-components';
 import { useAuth } from '../../../../contexts/AuthContext';
 import useAutoHideScrollbars from '../../../../hooks/useAutoHideScrollbars';
 import useMediaQuery from '../../../../hooks/useMediaQuery';
-import useStuck from '../../../../hooks/useStuck';
 import AttachedUserGroupsDialog from '../../../userGroupManagement/AttachedUserGroupsDialog';
 import { cohortUserGroupApi } from '../../../../services/userGroupApi';
 import { CohortCardSkeleton } from '../../student/list/card/CohortCard';
@@ -26,9 +25,6 @@ import '../../student/list/cohorts.css';
 import './cohortManagement.css';
 
 const SKELETON_CARDS = 6;
-// The fixed navbar covers the top 64px of the window (Navbar.css)
-const NAVBAR_HEIGHT = 64;
-
 const EMPTY = {
   all: { title: 'No cohorts yet', text: 'Create a cohort to get started.' },
   active: { title: 'No active cohorts', text: 'Published cohorts that are switched on show up here.' },
@@ -50,7 +46,6 @@ const EMPTY = {
 export default function CohortManagementPage() {
   // Scrollbars show only while something is being scrolled
   useAutoHideScrollbars();
-  const [topMarker, stuck] = useStuck(NAVBAR_HEIGHT);
   const navigate = useNavigate();
   const { user } = useAuth();
   const mobile = useMediaQuery('(max-width: 899.95px)');
@@ -163,7 +158,7 @@ export default function CohortManagementPage() {
       />
     );
   } else if (visible.length === 0) {
-    list = <EmptyState icon={<StackIcon size={28} weight="regular" />} title={EMPTY[tab].title} text={EMPTY[tab].text} action={tab === 'all' ? createButton : undefined} />;
+    list = <EmptyState icon={<StackIcon size={28} weight="regular" />} title={EMPTY[tab].title} text={EMPTY[tab].text} />;
   } else {
     list = (
       <div className="chl-sections">
@@ -204,20 +199,17 @@ export default function CohortManagementPage() {
 
   return (
     <Page className="cmg chl">
-      <div ref={topMarker} className="chl-marker" aria-hidden="true" />
-      {/* The heading and the search with the tabs stay in place while the cohorts scroll */}
-      <div className="chl-top" data-stuck={stuck ? 'true' : 'false'}>
-        <PageHeader
-          title="Cohort management"
-          count={!loading && cohorts.length > 0 ? pluralize(cohorts.length, 'cohort') : undefined}
-          description="Create and manage programming cohorts with modules, learning paths and problem sets."
-          actions={createButton}
-        />
-        <Toolbar className="chf" label="Search and views" search={tab === 'reviews' ? undefined : <SearchField value={search} onChange={setSearch} placeholder="Search cohorts" label="Search cohorts by title or description" />}>
-          <PillTabs items={tabItems} value={tab} onChange={setTab} label="Cohort views" idPrefix="cmg" />
-        </Toolbar>
-      </div>
-
+      {/* The heading and the search with the tabs stay in place while the cohorts scroll (AdminTop) */}
+      <AdminTop
+        title="Cohort management"
+        count={!loading && cohorts.length > 0 ? pluralize(cohorts.length, 'cohort') : undefined}
+        description="Create and manage cohorts, modules and problem sets."
+        actions={createButton}
+        label="Search and views"
+        search={tab === 'reviews' ? undefined : <SearchField value={search} onChange={setSearch} placeholder="Search cohorts" label="Search cohorts by title or description" />}
+        filters={<PillTabs items={tabItems} value={tab} onChange={setTab} label="Cohort views" idPrefix="cmg" />}
+        filtersAlign="end"
+      />
       <div role="tabpanel" id={`cmg-panel-${tab}`} aria-labelledby={`cmg-tab-${tab}`}>
         {tab === 'reviews' ? <ReviewsPanel cohorts={cohorts} data={reviews} mobile={mobile} /> : list}
       </div>

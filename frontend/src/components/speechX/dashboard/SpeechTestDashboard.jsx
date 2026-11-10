@@ -4,7 +4,7 @@ import { FunnelXIcon } from "@phosphor-icons/react/dist/csr/FunnelX";
 import { Button, EmptyState, Notice, Page, PageHeader, PillTabs, SearchField, Toolbar } from "../../ui";
 import SpeakingFilm from "../../custom-components/SpeakingFilm";
 import { enterFullscreen } from "../../../utils/fullscreen";
-import { Reveal, examStatusOf } from "../shared";
+import { Reveal, examStatusOf, normalizeQuery, testMatchesQuery } from "../shared";
 import TestCard, { TestCardSkeleton } from "./TestCard";
 import TestDetails from "./TestDetails";
 import useSpeechTests from "./useSpeechTests";
@@ -60,9 +60,8 @@ const SpeechTestDashboard = () => {
   };
 
   const filterOf = (test) => filterKeyOf(examStatusOf(stateOf(test), test.attempt));
-  const query = search.trim().toLowerCase();
-  const matchesSearch = (test) => !query || `${test.title || ""} ${test.description || ""}`.toLowerCase().includes(query);
-  const visible = tests.filter((test) => (filter === "all" || filterOf(test) === filter) && matchesSearch(test));
+  const query = normalizeQuery(search);
+  const visible = tests.filter((test) => (filter === "all" || filterOf(test) === filter) && testMatchesQuery(test, query));
   const filtersOn = filter !== "all" || query !== "";
   const clearFilters = () => {
     setFilter("all");
@@ -151,7 +150,7 @@ const SpeechTestDashboard = () => {
           <Toolbar
             className="sxd-filters"
             label="Filter tests"
-            search={<SearchField value={search} onChange={setSearch} placeholder="Search tests" label="Search tests by name or description" />}
+            search={<SearchField value={search} onChange={setSearch} placeholder="Search tests or sections" label="Search tests by name, description or section" />}
           >
             {filtersOn ? (
               <Button variant="ghost" size="sm" onClick={clearFilters}>

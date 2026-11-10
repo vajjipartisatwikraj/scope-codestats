@@ -49,6 +49,7 @@ export default function CourseDrawer({ course, saving, locked, onClose, onSave, 
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={saving || locked}
       title={editing ? 'Edit course' : 'Add course'}

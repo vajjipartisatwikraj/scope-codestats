@@ -30,7 +30,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 600px) {
+/* One row only where search (up to 420px), the five status pills and Clear filters all fit; between
+   600px and 900px the row wraps instead of squeezing the search to a sliver */
+@media (min-width: 900px) {
   .sxd-filters {
     flex-wrap: nowrap;
   }
@@ -45,10 +47,16 @@
   }
 }
 
+/* The pills already scroll sideways when they do not fit (PillTabs.css); wrapped, they start at the left */
+@media (max-width: 899.95px) {
+  .sxd-filters .pt {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 599.95px) {
   .sxd-filters .pt {
     width: 100%;
-    margin-left: 0;
   }
 }
 

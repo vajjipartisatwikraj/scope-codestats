@@ -416,12 +416,18 @@ A 12-column fluid grid inside a shell. The shell is a left rail plus a top bar; 
 - **Touch:** every target is at least 44px on touch layouts; icon buttons are circles of 44px.
 - **Overlays:** menus, popovers and tooltips render in a portal so no ancestor can clip them.
 - **Z-order:** content 0, sticky headers 10, rail 20, menus and popovers 30, dialogs 40, toasts 50, tooltips 60.
+- **The admin top:** every admin screen opens with the same fixed block, the `AdminTop` component (`src/components/ui/AdminTop.jsx`). Row one is the heading: the title with its count beside it ("13 cohorts"), a tagline under it that is always a single line (about 60 characters or fewer, one plain sentence, cut with an ellipsis if the room is short), and the primary create button at the right end of the row, level with the title. The button and the search row are always there, also when the list is empty or failed to load; the empty state never repeats the button. Row two is one line of controls with the space between them: the search pill at the left (420px at most) and the filter dropdowns, or the tabs, at the right end. A screen with no search (monitoring) puts them at the left. The block rests exactly where it sticks (a negative top margin cancels the page's top padding), so it does not shift when scrolling starts. It is `position: sticky` right under the navbar on the canvas fill, reaches the page's side padding, and shows a 1px `line` hairline under it once the content has scrolled beneath it. Below 600px the tagline is hidden, the search takes a line and the dropdowns share the next one (tabs take it whole and scroll sideways). A screen opened from a list shows its path above the title instead of a back button (see Breadcrumbs). Screens never rebuild this block with their own markup or CSS. It needs `<main>` to be the scroller, so a route using it is listed in `isFixedTopPage` and `isNoFooterPage` in `App.jsx`.
+- **Admin list content:** under the admin top, a list of things is a grid of cards (1 column below 600px, 2 from 600px, 3 from 1000px, 4 from 1360px), all cards in a row the same height. A card has a status badge at the top left, the three-dot menu at the top right (Edit, Delete and the like, the destructive item last and in the danger tone), the title, up to two lines of description, the figure that matters in a numeral style, a few one-line facts with small icons, and a hairline above a foot with the "Manage" button at the right. "Manage" is a link to the item's own page, which holds everything about the item; the card never holds the editing itself.
 
 ### Named Rules
 
 **The Number-First Rule.** The first thing in reading order on a data screen is the figure the student came for, set in a numeral style. Filters and navigation come after it, visually quieter.
 
 **The Same Gap Rule.** One gap value per breakpoint between all cards of a page. Uneven gutters are the fastest way to make a dashboard look unfinished.
+
+**The Same Path Rule.** A screen reached from a list shows where it is as a path (`/ User groups / Group name`) in the admin top, never as a back arrow or a "back to" button.
+
+**The Same Top Rule.** Every admin screen starts with `AdminTop`: title and tagline at the left, the primary action at the right, then the search at the left and the dropdowns at the right of one line. Moving between admin screens never moves the heading, the create button or the search.
 
 ## Elevation & Depth
 
@@ -479,7 +485,7 @@ Pills, 44px tall (36px compact, 52px large), label type, 24px horizontal padding
 - **Rail:** surface fill, grouped items with small sentence-case group headings. Items are 44px pills; the selected item is a spotlight pill with the filled icon. On desktop the rail is icons only until the pointer or the keyboard reaches it, then it opens over the page (the page never reflows) with its width, pills and labels animating for 240 to 320ms. That is the one place layout properties animate, because the rail floats and nothing else is laid out around it.
 - **Top pill nav** (public pages and in-page tabs): a pill container (surface, 52px) holding items; the active item is a spotlight pill. At most seven items; otherwise use the rail.
 - **Tabs and segmented control:** the same pill container, 40px items. They switch a view in place, never navigate away.
-- **Breadcrumbs** only where depth exceeds two levels (cohort, module, question).
+- **Breadcrumbs:** a screen opened from a list (the page of one user group, one cohort, one bank) has no back button. It shows the path above its title, in the admin top: `/ User groups / Group name`. Each step starts with a `/`, every step before the last is a link in the muted colour (light grey on Midnight; Body small, 600) that turns to the text colour (white on Midnight, near-black on Daylight) on hover and keyboard focus, with no underline, and the last is the current page in the text colour. The path sits 12px above the title. The path replaces the "back" link everywhere, at any depth, and wraps on a narrow screen (the current step is cut with an ellipsis). It is the `crumbs` prop of `AdminTop`.
 - **Mobile:** the rail becomes a drawer, and the five primary destinations may also sit in a bottom bar of 64px.
 
 ### Cards and tiles
@@ -507,6 +513,7 @@ Pills, 44px tall (36px compact, 52px large), label type, 24px horizontal padding
 - Ranks 1 to 3 are numerals in small tonal circles (accent-soft, raised, high), never spotlight fills, so the one-spotlight rule holds. No medals or emoji.
 - Row actions sit in an icon button at the end of the row. Bulk actions appear in a floating spotlight bar.
 - Below 900px a table becomes a list of rows (identity, primary figure, secondary line) with the rest behind the row.
+- **Band table (admin list screens, `.ui-band-table` in the kit):** a table with no card around it. The header row is a quiet band in the raised tone, 44px high, with fully rounded ends (`md` radius) and Body small 600 muted labels. Rows are 64px with a 1px `line` hairline between them and none after the last. A hovered row turns raised, with rounded ends. The person is a 40px avatar with the name in Label type and the email under it in Caption muted; a status is a Badge with a word; the row action (Remove, Approve and Reject) sits in the last column. Numbers are tabular and right-aligned. It scrolls sideways inside its own wrapper below its minimum width and becomes a list of rows below 900px. The students table of a user group carries the identical look.
 
 ### Charts
 
@@ -528,6 +535,7 @@ Pills, 44px tall (36px compact, 52px large), label type, 24px horizontal padding
 
 - **Dialog:** surface, 28px radius, 28px padding, scrim behind, title in Headline, actions right-aligned with the primary last. Use a dialog only when the task needs interruption or protected focus; otherwise use an inline panel or a page.
 - **Toast:** raised fill, 14px radius, float medium, a leading icon in the status colour and a sentence; auto-dismiss in 5 seconds, longer for errors with an action.
+- **Edit panel (a drawer that creates, edits or adds):** the slide panel from the right (480px, the full width below 600px) has a header in the platform blue: the accent fill with white title and description, the close button a darker circle of the accent (hover and press tones), and the top-left corner at the dialog radius. It is the same blue in Midnight and Daylight. Every drawer whose job is to change something (Create, Edit, Add roll numbers, the course, opportunity, bank, topic and import drawers, the profile section editor) uses it, with `tone="accent"` on `Drawer`. The wide `Sheet` of the cohort and bank library question forms has the same blue header. A drawer that only shows a detail (`DetailPanel`) keeps the plain header. The body and the footer stay on the surface; the footer holds Cancel and the one primary action, last.
 - **Tooltip:** 10px radius, Caption, appears on hover and keyboard focus within 150ms.
 
 ### States
@@ -562,6 +570,9 @@ Pills, 44px tall (36px compact, 52px large), label type, 24px horizontal padding
 
 ### Don't:
 
+- **Don't** put a "back" button or arrow on a screen opened from a list. Use the path in the admin top.
+- **Don't** give an editing slide panel a plain header. Panels that create, edit or add have the blue header.
+- **Don't** build an admin screen's heading, create button and search from scratch. Use `AdminTop`, so the title, the primary action and the search sit in the same place on every admin screen.
 - **Don't** use backdrop blur, glass panels, glowing shadows, inner highlights or gradient fills on surfaces.
 - **Don't** use gradient text. Emphasis comes from weight and size.
 - **Don't** put a coloured border on one side of a card, list item or alert.

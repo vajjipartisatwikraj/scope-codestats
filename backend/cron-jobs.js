@@ -8,12 +8,17 @@
  *     is run through services/syncJobService, which also records it in the
  *     sync history.
  *
- * Admins can also run it on demand from the admin dashboard
+ *   - Database size snapshot, every hour at minute 5 (IST): the data behind the
+ *     size history on the admin Monitoring page (services/monitoring).
+ *
+ * Admins can also run the profile sync on demand from the admin dashboard
  * (POST /api/admin/sync-jobs, see controllers/dailyCronController.js).
  */
 const cron = require("node-cron");
 const { startSyncJob } = require("./services/syncJobService");
 const logger = require("./utils/logger");
+const monitoring = require("./services/monitoring");
+const monitoringConfig = require("./config/monitoring");
 
 const PROFILE_SYNC_SCHEDULE = "0 0 * * *"; // 12:00 AM
 const TIMEZONE = "Asia/Kolkata";
@@ -37,14 +42,29 @@ const profileSyncJob = cron.schedule(
   { scheduled: false, timezone: TIMEZONE }
 );
 
+// Database size snapshot for the admin Monitoring page: every hour, the last reading of a day stays.
+const monitoringSnapshotJob = cron.schedule(
+  monitoringConfig.snapshotSchedule,
+  async () => {
+    try {
+      await monitoring.database.takeSnapshot();
+    } catch (error) {
+      logger.warn("CRON", `database snapshot failed | ${error.message}`);
+    }
+  },
+  { scheduled: false, timezone: TIMEZONE }
+);
+
 function initializeCronJobs() {
   profileSyncJob.start();
   logger.ready("CRON", "profile sync daily at 12:00 AM IST");
+  monitoringSnapshotJob.start();
 }
 
 function stopCronJobs() {
   profileSyncJob.stop();
+  monitoringSnapshotJob.stop();
   logger.info("CRON", "stopped");
 }
 
-module.exports = { initializeCronJobs, stopCronJobs, profileSyncJob };
+module.exports = { initializeCronJobs, stopCronJobs, profileSyncJob, monitoringSnapshotJob };

@@ -17,7 +17,7 @@ import { DEFAULT_LANGUAGE, LANGUAGES, fileNameOf } from './codePadLanguages';
  *
  * RUNNING IS NOT CONNECTED. run() only plays the "running" state for a moment and leaves a notice
  * that says so; it makes no request. To connect it, replace the body of run() with the request that
- * the previous page made (see components/deprecated/deprecated_CodePad.jsx, executeCode) and set
+ * the previous page made (see runCode in utils/compilerApi.js) and set
  * status to 'success', 'compile' or 'runtime' and output to the text it returns. Nothing in the
  * components needs to change: they already draw all of those states.
  */

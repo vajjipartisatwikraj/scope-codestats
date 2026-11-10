@@ -4,7 +4,7 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGl
 import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users';
 import { useAuth } from '../../contexts/AuthContext';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { Button, Card, Dialog, EmptyState, Notice, Page, PageHeader, Pagination, PillTabs, SearchField, SkeletonRows, TextField, formatNumber, pluralize } from '../ui';
+import { AdminTop, Button, Card, Dialog, EmptyState, Notice, Page, PageHeader, Pagination, PillTabs, SearchField, SkeletonRows, TextField, formatNumber, pluralize } from '../ui';
 import AccountList from './AccountList';
 import useSuspendAccounts from './useSuspendAccounts';
 import './suspendAccounts.css';
@@ -101,19 +101,17 @@ export default function SuspendAccounts() {
 
   return (
     <Page className="sa">
-      <PageHeader
+      <AdminTop
         title="Suspend accounts"
         count={loading || error ? undefined : `${pluralize(total, 'account')} ${searching ? 'found' : scope === 'linked' ? 'with coding profiles' : ''}`.trim()}
-        description="Remove a student's coding accounts: every linked platform and all the history stored with them, including scores, ranks, progress charts and the activity heatmap. Their account and coursework stay and they can still sign in. This cannot be undone."
+        description="Remove a student's coding profiles and their history. This cannot be undone."
+        label="Search accounts and choose which to show"
+        search={<SearchField value={data.query} onChange={data.setQuery} label="Search accounts" placeholder="Search by name, email, roll number or department" />}
+        filters={<PillTabs role="radiogroup" label="Which accounts" items={SCOPES} value={scope} onChange={data.setScope} />}
       />
 
       <Card flush>
         <h2 className="ui-sr">Accounts</h2>
-        <div className="sa-bar">
-          <SearchField value={data.query} onChange={data.setQuery} label="Search accounts" placeholder="Search by name, email, roll number or department" className="sa-search" />
-          <PillTabs role="radiogroup" label="Which accounts" items={SCOPES} value={scope} onChange={data.setScope} />
-        </div>
-
         <div ref={bodyRef} tabIndex={-1} className="sa-body" aria-busy={loading}>
           {firstLoad ? (
             <SkeletonRows count={6} height={compact ? 120 : 56} />

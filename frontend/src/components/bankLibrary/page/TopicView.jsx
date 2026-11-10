@@ -5,7 +5,7 @@ import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { QuestionIcon } from '@phosphor-icons/react/dist/csr/Question';
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, Notice, PageHeader, SearchField, SelectField, SkeletonRows, Toolbar, pluralize } from '../../ui';
+import { AdminTop, Badge, Button, Card, ConfirmDialog, EmptyState, Notice, SearchField, SelectField, SkeletonRows, pluralize } from '../../ui';
 import { useAuth } from '../../../contexts/AuthContext';
 import { emptyQuestionForm, questionFormFrom } from '../../cohorts/staff/detail/model/staffContent';
 import * as api from '../api/bankLibraryApi';
@@ -14,7 +14,7 @@ import TopicDrawer from '../forms/TopicDrawer';
 import useDebounced from '../hooks/useDebounced';
 import useLibraryRequest from '../hooks/useLibraryRequest';
 import { DIFFICULTY_TONE, TYPE_LABEL, apiMessage, difficultyLabel } from '../model/bankLibrary';
-import { Crumbs, LIBRARY_PATH, LibraryRow, LibraryTop, RowMenu } from './LibraryParts';
+import { LIBRARY_PATH, LibraryRow, RowMenu } from './LibraryParts';
 
 const DIFFICULTIES = [
   { value: 'all', label: 'All difficulties' },
@@ -141,7 +141,7 @@ export default function TopicView({ bankId, topicId }) {
   if (topic.error) {
     return (
       <>
-        <Crumbs steps={crumbs} />
+        <AdminTop crumbs={crumbs} title={topicName} />
         <Notice
           tone="danger"
           title="This topic did not load"
@@ -234,32 +234,25 @@ export default function TopicView({ bankId, topicId }) {
 
   return (
     <>
-      <LibraryTop>
-        <Crumbs steps={crumbs} />
-        <PageHeader
-          title={topicName}
-          count={topic.data ? pluralize(topic.data.questionCount, 'question') : undefined}
-          description={topic.data?.description || 'No description yet.'}
-          actions={
-            <>
-              <Button startIcon={<PencilSimpleIcon size={18} weight="regular" aria-hidden="true" />} onClick={() => setTopicDrawer({ nonce: Date.now() })} disabled={!topic.data}>
-                Edit topic
-              </Button>
-              <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={openNew}>
-                Add question
-              </Button>
-            </>
-          }
-        />
-
-        <Toolbar
-          label="Search and filter questions"
-          search={<SearchField value={search} onChange={setSearch} placeholder="Search questions" label="Search questions by title or tag" />}
-        >
-          <SelectField variant="pill" aria-label="Difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)} options={DIFFICULTIES} />
-        </Toolbar>
-      </LibraryTop>
-
+      <AdminTop
+        crumbs={crumbs}
+        title={topicName}
+        count={topic.data ? pluralize(topic.data.questionCount, 'question') : undefined}
+        description={topic.data?.description || 'No description yet.'}
+        actions={
+          <>
+            <Button startIcon={<PencilSimpleIcon size={18} weight="regular" aria-hidden="true" />} onClick={() => setTopicDrawer({ nonce: Date.now() })} disabled={!topic.data}>
+              Edit topic
+            </Button>
+            <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={openNew}>
+              Add question
+            </Button>
+          </>
+        }
+        label="Search and filter questions"
+        search={<SearchField value={search} onChange={setSearch} placeholder="Search questions" label="Search questions by title or tag" />}
+        filters={<SelectField variant="pill" aria-label="Difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)} options={DIFFICULTIES} />}
+      />
       <Card flush className="bl-card" aria-busy={questions.loading ? 'true' : 'false'}>
         {body}
       </Card>

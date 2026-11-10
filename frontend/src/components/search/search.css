@@ -1,0 +1,295 @@
+/*
+ * Search page (route /search), prefix srp-
+ *
+ * Plain CSS on the design tokens (--ds-*). A blue back button and a search pill on one row, then one
+ * flat card per kind of result with rows of at least 56px (44px is the touch minimum).
+ * Components: SearchPage.jsx, SearchPill.jsx, RotatingPlaceholder.jsx, SearchResultList.jsx.
+ *
+ * The back button is the one blue thing; the pill, its icon and the results stay neutral.
+ * The page sits in a shell with no padding on this route (App.jsx), so it pads itself.
+ */
+
+.srp {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+}
+
+@media (min-width: 600px) {
+  .srp {
+    padding: 24px 24px 40px;
+  }
+}
+
+/* ---- The top row: blue back button and the search pill ------------------------------------------ */
+
+.srp-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+
+.srp-back {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+  cursor: pointer;
+}
+
+.srp-back:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-canvas),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* The pill has no border or ring. Focus is shown by the fill moving one tone up. */
+.srp-pill {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  height: 44px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  cursor: text;
+}
+
+.srp-pill:focus-within {
+  background-color: var(--ds-high);
+}
+
+.srp-pill__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0 8px 0 18px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: none;
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+  /* 16px or more keeps iOS from zooming the page when the field is focused */
+  font-size: max(1rem, 16px);
+}
+
+.srp-pill__input:focus {
+  outline: none;
+}
+
+.srp-pill__clear {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ds-muted);
+  cursor: pointer;
+}
+
+.srp-pill__clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-text);
+}
+
+/* The magnifying glass at the right end, in the normal text colour */
+.srp-pill__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--ds-muted);
+}
+
+.srp-spin {
+  animation: srp-rotate 800ms linear infinite;
+}
+
+@keyframes srp-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- The placeholder: Search "Student" with the word sliding up ---------------------------------- */
+
+.srp-ph {
+  position: absolute;
+  top: 0;
+  right: 52px;
+  bottom: 0;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--ds-subtle);
+  font: var(--ds-type-body);
+  font-size: max(1rem, 16px);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.srp-ph__lead {
+  flex: none;
+}
+
+/* The window is one line tall and as wide as the longest word; each word sits in the same cell */
+.srp-ph__window {
+  display: inline-grid;
+  align-items: center;
+  height: 1.6em;
+  overflow: hidden;
+}
+
+.srp-ph__word {
+  grid-area: 1 / 1;
+  color: var(--ds-muted);
+  opacity: 0;
+  transform: translateY(100%);
+  transition:
+    transform 320ms var(--ds-ease-enter),
+    opacity 220ms var(--ds-ease);
+}
+
+.srp-ph__word[data-pos='current'] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.srp-ph__word[data-pos='out'] {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+/* ---- Results -------------------------------------------------------------------------------------- */
+
+.srp-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .srp-groups {
+    gap: 20px;
+  }
+}
+
+.srp-group__count {
+  margin-left: 8px;
+  color: var(--ds-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.srp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.srp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background: none;
+  color: var(--ds-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.srp-row:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.srp-row:active {
+  background-color: var(--ds-raised);
+}
+
+/* A tap on a phone must not leave a row filled, so hover needs a pointer that can hover */
+@media (hover: hover) {
+  .srp-row:hover {
+    background-color: var(--ds-raised);
+  }
+}
+
+.srp-row__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  color: var(--ds-muted);
+}
+
+.srp-row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.srp-row__title {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.srp-row__detail {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.srp-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--ds-radius-xl);
+  background-color: var(--ds-surface);
+}
+
+/* ---- Reduced motion: the words change without sliding, the spinner stays ---------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .srp-ph__word {
+    transition: none;
+  }
+}

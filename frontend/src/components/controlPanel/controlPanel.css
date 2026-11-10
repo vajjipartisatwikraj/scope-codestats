@@ -1,0 +1,232 @@
+/*
+ * Control panel (route /admin/control-panel)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css): the fixed
+ * top is AdminTop, the tiles are StatTile, the tables are the band table. Only what the kit does not
+ * have lives here: the sections, the rows that replace the tables on a phone, and the list of failed
+ * profiles in the detail panel. design/screens.md sections 15, 16 and 19.
+ */
+
+/* ---- Sections --------------------------------------------------------------------------------------- */
+
+.cp-tiles {
+  margin-bottom: 8px;
+}
+
+.cp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cp-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.cp-section__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.cp-section__text {
+  margin: 2px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.cp-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Tables --------------------------------------------------------------------------------------------- */
+
+.cp-table {
+  min-width: 960px;
+}
+
+.cp-table--ranks {
+  min-width: 720px;
+}
+
+.cp-clickable {
+  cursor: pointer;
+}
+
+.cp-figure {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Passed and failed carry a word in the header and a figure: the colour only adds to it */
+.cp-passed {
+  color: var(--ds-success);
+}
+
+.cp-failed-count {
+  color: var(--ds-danger);
+}
+
+.cp-progress-cell {
+  width: 180px;
+  min-width: 140px;
+}
+
+.cp-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.cp .cp-cancel.ui-icon-button {
+  color: var(--ds-danger);
+}
+
+/* ---- Rows on a phone ---------------------------------------------------------------------------------- */
+
+.cp-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ds-line);
+}
+
+.cp-run {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.cp-run--static {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-run__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-md);
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp-run__main:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-canvas),
+    0 0 0 4px var(--ds-focus);
+}
+
+.cp-run__top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cp-run__when {
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.cp-run__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-run__error {
+  color: var(--ds-danger);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* ---- The detail panel ---------------------------------------------------------------------------------- */
+
+.cp-detail-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cp-detail-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-failed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ds-line);
+}
+
+.cp-failed__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.cp-failed__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cp-failed__name {
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.cp-failed__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-failed__user {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+.cp-failed__error {
+  color: var(--ds-danger);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 599.95px) {
+  .cp-section__actions .ui-button {
+    flex: 1 1 auto;
+  }
+
+  .cp-section__actions {
+    width: 100%;
+  }
+}

@@ -8,14 +8,14 @@ import { FolderSimpleIcon } from '@phosphor-icons/react/dist/csr/FolderSimple';
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Menu, Notice, PageHeader, SkeletonRows, pluralize } from '../../ui';
+import { AdminTop, Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Menu, Notice, SkeletonRows, pluralize } from '../../ui';
 import { useAuth } from '../../../contexts/AuthContext';
 import * as api from '../api/bankLibraryApi';
 import BankDrawer from '../forms/BankDrawer';
 import TopicDrawer from '../forms/TopicDrawer';
 import useLibraryRequest from '../hooks/useLibraryRequest';
 import { apiMessage, bankStatusInfo, countOf } from '../model/bankLibrary';
-import { Crumbs, LIBRARY_PATH, LibraryRow, LibraryTop, RowMenu } from './LibraryParts';
+import { LIBRARY_PATH, LibraryRow, RowMenu } from './LibraryParts';
 
 /**
  * The second level (route /admin/bank-library/:bankId): one bank and its topics, in the order they
@@ -116,7 +116,7 @@ export default function BankView({ bankId }) {
   if (bank.loading && !data) {
     return (
       <>
-        <Crumbs steps={[{ label: 'Bank library', to: LIBRARY_PATH }, { label: 'Loading' }]} />
+        <AdminTop crumbs={[{ label: 'Bank library', to: LIBRARY_PATH }, { label: 'Loading' }]} title="Bank" />
         <SkeletonRows count={4} height={76} />
       </>
     );
@@ -125,7 +125,7 @@ export default function BankView({ bankId }) {
   if (bank.error || !data) {
     return (
       <>
-        <Crumbs steps={[{ label: 'Bank library', to: LIBRARY_PATH }, { label: 'Bank' }]} />
+        <AdminTop crumbs={[{ label: 'Bank library', to: LIBRARY_PATH }, { label: 'Bank' }]} title="Bank" />
         <Notice
           tone="danger"
           title="This bank did not load"
@@ -146,9 +146,8 @@ export default function BankView({ bankId }) {
 
   return (
     <>
-      <LibraryTop>
-        <Crumbs steps={[{ label: 'Bank library', to: LIBRARY_PATH }, { label: data.name }]} />
-        <PageHeader
+      <AdminTop
+          crumbs={[{ label: 'Bank library', to: LIBRARY_PATH }, { label: data.name }]}
           title={data.name}
           count={`${topicWord} \u00b7 ${countOf(data.questionCount, 'question')}`}
           description={data.description || 'No description yet.'}
@@ -181,7 +180,6 @@ export default function BankView({ bankId }) {
             </>
           }
         />
-      </LibraryTop>
 
       <Card flush className="bl-card">
         {data.topics.length === 0 ? (

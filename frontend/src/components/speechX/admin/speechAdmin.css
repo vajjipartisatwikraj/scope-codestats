@@ -179,6 +179,15 @@
   margin-left: auto;
 }
 
+/* On a touchscreen the small buttons of a card grow to the 44px touch target */
+@media (pointer: coarse) {
+  .sxa-test__actions .ui-button,
+  .sxa-test__actions .ui-icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /* ---- Figures and facts (cards, summary, review) ------------------------------------------------------ */
 
 .sxa-figures {

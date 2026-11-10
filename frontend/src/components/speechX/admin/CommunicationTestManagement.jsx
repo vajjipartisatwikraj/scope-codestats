@@ -4,8 +4,8 @@ import { toast } from "react-toastify";
 import { MicrophoneIcon } from "@phosphor-icons/react/dist/csr/Microphone";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { UploadSimpleIcon } from "@phosphor-icons/react/dist/csr/UploadSimple";
-import { Button, Card, ConfirmDialog, EmptyState, Notice, Page, SearchField, SelectField, Skeleton, Toolbar, pluralize } from "../../ui";
-import { SpeechPageHero } from "../shared";
+import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, SearchField, SelectField, Skeleton, pluralize } from "../../ui";
+import { normalizeQuery, testMatchesQuery } from "../shared";
 import AdminTestCard from "./AdminTestCard";
 import CommunicationTestStudentsDialog from "./CommunicationTestStudentsDialog";
 import { downloadTestFile, readImportFile, toDuplicatePayload } from "./testTransfer";
@@ -129,12 +129,11 @@ const CommunicationTestManagement = () => {
 
   const filtering = Boolean(search.trim() || show !== "all");
   const visible = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = normalizeQuery(search);
     return tests.filter((test) => {
       if (show === "published" && !test.isPublished) return false;
       if (show === "draft" && test.isPublished) return false;
-      if (!term) return true;
-      return `${test.title || ""} ${test.description || ""}`.toLowerCase().includes(term);
+      return testMatchesQuery(test, term);
     });
   }, [tests, search, show]);
 
@@ -188,17 +187,7 @@ const CommunicationTestManagement = () => {
         <EmptyState
           icon={<MicrophoneIcon size={28} aria-hidden="true" />}
           title="No communication tests yet"
-          text="Create your first test, or import one from a JSON file."
-          action={
-            <div className="sxa-empty-actions">
-              <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={goNew}>
-                Create a test
-              </Button>
-              <Button startIcon={<UploadSimpleIcon size={18} aria-hidden="true" />} onClick={pickFile} disabled={busy}>
-                Import JSON
-              </Button>
-            </div>
-          }
+          text="Use New test or Import JSON above to add the first one."
         />
       </Card>
     );
@@ -238,12 +227,10 @@ const CommunicationTestManagement = () => {
 
   return (
     <Page className="sxa-page">
-      <SpeechPageHero
-        size="headline"
+      <AdminTop
         title="Communication tests"
-        icon={MicrophoneIcon}
-        count={!loading && !failed ? tests.length : undefined}
-        description="Schedule speaking tests for your students. Build timed sections of reading, repeat, jumbled sentences, Q&A, storytelling, fill in the blanks, MCQ and email writing. Scoring is done by the speech judge."
+        count={!loading && !failed ? pluralize(tests.length, "test") : undefined}
+        description="Schedule speaking tests for your students; the speech judge scores them."
         actions={
           <>
             <Button startIcon={<UploadSimpleIcon size={18} aria-hidden="true" />} onClick={pickFile} disabled={busy}>
@@ -254,8 +241,25 @@ const CommunicationTestManagement = () => {
             </Button>
           </>
         }
-      />
-      <input
+        label="Search and filter communication tests"
+        search={
+          (
+            <SearchField value={search} onChange={setSearch} placeholder="Search tests or sections" label="Search communication tests by name, description or section" />
+          )
+        }
+        filters={
+          (
+            <>
+              <SelectField variant="pill" aria-label="Show" value={show} onChange={(event) => setShow(event.target.value)} options={SHOW_OPTIONS} />
+              {filtering ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              ) : null}
+            </>
+          )
+        }
+      />      <input
         ref={fileInput}
         type="file"
         accept=".json,application/json"
@@ -276,27 +280,6 @@ const CommunicationTestManagement = () => {
             ? `The speech judge could not be reached: ${judge.error}`
             : "The speech judge is still loading its models. Scoring will be delayed until it is ready."}
         </Notice>
-      ) : null}
-
-      {!loading && tests.length > 0 ? (
-        <Toolbar
-          label="Filter communication tests"
-          search={<SearchField value={search} onChange={setSearch} placeholder="Search tests" label="Search communication tests" />}
-          end={
-            filtering ? (
-              <span className="sxa-toolbar-count" aria-live="polite">
-                {pluralize(visible.length, "test")} shown
-              </span>
-            ) : null
-          }
-        >
-          <SelectField variant="pill" aria-label="Show" value={show} onChange={(event) => setShow(event.target.value)} options={SHOW_OPTIONS} />
-          {filtering ? (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          ) : null}
-        </Toolbar>
       ) : null}
 
       {body}

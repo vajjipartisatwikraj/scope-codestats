@@ -20,6 +20,7 @@ module.exports = {
   opportunityController: require("./opportunityController"),
   codeExecutionController: require("./codeExecutionController"),
   cohorts: require("./cohorts"), // eleven controllers, one per area of routes/cohorts/
+  speechTests: require("./speechTests"), // five controllers for routes/speechTests.js
   heatmapController: require("./heatmapController"),
   dailyCronController: require("./dailyCronController"),
 };

@@ -8,7 +8,7 @@ node_modules/
 history/
 testing/
 SQLJudge/
-SpeechJudge/
+#SpeechJudge/
 AI-InterviewJudge/
 .kiro/
 .impeccable/

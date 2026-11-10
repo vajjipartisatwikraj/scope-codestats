@@ -55,6 +55,7 @@ export default function CreateGroupDrawer({ onCreated, onClose }) {
   return (
     <Drawer
       open
+      tone="accent"
       onClose={onClose}
       busy={saving}
       title="Create user group"

@@ -9,7 +9,8 @@
  *   Forms         TextField, SelectField, Checkbox, Switch, SearchField
  *   Overlays      Dialog, ConfirmDialog, Drawer, DetailPanel (the sliding detail view of a list item)
  *   Feedback      EmptyState, Notice, Skeleton, SkeletonRows
- *   Layout        Page (narrow), PageHeader, Card, Pagination, BulkBar, Toolbar
+ *   Layout        Page (narrow), PageHeader, Card, Pagination, BulkBar, Toolbar,
+ *                 AdminTop (the fixed heading and search row of every admin screen)
  *   Menus         Menu (a popover list of actions)
  *   Structure     Disclosure (accordion item), Stepper (pills for a multi-step flow)
  *   Stats         StatTile, StatGrid (.ui-stats)
@@ -33,6 +34,7 @@ export { Dialog, ConfirmDialog, Drawer } from './Overlays';
 export { default as DetailPanel } from './DetailPanel';
 export { EmptyState, Notice, Skeleton, SkeletonRows } from './Feedback';
 export { Page, PageHeader, Card, Pagination, BulkBar, Toolbar } from './Layout';
+export { AdminTop } from './AdminTop';
 export { Menu } from './Menu';
 export { Disclosure } from './Disclosure';
 export { Stepper } from './Stepper';

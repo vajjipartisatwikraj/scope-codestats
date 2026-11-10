@@ -41,7 +41,7 @@ function ConflictNotice({ conflict }) {
  *
  * An editing task with a list, so a drawer (design/screens.md section 17); the detach question is a
  * confirmation dialog over it. Same props, API calls, callbacks, toasts and rules as the previous
- * Material UI dialog (components/userGroups/, now components/deprecated/).
+ * Material UI dialog.
  *
  *   open
  *   target        { _id, title } of the cohort or test (null while nothing is chosen)
@@ -344,9 +344,20 @@ export default function AttachedUserGroupsDialog({ open, target, api, entityLabe
                 </RouterLink>
                 .
               </Notice>
-            ) : nothingToAttach ? (
-              <p className="ugd-section__text">Every user group is already attached.</p>
-            ) : null}
+            ) : (
+              <>
+                {nothingToAttach ? <p className="ugd-section__text">Every user group is already attached.</p> : null}
+                {loaded ? (
+                  <p className="ugd-section__text">
+                    Need a new list or more roll numbers?{' '}
+                    <RouterLink to="/admin/user-groups" onClick={onClose}>
+                      Manage user groups
+                    </RouterLink>
+                    .
+                  </p>
+                ) : null}
+              </>
+            )}
           </section>
 
           <section className="ugd-section" aria-labelledby="ugd-attached-title">

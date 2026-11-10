@@ -1,0 +1,151 @@
+{
+  "gpu": {
+    "name": "NVIDIA RTX 4000 Ada Generation",
+    "vram_gb": 20
+  },
+  "components": {
+    "whisper": {
+      "sequential_10_audio_seconds": 1.896,
+      "batch_10_audio_seconds": 1.36,
+      "speedup": 1.39,
+      "clips": 10,
+      "repeats": 3,
+      "audio_seconds_total": 99.6,
+      "transcripts_identical": "10/10",
+      "sequential_gpu": {
+        "gpu_util_avg_percent": 94.2,
+        "gpu_util_peak_percent": 100.0,
+        "vram_peak_mb": 2789,
+        "gpu_samples": 39
+      },
+      "batch_gpu": {
+        "gpu_util_avg_percent": 93.4,
+        "gpu_util_peak_percent": 100.0,
+        "vram_peak_mb": 4037,
+        "gpu_samples": 29
+      },
+      "model": "large-v3-turbo",
+      "compute_type": "float16",
+      "device": "cuda",
+      "measured_at": "2026-11-03T23:57:47+00:00"
+    },
+    "phoneme": {
+      "sequential_10_audio_seconds": 0.508,
+      "batch_10_audio_seconds": 0.516,
+      "speedup": 0.99,
+      "clips": 10,
+      "repeats": 3,
+      "audio_seconds_total": 99.6,
+      "max_score_difference_batch_vs_sequential": 0.0,
+      "sequential_gpu": {
+        "gpu_util_avg_percent": 80.1,
+        "gpu_util_peak_percent": 83.0,
+        "vram_peak_mb": 19043,
+        "gpu_samples": 12
+      },
+      "batch_gpu": {
+        "gpu_util_avg_percent": 55.6,
+        "gpu_util_peak_percent": 100.0,
+        "vram_peak_mb": 19043,
+        "gpu_samples": 11
+      },
+      "model": "accent profile model",
+      "device": "cuda",
+      "measured_at": "2026-11-03T23:58:10+00:00"
+    }
+  },
+  "sections": {
+    "reading": {
+      "questions": 10,
+      "total_seconds": 2.372,
+      "average_question_seconds": 0.237,
+      "server_processing_seconds": 2.124,
+      "runs_total_seconds": [
+        2.372
+      ],
+      "questions_scored": 10,
+      "section_score": 0.900672,
+      "status": "ok",
+      "measured_at": "2026-11-04T00:03:52+00:00",
+      "gpu_util_avg_percent": 92.9,
+      "gpu_util_peak_percent": 100.0,
+      "vram_peak_mb": 8489,
+      "gpu_samples": 48
+    },
+    "repeat": {
+      "questions": 10,
+      "total_seconds": 2.369,
+      "average_question_seconds": 0.237,
+      "server_processing_seconds": 2.018,
+      "runs_total_seconds": [
+        2.369
+      ],
+      "questions_scored": 10,
+      "section_score": 0.909199,
+      "status": "ok",
+      "measured_at": "2026-11-04T00:03:55+00:00",
+      "gpu_util_avg_percent": 99.1,
+      "gpu_util_peak_percent": 100.0,
+      "vram_peak_mb": 8489,
+      "gpu_samples": 48
+    },
+    "jumbled": {
+      "questions": 10,
+      "total_seconds": 0.258,
+      "average_question_seconds": 0.026,
+      "server_processing_seconds": 0.004,
+      "runs_total_seconds": [
+        0.258
+      ],
+      "questions_scored": 10,
+      "section_score": 0.921364,
+      "status": "ok",
+      "measured_at": "2026-11-04T00:03:55+00:00",
+      "gpu_util_avg_percent": 42.9,
+      "gpu_util_peak_percent": 100.0,
+      "vram_peak_mb": 7241,
+      "gpu_samples": 7
+    },
+    "question_answer": {
+      "questions": 10,
+      "total_seconds": 8.686,
+      "average_question_seconds": 0.869,
+      "server_processing_seconds": 8.328,
+      "runs_total_seconds": [
+        8.686
+      ],
+      "questions_scored": 10,
+      "section_score": 0.908495,
+      "status": "ok",
+      "measured_at": "2026-11-04T00:04:06+00:00",
+      "gpu_util_avg_percent": 10.9,
+      "gpu_util_peak_percent": 100.0,
+      "vram_peak_mb": 8489,
+      "gpu_samples": 174
+    },
+    "story_telling": {
+      "questions": 10,
+      "total_seconds": 31.993,
+      "average_question_seconds": 3.199,
+      "server_processing_seconds": 31.842,
+      "runs_total_seconds": [
+        31.993
+      ],
+      "questions_scored": 7,
+      "section_score": 0.695857,
+      "status": "ok",
+      "measured_at": "2026-11-04T00:04:42+00:00",
+      "gpu_util_avg_percent": 9.3,
+      "gpu_util_peak_percent": 100.0,
+      "vram_peak_mb": 8489,
+      "gpu_samples": 638
+    }
+  },
+  "students": {
+    "students": 10,
+    "questions_per_student": 10,
+    "wall_seconds": 0,
+    "questions_per_minute": 0
+  },
+  "updated_at": "2026-11-04T00:04:42+00:00"
+}
