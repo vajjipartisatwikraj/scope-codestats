@@ -14,15 +14,17 @@ import { formatNumber } from './format';
  *   size      'l' (Numeral L, 2.5rem; the default, steps down to Numeral M below 600px) |
  *             'm' (Numeral M, 1.75rem; for a row of five or six, or a tile inside a card)
  *   icon      a node (Phosphor icon, 20px) shown at the right of the label in a tonal circle
+ *   onClick   makes the tile a button (it opens the list behind the figure); `as` is then ignored
  *   as        the element ('div' by default)
  *   className added to the tile
  *
  * Numerals are tabular, so figures that are compared line up. Lay tiles out with StatGrid.
  */
-export function StatTile({ label, value, context, tone = 'plain', size = 'l', icon, as: Component = 'div', className }) {
+export function StatTile({ label, value, context, tone = 'plain', size = 'l', icon, as, onClick, className }) {
   const shown = typeof value === 'number' ? formatNumber(value) : value;
+  const Component = onClick ? 'button' : as || 'div';
   return (
-    <Component className={className ? `ui-stat ${className}` : 'ui-stat'} data-tone={tone} data-size={size}>
+    <Component className={className ? `ui-stat ${className}` : 'ui-stat'} data-tone={tone} data-size={size} data-pressable={onClick ? 'true' : undefined} type={onClick ? 'button' : undefined} onClick={onClick}>
       <div className="ui-stat__head">
         <p className="ui-stat__label">{label}</p>
         {icon ? (

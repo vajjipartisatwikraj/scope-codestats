@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { apiErrorMessage, userGroupApi } from '../../services/userGroupApi';
-import { Button, Drawer, Notice, formatNumber } from '../ui';
-import RollNumberInput from './RollNumberInput';
+import { Button, Drawer, Notice, RollNumberInput, formatNumber } from '../ui';
 
 const lower = (value) => String(value || '').toLowerCase();
 

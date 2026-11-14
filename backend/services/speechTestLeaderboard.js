@@ -34,21 +34,10 @@ async function buildLeaderboard(test, { includeInProgress = false } = {}) {
     return new Date(a.attempt.completedAt || 0) - new Date(b.attempt.completedAt || 0);
   });
 
-  let lastKey = null;
-  let lastRank = 0;
-  return rows.map((row, index) => {
-    const completed = row.attempt.status === "completed";
-    const key = `${row.score}|${row.time}`;
-    const rank = completed ? (key === lastKey ? lastRank : index + 1) : null;
-    if (completed) {
-      lastKey = key;
-      lastRank = rank;
-    }
-
-    const { attempt } = row;
+  const entries = rows.map(({ attempt }) => {
     return {
       attemptId: attempt._id,
-      rank,
+      rank: null,
       status: attempt.status,
       user: {
         _id: attempt.user._id,
@@ -75,6 +64,25 @@ async function buildLeaderboard(test, { includeInProgress = false } = {}) {
       }),
     };
   });
+  return assignRanks(entries);
 }
 
-module.exports = { buildLeaderboard };
+/**
+ * Ranks entries that are already in leaderboard order: finished attempts get a rank (equal score and
+ * time share one), the others none. Call it again on a filtered list to rank inside that group.
+ */
+function assignRanks(entries) {
+  let lastKey = null;
+  let lastRank = 0;
+  return entries.map((entry, index) => {
+    if (entry.status !== "completed") return { ...entry, rank: null };
+    const score = typeof entry.finalScore === "number" ? entry.finalScore : null;
+    const key = `${score}|${entry.totalTimeUsedSeconds || 0}`;
+    const rank = key === lastKey ? lastRank : index + 1;
+    lastKey = key;
+    lastRank = rank;
+    return { ...entry, rank };
+  });
+}
+
+module.exports = { buildLeaderboard, assignRanks };

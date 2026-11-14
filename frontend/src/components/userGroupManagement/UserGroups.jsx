@@ -4,7 +4,7 @@ import { FunnelXIcon } from '@phosphor-icons/react/dist/csr/FunnelX';
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree';
 import { apiErrorMessage, userGroupApi } from '../../services/userGroupApi';
-import { AdminTop, Button, Card, EmptyState, Notice, Page, SearchField, SelectField, pluralize } from '../ui';
+import { AdminCardGrid, AdminTop, Button, Card, EmptyState, Notice, Page, SearchField, SelectField, pluralize } from '../ui';
 import useAutoHideScrollbars from '../../hooks/useAutoHideScrollbars';
 import './userGroups.css';
 import CreateGroupDrawer from './CreateGroupDrawer';
@@ -183,13 +183,11 @@ export default function UserGroups() {
     );
   } else {
     body = (
-      <ul className="ui-grid ug-cards" aria-label="User groups">
+      <AdminCardGrid label="User groups">
         {visible.map((group) => (
-          <li key={group._id} className="ug-cards__item">
-            <GroupCard group={group} onEdit={setEditing} onDelete={setDeleting} />
-          </li>
+          <GroupCard key={group._id} group={group} onEdit={setEditing} onDelete={setDeleting} />
         ))}
-      </ul>
+      </AdminCardGrid>
     );
   }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /**
- * Loads one answer and keeps the previous one on screen while a newer one loads. A slow answer
+ * Loads one answer (an API call) and keeps the previous one on screen while a newer one loads. A slow answer
  * that was replaced by a newer request is ignored (the request is aborted).
  *
  *   const { data, loading, error, reload } = useRemote((signal) => api({ signal }), [key], enabled);

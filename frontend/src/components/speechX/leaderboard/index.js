@@ -3,7 +3,8 @@
  *
  * SpeechTestLeaderboardPage is the route component of
  *   /speech-tests/:id/leaderboard            (students: finished attempts, their own row marked)
- *   /admin/communication-tests/:id/results   (staff: every attempt, the feedback summary, delete a submission)
+ *   /admin/communication-tests/:id/results   (staff: every attempt, delete a submission)
+ *   /admin/communication-tests/:id/feedback  (staff: SpeechTestFeedbackSummaryPage, what students said)
  *
  *   import { SpeechTestLeaderboardPage } from "./components/speechX/leaderboard";
  *
@@ -14,4 +15,5 @@ export { default } from "./SpeechTestLeaderboardPage";
 export { default as SpeechTestLeaderboard } from "./SpeechTestLeaderboard";
 export { default as DeleteSubmissionDialog } from "./DeleteSubmissionDialog";
 export { default as FeedbackSummaryPanel } from "./FeedbackSummaryPanel";
+export { default as SpeechTestFeedbackSummaryPage } from "./SpeechTestFeedbackSummaryPage";
 export { default as useSpeechLeaderboard } from "./useSpeechLeaderboard";

@@ -1569,6 +1569,10 @@ button.ui-chip[data-selected='true']:hover {
   max-width: 720px;
 }
 
+.ui-dialog[data-size='xl'] {
+  max-width: 960px;
+}
+
 .ui-dialog__header {
   flex: none;
 }
@@ -2234,6 +2238,25 @@ button.ui-stepper__pill:focus-visible {
   .ui-stat {
     padding: 24px;
   }
+}
+
+/* A tile that opens the list behind its figure is a button that looks like the other tiles */
+.ui-stat[data-pressable='true'] {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ui-stat[data-pressable='true'][data-tone='plain']:hover {
+  background-color: var(--ds-raised);
+}
+
+.ui-stat[data-pressable='true']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
 }
 
 .ui-stat__head {

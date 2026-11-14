@@ -28,8 +28,16 @@ export const adminApi = {
   deleteAttempt: (id, attemptId) => unwrap(axios.delete(`${base}/admin/${id}/attempts/${attemptId}`)),
   judgeStatus: () => unwrap(axios.get(`${base}/admin/judge/status`)),
   feedbackSummary: (id) => unwrap(axios.get(`${base}/admin/${id}/feedback`)),
-  /** The complete results workbook (.xlsx). Resolves with the whole response (a blob and its headers). */
-  exportResults: (id) => axios.get(`${base}/admin/${id}/export`, { responseType: "blob", timeout: 120000 }),
+  /**
+   * How the students are doing, narrowed to a mentorship and a mentor (`filters`: { mentorship, mentor },
+   * each an id or "all"; a teacher always sees their own students).
+   */
+  progress: (id, filters = {}, { signal } = {}) => unwrap(axios.get(`${base}/admin/${id}/progress`, { params: filters, signal })),
+  /**
+   * The results workbook (.xlsx). With `filters` it covers those students only. Resolves with the
+   * whole response (a blob and its headers).
+   */
+  exportResults: (id, filters) => axios.get(`${base}/admin/${id}/export`, { params: filters, responseType: "blob", timeout: 120000 }),
 };
 
 // ---- shared ----------------------------------------------------------------

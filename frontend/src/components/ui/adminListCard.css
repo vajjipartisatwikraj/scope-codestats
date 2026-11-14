@@ -1,0 +1,118 @@
+/*
+ * AdminListCard and its grid (components/ui/AdminListCard.jsx). Plain CSS on the design tokens (--ds-*).
+ */
+/* ---- AdminListCard: one item of an admin list ----------------------------------------------------------------- */
+
+.alc-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alc-grid__item {
+  display: flex;
+  min-width: 0;
+}
+
+.alc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* The status badge at the left, the three dots in the top right corner */
+.alc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.alc-menu {
+  margin: -6px -8px -6px auto;
+}
+
+.alc-title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+  overflow-wrap: anywhere;
+}
+
+.alc-description {
+  display: -webkit-box;
+  min-height: calc(2 * 1.54em);
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.alc-description[data-empty='true'] {
+  color: var(--ds-subtle);
+}
+
+/* The roll number count leads: it is the figure staff come for */
+.alc-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin: 8px 0 0;
+}
+
+.alc-number {
+  font: var(--ds-type-numeral-m);
+  letter-spacing: var(--ds-tracking-numeral-m);
+  font-variant-numeric: tabular-nums;
+}
+
+.alc-unit {
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.alc-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.alc-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.alc-facts svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* The Manage button (or the buttons of the card's own actions) at the right end of the foot */
+.alc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--ds-line);
+}
+
+@media (max-width: 479.95px) {
+  .alc-foot .ui-button {
+    flex: 1 1 auto;
+  }
+}
+

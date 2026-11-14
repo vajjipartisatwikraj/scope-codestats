@@ -7,7 +7,6 @@ import { SpeechPageHero } from "../shared";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isAdminOrTeacher } from "../../../utils/userHelpers";
 import SpeechTestLeaderboard from "./SpeechTestLeaderboard";
-import FeedbackSummaryPanel from "./FeedbackSummaryPanel";
 import useSpeechLeaderboard from "./useSpeechLeaderboard";
 import useExportResults from "./useExportResults";
 import "./speechLeaderboard.css";
@@ -36,6 +35,11 @@ const SpeechTestLeaderboardPage = () => {
               {staff ? "Communication tests" : "VocalQ"}
             </Button>
             {staff ? (
+              <Button variant="spotlight" size="sm" onClick={() => navigate(`/admin/communication-tests/${id}/feedback`)}>
+                Feedback
+              </Button>
+            ) : null}
+            {staff ? (
               <Button
                 variant="primary"
                 size="sm"
@@ -54,8 +58,6 @@ const SpeechTestLeaderboardPage = () => {
       />
 
       <div className="sxl-stack">
-        {staff ? <FeedbackSummaryPanel testId={id} /> : null}
-
         <SpeechTestLeaderboard testId={id} isAdmin={staff} currentUserId={currentUserId} data={data} />
       </div>
     </Page>

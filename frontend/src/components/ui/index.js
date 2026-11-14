@@ -6,11 +6,12 @@
  *   Display       Badge, Chip, Avatar, OrgLogo (a company or issuer logo with an initials fallback), Tip,
  *                 ReviewItem (one rating and comment; put the items in a ul.ui-reviews),
  *                 Prose (teacher-written HTML, sanitized, in the reading typography)
- *   Forms         TextField, SelectField, Checkbox, Switch, SearchField
+ *   Forms         TextField, SelectField, Checkbox, Switch, SearchField, RollNumberInput (upload or paste roll numbers)
  *   Overlays      Dialog, ConfirmDialog, Drawer, DetailPanel (the sliding detail view of a list item)
  *   Feedback      EmptyState, Notice, Skeleton, SkeletonRows
  *   Layout        Page (narrow), PageHeader, Card, Pagination, BulkBar, Toolbar,
- *                 AdminTop (the fixed heading and search row of every admin screen)
+ *                 AdminTop (the fixed heading and search row of every admin screen),
+ *                 AdminListCard and AdminCardGrid (an item of an admin list as a card, and the grid)
  *   Menus         Menu (a popover list of actions)
  *   Structure     Disclosure (accordion item), Stepper (pills for a multi-step flow)
  *   Stats         StatTile, StatGrid (.ui-stats)
@@ -30,11 +31,13 @@ export { default as ReviewItem } from './ReviewItem';
 export { default as Prose } from './Prose';
 export { OrgLogo, cleanDomain, logoDomainOf } from './OrgLogo';
 export { TextField, SelectField, Checkbox, Switch, SearchField } from './Field';
+export { default as RollNumberInput } from './RollNumberInput';
 export { Dialog, ConfirmDialog, Drawer } from './Overlays';
 export { default as DetailPanel } from './DetailPanel';
 export { EmptyState, Notice, Skeleton, SkeletonRows } from './Feedback';
 export { Page, PageHeader, Card, Pagination, BulkBar, Toolbar } from './Layout';
 export { AdminTop } from './AdminTop';
+export { default as AdminListCard, AdminListCardSkeleton, AdminCardGrid } from './AdminListCard';
 export { Menu } from './Menu';
 export { Disclosure } from './Disclosure';
 export { Stepper } from './Stepper';

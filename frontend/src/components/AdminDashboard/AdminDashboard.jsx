@@ -8,7 +8,7 @@ import { AdminTop, Button, Page, PillTabs } from '../ui';
 import './adminDashboard.css';
 import { exportLeaderboard } from './export/exportLeaderboard';
 import useAnalytics from './hooks/useAnalytics';
-import useRemote from './hooks/useRemote';
+import useRemote from '../../hooks/useRemote';
 import OverviewView from './views/OverviewView';
 import PerformanceView from './views/PerformanceView';
 import PlatformsView from './views/PlatformsView';

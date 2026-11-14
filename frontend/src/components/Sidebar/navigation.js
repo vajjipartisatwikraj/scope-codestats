@@ -7,6 +7,7 @@ import { ChartBarIcon } from '@phosphor-icons/react/dist/csr/ChartBar';
 import { ChatsIcon } from '@phosphor-icons/react/dist/csr/Chats';
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText';
+import { HandshakeIcon } from '@phosphor-icons/react/dist/csr/Handshake';
 import { MicrophoneIcon } from '@phosphor-icons/react/dist/csr/Microphone';
 import { PulseIcon } from '@phosphor-icons/react/dist/csr/Pulse';
 import { ShieldCheckIcon } from '@phosphor-icons/react/dist/csr/ShieldCheck';
@@ -16,6 +17,7 @@ import { StackIcon } from '@phosphor-icons/react/dist/csr/Stack';
 import { TargetIcon } from '@phosphor-icons/react/dist/csr/Target';
 import { UserGearIcon } from '@phosphor-icons/react/dist/csr/UserGear';
 import { UserMinusIcon } from '@phosphor-icons/react/dist/csr/UserMinus';
+import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users';
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree';
 import {
   getDashboardPath,
@@ -123,6 +125,20 @@ const GROUPS = [
       },
     ],
   },
+  {
+    id: 'mentoring',
+    title: 'Mentoring',
+    items: [
+      {
+        id: 'my-students',
+        label: 'My students',
+        icon: UsersIcon,
+        // Teachers only: the students they mentor, one list per mentorship they were chosen for
+        path: () => '/admin/my-students',
+        visible: (user) => isTeacherUser(user),
+      },
+    ],
+  },
   // Staff only from here: what teachers and admins use to run the courses, who is on the platform, and the platform itself.
   {
     id: 'manage',
@@ -173,6 +189,14 @@ const GROUPS = [
         path: () => '/admin/teacher-requests',
         visible: (user) => isAdminUser(user),
         badge: 'teacherRequests',
+      },
+      {
+        id: 'mentorships',
+        label: 'Mentorships',
+        icon: HandshakeIcon,
+        // Admins only: create mentorships and choose the teachers who mentor in them
+        path: () => '/admin/mentorships',
+        visible: (user) => isAdminUser(user),
       },
       {
         id: 'manage-users',
@@ -229,11 +253,12 @@ const GROUP_TITLES = {
   overview: 'Overview',
   practice: 'Practice',
   grow: 'Grow',
+  mentoring: 'Mentoring',
   manage: 'Manage',
   admin: 'Admin',
   system: 'System',
 };
-const MEMBER_ORDER = ['practice', 'grow', 'manage', 'admin', 'system'];
+const MEMBER_ORDER = ['practice', 'grow', 'mentoring', 'manage', 'admin', 'system'];
 const ADMIN_ORDER = ['overview', 'manage', 'admin', 'system'];
 
 /**

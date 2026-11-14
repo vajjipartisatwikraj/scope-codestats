@@ -57,6 +57,7 @@ import NotificationManagement from "./components/notificationManagement";
 import ManageUsers from "./components/manageUsers";
 import Monitoring from "./components/monitoring";
 import UserGroups, { UserGroupPage } from "./components/userGroupManagement";
+import { MentorshipList, MentorshipPage, MentorRosterPage, MyStudents } from "./components/mentorships";
 import ControlPanel from "./components/controlPanel";
 import TeacherRequests from "./components/teacherRequests";
 import SuspendAccounts from "./components/suspendAccounts";
@@ -91,7 +92,8 @@ import { SpeechTestSetup } from "./components/speechX/setup";
 import SpeechSectionRunner from "./components/speechX/runner";
 import { SectionResultsPage } from "./components/speechX/results";
 import { SpeechTestFeedbackPage } from "./components/speechX/feedback";
-import { SpeechTestLeaderboardPage } from "./components/speechX/leaderboard";
+import { SpeechTestLeaderboardPage, SpeechTestFeedbackSummaryPage } from "./components/speechX/leaderboard";
+import { SpeechTestProgressPage } from "./components/speechX/progress";
 import { CommunicationTestManagement, CommunicationTestEditor } from "./components/speechX/admin";
 
 // Import resume builder components
@@ -268,9 +270,13 @@ const MainContent = () => {
       "/admin/monitoring",
       "/admin/suspend-accounts",
       "/admin/access-list",
+      "/admin/my-students",
     ].includes(location.pathname) ||
     location.pathname.startsWith("/admin/bank-library") ||
-    location.pathname.startsWith("/admin/user-groups");
+    location.pathname.startsWith("/admin/user-groups") ||
+    location.pathname.startsWith("/admin/mentorships") ||
+    // the progress page of a communication test has the admin top; its results and feedback pages do not
+    /^\/admin\/communication-tests\/[^/]+\/progress$/.test(location.pathname);
   const isFixedTopPage = location.pathname === "/cohorts" || location.pathname === "/admin/cohorts" || hasAdminTop;
 
   // Check if current path should not show footer
@@ -315,6 +321,8 @@ const MainContent = () => {
     "/admin/monitoring",
     "/admin/suspend-accounts",
     "/admin/user-groups",
+    "/admin/mentorships",
+    "/admin/my-students",
     "/admin/teacher-requests",
     "/admin/control-panel",
     "/admin/access-list",
@@ -335,6 +343,7 @@ const MainContent = () => {
     !location.pathname.startsWith("/admin/cohorts/") &&
     !location.pathname.startsWith("/admin/bank-library/") &&
     !location.pathname.startsWith("/admin/user-groups/") &&
+    !location.pathname.startsWith("/admin/mentorships/") &&
     !location.pathname.startsWith("/practice-arena/") &&
     !location.pathname.startsWith("/speech-tests/") &&
     !location.pathname.startsWith("/admin/communication-tests/") &&
@@ -809,6 +818,38 @@ const MainContent = () => {
                   }
                 />
                 <Route
+                  path="/admin/mentorships"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <MentorshipList />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/mentorships/:typeId"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <MentorshipPage />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/mentorships/:typeId/mentors/:teacherId"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <MentorRosterPage />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/my-students"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <MyStudents />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
                   path="/admin/academic-year-config"
                   element={
                     <PrivateRoute adminOnly={true}>
@@ -972,6 +1013,21 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true}>
                       <SpeechTestLeaderboardPage />
+                    </PrivateRoute>
+                  }
+                />                <Route
+                  path="/admin/communication-tests/:id/feedback"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <SpeechTestFeedbackSummaryPage />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/communication-tests/:id/progress"
+                  element={
+                    <PrivateRoute adminOnly={true}>
+                      <SpeechTestProgressPage />
                     </PrivateRoute>
                   }
                 />

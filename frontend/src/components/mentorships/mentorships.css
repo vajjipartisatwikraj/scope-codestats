@@ -1,0 +1,218 @@
+/*
+ * Mentorships (the admin list, a mentorship's page, a mentor's students and the teacher's My students)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). The fixed
+ * top of every screen is AdminTop. The tables are the kit's .ui-band-table in a .ui-table-wrap. Only
+ * what the kit does not have lives here. design/screens.md section 16.
+ */
+
+.ms-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ms-skeleton-gap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ms-results {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The count inside a pill of the top row */
+.ms-count {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- A person: picture, name and email ------------------------------------------------------------ */
+
+.ms-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ms-person__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ms-person__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-person__email {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Table cells ---------------------------------------------------------------------------------- */
+
+.ms-roll {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ms-none {
+  color: var(--ds-subtle);
+}
+
+/* The last column holds the row's action, right-aligned */
+.ui-band-table .ms-actions {
+  width: 64px;
+  text-align: right;
+}
+
+.ms-actions--wide {
+  width: 180px;
+}
+
+.ms .ms-remove.ui-icon-button {
+  color: var(--ds-danger);
+}
+
+/* ---- Below 900px every row is a list item ---------------------------------------------------------- */
+
+.ms-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ms-row:last-child {
+  border-bottom: 0;
+}
+
+.ms-row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ms-row__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-row__meta {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-row__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---- Drawers -------------------------------------------------------------------------------------- */
+
+.ms-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.ms-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ms-lead {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body);
+}
+
+.ms-note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+.ms-list {
+  margin: 0;
+  padding-left: 20px;
+  font: var(--ds-type-body);
+}
+
+.ms-list li + li {
+  margin-top: 4px;
+}
+
+/* The teachers to choose from, one row each with a checkbox */
+.ms-pick {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms-pick__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.ms-pick__row:last-child {
+  border-bottom: 0;
+}
+
+.ms-pick__row .ms-person {
+  flex: 1 1 auto;
+}
+
+/* What happened to the roll numbers that were added */
+.ms-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 899px) {
+  .ms-actions--wide {
+    width: auto;
+  }
+}

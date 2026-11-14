@@ -13,7 +13,7 @@ import useOverlay from './useOverlay';
  *   title              names the action ("Remove LeetCode username?"); the dialog is labelled by it
  *   description        one or two sentences on the consequence
  *   actions            the buttons, right-aligned, the main one last
- *   size               'sm' (440px) | 'md' (560px, default) | 'lg' (720px)
+ *   size               'sm' (440px) | 'md' (560px, default) | 'lg' (720px) | 'xl' (960px, for a table)
  *   busy               an action is in progress: Escape and the scrim do nothing
  *   initialFocusRef    what takes focus first (the safest action of a confirmation)
  *   as                 'div' (default) | 'form': the body and the actions are wrapped in one <form>,

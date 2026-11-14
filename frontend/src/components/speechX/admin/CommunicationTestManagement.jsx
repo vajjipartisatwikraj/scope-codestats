@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { MicrophoneIcon } from "@phosphor-icons/react/dist/csr/Microphone";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { UploadSimpleIcon } from "@phosphor-icons/react/dist/csr/UploadSimple";
-import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, SearchField, SelectField, Skeleton, pluralize } from "../../ui";
+import { AdminCardGrid, AdminListCardSkeleton, AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, SearchField, SelectField, pluralize } from "../../ui";
 import { normalizeQuery, testMatchesQuery } from "../shared";
 import AdminTestCard from "./AdminTestCard";
 import CommunicationTestStudentsDialog from "./CommunicationTestStudentsDialog";
@@ -153,15 +153,9 @@ const CommunicationTestManagement = () => {
   let body;
   if (loading) {
     body = (
-      <div className="sxa-grid" aria-busy="true" aria-label="Loading communication tests">
+      <div className="ui-grid" role="status" aria-label="Loading communication tests">
         {[0, 1, 2].map((key) => (
-          <Card key={key}>
-            <Skeleton height={24} width="40%" radius="var(--ds-radius-pill)" />
-            <Skeleton height={28} width="70%" className="sxa-skeleton-gap" />
-            <Skeleton height={16} width="90%" className="sxa-skeleton-gap" />
-            <Skeleton height={64} className="sxa-skeleton-gap" radius="var(--ds-radius-lg)" />
-            <Skeleton height={36} width="60%" className="sxa-skeleton-gap" radius="var(--ds-radius-pill)" />
-          </Card>
+          <AdminListCardSkeleton key={key} />
         ))}
       </div>
     );
@@ -205,23 +199,24 @@ const CommunicationTestManagement = () => {
     );
   } else {
     body = (
-      <ul className="sxa-grid" aria-label="Communication tests">
+      <AdminCardGrid label="Communication tests">
         {visible.map((test) => (
-          <li key={test._id} className="sxa-grid__item">
-            <AdminTestCard
-              test={test}
-              busy={busy}
-              onEdit={() => navigate(`/admin/communication-tests/${test._id}/edit`)}
-              onResults={() => navigate(`/admin/communication-tests/${test._id}/results`)}
-              onStudents={() => setStudentsFor(test._id)}
-              onTogglePublish={togglePublish}
-              onDuplicate={duplicate}
-              onExport={exportJson}
-              onDelete={setDeleting}
-            />
-          </li>
+          <AdminTestCard
+            key={test._id}
+            test={test}
+            busy={busy}
+            onEdit={() => navigate(`/admin/communication-tests/${test._id}/edit`)}
+            onResults={() => navigate(`/admin/communication-tests/${test._id}/results`)}
+            onProgress={() => navigate(`/admin/communication-tests/${test._id}/progress`)}
+            onFeedback={() => navigate(`/admin/communication-tests/${test._id}/feedback`)}
+            onStudents={() => setStudentsFor(test._id)}
+            onTogglePublish={togglePublish}
+            onDuplicate={duplicate}
+            onExport={exportJson}
+            onDelete={setDeleting}
+          />
         ))}
-      </ul>
+      </AdminCardGrid>
     );
   }
 
@@ -259,7 +254,8 @@ const CommunicationTestManagement = () => {
             </>
           )
         }
-      />      <input
+      />
+      <input
         ref={fileInput}
         type="file"
         accept=".json,application/json"

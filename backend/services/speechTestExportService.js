@@ -1,23 +1,26 @@
 /**
  * Builds the results workbook of one speech (VocalQ) test for the admin.
  *
- * Five sheets:
- *   Summary          – the test, its window and the headline numbers
- *   Leaderboard      – every eligible student, ranked: details, final score, time and the score of
- *                      every section. Students who never started are listed too.
+ * Up to six sheets:
+ *   Summary          – the test, its window, which students it covers and the headline numbers
+ *   Mentor analytics – only when one mentorship is chosen: a row and two bar charts per mentor
+ *                      (average score, and how many of their students took part)
+ *   Leaderboard      – every eligible student, ranked: details, mentors, final score, time and the
+ *                      score of every section. Students who never started are listed too.
  *   Section scores   – one row per student and section: status, score, answered, time, submitted
  *   Question scores  – one row per student and question: the score and the judge's reason
  *   Feedback         – what each student said about the test (overall, four parts, comment)
  *
- * The ranking comes from the route (`entries`, the same list the on-screen leaderboard shows), so
- * the workbook and the page always agree. Everything else is read here.
+ * The students, their ranks and their mentors come from services/speechTestProgress.js (the same
+ * list the progress page shows), so the workbook and the page always agree. Everything else is read
+ * here.
  */
 
 const ExcelJS = require("exceljs");
 
 const SpeechTestAttempt = require("../models/SpeechTestAttempt");
 const SpeechTestFeedback = require("../models/SpeechTestFeedback");
-const User = require("../models/User");
+const { addBarCharts } = require("./xlsxCharts");
 
 const BRAND = "FF0585E0";
 const HEADER_TEXT = "FFFFFFFF";
@@ -142,6 +145,15 @@ const studentCells = (user) => [
   gradYear(user),
 ];
 
+/** Mentor details of one student: the mentorships, the mentors and their emails, one cell each. */
+const mentorCells = (mentors = []) => [
+  [...new Set(mentors.map((mentor) => mentor.mentorship))].join("; "),
+  mentors.map((mentor) => mentor.name).join("; "),
+  mentors.map((mentor) => mentor.email).join("; "),
+];
+
+const MENTOR_COLUMNS = [col("Mentorship", 20), col("Mentor", 24), col("Mentor email", 30)];
+
 const STUDENT_COLUMNS = [
   col("Name", 26),
   col("Roll no", 16),
@@ -151,32 +163,77 @@ const STUDENT_COLUMNS = [
   col("Graduating year", 15, { align: "center" }),
 ];
 
+/** The mentor comparison sheet, with its two charts. Returns what addBarCharts needs to draw them. */
+function addMentorAnalytics(workbook, rows) {
+  const columns = [
+    col("Mentor", 26),
+    col("Email", 30),
+    col("Assigned students", 17, { align: "center" }),
+    col("Participated", 14, { align: "center" }),
+    col("Finished", 12, { align: "center" }),
+    col("Not started", 13, { align: "center" }),
+    col("Average score", 15, { numFmt: "0.0", align: "center" }),
+    col("Top score", 12, { numFmt: "0.0", align: "center" }),
+  ];
+  const sheet = addTable(
+    workbook,
+    "Mentor analytics",
+    columns,
+    rows.map((row) => [row.mentor, row.email, row.assigned, row.participated, row.finished, row.notStarted, row.averageScore, row.topScore]),
+    { tabColor: BRAND }
+  );
+
+  const last = rows.length + 1;
+  const sheetName = sheet.name;
+  const categories = { ref: `$A$2:$A$${last}`, labels: rows.map((row) => row.mentor) };
+  const top = last + 1; // zero-based row of the first empty line under the table
+  const series = (name, letter, key, color) => ({ name, nameRef: `$${letter}$1`, ref: `$${letter}$2:$${letter}$${last}`, values: rows.map((row) => row[key]), color });
+
+  return {
+    sheetId: sheet.id,
+    charts: [
+      {
+        title: "Average score by mentor",
+        sheetName,
+        categories,
+        series: [series("Average score", "G", "averageScore", "0585E0")],
+        from: { col: 0, row: top + 1 },
+        to: { col: 3, row: top + 19 },
+      },
+      {
+        title: "Students by mentor",
+        sheetName,
+        categories,
+        series: [series("Assigned students", "C", "assigned", "9AA7B5"), series("Participated", "D", "participated", "7C5CFC"), series("Finished", "E", "finished", "0585E0")],
+        from: { col: 3, row: top + 1 },
+        to: { col: 8, row: top + 19 },
+      },
+    ],
+  };
+}
+
 /**
  * @param {object} args
- * @param {object} args.test     the SpeechTest document (sections with questions, eligibleUsers)
- * @param {Array}  args.entries  the ranked list the leaderboard shows, in-progress attempts included
+ * @param {object} args.test        the SpeechTest document (sections with questions)
+ * @param {Array}  args.entries     the ranked students, in-progress attempts included, each with `mentors`
+ * @param {Array}  args.notStarted  the students who never started, each with `mentors`
+ * @param {Array|null} args.mentorRows  one row per mentor of the chosen mentorship, or null for no analytics sheet
+ * @param {string} args.label       which students the workbook covers ("All students", "CRT · All mentors")
+ * @param {Set<string>|null} args.studentIds  the students in view, to narrow the feedback; null for everybody
  * @returns {Promise<Buffer>} the .xlsx file
  */
-async function buildSpeechTestWorkbook({ test, entries }) {
+async function buildSpeechTestWorkbook({ test, entries, notStarted = [], mentorRows = null, label = "All students", studentIds = null }) {
   const attemptIds = entries.map((entry) => entry.attemptId);
   const attemptsById = new Map(
     (await SpeechTestAttempt.find({ _id: { $in: attemptIds } }).lean()).map((attempt) => [String(attempt._id), attempt])
   );
 
-  // Eligible students who never started: still part of "all students"
-  const withAttempt = new Set(entries.map((entry) => String(entry.user._id)));
-  const notStartedIds = (test.eligibleUsers || []).filter((id) => !withAttempt.has(String(id)));
-  const notStarted = notStartedIds.length
-    ? await User.find({ _id: { $in: notStartedIds }, userType: { $nin: ["admin", "teacher"] } })
-        .select("name rollNumber email department section graduatingYear graduationYear")
-        .sort({ rollNumber: 1 })
-        .lean()
-    : [];
-
-  const feedback = await SpeechTestFeedback.find({ test: test._id })
-    .sort({ createdAt: 1 })
-    .populate("user", "name rollNumber email department section graduatingYear graduationYear")
-    .lean();
+  const feedback = (
+    await SpeechTestFeedback.find({ test: test._id })
+      .sort({ createdAt: 1 })
+      .populate("user", "name rollNumber email department section graduatingYear graduationYear")
+      .lean()
+  ).filter((item) => !studentIds || (item.user && studentIds.has(String(item.user._id))));
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "VocalQ";
@@ -201,11 +258,12 @@ async function buildSpeechTestWorkbook({ test, entries }) {
 
   const facts = [
     ["Test", test.title],
+    ["Students covered", label],
     ["Available from", formatDateTime(test.startTime)],
     ["Available until", formatDateTime(test.endTime)],
     ["Sections", sections.length],
     ["Questions", sections.reduce((sum, s) => sum + (s.questions?.length || 0), 0)],
-    ["Eligible students", entries.length + notStarted.length],
+    ["Students", entries.length + notStarted.length],
     ["Finished the test", finished.length],
     ["Still in progress", entries.length - finished.length],
     ["Not started", notStarted.length],
@@ -220,10 +278,14 @@ async function buildSpeechTestWorkbook({ test, entries }) {
     row.getCell(2).alignment = { horizontal: "left" };
   });
 
+  // ---- Mentor analytics -------------------------------------------------------------------------
+  const analytics = mentorRows && mentorRows.length > 0 ? addMentorAnalytics(workbook, mentorRows) : null;
+
   // ---- Leaderboard ----------------------------------------------------------------------------
   const leaderboardColumns = [
     col("Rank", 8, { align: "center" }),
     ...STUDENT_COLUMNS,
+    ...MENTOR_COLUMNS,
     col("Status", 14, { align: "center" }),
     col("Final score", 13, { numFmt: "0.0", align: "center" }),
     col("Time spent", 14, { align: "center" }),
@@ -240,6 +302,7 @@ async function buildSpeechTestWorkbook({ test, entries }) {
     return [
       entry.rank ?? "",
       ...studentCells(entry.user),
+      ...mentorCells(entry.mentors),
       entry.status === "completed" ? "Completed" : "In progress",
       numberOrBlank(entry.finalScore),
       formatDuration(entry.totalTimeUsedSeconds),
@@ -253,6 +316,7 @@ async function buildSpeechTestWorkbook({ test, entries }) {
     leaderboardRows.push([
       "",
       ...studentCells(user),
+      ...mentorCells(user.mentors),
       "Not started",
       null,
       "",
@@ -358,7 +422,8 @@ async function buildSpeechTestWorkbook({ test, entries }) {
   ]);
   addTable(workbook, "Feedback", feedbackColumns, feedbackRows);
 
-  return workbook.xlsx.writeBuffer();
+  const buffer = await workbook.xlsx.writeBuffer();
+  return analytics ? addBarCharts(buffer, analytics) : Buffer.from(buffer);
 }
 
 /** A file name that is safe in a header and on every file system. */

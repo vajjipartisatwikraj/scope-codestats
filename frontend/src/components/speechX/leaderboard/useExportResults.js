@@ -17,18 +17,20 @@ const messageOf = async (error) => {
 };
 
 /**
- * Downloads the complete results of a test as an Excel workbook (leaderboard, section and question
- * scores, feedback). The server builds the file; this hands it to the browser.
+ * Downloads the results of a test as an Excel workbook (leaderboard with mentors, section and question
+ * scores, feedback). The server builds the file; this hands it to the browser. `filters` is
+ * { mentorship, mentor } from the progress page: the workbook then covers those students, and one
+ * mentorship adds a sheet that compares its mentors. Without it the workbook covers everybody.
  *
  * Returns { exporting, exportResults }.
  */
-const useExportResults = (testId, title = "vocalq-test") => {
+const useExportResults = (testId, title = "vocalq-test", filters) => {
   const [exporting, setExporting] = useState(false);
 
   const exportResults = useCallback(async () => {
     setExporting(true);
     try {
-      const response = await adminApi.exportResults(testId);
+      const response = await adminApi.exportResults(testId, filters);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -46,7 +48,7 @@ const useExportResults = (testId, title = "vocalq-test") => {
     } finally {
       setExporting(false);
     }
-  }, [testId, title]);
+  }, [testId, title, filters]);
 
   return { exporting, exportResults };
 };

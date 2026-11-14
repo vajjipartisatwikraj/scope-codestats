@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminAnalyticsApi, analyticsErrorMessage } from '../../../services/adminAnalyticsApi';
 import { DEFAULT_PERIOD, PAGE_SIZES } from '../model/performanceModel';
-import useRemote from './useRemote';
+import useRemote from '../../../hooks/useRemote';
 
 const NO_FILTERS = { department: '', graduatingYear: '', section: '' };
 const SEARCH_DEBOUNCE_MS = 350;

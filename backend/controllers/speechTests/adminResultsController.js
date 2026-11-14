@@ -9,6 +9,7 @@ const SpeechTestAttempt = require("../../models/SpeechTestAttempt");
 const SpeechTestFeedback = require("../../models/SpeechTestFeedback");
 const exportService = require("../../services/speechTestExportService");
 const { buildLeaderboard } = require("../../services/speechTestLeaderboard");
+const { loadProgress } = require("../../services/speechTestProgress");
 const { isValidId } = require("../../services/speechTestState");
 const { ServiceError } = require("../../utils/ServiceError");
 const { handle, loadTestById } = require("./common");
@@ -23,14 +24,29 @@ const getResults = handle(async (req, res) => {
 });
 
 /**
+ * How the students a staff member mentors are doing: the numbers, the ranked students and the ones
+ * who have not started. Filters: ?mentorship=<id|all> and, for admins, &mentor=<id|all>. A teacher
+ * always sees their own students.
+ */
+const getProgress = handle(async (req, res) => {
+  const test = await loadTestById(req, { lean: true });
+
+  const query = { mentorship: req.query.mentorship || "all", mentor: req.query.mentor || "all" };
+  const { entries, notStarted, stats, filters } = await loadProgress(test, req.user, query);
+  res.json({ test: summarizeTest(test), stats, filters, entries, notStarted });
+});
+
+/**
  * The complete results of a test as an Excel workbook: the leaderboard of every eligible student with
- * all section scores, a sheet per section and per question, and the feedback students sent.
+ * all section scores and their mentors, a sheet per section and per question, and the feedback
+ * students sent. With ?mentorship= and ?mentor= (the progress page's filters) it covers those
+ * students only, and a single mentorship adds a sheet that compares its mentors, with charts.
  */
 const exportResults = handle(async (req, res) => {
   const test = await loadTestById(req, { lean: true });
 
-  const entries = await buildLeaderboard(test, { includeInProgress: true });
-  const buffer = await exportService.buildSpeechTestWorkbook({ test, entries });
+  const progress = await loadProgress(test, req.user, req.query);
+  const buffer = await exportService.buildSpeechTestWorkbook({ test, ...progress });
   const filename = exportService.exportFileName(test);
 
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -65,4 +81,4 @@ const deleteAttempt = handle(async (req, res) => {
   res.json({ message: "Submission deleted. The student can take the test again." });
 });
 
-module.exports = { getResults, exportResults, deleteAttempt };
+module.exports = { getResults, getProgress, exportResults, deleteAttempt };

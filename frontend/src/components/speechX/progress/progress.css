@@ -1,0 +1,139 @@
+/*
+ * Progress of a communication test (speechX/progress)
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). The
+ * fixed top is AdminTop; the leaderboard below the tiles is the one of speechX/leaderboard.
+ * Prefix sxp-. design/screens.md section 16.
+ */
+
+.sxp-body,
+.sxp-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap, 16px);
+  min-width: 0;
+}
+
+/* ---- The list behind a tile (a dialog) ---------------------------------------------------------- */
+
+.sxp-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The table: the kit's band table, with the student's picture and mentor in the first column */
+.sxp-table {
+  min-width: 760px;
+}
+
+.sxp-table td {
+  height: 56px;
+}
+
+.sxp-student {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sxp-student__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sxp-student__name {
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  white-space: nowrap;
+}
+
+.sxp-student__meta {
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+}
+
+.sxp-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sxp-none {
+  color: var(--ds-subtle);
+}
+
+.sxp-people {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sxp-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.sxp-person:last-child {
+  border-bottom: 0;
+}
+
+.sxp-person__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sxp-person__name {
+  overflow: hidden;
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sxp-person__meta {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sxp-person__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.sxp-person__score {
+  min-width: 2.5ch;
+  font: var(--ds-type-label);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sxp-more {
+  margin: 12px 0 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+@media (max-width: 599.95px) {
+  .sxp-person__end {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}

@@ -406,6 +406,8 @@ app.use("/api/health", healthRoutes);
 app.use("/api/auth/google", googleAuthRoutes);
 app.use("/api/cohorts", cohortsRoutes);
 app.use("/api/user-groups", require("./routes/userGroups")); // named roll number lists attached to cohorts
+app.use("/api/mentorships", require("./routes/mentorships")); // admin: mentorships, their teachers and rosters
+app.use("/api/my-mentorships", require("./routes/myMentorships")); // teacher: their mentorships and students
 app.use("/api/teacher-requests", require("./routes/teacherRequests")); // teacher access requests (admin approves)
 app.use("/api/platform-progress", require("./routes/platformProgress")); // dashboard Progress tab (platform history, GitHub timeline)
 app.use("/api/admin/access-list", require("./routes/accessList")); // admin: who may sign in (LOGIN_MODE=allowlist)

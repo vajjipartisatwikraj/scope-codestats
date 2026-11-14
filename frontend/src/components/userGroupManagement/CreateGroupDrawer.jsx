@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { apiErrorMessage, userGroupApi } from '../../services/userGroupApi';
-import { Button, Drawer, TextField } from '../ui';
-import RollNumberInput from './RollNumberInput';
+import { Button, Drawer, RollNumberInput, TextField } from '../ui';
 
 /**
  * Name a new user group and give it its roll numbers (CSV upload or pasted). A longer form, so a

@@ -62,6 +62,7 @@ router.delete("/admin/:id/user-groups/:groupId", staff, userGroupController.deta
 // ----- results --------------------------------------------------------------
 
 router.get("/admin/:id/results", staff, adminResultsController.getResults);
+router.get("/admin/:id/progress", staff, adminResultsController.getProgress);
 router.get("/admin/:id/export", staff, adminResultsController.exportResults);
 router.delete("/admin/:id/attempts/:attemptId", staff, adminResultsController.deleteAttempt);
 

@@ -7,7 +7,7 @@
  * design/screens.md sections 10, 16 and 17.
  *
  * Layout in short
- *   Management  a grid of test cards: one column on a phone, then as many 380px+ columns as fit.
+ *   Management  a grid of test cards: the kit's AdminListCard in an AdminCardGrid.
  *   Editor      the stepper, then the step at the left and a summary rail at the right from 1100px
  *               (hidden below it; the Review step shows the same summary inline), then a sticky footer.
  */
@@ -20,25 +20,7 @@
   margin-top: 12px;
 }
 
-/* ---- Management: the grid of tests -------------------------------------------------------------- */
-
-.sxa-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
-  gap: var(--ui-gap);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sxa-grid__item {
-  display: flex;
-  min-width: 0;
-}
-
-.sxa-grid__item > .sxa-test {
-  flex: 1 1 auto;
-}
+/* ---- Management ---------------------------------------------------------------------------------- */
 
 .sxa-empty-actions {
   display: flex;
@@ -66,128 +48,6 @@
   overflow-wrap: anywhere;
 }
 
-/* ---- A test card ------------------------------------------------------------------------------------ */
-
-.sxa-test {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.sxa-test__head {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.sxa-test__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.sxa-test__title {
-  margin: 0;
-  font: var(--ds-type-title);
-  letter-spacing: var(--ds-tracking-title);
-  overflow-wrap: anywhere;
-}
-
-.sxa-test__desc {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: var(--ds-muted);
-  font: var(--ds-type-body-sm);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-.sxa-test__when {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0;
-  color: var(--ds-muted);
-  font: var(--ds-type-body-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-.sxa-test__when svg {
-  flex: none;
-  margin-top: 2px;
-}
-
-.sxa-test__live {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-  margin: 0;
-  color: var(--ds-muted);
-  font: var(--ds-type-body-sm);
-}
-
-.sxa-test__feedback {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.sxa-test__types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sxa-type-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: var(--ds-radius-pill);
-  background-color: var(--ds-raised);
-  color: var(--ds-muted);
-  font: var(--ds-type-caption);
-  letter-spacing: var(--ds-tracking-caption);
-}
-
-.sxa-type-chip__dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.sxa-test__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--ds-line);
-}
-
-.sxa-test__more {
-  margin-left: auto;
-}
-
-/* On a touchscreen the small buttons of a card grow to the 44px touch target */
-@media (pointer: coarse) {
-  .sxa-test__actions .ui-button,
-  .sxa-test__actions .ui-icon-button {
-    min-width: 44px;
-    min-height: 44px;
-  }
-}
-
 /* ---- Figures and facts (cards, summary, review) ------------------------------------------------------ */
 
 .sxa-figures {
@@ -195,18 +55,6 @@
   flex-wrap: wrap;
   gap: 12px 24px;
   margin: 0;
-}
-
-.sxa-figures[data-cols='4'] {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 16px;
-}
-
-@media (max-width: 479.95px) {
-  .sxa-figures[data-cols='4'] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .sxa-figure {

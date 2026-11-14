@@ -2,7 +2,10 @@ import React, { useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { UploadSimpleIcon } from '@phosphor-icons/react/dist/csr/UploadSimple';
 import parseRollNumberCsv from '../../utils/parseRollNumberCsv';
-import { Button, TextField, formatNumber, pluralize } from '../ui';
+import Button from './Button';
+import { TextField } from './Field';
+import { formatNumber, pluralize } from './format';
+import './rollNumberInput.css';
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -18,7 +21,7 @@ const MAX_FILE_BYTES = 2 * 1024 * 1024;
  *   error                   an inline message for the field
  *   rows                    height of the text area
  *
- * Same parsing and limits as before: utils/parseRollNumberCsv.js, files up to 2 MB, .csv and .txt.
+ * Parsing and limits: utils/parseRollNumberCsv.js, files up to 2 MB, .csv and .txt. Used wherever staff add students by roll number (user groups, mentorships).
  */
 export default function RollNumberInput({ onChange, disabled = false, id = 'ug-roll-numbers', label = 'Roll numbers', error, rows = 6 }) {
   const fileInputRef = useRef(null);
@@ -57,13 +60,13 @@ export default function RollNumberInput({ onChange, disabled = false, id = 'ug-r
     .join(', ');
 
   return (
-    <div className="ug-rolls">
-      <div className="ug-rolls__file">
+    <div className="ui-rolls">
+      <div className="ui-rolls__file">
         <Button startIcon={<UploadSimpleIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => fileInputRef.current && fileInputRef.current.click()} disabled={disabled}>
           Upload CSV
         </Button>
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" className="ui-sr" tabIndex={-1} aria-hidden="true" onChange={handleFile} />
-        <span className="ug-rolls__name">{fileName || 'Or paste below: one roll number per line, or comma separated'}</span>
+        <span className="ui-rolls__name">{fileName || 'Or paste below: one roll number per line, or comma separated'}</span>
       </div>
 
       <TextField
@@ -78,10 +81,10 @@ export default function RollNumberInput({ onChange, disabled = false, id = 'ug-r
         error={error}
         spellCheck={false}
         autoComplete="off"
-        className="ug-rolls__field"
+        className="ui-rolls__field"
       />
 
-      <p className="ug-rolls__count" role="status" aria-live="polite">
+      <p className="ui-rolls__count" role="status" aria-live="polite">
         {summary}
       </p>
     </div>
