@@ -19,10 +19,14 @@
 .pp {
   --pp-pad: 16px;
   --pp-gap: 12px;
+  --pp-top-h: 65px; /* the top bar: 64px and its hairline */
 
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  /* The top bar is fixed to the window, so the page starts under it */
+  padding-top: var(--pp-top-h);
   background-color: var(--ds-canvas);
   color: var(--ds-text);
   font: var(--ds-type-body);
@@ -50,9 +54,14 @@
 
 /* ---- Top bar ------------------------------------------------------------------------------------ */
 
+/* Fixed to the top of the window: it stays put however the page scrolls. (position: sticky does not
+   work here: the app shell wraps every page in a box with overflow set, which sticky then treats as
+   its scroller even though that box does not scroll.) */
 .pp-top {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  left: 0;
   z-index: 20;
   background-color: var(--ds-canvas);
   border-bottom: 1px solid var(--ds-line);
@@ -1120,4 +1129,40 @@
   .pp-aside > * {
     animation: none !important;
   }
+}
+
+/* ---- Activity inside the platforms card: a heatmap above the platform's numbers -------------------- */
+
+.pp-act {
+  min-width: 0;
+}
+
+.pp-act__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.pp-act__summary {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What the platform reports about itself, set apart from the heatmap by a hairline */
+.pp-act__detail {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-line);
+}
+
+/* The GitHub numbers under its heatmap, set apart by a hairline */
+.pp-github--below {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ds-line);
 }

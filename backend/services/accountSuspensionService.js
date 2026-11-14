@@ -8,7 +8,8 @@
  *                      Scope-CodeStats profiles (usernames, scores, problems solved, ratings)
  *   PlatformSnapshot   the daily history of problems, ratings and contests
  *   ScoreHistory       the stored scores and ranks over time
- *   ActivityHeatmap    the coding heatmap
+ *   ActivityHeatmap    the coding heatmap (cohort days)
+ *   PlatformDailyActivity  the days of the heatmap that came from external platforms
  *   User               rankingInfo and weeklyActivity (rank, percentile, consistency index) are reset
  *
  * The student's account (name, email, roll number, department, profile details) and their
@@ -23,6 +24,7 @@ const Profile = require("../models/Profile");
 const PlatformSnapshot = require("../models/PlatformSnapshot");
 const ScoreHistory = require("../models/ScoreHistory");
 const ActivityHeatmap = require("../models/ActivityHeatmap");
+const PlatformDailyActivity = require("../models/PlatformDailyActivity");
 const escapeRegex = require("../utils/escapeRegex");
 const { ServiceError } = require("../utils/ServiceError");
 const log = require("../utils/logger").scope("ACCOUNT-SUSPENSION");
@@ -114,15 +116,16 @@ async function listAccounts({ search = "", linkedOnly = false, page = 1, limit =
 
 /** How much is stored about one account's coding data. */
 async function countStored(userId) {
-  const [profiles, snapshots, scoreHistory, heatmapDays] = await Promise.all([
+  const [profiles, snapshots, scoreHistory, cohortDays, platformDays] = await Promise.all([
     Profile.find({ userId }).select("platform username score problemsSolved").lean(),
     PlatformSnapshot.countDocuments({ userId }),
     ScoreHistory.countDocuments({ userId }),
     ActivityHeatmap.countDocuments({ userId }),
+    PlatformDailyActivity.countDocuments({ userId }),
   ]);
   return {
     profiles: profiles.map(toClientProfile),
-    counts: { profiles: profiles.length, snapshots, scoreHistory, heatmapDays },
+    counts: { profiles: profiles.length, snapshots, scoreHistory, heatmapDays: cohortDays + platformDays },
   };
 }
 
@@ -147,11 +150,12 @@ async function suspendAccount(userId, adminId) {
   const user = await User.findById(userId).select("_id").lean();
   if (!user) throw new ServiceError(404, "Account not found");
 
-  const [profiles, snapshots, scores, heatmap] = await Promise.all([
+  const [profiles, snapshots, scores, heatmap, platformDays] = await Promise.all([
     Profile.deleteMany({ userId: user._id }),
     PlatformSnapshot.deleteMany({ userId: user._id }),
     ScoreHistory.deleteMany({ userId: user._id }),
     ActivityHeatmap.deleteMany({ userId: user._id }),
+    PlatformDailyActivity.deleteMany({ userId: user._id }),
   ]);
 
   await User.updateOne(
@@ -163,7 +167,7 @@ async function suspendAccount(userId, adminId) {
     profiles: profiles.deletedCount,
     snapshots: snapshots.deletedCount,
     scoreHistory: scores.deletedCount,
-    heatmapDays: heatmap.deletedCount,
+    heatmapDays: heatmap.deletedCount + platformDays.deletedCount,
   };
   // Ids only, never emails: this is a security event
   log.info(

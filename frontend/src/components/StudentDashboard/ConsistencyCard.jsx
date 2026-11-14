@@ -9,8 +9,8 @@ import { pluralize } from './formatters';
  * 7 days the student's total score changed (6 or 7 days is 5, 5 days is 4, and so on) and keeps
  * it on the student (User.weeklyActivity), so this card shows exactly that number.
  *
- * "Active" is that same count of days. "Longest streak" is the most days in a row with a problem
- * solved in the activity heatmap of the last 12 months.
+ * "Active" is that same count of days. "Longest streak" is the most days in a row with some activity
+ * (any platform) in the activity heatmap of the last 12 months.
  *
  * One of the three tiles on the right: the dial takes the space between the title and the line
  * of plain text under it ("Active 6 of 7 days", "Longest streak 2").

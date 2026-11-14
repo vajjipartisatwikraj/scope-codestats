@@ -7,6 +7,7 @@ import { apiErrorMessage } from '../../../services/mentorshipApi';
 import useAutoHideScrollbars from '../../../hooks/useAutoHideScrollbars';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 import { AdminTop, Badge, Button, ConfirmDialog, EmptyState, IconButton, Notice, Page, SearchField, Skeleton, formatNumber, pluralize } from '../../ui';
+import { profilePath } from '../../publicProfile/profilePath';
 import { matchesTerm } from '../model/mentorshipModel';
 import PeopleTable from '../shared/PeopleTable';
 import AddStudentsDrawer from './AddStudentsDrawer';
@@ -125,6 +126,7 @@ export default function RosterScreen({ api, describe, onChanged }) {
           personLabel="Student"
           columns={COLUMNS}
           meta={metaOf}
+          linkTo={(student) => profilePath(student.email)}
           action={(student) => (
             <IconButton className="ms-remove" label={`Remove ${student.name}`} size="sm" tone="plain" onClick={() => setRemoving(student)}>
               <UserMinusIcon size={20} weight="regular" aria-hidden="true" />

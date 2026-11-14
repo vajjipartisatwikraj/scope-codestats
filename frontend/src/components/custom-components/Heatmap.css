@@ -155,6 +155,12 @@
 .hm[data-fill='true'] .hm__cell {
   aspect-ratio: auto;
 }
+/* With a designed hover card (renderTooltip) the square under the pointer gets a ring */
+.hm[data-tip='true'] .hm__cell:not(.hm__cell--void):hover {
+  outline: 2px solid var(--ds-text);
+  outline-offset: -2px;
+}
+
 /* The blank squares before the first day and after the last one keep the columns whole */
 .hm__cell--void {
   visibility: hidden;

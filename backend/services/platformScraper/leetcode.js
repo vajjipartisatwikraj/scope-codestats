@@ -7,6 +7,38 @@
  */
 const http = require("./http");
 const log = require("../../utils/logger").scope("LEETCODE");
+const { fromLeetCodeCalendar } = require("./activityParsers");
+
+const CALENDAR_QUERY = `
+  query userCalendar($username: String!) {
+    matchedUser(username: $username) {
+      userCalendar { submissionCalendar }
+    }
+  }
+`;
+
+/**
+ * The submissions of each day of the last year (the calendar on a LeetCode profile).
+ * @returns {Promise<{daily: object}|null>} null when the answer has no calendar
+ */
+async function fetchActivity(username) {
+  const response = await http.post(
+    "https://leetcode.com/graphql",
+    { query: CALENDAR_QUERY, variables: { username } },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Referer: `https://leetcode.com/${username}/`,
+        Origin: "https://leetcode.com",
+      },
+      validateStatus: (status) => status === 200,
+    },
+  );
+  const calendar = response.data?.data?.matchedUser?.userCalendar?.submissionCalendar;
+  if (calendar === undefined || calendar === null) return null;
+  const daily = fromLeetCodeCalendar(calendar);
+  return daily ? { daily } : null;
+}
 
 /**
  * Calculate normalized score for LeetCode profiles
@@ -801,4 +833,4 @@ async function getLeetCodeProfile(username) {
 }
 
 
-module.exports = { fetchProfile: getLeetCodeProfile, calculateLeetCodeScore };
+module.exports = { fetchProfile: getLeetCodeProfile, fetchActivity, calculateLeetCodeScore };

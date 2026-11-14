@@ -3,6 +3,7 @@ import { ArrowUpRightIcon } from '@phosphor-icons/react/dist/csr/ArrowUpRight';
 import { GithubLogoIcon } from '@phosphor-icons/react/dist/csr/GithubLogo';
 import { Button, Card, formatNumber } from '../ui';
 import { AnimatedNumber } from '../custom-components';
+import ActivityPanel from './ActivityPanel';
 
 const FIGURES = [
   { key: 'publicRepos', label: 'Public repositories' },
@@ -14,15 +15,19 @@ const FIGURES = [
 ];
 
 /**
- * The GitHub numbers the server keeps (repositories, commits, contributions, stars, followers).
- * Nothing is loaded from GitHub in the browser: no third-party script, no embedded image.
+ * GitHub, in its own card under the coding platforms: its year heatmap (contributions per day, in
+ * white) with its streaks, then the numbers the server keeps (repositories, commits, contributions,
+ * stars, followers). Nothing is loaded from GitHub in the browser: no third-party script, no embedded
+ * image.
  *
  *   platform   the github entry from platformsOf(), or undefined
+ *   activity   { dailyActivity, activeDays, totalCount, days } from the profile, or null
  */
-export default function GitHubCard({ platform }) {
+export default function GitHubCard({ platform, activity }) {
   if (!platform) return null;
   const data = platform.data;
   const shown = FIGURES.filter((figure) => (data[figure.key] || 0) > 0);
+  const hasActivity = Boolean(activity && Array.isArray(activity.dailyActivity));
 
   return (
     <Card
@@ -37,8 +42,10 @@ export default function GitHubCard({ platform }) {
         ) : null
       }
     >
+      {hasActivity ? <ActivityPanel activity={activity} sourceKey="github" /> : null}
+
       {shown.length > 0 ? (
-        <dl className="pp-github">
+        <dl className={hasActivity ? 'pp-github pp-github--below' : 'pp-github'}>
           {shown.map((figure) => (
             <div key={figure.key}>
               <dt>{figure.label}</dt>
@@ -48,9 +55,9 @@ export default function GitHubCard({ platform }) {
             </div>
           ))}
         </dl>
-      ) : (
+      ) : !hasActivity ? (
         <p className="pp-muted">No public GitHub activity has been recorded yet.</p>
-      )}
+      ) : null}
     </Card>
   );
 }

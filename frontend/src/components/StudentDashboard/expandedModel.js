@@ -78,11 +78,14 @@ export function bucketDaily(points, days) {
   }));
 }
 
-/** The last `days` days ending on `endKey`, each with the count from `dailyActivity` (0 when none) */
+/**
+ * The last `days` days ending on `endKey`, each with the problems solved in cohorts from `dailyActivity`
+ * (0 when none). The heatmap adds every platform together, so only the cohort part of a day is read.
+ */
 export function cohortDaily(dailyActivity, days, endKey) {
   const counts = new Map();
   (Array.isArray(dailyActivity) ? dailyActivity : []).forEach((entry) => {
-    if (entry && typeof entry.date === 'string') counts.set(entry.date.slice(0, 10), Number(entry.count) || 0);
+    if (entry && typeof entry.date === 'string') counts.set(entry.date.slice(0, 10), Number(entry.sources?.cohort) || 0);
   });
   const end = dayNumber(endKey);
   return Array.from({ length: days }, (_, offset) => {

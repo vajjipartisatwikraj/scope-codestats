@@ -16,7 +16,7 @@ const { normalizeEducation, validateEducation } = require("../utils/education");
 const { isInstitutionEmail } = require("../config/loginAccess");
 const {
   extractUsername,
-  saveUsernames,
+  updateUsernames,
   removePlatform: syncRemovePlatform,
   updatePlatform: syncPlatform,
 } = require("../services/profileSyncService");
@@ -164,6 +164,19 @@ const removePlatform = async (req, res) => {
         success: false,
         code: "confirmation_required",
         message: "Removing a username deletes its progress history. Send { confirm: true } to continue.",
+      });
+    }
+
+    // Unlinking and linking again would skip the wait after an update, so unlinking waits too
+    const linked = await Profile.findOne({ userId: req.user.id, platform });
+    const cooldownEndsAt = linked?.cooldownEndsAt();
+    if (cooldownEndsAt) {
+      const remainingTime = Math.ceil((cooldownEndsAt - Date.now()) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${formatDuration(remainingTime)} before unlinking your ${platform} profile.`,
+        remainingTime,
+        cooldownEndsAt,
       });
     }
 
@@ -322,7 +335,15 @@ const updateMyProfile = async (req, res) => {
       // Platform usernames go to the Profile collection.
       const submitted = { ...(profiles && typeof profiles === "object" ? profiles : {}) };
       if (githubUrl && !submitted.github) submitted.github = githubUrl;
-      await saveUsernames(user._id, submitted);
+      // Each new or changed username is fetched from its platform now (like the nightly sync of one profile)
+      const platformFailures = (await updateUsernames(user._id, submitted)).map((failure) =>
+        failure.cooldownEndsAt
+          ? {
+              ...failure,
+              message: `Please wait ${formatDuration(Math.ceil((failure.cooldownEndsAt - Date.now()) / 1000))} before updating your ${failure.platform} profile again.`,
+            }
+          : failure
+      );
 
       const saved = await Profile.find({ userId: user._id }).select("platform username").lean();
       const usernames = Object.fromEntries(saved.map((p) => [p.platform, p.username]));
@@ -330,6 +351,7 @@ const updateMyProfile = async (req, res) => {
       res.json({
         success: true,
         message: "Profile updated successfully",
+        platformFailures,
         profile: { ...toProfilePage(user), githubUrl: usernames.github || "", profiles: usernames },
       });
     } catch (validationError) {

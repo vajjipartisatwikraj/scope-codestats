@@ -25,5 +25,6 @@ router.use(
 
 router.get("/heatmap/:userId", heatmapController.getHeatmap);
 router.post("/heatmap/generate/:userId", heatmapController.rebuildHeatmap);
+router.post("/heatmap/refresh/:userId", heatmapController.refreshActivity);
 
 module.exports = router;

@@ -11,7 +11,7 @@
 const User = require("../models/User");
 const Achievement = require("../models/Achievement");
 const Profile = require("../models/Profile");
-const ActivityHeatmap = require("../models/ActivityHeatmap");
+const { getCombinedHeatmap } = require("./platformActivity/activityService");
 const { normalizeSkillSets } = require("../utils/skillSets");
 const { normalizeEducation } = require("../utils/education");
 const escapeRegex = require("../utils/escapeRegex");
@@ -158,18 +158,18 @@ const EMPTY_RANKING_INFO = {
 };
 
 /**
- * The solved-problems-per-day calendar of the last year, for the public profile. Only the day, the
- * count and the shade are sent (no sources). A calendar that cannot be read is left out: the rest of
- * the profile must still load.
+ * The activity calendar of the last year, for the public profile: cohort solves and every linked
+ * platform together. Each day carries its count, its shade and what each source contributed (numbers
+ * only). A calendar that cannot be read is left out: the rest of the profile must still load.
  */
 async function loadPublicActivity(userId, days = 365) {
   try {
-    const { dailyActivity, activeDays, totalCount } = await ActivityHeatmap.getHeatmap(userId, days);
+    const { dailyActivity, activeDays, totalCount } = await getCombinedHeatmap(userId, days);
     return {
       days,
       activeDays,
       totalCount,
-      dailyActivity: dailyActivity.map(({ date, count, level }) => ({ date, count, level })),
+      dailyActivity: dailyActivity.map(({ date, count, level, sources }) => ({ date, count, level, sources })),
     };
   } catch {
     return null;

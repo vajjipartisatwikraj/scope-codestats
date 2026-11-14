@@ -1,0 +1,64 @@
+/*
+ * The hover card of the activity heatmap (ActivityTip.jsx), inside the chart tip: the date as a quiet
+ * title, a row for each source (mark, name, figure), a hairline and the total. The card itself is
+ * ChartTip (white in both themes), so only the contents are styled here.
+ */
+
+.cc-tip.act-tip {
+  gap: 8px;
+  min-width: 232px;
+  padding: 12px 14px 12px;
+}
+
+.act-tip__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.act-tip__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--cc-tip-text);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.act-tip__figure {
+  flex: none;
+  color: var(--cc-tip-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.act-tip__figure strong {
+  color: var(--cc-tip-text);
+  font-weight: 800;
+}
+
+.act-tip__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ds-line);
+  color: var(--cc-tip-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.act-tip__total strong {
+  color: var(--cc-tip-text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.act-tip__none {
+  color: var(--cc-tip-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}

@@ -2,11 +2,10 @@ import brand from '../../brand';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import './publicProfile.css';
-import ActivityCard from './ActivityCard';
 import AchievementsCard from './AchievementsCard';
+import ActivityPlatformsCard from './ActivityPlatformsCard';
 import { AboutCard, DetailsCard, EducationCard, SkillsCard } from './AsideCards';
 import GitHubCard from './GitHubCard';
-import PlatformsCard from './PlatformsCard';
 import ProfileHero from './ProfileHero';
 import { ProfileError, ProfileNotFound, ProfileRateLimited, ProfileSkeleton } from './ProfileStates';
 import ProfileTopBar from './ProfileTopBar';
@@ -37,9 +36,10 @@ function useDocumentTitle(title) {
  *   ProfileTopBar    brand, theme switch, sign in / open dashboard
  *   ProfileHero      picture, name, who they are, links and Share
  *   StatTiles        college rank, department rank, problems solved, consistency
- *   ActivityCard     the year heatmap and streaks            (custom Heatmap)
- *   PlatformsCard    tabs: all platforms, then one per platform (custom PieChart, BarChart, Gauge)
- *   GitHubCard       the GitHub numbers
+ *   ActivityPlatformsCard  one card, tabs on top: all platforms, then one per platform. Each tab has its
+ *                    year heatmap with streaks (custom Heatmap), then the platform's numbers (custom
+ *                    PieChart, BarChart, Gauge)
+ *   GitHubCard       under it: the GitHub heatmap and the GitHub numbers
  *   AchievementsCard projects, internships, certifications, achievements, with a DetailPanel
  *   AsideCards       about, details, skills and interests, education
  *   ShareDialog      QR code, copy link, LinkedIn
@@ -75,9 +75,8 @@ export default function PublicProfile() {
         <StatTiles profile={profile} />
 
         <div className="pp-main-col">
-          <ActivityCard activity={profile.activity} />
-          <PlatformsCard platforms={platforms} />
-          <GitHubCard platform={github} />
+          <ActivityPlatformsCard activity={profile.activity} platforms={platforms} />
+          <GitHubCard platform={github} activity={profile.activity} />
           <AchievementsCard achievements={profile.achievements} />
         </div>
 

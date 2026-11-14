@@ -8,7 +8,7 @@ node_modules/
 history/
 testing/
 SQLJudge/
-#SpeechJudge/
+SpeechJudge/
 AI-InterviewJudge/
 .kiro/
 .impeccable/
@@ -19,6 +19,7 @@ DSA Practice Lab/
 Java Practice Lab/
 Python Practice Lab/
 Raw_Questions/
+scraper/
 
 # Environment variables
 .env

@@ -571,3 +571,16 @@ html[data-theme='midnight'] .sd-panel--surface {
     transition: none;
   }
 }
+
+/* ---- The activity view: one heatmap for each source ------------------------------------------ */
+
+/* A heatmap is as tall as its squares make it, so the block does not reserve a chart's height */
+.sd-heat .sd-block__chart {
+  min-height: 0;
+}
+
+.sd-heat__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

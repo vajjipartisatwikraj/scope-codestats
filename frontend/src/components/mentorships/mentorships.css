@@ -110,6 +110,15 @@
   border-bottom: 0;
 }
 
+/* The picture and the lines of a person: one block that takes the room the action leaves */
+.ms-row__main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .ms-row__text {
   display: flex;
   flex: 1 1 auto;
@@ -215,4 +224,25 @@
   .ms-actions--wide {
     width: auto;
   }
+}
+
+/* ---- A person who links to their profile ------------------------------------------------------------ */
+
+.ms-person--link,
+.ms-row__main--link {
+  border-radius: var(--ds-radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+.ms-person--link:hover .ms-person__name,
+.ms-row__main--link:hover .ms-row__name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ms-person--link:focus-visible,
+.ms-row__main--link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
 }

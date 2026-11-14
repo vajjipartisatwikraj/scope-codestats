@@ -8,9 +8,24 @@
 const http = require("./http");
 const cheerio = require("cheerio");
 const log = require("../../utils/logger").scope("CODECHEF");
+const { createThrottle } = require("./throttle");
+const { fromCodeChefPage } = require("./activityParsers");
+const { REQUEST_GAP_MS, BACKOFF_MS } = require("../../config/platformActivity");
 
-// Minimum spacing between CodeChef requests, shared across calls.
-const rateState = { lastRequest: 0 };
+// CodeChef blocks above about 12 requests a minute (measured in scraper/results), so every request to
+// it, from every caller, waits its turn: one every REQUEST_GAP_MS.
+const throttle = createThrottle(REQUEST_GAP_MS.codechef);
+
+const PAGE_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.5",
+  "Cache-Control": "max-age=0",
+  Connection: "keep-alive",
+  "Upgrade-Insecure-Requests": "1",
+  Referer: "https://www.codechef.com/",
+};
 
 /**
  * Calculate normalized score for CodeChef profiles
@@ -57,16 +72,7 @@ async function getCodeChefProfile(username) {
   try {
     log.debug(`Fetching CodeChef profile for user: ${username}`);
 
-    // Add rate limiting to reduce IP blocking risk
-    const now = Date.now();
-    if (rateState.lastRequest && now - rateState.lastRequest < 2000) {
-      const delay = 2000 - (now - rateState.lastRequest);
-      log.debug(
-        `Rate limiting: Waiting ${delay}ms before CodeChef request`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-    rateState.lastRequest = Date.now();
+    await throttle.wait();
 
     // Use axios with enhanced headers to appear more like a browser
     const profileUrl = `https://www.codechef.com/users/${username}`;
@@ -86,6 +92,10 @@ async function getCodeChefProfile(username) {
       maxRedirects: 5,
       validateStatus: (status) => status >= 200 && status < 300,
     });
+
+    // The per-day activity graph is on the same page, so it costs no extra request
+    const activityDaily = fromCodeChefPage(response.data);
+    const activity = activityDaily ? { daily: activityDaily } : null;
 
     // Load HTML content into cheerio for parsing
     const $ = cheerio.load(response.data);
@@ -310,6 +320,7 @@ async function getCodeChefProfile(username) {
         stars: 0,
         score: 0,
         lastUpdated: new Date(),
+        activity,
       };
     }
 
@@ -330,9 +341,16 @@ async function getCodeChefProfile(username) {
       stars,
       score,
       lastUpdated: new Date(),
+      activity,
     };
   } catch (error) {
     log.error(`Error fetching CodeChef profile for ${username}:`, error);
+
+    // The site said "slow down": hold back every CodeChef request for a while
+    if (error.response?.status === 429) {
+      throttle.pause(BACKOFF_MS.codechef);
+      throw new Error("CodeChef rate limit exceeded. Please try again in a few minutes.");
+    }
 
     // Standardize error message
     if (
@@ -358,4 +376,24 @@ async function getCodeChefProfile(username) {
 }
 
 
-module.exports = { fetchProfile: getCodeChefProfile, calculateCodeChefScore };
+/**
+ * The per-day submissions of a profile, on their own (for a refresh that does not need the stats).
+ * @returns {Promise<{daily: object}|null>} null when the page was not a profile page
+ */
+async function fetchActivity(username) {
+  await throttle.wait();
+  try {
+    const response = await http.get(`https://www.codechef.com/users/${encodeURIComponent(username)}`, {
+      headers: PAGE_HEADERS,
+      maxRedirects: 5,
+      validateStatus: (status) => status >= 200 && status < 300,
+    });
+    const daily = fromCodeChefPage(response.data);
+    return daily ? { daily } : null;
+  } catch (error) {
+    if (error.response?.status === 429) throttle.pause(BACKOFF_MS.codechef);
+    throw error;
+  }
+}
+
+module.exports = { fetchProfile: getCodeChefProfile, fetchActivity, calculateCodeChefScore };

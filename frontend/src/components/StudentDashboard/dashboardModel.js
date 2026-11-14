@@ -109,11 +109,14 @@ const dayNumber = (key) => {
   return Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
 };
 
-/** The most days in a row that have at least one problem solved */
-export function longestStreak(dailyActivity) {
+/**
+ * The most days in a row with some activity. With `source` (for example 'cohort') only that source
+ * counts; without it every platform does.
+ */
+export function longestStreak(dailyActivity, source) {
   if (!Array.isArray(dailyActivity)) return 0;
   const days = dailyActivity
-    .filter((entry) => entry && entry.count > 0)
+    .filter((entry) => entry && (source ? entry.sources?.[source] > 0 : entry.count > 0))
     .map((entry) => dayNumber(entry.date))
     .filter((day) => Number.isFinite(day))
     .sort((a, b) => a - b);

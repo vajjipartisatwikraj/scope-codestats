@@ -354,7 +354,7 @@ function CohortTab({ profiles, heatmap, days }) {
   const best = daily.reduce((top, day) => (day.value > top.value ? day : top), { date: null, value: 0 });
   const activeDays = daily.filter((day) => day.value > 0).length;
   const inPeriod = daily.reduce((sum, day) => sum + day.value, 0);
-  const streak = heatmap.data ? longestStreak(heatmap.data.dailyActivity) : null;
+  const streak = heatmap.data ? longestStreak(heatmap.data.dailyActivity, 'cohort') : null;
   const period = rangeWords(days);
   const granularity = days <= 31 ? 'day' : days <= 120 ? 'week' : 'month';
 

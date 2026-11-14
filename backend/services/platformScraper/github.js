@@ -10,6 +10,11 @@ const path = require("path");
 
 require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 const log = require("../../utils/logger").scope("GITHUB");
+const { fromGitHubContributionsPage } = require("./activityParsers");
+const { createThrottle } = require("./throttle");
+
+// The public contribution graph needs no token; a small gap keeps a nightly batch polite.
+const activityThrottle = createThrottle(1000);
 const GITHUB_ACCESS_TOKEN = process.env.GITHUB_ACCESS_TOKEN;
 
 /**
@@ -268,4 +273,20 @@ function isValidGitHubUsername(username) {
 }
 
 
-module.exports = { fetchProfile: getGitHubProfile, calculateGitHubScore, isValidGitHubUsername };
+/**
+ * The contributions of each day of the last year, read from the public contribution graph
+ * (the same numbers as the graph on github.com, in UTC days). It works without a token.
+ * @returns {Promise<{daily: object}|null>} null when the page has no graph
+ */
+async function fetchActivity(username) {
+  if (!isValidGitHubUsername(username)) return null;
+  await activityThrottle.wait();
+  const response = await http.get(`https://github.com/users/${encodeURIComponent(username)}/contributions`, {
+    headers: { Accept: "text/html" },
+    validateStatus: (status) => status === 200,
+  });
+  const daily = fromGitHubContributionsPage(response.data);
+  return daily ? { daily } : null;
+}
+
+module.exports = { fetchProfile: getGitHubProfile, fetchActivity, calculateGitHubScore, isValidGitHubUsername };

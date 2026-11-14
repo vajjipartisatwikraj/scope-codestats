@@ -7,6 +7,11 @@
  */
 const http = require("./http");
 const log = require("../../utils/logger").scope("CODEFORCES");
+const { fromCodeforcesSubmissions } = require("./activityParsers");
+const { createThrottle } = require("./throttle");
+
+// Codeforces asks for at most one request every two seconds
+const activityThrottle = createThrottle(2000);
 
 // Codeforces allows a limited number of calls per window; shared across requests.
 const rateState = {
@@ -322,16 +327,36 @@ function processCodeforcesSubmissions(
     `Problem difficulty breakdown - Easy: ${easyProblemsSolved}, Medium: ${mediumProblemsSolved}, Hard: ${hardProblemsSolved}`,
   );
 
-  return processCodeforcesData(
-    userData,
-    username,
-    contestsParticipated,
-    problemsSolved,
-    easyProblemsSolved,
-    mediumProblemsSolved,
-    hardProblemsSolved,
-    totalAcceptedSubmissions,
+  const daily = fromCodeforcesSubmissions(submissions);
+
+  return {
+    ...processCodeforcesData(
+      userData,
+      username,
+      contestsParticipated,
+      problemsSolved,
+      easyProblemsSolved,
+      mediumProblemsSolved,
+      hardProblemsSolved,
+      totalAcceptedSubmissions,
+    ),
+    activity: daily ? { daily } : null,
+  };
+}
+
+/**
+ * The problems solved on each day, on their own: one `user.status` request. A problem counts on the
+ * day of its first accepted solution.
+ */
+async function fetchActivity(username) {
+  await activityThrottle.wait();
+  const response = await http.get(
+    `https://codeforces.com/api/user.status?handle=${encodeURIComponent(username)}&from=1&count=10000`,
+    { timeout: 60000, validateStatus: (status) => status === 200 },
   );
+  if (response.data?.status !== "OK") return null;
+  const daily = fromCodeforcesSubmissions(response.data.result);
+  return daily ? { daily } : null;
 }
 
 
@@ -387,4 +412,4 @@ function processCodeforcesData(
 }
 
 
-module.exports = { fetchProfile: getCodeforcesProfile, calculateCodeforcesScore };
+module.exports = { fetchProfile: getCodeforcesProfile, fetchActivity, calculateCodeforcesScore };

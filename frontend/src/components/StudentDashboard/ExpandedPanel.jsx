@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import './ExpandedPanel.css';
+import ActivityView from './ActivityView';
 import { PhaseContext } from './ExpandedParts';
 import ProblemsView from './ProblemsView';
 import RanksView from './RanksView';
@@ -12,17 +13,18 @@ import ScoresView from './ScoresView';
  * fading of the cards around it is in StudentDashboard.css.
  *
  * Props
- *   view       'scores' | 'ranks' | 'problems'
+ *   view       'scores' | 'ranks' | 'problems' | 'activity'
  *   phase      'opening' | 'open' | 'closing' (from useExpand)
  *   panelRef   the ref useExpand animates
  *   onClose    goes back to the dashboard
  *   userId     the signed-in student
- *   profiles, heatmap   the dashboard's own requests, shared with the problems view
+ *   profiles, heatmap   the dashboard's own requests, shared with the problems and activity views
  */
 const TONES = {
   scores: 'ink',
   ranks: 'ink',
   problems: 'surface',
+  activity: 'surface',
 };
 
 export default function ExpandedPanel({ view, phase, panelRef, onClose, userId, profiles, heatmap }) {
@@ -42,6 +44,7 @@ export default function ExpandedPanel({ view, phase, panelRef, onClose, userId, 
         <PhaseContext.Provider value={phase}>
           {view === 'scores' && <ScoresView userId={userId} titleId={titleId} onClose={onClose} />}
           {view === 'ranks' && <RanksView userId={userId} titleId={titleId} onClose={onClose} />}
+          {view === 'activity' && <ActivityView titleId={titleId} onClose={onClose} heatmap={heatmap} />}
           {view === 'problems' && (
             <ProblemsView userId={userId} titleId={titleId} onClose={onClose} profiles={profiles} heatmap={heatmap} />
           )}

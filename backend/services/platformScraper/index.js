@@ -19,6 +19,8 @@ const scrapers = {
   scopecodestats: require("./scopecodestats"),
 };
 
+const { BACKOFF_MS } = require("../../config/platformActivity");
+
 // CodeChef is slow; give it longer than the others.
 const TIMEOUT_MS = { codechef: 30000, default: 20000 };
 const MAX_ATTEMPTS = 3;
@@ -104,9 +106,26 @@ async function fetchOnce(platform, identifier) {
 }
 
 /**
+ * The per-day activity that goes with a profile answer: taken from the answer when the scraper read it
+ * from the same page (CodeChef, Codeforces, HackerRank), otherwise asked for separately (LeetCode, GitHub).
+ * Never throws: activity is a bonus, and a failure here must not fail the profile.
+ * @returns {Promise<{daily: object}|null>}
+ */
+async function activityOf(platform, identifier, raw) {
+  if (raw.isPartialData) return null;
+  if ("activity" in raw) return raw.activity || null;
+  if (typeof scrapers[platform].fetchActivity !== "function") return null;
+  try {
+    return await scrapers[platform].fetchActivity(identifier);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {string} platform
  * @param {string} identifier username (user id for scopecodestats)
- * @returns {Promise<{ fields: object, partial: boolean }>}
+ * @returns {Promise<{ fields: object, partial: boolean, activity: {daily: object}|null }>}
  */
 async function fetchProfile(platform, identifier) {
   if (!scrapers[platform]) {
@@ -123,18 +142,43 @@ async function fetchProfile(platform, identifier) {
       if (!raw || typeof raw !== "object") {
         throw new ScraperError("unknown", `No data returned for ${identifier} on ${platform}`);
       }
-      return { fields: toProfileFields(platform, raw), partial: Boolean(raw.isPartialData) };
+      return {
+        fields: toProfileFields(platform, raw),
+        partial: Boolean(raw.isPartialData),
+        activity: await activityOf(platform, identifier.trim(), raw),
+      };
     } catch (error) {
       lastError = classifyError(error);
       if (!RETRYABLE.has(lastError.type) || attempt === MAX_ATTEMPTS) break;
-      await sleep(1000 + Math.floor(Math.random() * 1000)); // jitter between retries
+      // jitter between retries; a site that said "slow down" gets its own, longer wait
+      const base = lastError.type === "rate_limited" ? BACKOFF_MS[platform] || BACKOFF_MS.default : 1000;
+      await sleep(base + Math.floor(Math.random() * 1000));
     }
   }
   throw lastError;
 }
 
+/**
+ * Only the per-day activity of a profile (no stats), for a manual refresh.
+ * Throws like fetchProfile; returns null for a platform that has no activity data.
+ * @returns {Promise<{daily: object}|null>}
+ */
+async function fetchActivity(platform, identifier) {
+  const scraper = scrapers[platform];
+  if (!scraper || typeof scraper.fetchActivity !== "function") return null;
+  if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+    throw new ScraperError("invalid_username", `Username is required for ${platform}`);
+  }
+  try {
+    return await scraper.fetchActivity(identifier.trim());
+  } catch (error) {
+    throw classifyError(error);
+  }
+}
+
 module.exports = {
   fetchProfile,
+  fetchActivity,
   ScraperError,
   ERROR_TYPES,
   PLATFORMS: Object.keys(scrapers),

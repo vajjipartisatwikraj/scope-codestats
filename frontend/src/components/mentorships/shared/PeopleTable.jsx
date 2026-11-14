@@ -1,16 +1,45 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Avatar, Pagination } from '../../ui';
 
-/** A person: picture, name and email */
-export function PersonCell({ person }) {
-  return (
-    <div className="ms-person">
+/** A person: picture, name and email. With 	o the whole cell is a link (to their profile). */
+export function PersonCell({ person, to }) {
+  const content = (
+    <>
       <Avatar name={person.name} size={40} />
       <span className="ms-person__text">
         <span className="ms-person__name">{person.name}</span>
         {person.email ? <span className="ms-person__email">{person.email}</span> : null}
       </span>
-    </div>
+    </>
+  );
+  return to ? (
+    <Link to={to} className="ms-person ms-person--link" aria-label={`Open the profile of ${person.name}`}>
+      {content}
+    </Link>
+  ) : (
+    <div className="ms-person">{content}</div>
+  );
+}
+
+/** The picture and the lines of a person in a phone row; a link when 	o is given */
+function RowMain({ person, meta, to }) {
+  const content = (
+    <>
+      <Avatar name={person.name} size={40} />
+      <span className="ms-row__text">
+        <span className="ms-row__name">{person.name}</span>
+        {meta ? <span className="ms-row__meta">{meta(person)}</span> : null}
+        {person.email ? <span className="ms-row__meta">{person.email}</span> : null}
+      </span>
+    </>
+  );
+  return to ? (
+    <Link to={to} className="ms-row__main ms-row__main--link" aria-label={`Open the profile of ${person.name}`}>
+      {content}
+    </Link>
+  ) : (
+    <div className="ms-row__main">{content}</div>
   );
 }
 
@@ -26,9 +55,10 @@ export function PersonCell({ person }) {
  *   meta       (person) => string, the line under the name on a phone
  *   action     (person) => node, the button at the end of the row (a link or an icon button)
  *   wideAction true when the action is a text button, not an icon
+ *   linkTo     (person) => path or null: makes the person a link (the students link to their public profile)
  *   compact    true below 900px
  */
-export default function PeopleTable({ people, caption, personLabel = 'Name', columns = [], meta, action, wideAction = false, compact }) {
+export default function PeopleTable({ people, caption, personLabel = 'Name', columns = [], meta, action, wideAction = false, linkTo, compact }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -46,12 +76,7 @@ export default function PeopleTable({ people, caption, personLabel = 'Name', col
         <ul className="ms-rows" aria-label={caption}>
           {rows.map((person) => (
             <li key={person._id} className="ms-row">
-              <Avatar name={person.name} size={40} />
-              <span className="ms-row__text">
-                <span className="ms-row__name">{person.name}</span>
-                {meta ? <span className="ms-row__meta">{meta(person)}</span> : null}
-                {person.email ? <span className="ms-row__meta">{person.email}</span> : null}
-              </span>
+              <RowMain person={person} meta={meta} to={linkTo ? linkTo(person) : null} />
               {action ? <span className="ms-row__end">{action(person)}</span> : null}
             </li>
           ))}
@@ -79,7 +104,7 @@ export default function PeopleTable({ people, caption, personLabel = 'Name', col
               {rows.map((person) => (
                 <tr key={person._id}>
                   <td>
-                    <PersonCell person={person} />
+                    <PersonCell person={person} to={linkTo ? linkTo(person) : null} />
                   </td>
                   {columns.map((column) => (
                     <td key={column.key} className={column.className}>

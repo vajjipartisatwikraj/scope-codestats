@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './shared.css';
 import './Heatmap.css';
+import ChartTip from './ChartTip';
 import { clamp, cx, finiteOr } from './chartUtils';
 
 /**
@@ -42,8 +43,13 @@ import { clamp, cx, finiteOr } from './chartUtils';
  *
  * Hover text
  *   formatDate(day)   how a day is written       default "12 Mar 2026"
- *   getTooltip(item, { date, value, level })   whole hover text; default "12 Mar 2026: 3".
- *                     `item` is undefined for a day that has no entry in `data`.
+ *   getTooltip(item, { date, value, level })   whole hover text; default "12 Mar 2026: 3". The
+ *                     browser's plain tooltip. `item` is undefined for a day that has no entry in `data`.
+ *   renderTooltip(item, { date, value, level })   a designed hover card instead: return what goes in a
+ *                     ChartTip (variant "list"), or null for no card. Used instead of getTooltip. Pointing
+ *                     at a day (or tapping it on a touch screen) opens the card above it; scrolling,
+ *                     resizing, Escape and a press elsewhere close it. The hovered square gets a ring.
+ *   tipClassName      class added to that card (to style what renderTooltip returns)
  *
  * Accessibility
  *   title, summary    the text equivalent. Without `summary`: "N of M days have activity".
@@ -115,12 +121,17 @@ export default function Heatmap({
   animate = true,
   formatDate,
   getTooltip,
+  renderTooltip,
+  tipClassName,
   title,
   summary,
   className,
   style,
 }) {
   const scrollRef = useRef(null);
+
+  // The day the designed hover card is open for: { date, x, top, bottom } (screen coordinates), or null
+  const [tip, setTip] = useState(null);
 
   // ---- The calendar: which day sits in which square -------------------------------------
   const endDay = endDate !== undefined ? toDayNumber(endDate) : toDayNumber(new Date());
@@ -183,7 +194,10 @@ export default function Heatmap({
     shownDays += 1;
     if (value > 0) activeDays += 1;
 
-    const tooltip = getTooltip
+    // The designed card replaces the browser's plain tooltip
+    const tooltip = renderTooltip
+      ? undefined
+      : getTooltip
       ? getTooltip(item, { date: isoOfDay(day), value, level })
       : `${describeDay(day)}: ${value}`;
 
@@ -193,6 +207,7 @@ export default function Heatmap({
         className="hm__cell"
         style={{ backgroundColor: `var(--hm-l${level})`, '--w': Math.floor(offset / 7), '--r': offset % 7 }}
         data-level={level}
+        data-date={renderTooltip ? isoOfDay(day) : undefined}
         title={tooltip}
       />
     );
@@ -224,6 +239,50 @@ export default function Heatmap({
     if (scrollToEnd && node) node.scrollLeft = node.scrollWidth;
   }, [scrollToEnd, weeks]);
 
+  // ---- The designed hover card ------------------------------------------------------------
+  const showTip = (event) => {
+    const cell = event.target.closest ? event.target.closest('.hm__cell[data-date]') : null;
+    if (!cell) return;
+    const box = cell.getBoundingClientRect();
+    setTip((current) =>
+      current && current.date === cell.dataset.date ? current : { date: cell.dataset.date, x: box.left + box.width / 2, top: box.top, bottom: box.bottom }
+    );
+  };
+  const hideTip = () => setTip(null);
+
+  // Anything that moves the grid makes the card's place wrong, and a press elsewhere (touch) dismisses it
+  useEffect(() => {
+    if (!tip) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape') setTip(null);
+    };
+    const onPress = (event) => {
+      if (!(event.target.closest && event.target.closest('.hm__cell[data-date]'))) setTip(null);
+    };
+    window.addEventListener('scroll', hideTip, true);
+    window.addEventListener('resize', hideTip);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPress);
+    return () => {
+      window.removeEventListener('scroll', hideTip, true);
+      window.removeEventListener('resize', hideTip);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPress);
+    };
+  }, [tip]);
+
+  const tipDay = tip ? toDayNumber(tip.date) : NaN;
+  const tipEntry = tip ? byDay.get(tipDay) : undefined;
+  const tipValue = tipEntry ? valueOf(tipEntry.item, tipEntry.index) : 0;
+  const tipContent =
+    tip && renderTooltip
+      ? renderTooltip(tipEntry ? tipEntry.item : undefined, {
+          date: tip.date,
+          value: tipValue,
+          level: tipEntry ? levelFor(tipEntry.item, tipValue) : 0,
+        })
+      : null;
+
   const rootStyle = {
     '--n': weeks,
     '--hm-weeks': weeks,
@@ -249,12 +308,15 @@ export default function Heatmap({
       data-shape={shape}
       data-fill={fill ? 'true' : 'false'}
       data-animate={animate ? 'true' : 'false'}
+      data-tip={renderTooltip ? 'true' : 'false'}
     >
       <div className="hm__scroll" ref={scrollRef}>
         <div className="hm__inner">
           <div className="hm__stage">
             <div className="hm__block">
-              <div className="hm__grid">{cells}</div>
+              <div className="hm__grid" onPointerOver={renderTooltip ? showTip : undefined} onPointerLeave={renderTooltip ? hideTip : undefined}>
+                {cells}
+              </div>
               {visibleMonths.length > 0 && (
                 <div className="hm__months">
                   {visibleMonths.map((mark) => (
@@ -268,6 +330,12 @@ export default function Heatmap({
           </div>
         </div>
       </div>
+
+      {tip && tipContent ? (
+        <ChartTip anchor={tip} variant="list" className={tipClassName}>
+          {tipContent}
+        </ChartTip>
+      ) : null}
     </div>
   );
 }

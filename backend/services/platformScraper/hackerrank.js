@@ -7,6 +7,26 @@
  */
 const http = require("./http");
 const log = require("../../utils/logger").scope("HACKERRANK");
+const { createThrottle } = require("./throttle");
+const { fromHackerRankHistories } = require("./activityParsers");
+const { REQUEST_GAP_MS } = require("../../config/platformActivity");
+
+// HackerRank never blocked in tests (scraper/results), so this gap is only courtesy.
+const throttle = createThrottle(REQUEST_GAP_MS.hackerrank);
+
+/**
+ * The per-day submissions of a profile: `submission_histories` answers { "YYYY-MM-DD": count } for the
+ * whole history of the account. Returns null when the answer is not in that shape.
+ */
+async function fetchActivity(username) {
+  await throttle.wait();
+  const response = await http.get(
+    `https://www.hackerrank.com/rest/hackers/${encodeURIComponent(username)}/submission_histories`,
+    { headers: { Accept: "application/json" }, validateStatus: (status) => status === 200 },
+  );
+  const daily = fromHackerRankHistories(response.data);
+  return daily ? { daily } : null;
+}
 
 /**
  * Calculate normalized score for HackerRank profiles
@@ -30,6 +50,7 @@ async function getHackerRankProfile(username) {
     log.debug(`Fetching HackerRank profile for user: ${username}`);
 
     // Make a direct request to the badges API endpoint
+    await throttle.wait();
     const response = await http.get(
       `https://www.hackerrank.com/rest/hackers/${username}/badges`,
       {
@@ -88,6 +109,12 @@ async function getHackerRankProfile(username) {
       totalSolved: totalProblemsSolved,
     });
 
+    // The activity is a bonus: when it cannot be read, the profile still counts
+    const activity = await fetchActivity(username).catch((error) => {
+      log.warn(`Could not read the HackerRank activity of ${username}: ${error.message}`);
+      return null;
+    });
+
     return {
       username,
       totalSolved: totalProblemsSolved,
@@ -97,6 +124,7 @@ async function getHackerRankProfile(username) {
       contestsParticipated: 0,
       score,
       lastUpdated: new Date(),
+      activity,
     };
   } catch (error) {
     log.error(
@@ -113,4 +141,4 @@ async function getHackerRankProfile(username) {
 }
 
 
-module.exports = { fetchProfile: getHackerRankProfile, calculateHackerRankScore };
+module.exports = { fetchProfile: getHackerRankProfile, fetchActivity, calculateHackerRankScore };

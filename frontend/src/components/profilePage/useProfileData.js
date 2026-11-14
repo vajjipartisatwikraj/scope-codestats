@@ -86,14 +86,19 @@ export default function useProfileData() {
 
   const saveProfile = useCallback(
     async (payload) => {
+      let saved;
+      let data;
       try {
-        await axios.put(`${apiUrl}/profiles/me`, payload, headers);
-        const data = await readProfile();
+        ({ data: saved } = await axios.put(`${apiUrl}/profiles/me`, payload, headers));
+        data = await readProfile();
         shareWithApp(data);
-        return data;
       } catch (err) {
         throw new Error(requestError(err, 'We could not save your changes. Try again in a moment.'));
       }
+      // The rest was saved; a platform that could not be updated (wrong username, waiting period) is said so
+      const failed = saved?.platformFailures || [];
+      if (failed.length > 0) throw new Error(failed.map((failure) => failure.message).join(' '));
+      return data;
     },
     [headers, readProfile, shareWithApp]
   );

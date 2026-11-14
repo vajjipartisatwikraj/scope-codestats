@@ -25,7 +25,8 @@ import { useCodingProfiles, useHeatmap, useScores, useWeeklyActivity } from './u
  *          height tall, --sd-rail (set in the stylesheet from the window height), and 1.2 times
  *          that wide.
  *
- * Three cards open up: the overall score tile, the college rank tile and the problems solved card.
+ * Four cards open up: the overall score tile, the college rank tile, the problems solved card and the
+ * activity heatmap (every platform's own heatmap).
  * Pressing one grows it to fill the whole dashboard while the other cards fade away, and the panel
  * shows every chart about that subject (see useExpand.js for the motion, ExpandedPanel.jsx and the
  * three views for what is inside). Escape or the back button returns to the dashboard.
@@ -64,7 +65,7 @@ export default function StudentDashboard() {
           <p className="sd-header__meta">{longDate()} · Your coding journey, unified</p>
         </header>
 
-        <ActivityCard state={heatmap} />
+        <ActivityCard state={heatmap} onOpen={(card) => expand.open('activity', card)} />
         <PlatformSolvedCard state={profiles} onOpen={(card) => expand.open('problems', card)} />
       </div>
 

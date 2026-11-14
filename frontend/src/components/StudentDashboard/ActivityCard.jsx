@@ -1,19 +1,27 @@
 import React from 'react';
+import { ArrowsOutSimpleIcon } from '@phosphor-icons/react/dist/csr/ArrowsOutSimple';
 import { CalendarBlankIcon } from '@phosphor-icons/react/dist/csr/CalendarBlank';
 import { Heatmap, HeatmapLegend } from '../custom-components';
 import useMediaQuery from '../../hooks/useMediaQuery';
+import ActivityTip, { ACTIVITY_TIP_CLASS } from '../activity/ActivityTip';
+import { activityCount } from '../activity/activityModel';
 import Card, { CardHeader, CardNotice, Skeleton, failureMessage } from './Card';
-import { formatDay, formatNumber, pluralize, todayInIndia } from './formatters';
+import { formatNumber, pluralize, todayInIndia } from './formatters';
 
 /**
- * Problems solved on each day of the last 12 months (GET /dashboard/heatmap/:userId).
+ * Activity on each day of the last 12 months (GET /dashboard/heatmap/:userId): cohort solves and every
+ * linked platform (LeetCode, Codeforces, CodeChef, HackerRank, GitHub) on one calendar. Pointing at a day
+ * opens a card that lists what each source contributed (../activity/ActivityTip).
  *
- * The server counts problems solved in cohorts, and decides the shade of every day, so this card
- * only draws what it is given. The grid is as big as fits the card, with square cells, and sits in the
- * middle of it. On a phone the whole year is kept and the squares stay big (15px); the grid scrolls
- * sideways, starting at the latest week, with room under the month names for the scrollbar.
+ * The server adds the sources up and decides the shade of every day, so this card only draws what it
+ * is given. The grid is as big as fits the card, with square cells, and sits in the middle of it. On a
+ * phone the whole year is kept and the squares stay big (15px); the grid scrolls sideways, starting at
+ * the latest week, with room under the month names for the scrollbar.
+ *
+ * Pressing the card (or its expand button) opens the activity view: the overall heatmap and one for
+ * every platform on its own.
  */
-export default function ActivityCard({ state }) {
+export default function ActivityCard({ state, onOpen }) {
   const { data, loading, error, reload } = state;
   const phone = useMediaQuery('(max-width: 599.95px)');
   const span = 365;
@@ -40,13 +48,10 @@ export default function ActivityCard({ state }) {
           days={span}
           gap={phone ? 3 : 2}
           minCellSize={phone ? 15 : 7}
-          getTooltip={(entry, { date, value }) =>
-            entry && value > 0
-              ? `${pluralize(value, 'problem')} solved on ${formatDay(date)}`
-              : `No problems solved on ${formatDay(date)}`
-          }
-          title="Problems solved per day"
-          summary={`${formatNumber(total)} problems solved on ${formatNumber(activeDays)} days in the ${spanWords.toLowerCase()}`}
+          renderTooltip={(entry, { date }) => <ActivityTip entry={entry} date={date} />}
+          tipClassName={ACTIVITY_TIP_CLASS}
+          title="Activity per day on all platforms"
+          summary={`${activityCount(total)} on ${formatNumber(activeDays)} days in the ${spanWords.toLowerCase()}`}
         />
       </div>
     );
@@ -55,18 +60,36 @@ export default function ActivityCard({ state }) {
   const subtitle =
     !loading && !error
       ? total > 0
-        ? `${spanWords} · ${pluralize(total, 'problem')} solved on ${pluralize(activeDays, 'day')}`
-        : `${spanWords} · no problems solved in cohorts yet`
-      : `${spanWords} · problems solved in cohorts`;
+        ? `${spanWords} · ${activityCount(total)} on ${pluralize(activeDays, 'day')}`
+        : `${spanWords} · no activity yet`
+      : `${spanWords} · cohorts and all your platforms`;
 
   return (
-    <Card className="sd-card--activity" aria-labelledby="sd-activity-title">
+    <Card className="sd-card--activity" aria-labelledby="sd-activity-title" onOpen={onOpen} openButton={false}>
       <CardHeader
         id="sd-activity-title"
         icon={<CalendarBlankIcon size={20} weight="regular" />}
         title="Daily activity"
         subtitle={subtitle}
-        action={<HeatmapLegend />}
+        action={
+          <div className="sd-card__tools">
+            <HeatmapLegend />
+            {onOpen && (
+              <button
+                type="button"
+                className="sd-circle sd-card__expand"
+                aria-label="Open the heatmap of every platform"
+                title="Open every platform's heatmap"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpen(event.currentTarget.closest('.sd-card'));
+                }}
+              >
+                <ArrowsOutSimpleIcon size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        }
       />
       {body}
     </Card>

@@ -387,6 +387,8 @@ userSchema.pre(
 
         // Activity heatmap data - sparse per-day problem-solved counts
         mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+        // Per-day activity of the external platforms (combined heatmap)
+        mongoose.model("PlatformDailyActivity").deleteMany({ userId: userId }),
 
         // Platform history - daily snapshots of coding platform stats
         mongoose.model("PlatformSnapshot").deleteMany({ userId: userId }),
@@ -462,6 +464,8 @@ userSchema.pre("findOneAndDelete", async function () {
 
       // Activity heatmap data - sparse per-day problem-solved counts
       mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+      // Per-day activity of the external platforms (combined heatmap)
+      mongoose.model("PlatformDailyActivity").deleteMany({ userId: userId }),
 
       // Platform history - daily snapshots of coding platform stats
       mongoose.model("PlatformSnapshot").deleteMany({ userId: userId }),
@@ -531,6 +535,8 @@ userSchema.pre("findByIdAndDelete", async function () {
 
       // Activity heatmap data - sparse per-day problem-solved counts
       mongoose.model("ActivityHeatmap").deleteMany({ userId: userId }),
+      // Per-day activity of the external platforms (combined heatmap)
+      mongoose.model("PlatformDailyActivity").deleteMany({ userId: userId }),
 
       // Platform history - daily snapshots of coding platform stats
       mongoose.model("PlatformSnapshot").deleteMany({ userId: userId }),
@@ -605,6 +611,8 @@ userSchema.pre("deleteMany", async function () {
 
       // Activity heatmap data - sparse per-day problem-solved counts
       mongoose.model("ActivityHeatmap").deleteMany({ userId: { $in: userIds } }),
+      // Per-day activity of the external platforms (combined heatmap)
+      mongoose.model("PlatformDailyActivity").deleteMany({ userId: { $in: userIds } }),
 
       // Platform history - daily snapshots of coding platform stats
       mongoose.model("PlatformSnapshot").deleteMany({ userId: { $in: userIds } }),
@@ -745,4 +753,5 @@ module.exports = mongoose.model("User", userSchema);
 
 // Registered here so the cascade deletion above can always find it.
 require("./PlatformSnapshot");
+require("./PlatformDailyActivity");
 require("./ScoreHistory");

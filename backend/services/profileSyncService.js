@@ -12,6 +12,7 @@ const { fetchProfile } = require("./platformScraper");
 const { classifyError, ScraperError } = require("./platformScraper/errors");
 const { recordSnapshot } = require("./platformProgress/snapshotService");
 const { clearPlatformHistory } = require("./platformProgress/historyCleanup");
+const { saveActivity } = require("./platformActivity/activityService");
 const logger = require("../utils/logger");
 const log = logger.scope("PROFILE-SYNC");
 
@@ -116,7 +117,7 @@ async function syncProfile(profile, { source = "system", prefetched = null } = {
     // In a student's request the wait shows in the request block. In the batch
     // sync job it is not timed: the job reports progress and a failure summary.
     const fetching = prefetched ? Promise.resolve(prefetched) : fetchProfile(platform, identifier);
-    const { fields, partial } = await (logger.requestContext.getStore() && !prefetched
+    const { fields, partial, activity } = await (logger.requestContext.getStore() && !prefetched
       ? logger.timed(`${platform}.fetch`, fetching)
       : fetching);
 
@@ -143,6 +144,13 @@ async function syncProfile(profile, { source = "system", prefetched = null } = {
     await recordSnapshot(profile, { partial }).catch((historyError) =>
       log.error(`[ProfileSync] could not record ${platform} history for ${profile.userId}:`, historyError.message)
     );
+
+    // The same for the per-day activity of the combined heatmap. No activity read means the stored days stay.
+    if (activity && !partial) {
+      await saveActivity({ userId: profile.userId, platform, username: profile.username, daily: activity.daily }).catch(
+        (activityError) => log.error(`[ProfileSync] could not store ${platform} activity for ${profile.userId}:`, activityError.message)
+      );
+    }
 
     return { ok: true, profile };
   } catch (err) {
@@ -199,6 +207,41 @@ async function updatePlatform(userId, platform, username) {
 
   const { profile } = await setUsername(userId, platform, cleanName);
   return syncProfile(profile, { source: "user", prefetched });
+}
+
+/**
+ * The usernames a student saves from the profile page, handled like a single-profile nightly sync:
+ * each one that is new or changed is fetched from its platform right away (updatePlatform: the
+ * cooldown, the account check and the stats, history and activity all follow). A username that did not
+ * change is left alone, so saving other parts of the profile never costs a fetch or starts a cooldown.
+ * A failure on one platform does not stop the others.
+ * @param {object} usernames e.g. { leetcode: "abc", github: "https://github.com/xyz" }
+ * @returns {Promise<Array<{platform: string, message: string, errorType?: string, cooldownEndsAt?: Date}>>}
+ *   the platforms that could not be updated
+ */
+async function updateUsernames(userId, usernames = {}) {
+  const failures = [];
+  for (const platform of Profile.EXTERNAL_PLATFORMS) {
+    const raw = usernames[platform];
+    if (typeof raw !== "string" || !raw.trim()) continue;
+    const username = extractUsername(raw);
+
+    const existing = await Profile.findOne({ userId, platform }).select("username").lean();
+    if (existing && existing.username === username) continue;
+
+    try {
+      const result = await updatePlatform(userId, platform, username);
+      if (result.cooldownEndsAt) {
+        failures.push({ platform, errorType: "cooldown", cooldownEndsAt: result.cooldownEndsAt, message: "Please wait before changing this username." });
+      } else if (!result.ok) {
+        failures.push({ platform, errorType: result.error.type, message: result.error.message });
+      }
+    } catch (err) {
+      log.error(`[ProfileSync] could not update ${platform} username for ${userId}:`, err.message);
+      failures.push({ platform, errorType: "invalid_username", message: `Invalid ${platform} username format.` });
+    }
+  }
+  return failures;
 }
 
 /** Accepts "name" or a profile URL ("https://github.com/name/") and returns "name". */
@@ -283,6 +326,7 @@ async function syncUser(userId, { source = "cron" } = {}) {
 module.exports = {
   extractUsername,
   saveUsernames,
+  updateUsernames,
   setUsername,
   removePlatform,
   syncProfile,
