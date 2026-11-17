@@ -78,9 +78,9 @@ export default function AlertFormDrawer({ item, saving, onClose, onSave }) {
         </>
       }
     >
-      <form id="al-form" className="nm-form" onSubmit={submit} noValidate>
-        <section className="nm-form__section" aria-labelledby="al-content">
-          <h3 id="al-content" className="nm-form__title">
+      <form id="al-form" className="ntc-form" onSubmit={submit} noValidate>
+        <section className="ntc-form__section" aria-labelledby="al-content">
+          <h3 id="al-content" className="ntc-form__title">
             What it says
           </h3>
           <TextField
@@ -99,16 +99,16 @@ export default function AlertFormDrawer({ item, saving, onClose, onSave }) {
             data-autofocus
           />
           <ButtonFields values={form} errors={errors} onChange={change} disabled={saving} idPrefix="al" />
-          <div className="nm-preview">
-            <p className="nm-preview__label">Preview</p>
-            <div className="nm-preview__frame">
+          <div className="ntc-preview">
+            <p className="ntc-preview__label">Preview</p>
+            <div className="ntc-preview__frame">
               <AlertBar message={form.message.trim() || 'Your message appears here.'} buttonText={form.buttonText.trim()} onButton={() => {}} onClose={() => {}} preview />
             </div>
           </div>
         </section>
 
-        <section className="nm-form__section" aria-labelledby="al-when">
-          <h3 id="al-when" className="nm-form__title">
+        <section className="ntc-form__section" aria-labelledby="al-when">
+          <h3 id="al-when" className="ntc-form__title">
             When it shows
           </h3>
           <WindowFields values={form} errors={errors} onChange={change} disabled={saving} idPrefix="al" />

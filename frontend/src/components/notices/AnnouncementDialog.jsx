@@ -41,17 +41,17 @@ export default function AnnouncementDialog({ announcement, onClose, onButton, pr
 
   return createPortal(
     <div
-      className="an"
+      className="ann"
       data-leaving={leaving ? 'true' : 'false'}
       data-preview={preview ? 'true' : 'false'}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) close();
       }}
     >
-      <div ref={panelRef} className="an__panel" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+      <div ref={panelRef} className="ann__panel" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <AnnouncementCard announcement={announcement} titleId={titleId} onButton={press} onClose={close} />
       </div>
-      {preview ? <p className="an__preview-tag">Preview. Nothing is counted.</p> : null}
+      {preview ? <p className="ann__preview-tag">Preview. Nothing is counted.</p> : null}
     </div>,
     document.body
   );

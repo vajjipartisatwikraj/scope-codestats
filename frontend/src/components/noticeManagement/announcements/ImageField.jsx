@@ -33,11 +33,11 @@ export default function ImageField({ value, error, onChange, disabled, id }) {
         error={error}
         disabled={disabled}
       />
-      <div className="nm-image" aria-live="polite">
+      <div className="ntc-image" aria-live="polite">
         {usable && !broken ? (
           <img src={address} alt="Preview of the picture" onError={() => setBroken(true)} />
         ) : (
-          <span className="nm-image__empty">
+          <span className="ntc-image__empty">
             <ImageSquareIcon size={28} weight="regular" aria-hidden="true" />
             {usable && broken ? 'The picture could not be loaded from this address.' : 'The picture appears here.'}
           </span>

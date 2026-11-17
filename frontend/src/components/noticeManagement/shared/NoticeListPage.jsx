@@ -120,7 +120,7 @@ export default function NoticeListPage({ api, noun, title, description, createLa
   const del = toDelete ? confirmDelete(toDelete) : { title: `Delete this ${noun.one}?`, description: '' };
 
   return (
-    <Page className="nm">
+    <Page className="ntc">
       <AdminTop
         title={title}
         count={!loading && items.length > 0 ? pluralize(items.length, noun.one) : undefined}

@@ -15,7 +15,7 @@ import { TextField } from '../../ui';
 /** When the notice starts and ends: two datetime-local fields side by side (stacked on a phone) */
 export function WindowFields({ values, errors, onChange, disabled, idPrefix }) {
   return (
-    <div className="nm-pair">
+    <div className="ntc-pair">
       <TextField
         id={`${idPrefix}-startsAt`}
         type="datetime-local"

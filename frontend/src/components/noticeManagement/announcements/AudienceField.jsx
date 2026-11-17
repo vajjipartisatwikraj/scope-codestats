@@ -40,9 +40,9 @@ export default function AudienceField({ audience, userGroups, error, onChange, d
     else if (state.groups.length === 0) groups = <Notice tone="info" title="No user groups yet">Create a user group first, then choose it here.</Notice>;
     else {
       groups = (
-        <fieldset className="nm-fieldset" aria-describedby={error ? `${idPrefix}-groups-error` : undefined}>
-          <legend className="nm-fieldset__legend">User groups</legend>
-          <ul className="nm-groups">
+        <fieldset className="ntc-fieldset" aria-describedby={error ? `${idPrefix}-groups-error` : undefined}>
+          <legend className="ntc-fieldset__legend">User groups</legend>
+          <ul className="ntc-groups">
             {state.groups.map((group) => (
               <li key={group._id}>
                 <Checkbox label={`${group.name} (${group.memberCount} roll numbers)`} checked={userGroups.includes(group._id)} onChange={() => toggle(group._id)} disabled={disabled} />

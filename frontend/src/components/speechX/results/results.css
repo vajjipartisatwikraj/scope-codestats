@@ -4,7 +4,8 @@
  * Plain CSS on the design tokens (--ds-*), prefix sxe-. Read mode: a flat details band, then a
  * scrolling area with the score tile (the one spotlight), the breakdown cards and the
  * question-by-question analysis. From 900px the page is a stage that does not scroll (top bar,
- * band and footer stay put) and only the area under the band scrolls, so the band can fold; under
+ * band stay put) and only the area under the band scrolls, so the band can fold; there is no app
+ * footer on this page (App.jsx, isSpeechResultsPage); under
  * 900px the page scrolls as a whole and nothing folds. Cards are flat (24px, no border, no
  * shadow); status is a word and an icon besides its colour; motion is 220ms on size, and the
  * charts bring their own entrance.
@@ -35,20 +36,20 @@
 }
 
 /*
- * From 900px the page is a stage that does not scroll: the top bar, the details band and the app
- * footer stay where they are, and only the area under the band scrolls. Scrolling it folds the band
+ * From 900px the page is a stage that does not scroll: the top bar and the details band stay where
+ * they are, and only the area under the band scrolls. Scrolling it folds the band
  * to a slim strip (useCollapseOnScroll), and scrolling back up opens it again. Under 900px the page
  * scrolls as a whole and the band never folds.
  */
 @media (min-width: 900px) {
-  /* Pinned between the top bar and the footer instead of being sized to fit them in the page flow:
-     the page itself then has nothing to scroll, however the shell around it is sized, and the only
-     scrollbar left is the one of the area under the band */
+  /* Pinned under the top bar, down to the bottom of the window, instead of being sized to fit in the
+     page flow: the page itself then has nothing to scroll, however the shell around it is sized, and
+     the only scrollbar left is the one of the area under the band */
   .sxe-stage {
     position: fixed;
     top: var(--sx-header);
     right: 0;
-    bottom: var(--sx-footer);
+    bottom: 0;
     left: 0;
     overflow: hidden;
   }

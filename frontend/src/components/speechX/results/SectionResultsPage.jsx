@@ -18,10 +18,10 @@ import "./results.css";
  *
  * Layout (Read mode): the shared top bar, a flat details band with the way back, then the area
  * with the score tile (the one spotlight), the score summary, the skill profile, the
- * question-wise scores and the question-by-question analysis. From 900px the top bar, the band and
- * the app footer stay in place and only the area between them scrolls, which folds the band to a
- * slim strip; under 900px the page scrolls as a whole. The first row holds the section score, the
- * skill profile and the score summary side by side. The app footer comes from the shell.
+ * question-wise scores and the question-by-question analysis. From 900px the top bar and the band
+ * stay in place and only the area under them scrolls, which folds the band to a slim strip; under
+ * 900px the page scrolls as a whole. The first row holds the section score, the skill profile and
+ * the score summary side by side. There is no app footer on this page.
  *
  * Entrance: the band settles first, the cards follow one after another and their charts draw as
  * each card settles, then the question rows cascade in (see STAGE in resultsMeta.js).

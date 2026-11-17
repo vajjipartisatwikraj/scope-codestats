@@ -79,9 +79,9 @@ export default function AnnouncementFormDrawer({ item, saving, onClose, onSave }
           </>
         }
       >
-        <form id="an-form" className="nm-form" onSubmit={submit} noValidate>
-          <section className="nm-form__section" aria-labelledby="an-content">
-            <h3 id="an-content" className="nm-form__title">
+        <form id="an-form" className="ntc-form" onSubmit={submit} noValidate>
+          <section className="ntc-form__section" aria-labelledby="an-content">
+            <h3 id="an-content" className="ntc-form__title">
               What it says
             </h3>
             <TextField
@@ -110,8 +110,8 @@ export default function AnnouncementFormDrawer({ item, saving, onClose, onSave }
             <ButtonFields values={form} errors={errors} onChange={change} disabled={saving} idPrefix="an" />
           </section>
 
-          <section className="nm-form__section" aria-labelledby="an-who">
-            <h3 id="an-who" className="nm-form__title">
+          <section className="ntc-form__section" aria-labelledby="an-who">
+            <h3 id="an-who" className="ntc-form__title">
               Who sees it, and when
             </h3>
             <AudienceField audience={form.audience} userGroups={form.userGroups} error={errors.userGroups} onChange={change} disabled={saving} idPrefix="an" />

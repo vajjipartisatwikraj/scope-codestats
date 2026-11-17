@@ -233,6 +233,10 @@ const MainContent = () => {
     // header in place of the app navbar and sidebar.
     /^\/speech-tests\/[^/]+$/.test(location.pathname);
 
+  // The detailed results of a speech test section have no app footer: the page fills the window
+  // below its top bar (speechX/results/results.css)
+  const isSpeechResultsPage = /^\/speech-tests\/[^/]+\/sections\/[^/]+\/results$/.test(location.pathname);
+
   // Check if current path is an admin page
   const isAdminPage = location.pathname.startsWith("/admin/");
 
@@ -286,6 +290,7 @@ const MainContent = () => {
     location.pathname === "/dashboard" ||
     isCohortPage || // All cohort pages (list, detail, admin)
     hasAdminTop || // a window-high page with a fixed top (AdminTop): only its list scrolls
+    isSpeechResultsPage ||
     isTestPage;
 
   // List of valid routes (excluding dynamic routes)

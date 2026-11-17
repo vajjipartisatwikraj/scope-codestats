@@ -26,26 +26,26 @@ export default function AnnouncementCard({ announcement, titleId, onButton, onCl
   const hasButton = Boolean(announcement.buttonText);
 
   return (
-    <div className="an__card" data-has-image={hasImage ? 'true' : 'false'}>
+    <div className="ann__card" data-has-image={hasImage ? 'true' : 'false'}>
       {hasImage ? (
-        <div className="an__media">
+        <div className="ann__media">
           <img src={announcement.imageUrl} alt="" onError={() => setImageFailed(true)} />
         </div>
       ) : null}
 
-      <div className="an__body">
-        <header className="an__head">
-          <span className="an__mark" aria-hidden="true">
+      <div className="ann__body">
+        <header className="ann__head">
+          <span className="ann__mark" aria-hidden="true">
             <MegaphoneIcon size={22} weight="fill" />
           </span>
-          <h2 className="an__title" id={titleId}>
+          <h2 className="ann__title" id={titleId}>
             {announcement.title}
           </h2>
         </header>
-        <div className="an__text">
+        <div className="ann__text">
           <Prose html={announcement.description} />
         </div>
-        <div className="an__actions">
+        <div className="ann__actions">
           {hasButton ? (
             <>
               <Button variant="secondary" onClick={onClose}>
@@ -64,7 +64,7 @@ export default function AnnouncementCard({ announcement, titleId, onButton, onCl
       </div>
 
       {/* data-close keeps the first focus on a button, not on the cross */}
-      <button type="button" className="an__close" data-close="true" aria-label="Close this announcement" onClick={onClose}>
+      <button type="button" className="ann__close" data-close="true" aria-label="Close this announcement" onClick={onClose}>
         <XIcon size={20} weight="bold" aria-hidden="true" />
       </button>
     </div>
