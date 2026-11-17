@@ -14,9 +14,10 @@ import './staffSidebar.css';
  *
  *   cohort, panel, onPanel   as CohortHeader; panel is 'questions' | 'notes' | 'progress'
  *   busy                     a publish is running
+ *   canPublish               the viewer may publish and unpublish this cohort (an admin, or the teacher who created it)
  *   onTogglePublished()
  */
-export default function StaffHeader({ cohort, panel, onPanel, busy, onTogglePublished }) {
+export default function StaffHeader({ cohort, panel, onPanel, busy, canPublish = true, onTogglePublished }) {
   const draft = Boolean(cohort.isDraft);
   return (
     <header className="cdh">
@@ -27,9 +28,11 @@ export default function StaffHeader({ cohort, panel, onPanel, busy, onTogglePubl
         <Badge tone={draft ? 'neutral' : 'success'} icon={draft ? <EyeSlashIcon size={14} weight="regular" aria-hidden="true" /> : <EyeIcon size={14} weight="fill" aria-hidden="true" />}>
           {draft ? 'Draft' : 'Published'}
         </Badge>
-        <Button size="sm" variant="secondary" loading={busy} onClick={onTogglePublished}>
-          {draft ? 'Publish' : 'Unpublish'}
-        </Button>
+        {canPublish ? (
+          <Button size="sm" variant="secondary" loading={busy} onClick={onTogglePublished}>
+            {draft ? 'Publish' : 'Unpublish'}
+          </Button>
+        ) : null}
         <Button size="sm" variant={panel === 'progress' ? 'spotlight' : 'secondary'} aria-pressed={panel === 'progress'} startIcon={<ChartLineUpIcon size={14} weight="regular" aria-hidden="true" />} onClick={() => onPanel('progress')}>
           Progress
         </Button>

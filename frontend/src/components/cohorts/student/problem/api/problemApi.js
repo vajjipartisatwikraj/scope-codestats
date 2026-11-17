@@ -28,6 +28,10 @@ export const fetchAllSubmissions = (token, { cohortId, moduleId, questionId }) =
 export const fetchEditorial = (token, { cohortId, questionId }) =>
   axios.get(`${cohortBase(cohortId)}/questions/${questionId}/editorial`, bearer(token)).then((response) => response.data.editorial);
 
+/** The reference solutions of the question. The server answers admins and teachers only (403 otherwise) */
+export const fetchSolutions = (token, { cohortId, moduleId, questionId }) =>
+  axios.get(`${questionBase(cohortId, moduleId, questionId)}/solutions`, bearer(token)).then((response) => response.data);
+
 /** The module with its questions, for the problem list and for previous and next */
 export const fetchModule = (token, { cohortId, moduleId }) =>
   axios.get(`${cohortBase(cohortId)}/modules/${moduleId}`, bearer(token)).then((response) => response.data);

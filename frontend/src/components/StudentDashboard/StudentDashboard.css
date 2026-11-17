@@ -45,7 +45,7 @@
  */
 
 .sd {
-  --sd-top: 64px;
+  --sd-top: calc(64px + var(--ds-alert-h, 0px)); /* the navbar, and the alert band above it when there is one */
   --sd-gap: 16px;
   --sd-pad-x: 24px;
   --sd-bottom: 16px;

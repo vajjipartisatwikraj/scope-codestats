@@ -1,0 +1,122 @@
+/*
+ * Notice management (noticeManagement/): the alert and announcement screens and their drawers.
+ * Only design tokens. The cards are the kit's AdminListCard; this file holds what the drawers add.
+ */
+
+/* ---- Drawer form ---------------------------------------------------------------------------------- */
+
+.nm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.nm-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.nm-form__title {
+  margin: 0;
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+
+.nm-form__note {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-body-sm);
+}
+
+/* Start and end side by side; one under the other on a phone */
+.nm-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .nm-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- Preview -------------------------------------------------------------------------------------------- */
+
+/* The alert band as it will look, inside the drawer: the same component the app uses */
+.nm-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nm-preview__label {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-label);
+}
+
+.nm-preview__frame {
+  border-radius: var(--ds-radius-md);
+  overflow: hidden;
+}
+
+/* ---- Audience --------------------------------------------------------------------------------------------- */
+
+.nm-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* ---- Announcement image -------------------------------------------------------------------------------- */
+
+.nm-image {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  color: var(--ds-subtle);
+  overflow: hidden;
+}
+
+.nm-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nm-image__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font: var(--ds-type-body-sm);
+}
+
+.nm-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.nm-fieldset__legend {
+  margin: 0 0 4px;
+  padding: 0;
+  font: var(--ds-type-label);
+}

@@ -54,7 +54,8 @@
   --nb-color-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   position: fixed;
-  top: 0;
+  /* Below the alert band when there is one (notices/AlertBand sets --ds-alert-h) */
+  top: var(--ds-alert-h, 0px);
   right: 0;
   left: 75px;
   /* One below the sidebar, so the rail floats over it; above the page; below dialogs. */
@@ -100,7 +101,7 @@
  */
 .ds-menu-button {
   position: fixed;
-  top: 12px;
+  top: calc(12px + var(--ds-alert-h, 0px));
   left: 16px;
   z-index: 1202; /* above the navbar (1199) and the rail (1200) */
   display: grid;
@@ -638,7 +639,7 @@
   /* On a phone the panel spans the screen instead of hanging off the bell */
   .ds-notices {
     position: fixed;
-    top: 72px;
+    top: calc(72px + var(--ds-alert-h, 0px));
     right: 12px;
     left: 12px;
     width: auto;

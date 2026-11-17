@@ -15,9 +15,11 @@ export const groupPath = (id) => `/admin/user-groups/${id}`;
  *
  *   group                 a group of GET /user-groups (name, description, memberCount, cohortCount,
  *                         testCount, createdAt)
+ *   canDelete             the viewer may delete this group (an admin, or the teacher who created it); without
+ *                         it the menu has Edit only
  *   onEdit, onDelete      (group) => void
  */
-export default function GroupCard({ group, onEdit, onDelete }) {
+export default function GroupCard({ group, canDelete = true, onEdit, onDelete }) {
   const used = (group.cohortCount || 0) + (group.testCount || 0) > 0;
   const facts = [
     { key: 'cohorts', icon: <StackIcon size={16} weight="regular" aria-hidden="true" />, text: pluralize(group.cohortCount || 0, 'cohort') },
@@ -31,7 +33,7 @@ export default function GroupCard({ group, onEdit, onDelete }) {
       menuLabel={`Actions for ${group.name}`}
       menuItems={[
         { key: 'edit', label: 'Edit', hint: 'Name and description', icon: <PencilSimpleIcon size={20} weight="regular" />, onSelect: () => onEdit(group) },
-        { key: 'delete', label: 'Delete', icon: <TrashIcon size={20} weight="regular" />, tone: 'danger', onSelect: () => onDelete(group) },
+        ...(canDelete ? [{ key: 'delete', label: 'Delete', icon: <TrashIcon size={20} weight="regular" />, tone: 'danger', onSelect: () => onDelete(group) }] : []),
       ]}
       title={group.name}
       description={group.description}

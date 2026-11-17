@@ -1,0 +1,270 @@
+/* RichTextEditor: a toolbar and a writing area in one box (see RichTextEditor.jsx for the props) */
+.rte,
+.rte *,
+.rte *::before,
+.rte *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+.rte {
+  --rte-bg: var(--ds-raised);
+  --rte-border: var(--ds-field-border);
+  --rte-text: var(--ds-text);
+  --rte-muted: var(--ds-muted);
+  --rte-line: var(--ds-line);
+  --rte-tool-hover: var(--ds-high);
+  --rte-tool-on-bg: var(--ds-accent-soft);
+  --rte-tool-on-text: var(--ds-accent-text);
+  --rte-focus: var(--ds-focus);
+  --rte-danger: var(--ds-danger);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rte__label {
+  color: var(--rte-text);
+  font: var(--ds-type-label);
+}
+
+.rte__box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--rte-border);
+  border-radius: var(--ds-radius-md);
+  background-color: var(--rte-bg);
+  color: var(--rte-text);
+  overflow: hidden;
+}
+
+.rte__box:focus-within {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--rte-focus);
+}
+
+.rte[data-invalid='true'] .rte__box {
+  border-color: var(--rte-danger);
+}
+
+.rte[data-invalid='true'] .rte__box:focus-within {
+  border-color: transparent;
+}
+
+.rte[data-disabled='true'] .rte__box {
+  border-color: transparent;
+  background-color: var(--ds-high);
+  color: var(--ds-subtle);
+}
+
+/* ---- Toolbar ------------------------------------------------------------------------------------ */
+
+.rte__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border-bottom: 1px solid var(--rte-line);
+}
+
+.rte__tool {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background-color: transparent;
+  color: var(--rte-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.rte__tool:hover:not(:disabled) {
+  background-color: var(--rte-tool-hover);
+  color: var(--rte-text);
+}
+
+.rte__tool[aria-pressed='true'] {
+  background-color: var(--rte-tool-on-bg);
+  color: var(--rte-tool-on-text);
+}
+
+.rte__tool:focus-visible,
+.rte__link-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--rte-bg),
+    0 0 0 4px var(--rte-focus);
+}
+
+.rte__tool:disabled {
+  color: var(--ds-subtle);
+  cursor: default;
+}
+
+.rte__sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background-color: var(--rte-line);
+}
+
+/* ---- The link row --------------------------------------------------------------------------------- */
+
+.rte__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--rte-line);
+}
+
+.rte__link-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rte-border);
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-surface);
+  color: var(--rte-text);
+  font: var(--ds-type-body);
+}
+
+.rte__link-input:focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--rte-focus);
+}
+
+.rte__link-button {
+  height: 36px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--rte-tool-hover);
+  color: var(--rte-text);
+  font: var(--ds-type-label);
+  cursor: pointer;
+}
+
+.rte__link-button[data-primary='true'] {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.rte__link-error {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--rte-danger);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* ---- Writing area ----------------------------------------------------------------------------------- */
+
+.rte__area {
+  position: relative;
+  max-width: none;
+  padding: 12px 14px;
+  outline: none;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+/* The placeholder is drawn by the data attribute, so the box really is empty for the browser */
+.rte__area[data-empty='true']::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  color: var(--ds-subtle);
+  pointer-events: none;
+}
+
+.rte__area[contenteditable='false'] {
+  cursor: default;
+}
+
+/* ---- Foot ------------------------------------------------------------------------------------------- */
+
+.rte__foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rte__notes {
+  min-width: 0;
+}
+
+.rte__hint,
+.rte__error,
+.rte__count {
+  margin: 0;
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.rte__hint {
+  color: var(--rte-muted);
+}
+
+.rte__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--rte-danger);
+}
+
+.rte__error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.rte__count {
+  flex: none;
+  color: var(--rte-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rte__count[data-over='true'] {
+  color: var(--rte-danger);
+}
+
+.rte__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (pointer: coarse), (max-width: 899.95px) {
+  .rte__tool {
+    width: 44px;
+    height: 44px;
+  }
+
+  .rte__link-input,
+  .rte__link-button {
+    height: 44px;
+  }
+}

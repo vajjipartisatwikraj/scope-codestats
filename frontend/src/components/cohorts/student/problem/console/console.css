@@ -304,3 +304,112 @@
   font-family: var(--ds-font-mono);
   font-size: 0.8125rem;
 }
+
+/* The debug switch in the console header: the bug icon and the toggle, no words */
+.ps-debug {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-muted);
+}
+
+.ps-debug[data-on='true'] {
+  color: var(--ds-accent-text);
+}
+
+/* A small switch with a dark track when off (the kit's is 48px and a mid grey) */
+.ps-debug .ui-switch__control {
+  width: 34px;
+  height: 20px;
+  background-color: var(--ds-high);
+}
+
+.ps-debug .ui-switch__control[aria-checked='true'] {
+  background-color: var(--ds-accent);
+}
+
+.ps-debug .ui-switch__thumb {
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background-color: var(--ds-muted);
+}
+
+.ps-debug .ui-switch__control[aria-checked='true'] .ui-switch__thumb {
+  background-color: var(--ds-on-accent);
+  transform: translateX(14px);
+}
+
+/* ---- The console is compact: tighter header and body ---------------------------------------------------- */
+
+.ps-console .ps-pane__header {
+  min-height: 44px;
+  padding: 4px 8px 4px 12px;
+}
+
+.ps-console .ps-pane__body {
+  padding: 4px 12px 8px;
+}
+
+.ps-console .ps-stack {
+  gap: 8px;
+}
+
+/* ---- Test cases as plain rows with a hairline between them (no boxes) ----------------------------------- */
+
+.ps-console .ps-cases {
+  gap: 0;
+}
+
+.ps-cases > .ps-figures {
+  margin: 4px 0 8px;
+}
+
+.ps-cases .ui-disclosure[data-variant='plain'] {
+  --ui-disc-pad: 4px;
+
+  border-radius: 0;
+}
+
+.ps-cases .ui-disclosure__trigger {
+  min-height: 36px;
+  padding: 4px var(--ui-disc-pad);
+  gap: 8px;
+}
+
+.ps-cases .ui-disclosure__title {
+  font: var(--ds-type-label);
+  letter-spacing: var(--ds-tracking-label);
+}
+
+.ps-cases .ui-disclosure__content {
+  padding: 0 var(--ui-disc-pad) 10px;
+}
+
+.ps-cases .ps-pair {
+  gap: 8px;
+}
+
+.ps-cases .ps-block + .ps-block {
+  margin-top: 8px;
+}
+
+.ps-cases .ps-block__label {
+  margin-bottom: 2px;
+}
+
+/* The case has no box now, so its code blocks carry the raised tone */
+.ps-cases .ps-block__code {
+  min-height: 32px;
+  padding: 6px 10px;
+  background-color: var(--ds-raised);
+}
+
+.ps-cases .ps-block__code[data-tone='success'] {
+  background-color: var(--ds-success-soft);
+}
+
+.ps-cases .ps-block__code[data-tone='danger'] {
+  background-color: var(--ds-danger-soft);
+}

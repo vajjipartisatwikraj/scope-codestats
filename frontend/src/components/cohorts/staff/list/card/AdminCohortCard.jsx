@@ -26,11 +26,11 @@ function audienceOf(cohort) {
  * One cohort on the staff dashboard, in the student card's own shape (the status badge, the title,
  * two lines of description, the facts at the foot). Three dots in the top right corner open a menu of
  * what staff can do to the cohort (edit, download the exam results, duplicate, delete); User groups
- * and Manage are the two buttons at the foot. Teachers manage and attach user groups but do not
- * create, edit, duplicate or delete, so they get no menu.
+ * and Manage are the two buttons at the foot. A teacher gets the menu only on the cohorts they
+ * created; on an admin's cohort they can open it and attach user groups, nothing more.
  *
  *   cohort                 a cohort of GET /cohorts/admin
- *   canEdit                the viewer may edit, duplicate and delete (admins)
+ *   canEdit                the viewer may edit, duplicate and delete this cohort (canManageCohort)
  *   busy                   an action is running: duplicating is not offered meanwhile (the item waits)
  *   exporting              this cohort's exam results are being built
  *   onEdit, onDelete, onDuplicate, onExport, onUserGroups, onManage   (cohort) => void

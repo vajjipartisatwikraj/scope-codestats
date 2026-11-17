@@ -69,6 +69,118 @@
   gap: 8px;
 }
 
+/* From 900px three parts: the list at the left, the question boxes truly centred, the actions at the right */
+.ps-topbar[data-compact='false'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.ps-topbar[data-compact='false'] > :first-child {
+  justify-self: start;
+}
+
+.ps-topbar[data-compact='false'] > .ps-topbar__actions {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* The problem list button is the platform blue itself, not the lighter text tint */
+.ps-topbar .ui-button[data-variant='ghost'],
+.ps-topbar .ui-button[data-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
+  color: var(--ds-accent);
+}
+
+/* ---- Question boxes: a pagination of the module's questions ---------------------------------------------- */
+
+.ps-pager {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.ps-pager__list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-pager__box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.ps-pager__box:hover {
+  background-color: var(--ds-high);
+}
+
+/* A solved question: a soft green box with a check in its corner */
+.ps-pager__box[data-solved='true'] {
+  background-color: var(--ds-success-soft);
+  color: var(--ds-success);
+}
+
+.ps-pager__box[data-solved='true']:hover {
+  background-color: color-mix(in srgb, var(--ds-success-soft) 82%, var(--ds-success));
+}
+
+/* The open question: the platform blue, solved or not */
+.ps-pager__box[data-current='true'],
+.ps-pager__box[data-current='true']:hover {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.ps-pager__box:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-focus);
+}
+
+.ps-pager__check {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+}
+
+.ps-pager__gap {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 28px;
+  color: var(--ds-subtle);
+  font: var(--ds-type-caption);
+  user-select: none;
+}
+
+/* A finger needs 44px */
+@media (pointer: coarse) {
+  .ps-pager__box {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-pager__box {
+    transition: none;
+  }
+}
+
 @media (max-width: 599.95px) {
   .ps-topbar {
     padding: 6px 8px;

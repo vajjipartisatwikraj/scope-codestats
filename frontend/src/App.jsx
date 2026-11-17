@@ -54,6 +54,8 @@ import Contact from "./pages/Contact";
 import CourseManagement from "./components/courseManagement";
 import OpportunityManagement from "./components/opportunityManagement";
 import NotificationManagement from "./components/notificationManagement";
+import { AlertManagement, AnnouncementManagement } from "./components/noticeManagement";
+import NoticeLayer from "./components/notices";
 import ManageUsers from "./components/manageUsers";
 import Monitoring from "./components/monitoring";
 import UserGroups, { UserGroupPage } from "./components/userGroupManagement";
@@ -113,7 +115,6 @@ import {
 import CohortManagementTab from "./components/cohorts/staff/list";
 import CohortStats from "./components/cohort/CohortStats";
 import QuestionReports from "./components/cohort/QuestionReports";
-import TeacherQuestionView from "./components/cohort/TeacherQuestionView";
 
 
 // Add custom menu icon component
@@ -239,12 +240,6 @@ const MainContent = () => {
   const isCohortPage =
     location.pathname === "/cohorts" ||
     location.pathname.match(/^\/cohorts\/[^/]+$/) || // CohortDetail page
-    location.pathname.match(
-      /^\/cohorts\/[^/]+\/modules\/[^/]+\/questions\/[^/]+\/view$/
-    ) || // Teacher view
-    location.pathname.match(
-      /^\/admin\/cohorts\/[^/]+\/modules\/[^/]+\/questions\/[^/]+\/view$/
-    ) || // Admin teacher view
     location.pathname.startsWith("/admin/cohorts");
 
   // The cohort list keeps its heading and filters in place while the list scrolls (position:
@@ -271,6 +266,8 @@ const MainContent = () => {
       "/admin/suspend-accounts",
       "/admin/access-list",
       "/admin/my-students",
+      "/admin/alerts",
+      "/admin/announcements",
     ].includes(location.pathname) ||
     location.pathname.startsWith("/admin/bank-library") ||
     location.pathname.startsWith("/admin/user-groups") ||
@@ -317,6 +314,8 @@ const MainContent = () => {
     "/opportunity-management",
     "/admin/opportunities",
     "/admin/notifications",
+    "/admin/alerts",
+    "/admin/announcements",
     "/admin/manage-users",
     "/admin/monitoring",
     "/admin/suspend-accounts",
@@ -426,6 +425,10 @@ const MainContent = () => {
           backgroundColor: "transparent", // Allow theme background to show through for Liquid Glass UI
         }}
       >
+        {/* Alerts (a band at the very top, in the flow) and announcements (a card over the app), for every
+            signed-in user, only where the navbar and sidebar are shown */}
+        {shouldShowNavigation && <NoticeLayer />}
+
         {/* Exam session bar. Lives above the routes so the countdown survives
             navigating between the cohort page and its questions, and so it is
             the single owner of the tab's exam guard. */}
@@ -713,6 +716,23 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true}>
                       <OpportunityManagement />
+                    </PrivateRoute>
+                  }
+                />
+                {/* Alerts (the band across the top) and announcements (the card after sign-in): admins only */}
+                <Route
+                  path="/admin/alerts"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <AlertManagement />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/announcements"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <AnnouncementManagement />
                     </PrivateRoute>
                   }
                 />
@@ -1058,16 +1078,6 @@ const MainContent = () => {
                   }
                 />
                 <Route
-                  path="/cohorts/:cohortId/modules/:moduleId/questions/:questionId/view"
-                  element={
-                    <PrivateRoute>
-                      <MobileRestrictedRoute pageName="Teacher Question View">
-                        <TeacherQuestionView />
-                      </MobileRestrictedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
                   path="/admin/cohorts"
                   element={
                     <PrivateRoute adminOnly={true}>
@@ -1080,16 +1090,6 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true}>
                       <CohortDetail />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/admin/cohorts/:cohortId/modules/:moduleId/questions/:questionId/view"
-                  element={
-                    <PrivateRoute adminOnly={true}>
-                      <MobileRestrictedRoute pageName="Teacher Question View">
-                        <TeacherQuestionView />
-                      </MobileRestrictedRoute>
                     </PrivateRoute>
                   }
                 />

@@ -27,7 +27,7 @@ router.put("/:id", userGroupController.updateUserGroup);
 router.post("/:id/members", userGroupController.addMembers);
 // Remove roll numbers: { rollNumbers: [] }. Refused while the group is attached to a cohort
 router.delete("/:id/members", userGroupController.removeMembers);
-// Delete the group. Refused while it is attached to a cohort
+// Delete the group. Admins delete any group; a teacher only their own (403 not_group_owner). Refused while it is attached to a cohort
 router.delete("/:id", userGroupController.deleteUserGroup);
 
 module.exports = router;

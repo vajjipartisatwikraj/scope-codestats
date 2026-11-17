@@ -4,13 +4,17 @@ import { ListBulletsIcon } from '@phosphor-icons/react/dist/csr/ListBullets';
 import { PlayIcon } from '@phosphor-icons/react/dist/csr/Play';
 import { Button, IconButton } from '../../../../ui';
 import { RUN_HINT, SUBMIT_HINT } from '../model/shortcuts';
+import ProblemPager from './ProblemPager';
 import './navigation.css';
 
 /**
- * The 56px strip above the panes: the problem list at the left; at the right Run and Submit for a
+ * The 56px strip above the panes, in three parts: the problem list at the left; in the middle the
+ *   questions of the module as numbered square boxes (ProblemPager); at the right Run and Submit for a
  * coding question (a multiple choice question has its own Submit beside the options). Run is the
- * secondary button and Submit the one primary. On a phone the problem list is an icon.
+ * secondary button and Submit the one primary. On a phone the problem list is an icon and the boxes
+ * give way to the previous and next buttons beside the tabs of the question.
  *
+ *   nav, currentId   the result of useProblemNavigation and the open question's id (for the boxes)
  *   onList           opens the problem list
  *   compact          a phone: the list button is an icon
  *   coding           the question is programming or SQL: show Run and Submit
@@ -18,7 +22,7 @@ import './navigation.css';
  *   onRun, onSubmit  the two actions (the page may switch the phone to the console first)
  *   sql              a SQL question (no custom input to wait for)
  */
-export default function ProblemTopBar({ onList, compact, coding, runner, onRun, onSubmit, sql }) {
+export default function ProblemTopBar({ nav, currentId, onList, compact, coding, runner, onRun, onSubmit, sql }) {
   const { busy, running, submitting, sqlBusy, inputTab, customInput } = runner;
   const customWaiting = !sql && inputTab === 1;
   const runDisabled = busy || (customWaiting && !customInput.trim());
@@ -26,7 +30,7 @@ export default function ProblemTopBar({ onList, compact, coding, runner, onRun, 
   const submitLabel = submitting || sqlBusy === 'SUBMIT' ? 'Submitting' : 'Submit';
 
   return (
-    <header className="ps-topbar">
+    <header className="ps-topbar" data-compact={compact ? 'true' : 'false'}>
       {compact ? (
         <IconButton label="Problem list" onClick={onList}>
           <ListBulletsIcon size={20} weight="regular" aria-hidden="true" />
@@ -36,7 +40,7 @@ export default function ProblemTopBar({ onList, compact, coding, runner, onRun, 
           Problem list
         </Button>
       )}
-      <span className="ps-topbar__spacer" />
+      {compact ? <span className="ps-topbar__spacer" /> : <ProblemPager nav={nav} currentId={currentId} />}
       {coding ? (
         <div className="ps-topbar__actions">
           {/* The shortcut is in the browser's own title, which waits a moment and never covers the button */}

@@ -80,6 +80,7 @@ const summaryOf = (group) => ({
   name: group.name,
   description: group.description,
   memberCount: group.rollNumbers.length,
+  createdBy: group.createdBy,
   createdAt: group.createdAt,
   updatedAt: group.updatedAt,
 });
@@ -91,6 +92,7 @@ async function listGroups() {
       $project: {
         name: 1,
         description: 1,
+        createdBy: 1,
         createdAt: 1,
         updatedAt: 1,
         memberCount: { $size: "$rollNumbers" },
@@ -217,8 +219,19 @@ async function removeMembers(groupId, rollNumbers) {
   return { group: summaryOf(group), removed: before - group.rollNumbers.length };
 }
 
-async function deleteGroup(groupId) {
+/**
+ * Delete a group. Admins can delete any group; a teacher only the ones they created, never an
+ * admin's (a group with no recorded creator counts as not theirs).
+ */
+async function deleteGroup(groupId, user) {
   const group = await getGroupOrFail(groupId);
+  const isAdmin = user?.userType === "admin";
+  const isOwner = Boolean(group.createdBy) && String(group.createdBy) === String(user?.id);
+  if (!isAdmin && !isOwner) {
+    throw new ServiceError(403, "You can only delete user groups that you created", {
+      reason: "not_group_owner",
+    });
+  }
   await refuseIfAttached(group, "delete it");
   await group.deleteOne();
   return { message: `User group "${group.name}" deleted` };

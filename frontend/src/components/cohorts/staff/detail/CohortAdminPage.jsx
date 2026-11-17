@@ -22,6 +22,7 @@ import useSharedConfirm from './hooks/useSharedConfirm';
 import useStaffActions from './hooks/useStaffActions';
 import useStaffCohort from './hooks/useStaffCohort';
 import { emptyQuestionForm } from './model/staffContent';
+import { canManageCohort } from '../list/model/cohortAdmin';
 import StaffQuestionsPanel from './questions/StaffQuestionsPanel';
 import StaffSidebar from './sidebar/StaffSidebar';
 
@@ -65,8 +66,9 @@ function PageSkeleton() {
  *
  * Every change to a module or a question goes through the shared-content warning: cohorts cloned from
  * one another share their content, so the server previews which cohorts a change reaches and staff
- * confirm it (hooks/useSharedConfirm, dialogs/SharedContentDialog). Admins edit; teachers publish,
- * look at progress and issues, view questions and export them.
+ * confirm it (hooks/useSharedConfirm, dialogs/SharedContentDialog). Admins edit. Teachers look at
+ * progress and issues, open questions in the problem screen and export them, and publish the cohorts
+ * they created (an admin's cohort is not theirs to publish).
  *
  * Admins and teachers can import content from the bank library (components/bankLibrary): a whole
  * bank as new modules (the button in the module list) or topics and single questions into the open
@@ -227,6 +229,7 @@ export default function CohortAdminPage() {
             panel={panel}
             onPanel={showPanel}
             busy={actions.busy}
+            canPublish={canManageCohort(user, cohort)}
             onTogglePublished={actions.togglePublished}
             modules={modules}
             selectedId={panel === 'questions' || panel === 'notes' ? selected?._id : undefined}

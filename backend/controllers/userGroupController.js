@@ -52,7 +52,7 @@ const removeMembers = handle("removing roll numbers from a user group", (req) =>
 );
 
 const deleteUserGroup = handle("deleting a user group", (req) =>
-  userGroupService.deleteGroup(req.params.id)
+  userGroupService.deleteGroup(req.params.id, req.user)
 );
 
 module.exports = {

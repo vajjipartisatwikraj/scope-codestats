@@ -26,6 +26,7 @@ export { default as PillTabs } from './PillTabs';
 export { default as ScrollRow } from './ScrollRow';
 export { default as PlatformIcon } from './PlatformIcon';
 export { default as TagInput } from './TagInput';
+export { default as RichTextEditor } from './RichTextEditor';
 export { default as AudioWaveform } from './AudioWaveform';
 export { default as WaveformBars } from './WaveformBars';
 export { default as LevelMeter } from './LevelMeter';

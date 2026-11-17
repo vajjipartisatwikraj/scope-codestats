@@ -249,6 +249,15 @@ const getQuestion = async (req, res) => {
       );
     }
 
+    // Reference solutions are never part of this response, for staff too. Staff read them from
+    // GET .../solutions (getQuestionSolutions); the edit form has its own endpoint.
+    if (Array.isArray(questionData.languages)) {
+      questionData.languages = questionData.languages.map(
+        ({ solutionCode, ...language }) => language
+      );
+    }
+    if (questionData.sqlMeta) delete questionData.sqlMeta.solutionSql;
+
     // Include scoring tiers in response - these are safe to send to frontend
     // Students should see the scoring tiers to understand performance benchmarks
     // Languages array already includes scoringTiers and minimumPoints fields
@@ -304,26 +313,29 @@ const getQuestion = async (req, res) => {
 };
 
 // Get question editorial (loaded on-demand when user clicks Editorial tab)
-// SECURITY: Only show editorial if user has ACCEPTED (correct) submission
+// SECURITY: Students only see the editorial with an ACCEPTED (correct) submission.
+// Admins and teachers can always read it.
 const getQuestionEditorial = async (req, res) => {
   try {
     const { questionId } = req.params;
     const userId = req.user.id;
 
-    // Check if user has an ACCEPTED (correct) submission for this question
-    const Submission = require("../../models/Submission");
-    const acceptedSubmission = await Submission.findOne({
-      user: userId,
-      question: questionId,
-      status: "accepted", // CRITICAL: Must be accepted, not just any submission
-    }).select("_id");
+    if (!isAdminOrTeacher(req.user)) {
+      // Check if user has an ACCEPTED (correct) submission for this question
+      const Submission = require("../../models/Submission");
+      const acceptedSubmission = await Submission.findOne({
+        user: userId,
+        question: questionId,
+        status: "accepted", // CRITICAL: Must be accepted, not just any submission
+      }).select("_id");
 
-    if (!acceptedSubmission) {
-      return res.status(403).json({
-        message:
-          "You must submit a correct solution before viewing the editorial.",
-        error: "NO_ACCEPTED_SUBMISSION",
-      });
+      if (!acceptedSubmission) {
+        return res.status(403).json({
+          message:
+            "You must submit a correct solution before viewing the editorial.",
+          error: "NO_ACCEPTED_SUBMISSION",
+        });
+      }
     }
 
     const question = await Question.findById(questionId)
@@ -337,6 +349,44 @@ const getQuestionEditorial = async (req, res) => {
     res.json({ editorial: question.editorial || "" });
   } catch (err) {
     log.error("Error fetching editorial:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// The reference solutions of a question, for admins and teachers only (the route applies adminAuth).
+// Programming: the solution code of each language. SQL: the reference query. MCQ: the correct options.
+const getQuestionSolutions = async (req, res) => {
+  try {
+    if (!isAdminOrTeacher(req.user)) {
+      return res.status(403).json({ message: "Solutions are for admins and teachers only" });
+    }
+    const { moduleId, questionId } = req.params;
+
+    const question = await Question.findOne({ _id: questionId, module: moduleId })
+      .select("+sqlMeta.solutionSql title type languages options sqlMeta.solutionSql")
+      .lean();
+
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" });
+    }
+
+    res.json({
+      type: question.type,
+      title: question.title,
+      languages: (question.languages || [])
+        .filter((language) => language.solutionCode && language.solutionCode.trim())
+        .map((language) => ({
+          name: language.name,
+          version: language.version,
+          solutionCode: language.solutionCode,
+        })),
+      solutionSql: question.sqlMeta?.solutionSql || "",
+      correctOptions: (question.options || [])
+        .filter((option) => option.isCorrect)
+        .map((option) => ({ _id: option._id, text: option.text })),
+    });
+  } catch (err) {
+    log.error("Error fetching solutions:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -922,6 +972,7 @@ module.exports = {
   exportModuleQuestions,
   getQuestion,
   getQuestionEditorial,
+  getQuestionSolutions,
   getQuestionForEdit,
   createQuestion,
   bulkCreateQuestions,

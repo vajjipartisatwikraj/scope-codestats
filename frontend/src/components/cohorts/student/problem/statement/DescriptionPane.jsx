@@ -5,9 +5,10 @@ import ProblemBody from './ProblemBody';
 import ProblemHeader from './ProblemHeader';
 import './statement.css';
 
-/** The five views of a question; the statement is always on the left, the others open on the right */
+/** The views of a question; the statement is always on the left, the others open on the right. Solutions is for staff only. */
 export const SECTIONS = [
   { key: 'problem', label: 'Problem' },
+  { key: 'solutions', label: 'Solutions', staffOnly: true },
   { key: 'editorial', label: 'Editorial' },
   { key: 'submissions', label: 'Submissions' },
   { key: 'report', label: 'Report' },
@@ -20,11 +21,12 @@ export const SECTIONS = [
  *
  *   question, progress, exam, remainingMs   see ProblemHeader
  *   section, onSection    the open section and how to change it
+ *   staff                 an admin or a teacher: the Solutions tab is offered
  *   folded, onFold        fold to a strip (omit onFold on a phone)
  *   children              under the statement on a phone, where the other sections replace it
  *   replace               a node shown instead of the statement (a phone showing Editorial, Notes, ...)
  */
-export default function DescriptionPane({ question, progress, exam, remainingMs, section, onSection, folded, onFold, replace }) {
+export default function DescriptionPane({ question, progress, exam, remainingMs, section, onSection, staff = false, folded, onFold, replace }) {
   if (folded) {
     return (
       <aside className="ps-strip" aria-label="Problem description, folded">
@@ -37,7 +39,7 @@ export default function DescriptionPane({ question, progress, exam, remainingMs,
     <Pane
       className="ps-description"
       label="Problem description"
-      lead={<PillTabs items={SECTIONS} value={section} onChange={onSection} label="Sections of this question" size="sm" />}
+      lead={<PillTabs items={staff ? SECTIONS : SECTIONS.filter((entry) => !entry.staffOnly)} value={section} onChange={onSection} label="Sections of this question" size="sm" />}
       actions={onFold ? <FoldButton folded={false} onToggle={onFold} name="the description" axis="x" /> : null}
     >
       {replace || (

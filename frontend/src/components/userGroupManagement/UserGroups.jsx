@@ -5,6 +5,7 @@ import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree';
 import { apiErrorMessage, userGroupApi } from '../../services/userGroupApi';
 import { AdminCardGrid, AdminTop, Button, Card, EmptyState, Notice, Page, SearchField, SelectField, pluralize } from '../ui';
+import { useAuth } from '../../contexts/AuthContext';
 import useAutoHideScrollbars from '../../hooks/useAutoHideScrollbars';
 import './userGroups.css';
 import CreateGroupDrawer from './CreateGroupDrawer';
@@ -37,12 +38,14 @@ const inUse = (group) => (group.cohortCount || 0) + (group.testCount || 0) > 0;
  * Create button, then the search at the left and the dropdowns at the right) and a card per group.
  * A card shows the roll number count and what uses the group; its Manage button opens the group's
  * own page (UserGroupPage: students, adding roll numbers, where it is used), and its three dots
- * offer Edit (a drawer) and Delete (a dialog that names the consequence). The page works on a phone.
+ * offer Edit (a drawer) and Delete (a dialog that names the consequence); a teacher gets Delete only
+ * on the groups they created. The page works on a phone.
  * With no groups yet it explains what a group is and offers the one action to start.
  */
 export default function UserGroups() {
   // Scrollbars show only while something is being scrolled
   useAutoHideScrollbars();
+  const { user } = useAuth();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -96,6 +99,9 @@ export default function UserGroups() {
     setSearch('');
     setUsage('all');
   };
+
+  // Admins delete any group; a teacher only the groups they created, never an admin's
+  const canDelete = (group) => user?.userType === 'admin' || (Boolean(group.createdBy) && String(group.createdBy) === String(user?.id || user?._id));
 
   const createButton = (
     <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => setCreating(true)}>
@@ -185,7 +191,7 @@ export default function UserGroups() {
     body = (
       <AdminCardGrid label="User groups">
         {visible.map((group) => (
-          <GroupCard key={group._id} group={group} onEdit={setEditing} onDelete={setDeleting} />
+          <GroupCard key={group._id} group={group} canDelete={canDelete(group)} onEdit={setEditing} onDelete={setDeleting} />
         ))}
       </AdminCardGrid>
     );

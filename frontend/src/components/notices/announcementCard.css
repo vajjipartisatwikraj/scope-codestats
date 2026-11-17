@@ -1,0 +1,324 @@
+/*
+ * Announcement (notices/AnnouncementCard.jsx and AnnouncementDialog.jsx): a solid card over the app.
+ * The picture is at the left and the text at the right, the cross at the top right and the buttons at
+ * the bottom right; on a phone the picture goes above the text. It is a dialog of the design system:
+ * the surface colour, the 28px dialog radius, a thin border, the scrim behind it and the float shadow.
+ * It arrives with a rise, its parts following one after another, and leaves with a short sink. Only
+ * design tokens, so it follows Midnight and Daylight.
+ */
+
+.an,
+.an *,
+.an *::before,
+.an *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+.an {
+  position: fixed;
+  inset: 0;
+  z-index: 1450; /* above the drawers and dialogs (1400), so the management preview can open over a form */
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background-color: var(--ds-scrim);
+  animation: an-scrim 240ms var(--ds-ease) both;
+}
+
+.an[data-leaving='true'] {
+  animation: an-scrim-out 200ms var(--ds-ease) both;
+}
+
+.an__panel {
+  width: min(880px, 100%);
+  max-height: min(620px, calc(100dvh - 32px));
+  display: flex;
+  outline: none;
+  animation: an-rise 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.an[data-leaving='true'] .an__panel {
+  animation: an-sink 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* ---- The card --------------------------------------------------------------------------------------------- */
+
+.an__card {
+  --an-border: color-mix(in srgb, var(--ds-text) 16%, transparent);
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 12px;
+  width: 100%;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid var(--an-border);
+  border-radius: var(--ds-radius-2xl);
+  background-color: var(--ds-surface);
+  box-shadow: var(--ds-shadow-float-md);
+  color: var(--ds-text);
+  overflow: hidden;
+}
+
+.an__card[data-has-image='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ---- Picture ------------------------------------------------------------------------------------------------ */
+
+.an__media {
+  position: relative;
+  min-height: 280px;
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-raised);
+  overflow: hidden;
+}
+
+.an__media img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---- Text ------------------------------------------------------------------------------------------------------- */
+
+.an__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 20px 20px 8px 12px;
+}
+
+.an__card[data-has-image='false'] .an__body {
+  padding-left: 20px;
+}
+
+/* The header: a small megaphone mark and the title */
+.an__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 48px; /* clear of the cross */
+}
+
+.an__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--ds-accent-soft);
+  color: var(--ds-accent-text);
+}
+
+.an__title {
+  margin: 0;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+  text-wrap: balance;
+}
+
+.an__text {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 4px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-high) transparent;
+}
+
+.an__text .ui-prose {
+  max-width: none;
+}
+
+.an__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+
+/* ---- Cross ---------------------------------------------------------------------------------------------------------- */
+
+.an__close {
+  position: absolute;
+  box-shadow: 0 0 0 1px var(--an-border);
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.an__close:hover {
+  background-color: var(--ds-high);
+}
+
+.an__close:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-surface),
+    0 0 0 4px var(--ds-focus);
+}
+
+.an__preview-tag {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-spotlight);
+  color: var(--ds-on-spotlight);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  transform: translateX(-50%);
+}
+
+/* ---- Phone ---------------------------------------------------------------------------------------------------------- */
+
+@media (max-width: 719.95px) {
+  .an {
+    padding: 12px;
+  }
+
+  .an__panel {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .an__card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .an__media {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+
+  .an__body,
+  .an__card[data-has-image='false'] .an__body {
+    padding: 8px 8px 4px;
+  }
+
+  /* With a picture above, the cross sits on the picture and the header needs no room for it */
+  .an__head {
+    padding-right: 0;
+  }
+
+  .an__card[data-has-image='false'] .an__head {
+    padding-right: 48px;
+  }
+
+  .an__actions .ui-button {
+    flex: 1 1 auto;
+  }
+}
+
+/* A finger needs 44px */
+@media (pointer: coarse) {
+  .an__close {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ---- Motion ---------------------------------------------------------------------------------------------------------- */
+
+@keyframes an-scrim {
+  from {
+    background-color: transparent;
+  }
+}
+
+@keyframes an-scrim-out {
+  to {
+    background-color: transparent;
+  }
+}
+
+@keyframes an-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+}
+
+@keyframes an-sink {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+
+/* The parts of the card arrive one after another, a beat after the card itself */
+@keyframes an-part {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes an-picture {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+.an__head,
+.an__text,
+.an__actions {
+  animation: an-part 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.an__head {
+  animation-delay: 90ms;
+}
+
+.an__text {
+  animation-delay: 150ms;
+}
+
+.an__actions {
+  animation-delay: 210ms;
+}
+
+.an__media img {
+  animation: an-picture 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .an,
+  .an[data-leaving='true'],
+  .an__panel,
+  .an[data-leaving='true'] .an__panel,
+  .an__head,
+  .an__text,
+  .an__actions,
+  .an__media img {
+    animation: none;
+  }
+}

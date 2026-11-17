@@ -24,8 +24,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: calc(100vh - var(--cp-offset));
-  height: calc(100dvh - var(--cp-offset));
+  height: calc(100vh - var(--cp-offset) - var(--ds-alert-h, 0px));
+  height: calc(100dvh - var(--cp-offset) - var(--ds-alert-h, 0px));
   min-height: 480px;
   padding: 8px var(--cp-pad) 12px;
   color: var(--ds-text);

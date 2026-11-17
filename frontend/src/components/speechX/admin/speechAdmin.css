@@ -255,12 +255,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sxa-section__locked {
-  margin: 0 0 16px;
-  color: var(--ds-muted);
-  font: var(--ds-type-body-sm);
-}
-
 .sxa-section__add {
   margin-top: 4px;
 }

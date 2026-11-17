@@ -46,6 +46,13 @@ router.get(
   questionController.getQuestionEditorial,
 );
 
+// The reference solutions of a question. Admins and teachers only
+router.get(
+  "/:cohortId/modules/:moduleId/questions/:questionId/solutions",
+  [auth, adminAuth],
+  questionController.getQuestionSolutions,
+);
+
 // ─── Create, edit, delete (admin or teacher) ─────────────────────────────────
 
 // A question with every field, for the edit form

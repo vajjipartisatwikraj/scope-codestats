@@ -9,7 +9,8 @@ import { acceptanceOf } from '../model/staffContent';
 /**
  * One question for staff, in the student row's shape: the name and one plain line (Medium ·
  * Acceptance rate: 40% · Points: 150), with icon buttons at the right instead of Solve. View opens
- * the teacher's view of the question in a new tab; Edit and Delete are for admins.
+ * the question in the student's problem screen (the same one students solve in, with the editorial, every
+ * student's submissions and the reports open to staff) in a new tab; Edit and Delete are for admins.
  *
  *   question    { _id, title, difficultyLevel, marks, stats }
  *   viewPath    where View goes

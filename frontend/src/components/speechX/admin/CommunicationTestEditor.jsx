@@ -51,8 +51,7 @@ const targetIdOf = (problem) => {
  * own checks run on Next), the message is shown as a toast and under the field, and the first field
  * with a problem takes focus.
  *
- * Once students have started a test, saved sections and questions are read-only. Eligible students
- * are managed from the Students button once the test exists.
+ * Eligible students are managed from the Students button once the test exists.
  */
 const CommunicationTestEditor = () => {
   const { id } = useParams();
@@ -64,7 +63,6 @@ const CommunicationTestEditor = () => {
   const [form, setForm] = useState(emptyForm());
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
-  const [attemptCount, setAttemptCount] = useState(0);
   const [eligibleCount, setEligibleCount] = useState(0);
   const [serverProblems, setServerProblems] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -79,16 +77,12 @@ const CommunicationTestEditor = () => {
   const [attempted, setAttempted] = useState(() => new Set());
   const [focusTarget, setFocusTarget] = useState(null);
 
-  // Once students have started, saved sections and questions are read-only.
-  const started = attemptCount > 0;
-
   const load = useCallback(async () => {
     if (isNew) return;
     setLoading(true);
     try {
       const data = await adminApi.get(id);
       setForm(fromServer(data.test));
-      setAttemptCount(data.attemptCount);
       setEligibleCount(data.eligibleCount);
       setReached(STEPS.length - 1);
     } catch (error) {
@@ -326,7 +320,6 @@ const CommunicationTestEditor = () => {
                 total={form.sections.length}
                 section={section}
                 open={openKey === section.key}
-                started={started}
                 errors={sectionErrors(section)}
                 onToggle={() => setOpenKey((current) => (current === section.key ? null : section.key))}
                 onChange={(patch) => updateSection(section.key, patch)}
@@ -441,13 +434,6 @@ const CommunicationTestEditor = () => {
   return (
     <Page className="sxa-page sxa-editor-page">
       {header}
-
-      {started ? (
-        <Notice tone="info" className="sxa-editor__notice">
-          {attemptCount} student{attemptCount === 1 ? " has" : "s have"} started this test. Saved sections and questions
-          are locked, but you can still add new ones and change the title, description and schedule.
-        </Notice>
-      ) : null}
 
       {serverProblems.length > 0 ? (
         <Notice tone="danger" title="The test could not be saved" className="sxa-editor__notice">

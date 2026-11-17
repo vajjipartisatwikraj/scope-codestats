@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { BugIcon } from '@phosphor-icons/react/dist/csr/Bug';
-import { PlayIcon } from '@phosphor-icons/react/dist/csr/Play';
-import { Button, Notice, PillTabs } from '../../../../ui';
+import { Notice, PillTabs } from '../../../../ui';
 import { RocketAnimation } from '../../../../custom-components';
 import Pane, { FoldButton } from '../shared/Pane';
 import { blockingErrorOf, hasFailures, kindOfText } from '../model/results';
@@ -44,7 +43,8 @@ function TestRunBody({ question, runner, rocket }) {
 
 /**
  * The console under the editor. Programming questions: the "Test cases" tab (the sample cases, the
- * rows of a run, the verdict of a submit) and, in debug mode, a "Custom input" tab. SQL questions:
+ * rows of a run, the verdict of a submit) and, in debug mode, a "Custom input" tab. Debug mode is a
+ * bug icon with a switch, in the header. SQL questions:
  * the tables of a run or the verdict of a submit.
  *
  *   question   the question
@@ -82,9 +82,12 @@ export default function ConsolePane({ question, runner, folded, onFold, context 
   const actions = (
     <>
       {isSql ? null : (
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => changePanelMode(debug ? 'testrun' : 'debug')} startIcon={debug ? <PlayIcon size={16} weight="regular" aria-hidden="true" /> : <BugIcon size={16} weight="regular" aria-hidden="true" />}>
-          {debug ? 'Test run' : 'Debug'}
-        </Button>
+        <span className="ps-debug" data-on={debug ? 'true' : 'false'}>
+          <BugIcon size={16} weight={debug ? 'fill' : 'regular'} aria-hidden="true" />
+          <button type="button" role="switch" aria-checked={debug} aria-label="Debug mode" title="Debug mode" className="ui-switch__control" disabled={busy} onClick={() => changePanelMode(debug ? 'testrun' : 'debug')}>
+            <span className="ui-switch__thumb" aria-hidden="true" />
+          </button>
+        </span>
       )}
       <FoldButton folded={folded} onToggle={onFold} name="the test cases" />
     </>

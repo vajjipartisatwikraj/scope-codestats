@@ -23,6 +23,8 @@ router.get("/admin/:id", [auth, adminAuth], cohortController.getAdminCohort);
 router.get("/:id", auth, cohortController.getCohort);
 
 // ─── Manage (admin or teacher) ───────────────────────────────────────────────
+// Anyone on staff can create a cohort. Duplicating, editing and deleting one is for admins and for
+// the teacher who created it: the controller answers 403 (not_cohort_owner) to any other teacher.
 
 // Create a cohort
 router.post("/", [auth, adminAuth], cohortController.createCohort);

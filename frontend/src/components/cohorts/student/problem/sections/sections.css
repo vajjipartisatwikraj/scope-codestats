@@ -239,3 +239,15 @@
   gap: 8px;
   margin: 0 0 16px;
 }
+
+/* The solutions section: a taller editor, and the list of correct options without bullets */
+.ps-code-view__editor--tall {
+  height: min(62vh, 560px);
+  min-height: 280px;
+}
+
+ul.ps-stack {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -13,7 +13,7 @@
  */
 
 .cdp {
-  --cdp-chrome: 64px; /* the fixed navbar (Navbar.css) */
+  --cdp-chrome: calc(64px + var(--ds-alert-h, 0px)); /* the fixed navbar (Navbar.css) and the alert band above it when there is one */
   --cdp-gap: 12px;
 
   box-sizing: border-box;

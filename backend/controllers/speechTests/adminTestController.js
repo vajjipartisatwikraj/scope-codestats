@@ -121,18 +121,8 @@ const updateTest = handle(async (req, res) => {
   let hasAttempts = false;
 
   if (body.sections !== undefined) {
-    const sections = authoring.normalizeSections(body.sections);
+    test.sections = authoring.normalizeSections(body.sections);
     hasAttempts = Boolean(await SpeechTestAttempt.exists({ test: test._id }));
-
-    // Once students have started, what they were tested on must stay as it
-    // was, so only additions are accepted: new sections and new questions.
-    if (hasAttempts && !authoring.onlyAppends(sections, test.sections.toObject())) {
-      throw new ServiceError(
-        409,
-        "Students have already started this test. You can add sections and questions, but existing ones can no longer be changed or removed."
-      );
-    }
-    test.sections = sections;
   }
 
   test.title = title;

@@ -37,7 +37,8 @@
   --sb-close: 240ms;
 
   position: fixed;
-  top: 12px;
+  /* Below the alert band when there is one (notices/AlertBand sets --ds-alert-h) */
+  top: calc(12px + var(--ds-alert-h, 0px));
   bottom: 12px;
   left: 12px;
   /* The level of the Material UI drawer this replaces, so the Navbar and dialogs keep their order. */
@@ -421,7 +422,7 @@
 
 .ds-sidebar-overlay {
   position: fixed;
-  inset: 0;
+  inset: var(--ds-alert-h, 0px) 0 0 0;
   z-index: 1200;
   visibility: hidden;
   pointer-events: none;

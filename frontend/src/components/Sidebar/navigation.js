@@ -1,4 +1,5 @@
 import { BellIcon } from '@phosphor-icons/react/dist/csr/Bell';
+import { BellRingingIcon } from '@phosphor-icons/react/dist/csr/BellRinging';
 import { BookIcon } from '@phosphor-icons/react/dist/csr/Book';
 import { BooksIcon } from '@phosphor-icons/react/dist/csr/Books';
 import { BriefcaseIcon } from '@phosphor-icons/react/dist/csr/Briefcase';
@@ -8,6 +9,7 @@ import { ChatsIcon } from '@phosphor-icons/react/dist/csr/Chats';
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText';
 import { HandshakeIcon } from '@phosphor-icons/react/dist/csr/Handshake';
+import { MegaphoneIcon } from '@phosphor-icons/react/dist/csr/Megaphone';
 import { MicrophoneIcon } from '@phosphor-icons/react/dist/csr/Microphone';
 import { PulseIcon } from '@phosphor-icons/react/dist/csr/Pulse';
 import { ShieldCheckIcon } from '@phosphor-icons/react/dist/csr/ShieldCheck';
@@ -173,6 +175,22 @@ const GROUPS = [
         label: 'Notifications',
         icon: BellIcon,
         path: (user) => getResourcePath(user, 'notifications'),
+        visible: (user) => isAdminUser(user),
+      },
+      {
+        id: 'alerts',
+        label: 'Alerts',
+        icon: BellRingingIcon,
+        // Admins only: the band across the top of the app, for everyone signed in
+        path: () => '/admin/alerts',
+        visible: (user) => isAdminUser(user),
+      },
+      {
+        id: 'announcements',
+        label: 'Announcements',
+        icon: MegaphoneIcon,
+        // Admins only: the card that opens after sign-in
+        path: () => '/admin/announcements',
         visible: (user) => isAdminUser(user),
       },
     ],

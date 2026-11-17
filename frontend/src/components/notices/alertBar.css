@@ -1,0 +1,172 @@
+/*
+ * Alert bar (notices/AlertBar.jsx): a band across the top of the app, full width, platform blue with
+ * white text. It sits in the page flow above everything (the navbar and the sidebar move down by its
+ * height, --ds-alert-h, set by AlertBand), so it never covers the interface. Only design tokens.
+ */
+
+.nb,
+.nb *,
+.nb *::before,
+.nb *::after {
+  box-sizing: border-box;
+  transition: none;
+}
+
+.nb {
+  /* Stays at the very top while the page scrolls, above the navbar (1199) and the sidebar (1200) */
+  position: sticky;
+  top: 0;
+  z-index: 1201;
+  flex: none;
+  width: 100%;
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+  animation: nb-in var(--ds-duration-base) var(--ds-ease) both;
+}
+
+/* Inside a form: an ordinary block */
+.nb[data-preview='true'] {
+  position: relative;
+  z-index: auto;
+  animation: none;
+}
+
+.nb[data-closing='true'] {
+  opacity: 0;
+  transition: opacity var(--ds-duration-fast) var(--ds-ease);
+}
+
+/* The message and button are centred; the empty first column balances the cross in the third */
+.nb__inner {
+  display: grid;
+  grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 8px 6px 16px;
+}
+
+.nb__content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 12px;
+  min-width: 0;
+  max-width: min(960px, 100%);
+}
+
+.nb__message {
+  margin: 0;
+  font: var(--ds-type-body-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* A white pill with dark blue text, the one control on the band */
+.nb__button {
+  position: relative;
+  flex: none;
+  height: 28px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-on-accent);
+  color: var(--ds-accent-press);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.nb__button:hover {
+  background-color: color-mix(in srgb, var(--ds-on-accent) 88%, var(--ds-accent));
+}
+
+.nb__close {
+  display: grid;
+  position: relative;
+  grid-column: 3;
+  justify-self: end;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--ds-on-accent);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.nb__close:hover {
+  background-color: var(--ds-accent-hover);
+}
+
+.nb__button:focus-visible,
+.nb__close:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-accent),
+    0 0 0 4px var(--ds-on-accent);
+}
+
+@keyframes nb-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A phone: the message takes the width, the button sits under it at the left, the cross stays top right */
+@media (max-width: 599.95px) {
+  .nb__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    padding: 6px 4px 6px 12px;
+  }
+
+  .nb__spacer {
+    display: none;
+  }
+
+  .nb__content {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 4px 0;
+  }
+
+  .nb__message {
+    text-align: left;
+  }
+
+  .nb__close {
+    grid-column: 2;
+  }
+}
+
+/* A finger needs 44px: the band stays slim, and the area that answers a press grows around each control */
+@media (pointer: coarse) {
+  .nb__button::after,
+  .nb__close::after {
+    content: '';
+    position: absolute;
+    inset: -9px -6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb,
+  .nb[data-closing='true'] {
+    animation: none;
+    transition: none;
+  }
+}

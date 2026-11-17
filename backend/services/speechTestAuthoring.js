@@ -130,48 +130,7 @@ function publishProblems(test) {
     });
   });
 
-  if (new Date(test.endTime) <= new Date()) problems.push("The end time is already in the past");
   return problems;
-}
-
-/** A comparable fingerprint of what students are tested on. */
-function sectionsSignature(sections) {
-  return JSON.stringify(
-    (sections || []).map((s) => ({
-      id: String(s._id || ""),
-      type: s.type,
-      title: s.title,
-      limit: s.timeLimitMinutes,
-      instructions: s.instructions || "",
-      questions: (s.questions || []).map((q) => ({
-        id: String(q._id || ""),
-        text: q.text,
-        mode: q.jumbledMode || "",
-        accent: q.accent || "",
-        gender: q.gender || "",
-        key: q.answerKey || "",
-        accepted: q.acceptedAnswers || [],
-        options: (q.options || []).map((o) => ({
-          id: String(o._id || ""),
-          text: o.text,
-          correct: Boolean(o.isCorrect),
-        })),
-      })),
-    }))
-  );
-}
-
-/**
- * True when `next` is `current` plus new sections and/or new questions added at
- * the end. Anything students may already have answered must stay untouched.
- */
-function onlyAppends(next, current) {
-  if (next.length < current.length) return false;
-  const head = next.slice(0, current.length).map((section, i) => ({
-    ...section,
-    questions: section.questions.slice(0, current[i].questions.length),
-  }));
-  return sectionsSignature(head) === sectionsSignature(current);
 }
 
 /** Start and end of the window from the request body, falling back to the stored test. */
@@ -193,6 +152,5 @@ function parseTimes(body, existing = {}) {
 module.exports = {
   normalizeSections,
   publishProblems,
-  onlyAppends,
   parseTimes,
 };

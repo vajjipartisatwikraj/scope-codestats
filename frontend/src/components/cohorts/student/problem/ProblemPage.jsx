@@ -10,7 +10,7 @@ import { isExamSessionSearch, withExamSession } from '../../../../utils/examSess
 import { EXAM_BAR_HEIGHT } from '../../../cohort/ExamSessionBar';
 import useSplit from '../../../CodePad/useSplit';
 import useCodeRunner from './hooks/useCodeRunner';
-import { useAllSubmissions, useEditorial } from './hooks/useLazyData';
+import { useAllSubmissions, useEditorial, useSolutions } from './hooks/useLazyData';
 import useMcq from './hooks/useMcq';
 import useProblem from './hooks/useProblem';
 import useProblemNavigation from './hooks/useProblemNavigation';
@@ -21,6 +21,7 @@ import StepButtons from './navigation/StepButtons';
 import EditorialSection from './sections/EditorialSection';
 import NotesSection from './sections/NotesSection';
 import ReportSection from './sections/ReportSection';
+import SolutionsSection from './sections/SolutionsSection';
 import SubmissionsSection from './sections/SubmissionsSection';
 import Gutter from './shared/Gutter';
 import DescriptionPane from './statement/DescriptionPane';
@@ -60,10 +61,13 @@ function PageSkeleton({ wide }) {
  *     the editor over the test cases with another. Any pane folds to its header.
  *   - Below 900px the panes take turns as tabs (Problem, Code, Test cases); Run and Submit switch to
  *     the test cases.
- *   - The section switcher (Problem, Editorial, Submissions, Report, Notes) is in the statement's
+ *   - The section switcher (Problem, Solutions for staff only, Editorial, Submissions, Report, Notes) is in the statement's
  *     header. The statement stays at the left; the other sections open at the right, while the
  *     editor stays mounted behind them so nothing typed is lost.
  *   - An exam tab (?exam=1) sits under the shell's countdown bar and stays in this tab.
+ *   - Admins and teachers open the same screen from a cohort's question list. They can write, run and
+ *     submit code like a student, and nothing is locked for them: the editorial, every student's
+ *     submissions and all the reports are open from the start.
  *
  * Everything the page does with the server is in api/problemApi.js and hooks/; nothing here changes
  * what the server receives.
@@ -92,6 +96,7 @@ export default function ProblemPage() {
   const nav = useProblemNavigation({ ...ids, examSession, refreshKey: problem.solved });
   const editorial = useEditorial(ids);
   const allUsers = useAllSubmissions(ids);
+  const solutions = useSolutions(ids);
 
   const { question, loading } = problem;
   const isMcq = question?.type === 'mcq';
@@ -118,9 +123,10 @@ export default function ProblemPage() {
       if (opened.current[key]) return;
       opened.current[key] = true;
       if (key === 'editorial') editorial.load();
+      if (key === 'solutions' && staff) solutions.load();
       if (key === 'submissions') problem.refreshSubmissions();
     },
-    [editorial, problem]
+    [editorial, problem, solutions, staff]
   );
 
   const toggleFold = (name) => setFold((current) => (current === name ? null : name));
@@ -135,10 +141,13 @@ export default function ProblemPage() {
     runner.submit();
   };
 
-  const leave = () => navigate(examSession ? withExamSession(`/cohorts/${cohortId}`, true) : '/dashboard');
+  // A student goes back to the dashboard (the question list during an exam); staff to the cohort they came from
+  const leave = () => navigate(examSession ? withExamSession(`/cohorts/${cohortId}`, true) : staff ? `/admin/cohorts/${cohortId}` : '/dashboard');
 
   const sectionPane = (embedded = false) => {
     switch (section) {
+      case 'solutions':
+        return staff ? <SolutionsSection data={solutions} embedded={embedded} /> : null;
       case 'editorial':
         return <EditorialSection data={editorial} embedded={embedded} />;
       case 'submissions':
@@ -160,6 +169,7 @@ export default function ProblemPage() {
       remainingMs={remainingMs}
       section={section}
       onSection={chooseSection}
+      staff={staff}
       folded={wide && descFolded}
       onFold={wide ? () => setDescFolded((folded) => !folded) : undefined}
       replace={replace}
@@ -227,9 +237,9 @@ export default function ProblemPage() {
 
   return (
     <div className="psp" style={examSession ? { '--ps-top': `${EXAM_BAR_HEIGHT}px` } : undefined}>
-      <ProblemRail nav={nav} examSession={examSession} onLeave={leave} darkMode={darkMode} onToggleTheme={toggleTheme} />
+      <ProblemRail nav={nav} examSession={examSession} staff={staff} onLeave={leave} darkMode={darkMode} onToggleTheme={toggleTheme} />
       <div className="psp-main">
-        <ProblemTopBar onList={() => setListOpen(true)} compact={!wide} coding={Boolean(coding)} runner={runner} onRun={run} onSubmit={submit} sql={question?.type === 'sql'} />
+        <ProblemTopBar nav={nav} currentId={questionId} onList={() => setListOpen(true)} compact={!wide} coding={Boolean(coding)} runner={runner} onRun={run} onSubmit={submit} sql={question?.type === 'sql'} />
         {body}
       </div>
       <ProblemList open={listOpen} onClose={() => setListOpen(false)} nav={nav} currentId={questionId} />

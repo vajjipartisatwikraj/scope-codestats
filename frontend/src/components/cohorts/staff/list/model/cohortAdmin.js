@@ -3,6 +3,7 @@
  * status, which tab it is in, the search, and the create and edit form with its checks. No React and
  * no network in this file.
  *
+ *   canManageCohort(user, cohort)   admins manage every cohort; a teacher only the ones they created
  *   adminStatus(cohort)        the one status badge { label, tone, icon } (the icons CohortStatusBadge draws)
  *   TABS, inTab(cohort, tab)   the tabs of the page and which cohorts each shows
  *   matchesSearch(cohort, q)   title or description contains the search
@@ -16,6 +17,19 @@ export const TABS = [
   { key: 'drafts', label: 'Drafts' },
   { key: 'reviews', label: 'Reviews' },
 ];
+
+/**
+ * Whether the signed-in staff member may edit, publish, duplicate and delete this cohort. Admins can for all of
+ * them; a teacher only for the cohorts they created (createdBy), never for an admin's or another teacher's.
+ * The server enforces the same rule.
+ */
+export function canManageCohort(user, cohort) {
+  if (!user || !cohort) return false;
+  if (user.userType === 'admin') return true;
+  if (user.userType !== 'teacher') return false;
+  const owner = cohort.createdBy && typeof cohort.createdBy === 'object' ? cohort.createdBy._id : cohort.createdBy;
+  return Boolean(owner) && String(owner) === String(user.id || user._id);
+}
 
 export function inTab(cohort, tab) {
   if (tab === 'active') return cohort.isActive && !cohort.isDraft;

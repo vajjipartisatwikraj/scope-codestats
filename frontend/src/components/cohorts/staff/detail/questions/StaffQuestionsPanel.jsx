@@ -36,7 +36,6 @@ export default function StaffQuestionsPanel({ cohortId, module, questions: state
   const [filters, setFilters] = useState(NO_FILTER);
   const visible = useMemo(() => filterStaffQuestions(questions, filters), [questions, filters]);
   const filtering = Boolean(filters.search.trim()) || filters.difficulty !== 'all';
-  const viewBase = isAdmin ? '/admin' : '';
 
   const actions = (
     <>
@@ -120,7 +119,7 @@ export default function StaffQuestionsPanel({ cohortId, module, questions: state
     list = (
       <ul className="cdqi-list" aria-label={`Questions in ${module.title}`}>
         {visible.map((question) => (
-          <StaffQuestionRow key={question._id} question={question} canEdit={isAdmin} viewPath={`${viewBase}/cohorts/${cohortId}/modules/${module._id}/questions/${question._id}/view`} onEdit={onEdit} onDelete={onDelete} />
+          <StaffQuestionRow key={question._id} question={question} canEdit={isAdmin} viewPath={`/cohorts/${cohortId}/modules/${module._id}/questions/${question._id}`} onEdit={onEdit} onDelete={onDelete} />
         ))}
       </ul>
     );

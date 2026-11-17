@@ -10,7 +10,8 @@ import { CodeBlock, Figure, VerdictBadge } from './parts';
 
 /**
  * The views of the "Test cases" tab in a test run: the cases before anything runs, the rows after a
- * run, and the verdict after a submit.
+ * run, and the verdict after a submit. The cases are plain rows with a hairline between them, not
+ * boxes (.ps-cases in console.css).
  */
 
 /** The visible test cases, before anything is run */
@@ -18,9 +19,9 @@ export function SampleCases({ question }) {
   const cases = visibleTestCases(question);
   if (cases.length === 0) return <EmptyState compact title="No sample test cases" text="This question shows no sample cases. Submit to check your code against all of them." />;
   return (
-    <div className="ps-stack">
+    <div className="ps-stack ps-cases">
       {cases.map((testCase, index) => (
-        <Disclosure key={index} variant="raised" level={3} title={`Case ${index + 1}`} defaultOpen={index === 0}>
+        <Disclosure key={index} variant="plain" level={3} title={`Case ${index + 1}`} defaultOpen={index === 0}>
           <div className="ps-pair">
             <CodeBlock label="Input" empty="No input">
               {testCase.input}
@@ -54,14 +55,14 @@ export function RunResults({ outcome, question }) {
   const { passed, total } = countsOf(outcome.results, outcome.summary, false, question);
   const limits = { timeLimit: question?.constraints?.timeLimit, memoryLimit: question?.constraints?.memoryLimit };
   return (
-    <div className="ps-stack">
+    <div className="ps-stack ps-cases">
       <PerformanceFigures results={rows} passed={passed} total={total} />
       {rows.map((row, index) => {
         const verdict = verdictOfCase(row);
         return (
           <Disclosure
             key={`${outcome.id}-${index}`}
-            variant="raised"
+            variant="plain"
             level={3}
             title={`Case ${index + 1}`}
             badge={<VerdictBadge verdict={verdict} />}

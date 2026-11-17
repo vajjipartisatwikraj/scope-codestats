@@ -18,7 +18,7 @@ import CohortFormDrawer from './form/CohortFormDrawer';
 import useAdminCohorts from './hooks/useAdminCohorts';
 import useCohortReviews from './hooks/useCohortReviews';
 import useDeletionImpact from './hooks/useDeletionImpact';
-import { TABS, groupAdminCohorts, inTab, matchesSearch } from './model/cohortAdmin';
+import { TABS, canManageCohort, groupAdminCohorts, inTab, matchesSearch } from './model/cohortAdmin';
 import ReviewsPanel from './reviews/ReviewsPanel';
 import '../../student/list/filters/cohortFilters.css';
 import '../../student/list/cohorts.css';
@@ -40,8 +40,9 @@ const EMPTY = {
  *
  * The folder is organised by job: card/ (one cohort), form/ (create and edit), dialogs/ (delete and
  * duplicate), reviews/ (the Reviews tab), hooks/ (data and actions), api/ (every request), model/
- * (rules, no React). Teachers manage cohorts and attach user groups; they do not create, edit,
- * duplicate or delete.
+ * (rules, no React). Admins and teachers can both create a cohort. Edit, duplicate and delete are for
+ * admins on every cohort and for a teacher on the cohorts they created (canManageCohort); on an admin's
+ * cohort a teacher can only manage it and attach user groups.
  */
 export default function CohortManagementPage() {
   // Scrollbars show only while something is being scrolled
@@ -49,7 +50,6 @@ export default function CohortManagementPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const mobile = useMediaQuery('(max-width: 899.95px)');
-  const canEdit = user?.userType !== 'teacher';
 
   const data = useAdminCohorts();
   const reviews = useCohortReviews();
@@ -111,11 +111,11 @@ export default function CohortManagementPage() {
     ),
   }));
 
-  const createButton = canEdit ? (
+  const createButton = (
     <Button variant="primary" startIcon={<PlusIcon size={18} weight="bold" aria-hidden="true" />} onClick={() => openDrawer()}>
       Create cohort
     </Button>
-  ) : null;
+  );
 
   let list;
   if (loading) {
@@ -178,7 +178,7 @@ export default function CohortManagementPage() {
                 <li key={cohort._id}>
                   <AdminCohortCard
                     cohort={cohort}
-                    canEdit={canEdit}
+                    canEdit={canManageCohort(user, cohort)}
                     busy={loading || Boolean(data.duplicating)}
                     exporting={data.exportingId === cohort._id}
                     onEdit={openDrawer}

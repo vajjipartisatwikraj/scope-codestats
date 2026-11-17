@@ -18,9 +18,20 @@ const mongoose = require("mongoose");
 const { ATTEMPT_FIELDS, EXAM_LIST_FIELDS, parseExamModeInput } = require("../../services/cohorts/examSettings");
 const { EXAM_MODE, EXAM_STATE, getExamAttempt, getExamWindow } = require("../../utils/examAccess");
 const { blockedByExamWindow, ensureExamAttemptStarted } = require("../../services/cohorts/examGateService");
-const { isAdminOrTeacher } = require("../../utils/userHelpers");
+const { isAdmin: isAdminUser, isAdminOrTeacher } = require("../../utils/userHelpers");
 const { runWithOptionalTransaction } = require("../../utils/mongoTransaction");
 const log = require("../../utils/logger").scope("COHORTS");
+
+// Admins manage every cohort. A teacher manages only the cohorts they created, never an
+// admin's or another teacher's. Answers 403 and returns true when the viewer may not.
+const denyUnlessCanManage = (req, res, cohort) => {
+  if (isAdminUser(req.user) || String(cohort.createdBy) === String(req.user.id)) return false;
+  res.status(403).json({
+    message: "You can only manage cohorts that you created",
+    reason: "not_cohort_owner",
+  });
+  return true;
+};
 
 // Get all cohorts (admin view) - OPTIMIZED with minimal data
 const getAdminCohorts = async (req, res) => {
@@ -416,6 +427,7 @@ const duplicateCohort = async (req, res) => {
     if (!originalCohort) {
       return res.status(404).json({ message: "Original cohort not found" });
     }
+    if (denyUnlessCanManage(req, res, originalCohort)) return;
 
     // Step 2: Get module IDs directly from the cohort's modules array
     // (modules are now shared across related cohorts)
@@ -542,6 +554,7 @@ const updateCohort = async (req, res) => {
     if (!cohort) {
       return res.status(404).json({ message: "Cohort not found" });
     }
+    if (denyUnlessCanManage(req, res, cohort)) return;
 
     const examFields = parseExamModeInput({
       mode,
@@ -627,6 +640,7 @@ const getDeletionImpact = async (req, res) => {
     if (!cohort) {
       return res.status(404).json({ message: "Cohort not found" });
     }
+    if (denyUnlessCanManage(req, res, cohort)) return;
 
     // Get module IDs for this cohort
     const moduleIds = cohort.modules || [];
@@ -692,6 +706,7 @@ const deleteCohort = async (req, res) => {
     if (!cohort) {
       return res.status(404).json({ message: "Cohort not found" });
     }
+    if (denyUnlessCanManage(req, res, cohort)) return;
 
     // User groups must be detached first, like detaching a policy before deleting a resource.
     const userGroups = await attachedGroupsOf(cohort);

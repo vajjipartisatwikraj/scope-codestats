@@ -140,10 +140,14 @@ router.post(
         // ✅ CASCADE FIX: Find ANY cohort that contains this module (handles deleted original cohorts)
         // Instead of using module.cohort (which may point to deleted cohort),
         // find all cohorts containing this module
+        // Admins and teachers can run a question of a draft or inactive cohort too, so staff can
+        // try a question before the cohort is published.
+        const isAdmin =
+          req.user.userType === "admin" || req.user.userType === "teacher";
+
         const cohortsWithModule = await Cohort.find({
           modules: module._id,
-          isActive: true,
-          isDraft: false,
+          ...(isAdmin ? {} : { isActive: true, isDraft: false }),
         });
 
         if (!cohortsWithModule || cohortsWithModule.length === 0) {
@@ -157,9 +161,6 @@ router.post(
         }
 
         // Check if user is admin/teacher or enrolled in ANY of these cohorts
-        const isAdmin =
-          req.user.userType === "admin" || req.user.userType === "teacher";
-
         if (!isAdmin) {
           // Find a cohort where user is eligible
           const userCohort = cohortsWithModule.find((cohort) =>

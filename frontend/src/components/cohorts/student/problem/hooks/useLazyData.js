@@ -4,8 +4,8 @@ import { useAuth } from '../../../../../contexts/AuthContext';
 import * as api from '../api/problemApi';
 
 /**
- * The two lists the page reads only when the student opens them: the editorial of the question and
- * the submissions of every student. Each has load(), which reads once and then does nothing, and
+ * The lists the page reads only when they are opened: the editorial of the question, the
+ * submissions of every student and (staff only, see useSolutions) the reference solutions. Each has load(), which reads once and then does nothing, and
  * starts over when the question changes. Both are open only to a student who has solved the question;
  * the server refuses otherwise (403 NO_ACCEPTED_SUBMISSION) and the student is told why.
  */
@@ -65,4 +65,31 @@ export function useAllSubmissions({ cohortId, moduleId, questionId }) {
   }, [loaded, token, cohortId, moduleId, questionId]);
 
   return { items, loaded, load };
+}
+
+/** The reference solutions, for staff only: { solutions, loading, failed, load } */
+export function useSolutions({ cohortId, moduleId, questionId }) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ solutions: null, loading: false, failed: false });
+  const asked = useRef(false);
+
+  useEffect(() => {
+    asked.current = false;
+    setState({ solutions: null, loading: false, failed: false });
+  }, [cohortId, moduleId, questionId]);
+
+  const load = useCallback(async () => {
+    if (asked.current) return;
+    asked.current = true;
+    setState({ solutions: null, loading: true, failed: false });
+    try {
+      setState({ solutions: await api.fetchSolutions(token, { cohortId, moduleId, questionId }), loading: false, failed: false });
+    } catch (error) {
+      console.error('Error fetching solutions:', error);
+      asked.current = false;
+      setState({ solutions: null, loading: false, failed: true });
+    }
+  }, [token, cohortId, moduleId, questionId]);
+
+  return { ...state, load };
 }
