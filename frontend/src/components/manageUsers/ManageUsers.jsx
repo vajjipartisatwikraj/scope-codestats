@@ -6,7 +6,7 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGl
 import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users';
 import { useAuth } from '../../contexts/AuthContext';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, Page, PageHeader, Pagination, SearchField, SelectField, Skeleton, SkeletonRows, formatNumber, pluralize } from '../ui';
+import { AdminTop, Button, Card, ConfirmDialog, EmptyState, Notice, NotifySwitch, Page, PageHeader, Pagination, SearchField, SelectField, Skeleton, SkeletonRows, formatNumber, pluralize } from '../ui';
 import UserDrawer from './UserDrawer';
 import UserTable, { RoleBadge } from './UserTable';
 import { ROLES, consequenceOf, roleInfo } from './manageUsersModel';
@@ -31,6 +31,7 @@ export default function ManageUsers() {
 
   const [selectedId, setSelectedId] = useState(null);
   const [pending, setPending] = useState(null);
+  const [notify, setNotify] = useState(true); // email the person; on again each time the dialog opens
 
   const ownId = user?._id || user?.id || null;
   const selected = useMemo(() => users.find((person) => person._id === selectedId) || null, [users, selectedId]);
@@ -55,7 +56,7 @@ export default function ManageUsers() {
   const closePending = () => setPending(null);
 
   const confirm = async () => {
-    const ok = await data.changeRole(pending.person, pending.newRole);
+    const ok = await data.changeRole(pending.person, pending.newRole, notify);
     if (!ok) return;
     setPending(null);
     setSelectedId(null);
@@ -163,7 +164,10 @@ export default function ManageUsers() {
         onClose={() => setSelectedId(null)}
         person={selected}
         isOwn={Boolean(selected) && selected._id === ownId}
-        onChangeRole={(person, newRole) => setPending({ person, newRole })}
+        onChangeRole={(person, newRole) => {
+          setNotify(true);
+          setPending({ person, newRole });
+        }}
       />
 
       <ConfirmDialog
@@ -183,6 +187,7 @@ export default function ManageUsers() {
             <RoleBadge role={pending.newRole} />
           </div>
         ) : null}
+        {pending ? <NotifySwitch label="Email this person about the change" name={pending.person.name} receives={demotion ? 'an email that says the access was removed.' : 'an email that confirms the new access.'} checked={notify} onChange={setNotify} disabled={data.changing} /> : null}
       </ConfirmDialog>
     </Page>
   );

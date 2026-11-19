@@ -3,10 +3,13 @@
  *
  * Five sheets:
  *   Summary          – exam metadata and headline numbers
- *   Student Results  – one row per eligible student: rank, score, timing, proctoring
- *   Module Scores    – per-student score in every module
- *   Question Scores  – per-student score in every question
+ *   Student Results  – one row per eligible student, and per teacher or admin who took part (the Role
+ *                      column tells them apart): rank, score, timing, proctoring
+ *   Module Scores    – per-person score in every module
+ *   Question Scores  – per-person score in every question
  *   Question Analysis– how many students solved each question, averages
+ *
+ * The Summary and the analysis are about the students. Teachers and admins are counted on their own line.
  *
  * Everything comes from `cohortProctorService.buildExamReport`, so the workbook
  * and the on-screen summary always agree.
@@ -138,6 +141,7 @@ function addSummarySheet(workbook, report) {
 
   section("Attendance");
   pair("Eligible students", summary.totalEligibleUsers);
+  pair("Teachers and admins who took part", summary.staffTookPart || 0);
   pair("Attended", summary.attendedCount);
   pair("Did not attend", summary.notAttendedCount);
   pair("Ended the test themselves", summary.submittedCount);
@@ -164,6 +168,7 @@ function addStudentSheet(workbook, report) {
     { header: "Rank", key: "rank", width: 8 },
     { header: "Name", key: "name", width: 26 },
     { header: "Roll Number", key: "rollNumber", width: 16 },
+    { header: "Role", key: "role", width: 10 },
     { header: "Email", key: "email", width: 30 },
     { header: "Department", key: "department", width: 14 },
     { header: "Section", key: "section", width: 10 },
@@ -183,6 +188,7 @@ function addStudentSheet(workbook, report) {
       rank: student.rank ?? "—",
       name: student.name,
       rollNumber: student.rollNumber || "—",
+      role: student.role || "Student",
       email: student.email,
       department: student.department || "—",
       section: student.section || "—",
@@ -215,7 +221,7 @@ function addStudentSheet(workbook, report) {
 
     const flagged = student.tabSwitchCount + student.fullscreenExitCount;
     if (flagged > 0) {
-      [13, 14].forEach((columnIndex) => {
+      [14, 15].forEach((columnIndex) => {
         const cell = row.getCell(columnIndex);
         cell.fill = {
           type: "pattern",
@@ -236,6 +242,7 @@ function addModuleScoreSheet(workbook, report) {
   const columns = [
     { header: "Name", key: "name", width: 26 },
     { header: "Roll Number", key: "rollNumber", width: 16 },
+    { header: "Role", key: "role", width: 10 },
   ];
 
   report.modules.forEach((module, index) => {
@@ -250,7 +257,7 @@ function addModuleScoreSheet(workbook, report) {
   sheet.columns = columns;
 
   report.students.forEach((student) => {
-    const row = { name: student.name, rollNumber: student.rollNumber || "—" };
+    const row = { name: student.name, rollNumber: student.rollNumber || "—", role: student.role || "Student" };
     report.modules.forEach((module, index) => {
       row[`m${index}`] =
         student.moduleScores.find((m) => m.moduleId === module.moduleId)?.score ?? 0;
@@ -287,6 +294,7 @@ function addQuestionScoreSheet(workbook, report) {
   const columns = [
     { header: "Name", key: "name", width: 26 },
     { header: "Roll Number", key: "rollNumber", width: 16 },
+    { header: "Role", key: "role", width: 10 },
   ];
 
   report.questionsMeta.forEach((question, index) => {
@@ -301,7 +309,7 @@ function addQuestionScoreSheet(workbook, report) {
   sheet.columns = columns;
 
   report.students.forEach((student) => {
-    const row = { name: student.name, rollNumber: student.rollNumber || "—" };
+    const row = { name: student.name, rollNumber: student.rollNumber || "—", role: student.role || "Student" };
     report.questionsMeta.forEach((question, index) => {
       row[`q${index}`] =
         student.questionScores.find((q) => q.questionId === question.questionId)

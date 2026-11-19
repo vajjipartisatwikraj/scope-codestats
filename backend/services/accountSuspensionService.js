@@ -16,6 +16,13 @@
  * coursework (cohort enrolments and progress, practice arena, speech tests, resumes) are NOT
  * touched, and the student can still sign in.
  *
+ * One platform at a time: suspendPlatform removes a single linked platform (for example LeetCode) with
+ * its stored history, and leaves the other platforms and everything else as they are.
+ *
+ * Both can tell the student by email (`notify`, on by default): what was removed, what was not, what
+ * happens next and who to write to. The email is recorded in the emails history. A failed email never
+ * undoes a removal: the answer carries the email's status and the admin sees it in the history.
+ *
  * Deleting is permanent. Nothing here can bring the data back.
  */
 const mongoose = require("mongoose");
@@ -27,6 +34,9 @@ const ActivityHeatmap = require("../models/ActivityHeatmap");
 const PlatformDailyActivity = require("../models/PlatformDailyActivity");
 const escapeRegex = require("../utils/escapeRegex");
 const { ServiceError } = require("../utils/ServiceError");
+const profileSyncService = require("./profileSyncService");
+const { buildAccountRemovalEmail } = require("./emails/accountRemovalEmail");
+const { sendTracked } = require("./emails/emailService");
 const log = require("../utils/logger").scope("ACCOUNT-SUSPENSION");
 
 const MAX_PAGE_SIZE = 50;
@@ -138,17 +148,39 @@ async function previewSuspension(userId) {
 }
 
 /**
+ * Emails the student about a removal and gives back how it went: { status, id, to, error }. It never
+ * throws, because the removal has already happened.
+ */
+async function notifyStudent({ user, adminId, type, scope, platforms, deleted }) {
+  try {
+    return await sendTracked({
+      type,
+      user,
+      triggeredBy: adminId,
+      details: { scope, platforms, deleted },
+      build: (reference) => buildAccountRemovalEmail({ user, scope, platforms, deleted, reference }),
+    });
+  } catch (err) {
+    log.error("Could not record or send the removal email:", err);
+    return { status: "failed", id: null, to: user.email, error: "The email could not be prepared" };
+  }
+}
+
+/**
  * Deletes the coding profiles and every stored history of the account, and resets its rank and
  * consistency index.
  *
  * @param {string} userId  the account to suspend
  * @param {string} adminId  who asked (for the log)
- * @returns {Promise<{deleted: {profiles, snapshots, scoreHistory, heatmapDays}}>}
+ * @param {{notify?: boolean}} [options]  notify: email the student about it (default true)
+ * @returns {Promise<{deleted: {profiles, snapshots, scoreHistory, heatmapDays}, email: object|null}>}
  */
-async function suspendAccount(userId, adminId) {
+async function suspendAccount(userId, adminId, { notify = true } = {}) {
   assertUserId(userId);
-  const user = await User.findById(userId).select("_id").lean();
+  const user = await User.findById(userId).select("_id name email").lean();
   if (!user) throw new ServiceError(404, "Account not found");
+  // Read before they are deleted: the email lists what was removed
+  const removedProfiles = await Profile.find({ userId: user._id }).select("platform username").lean();
 
   const [profiles, snapshots, scores, heatmap, platformDays] = await Promise.all([
     Profile.deleteMany({ userId: user._id }),
@@ -174,7 +206,47 @@ async function suspendAccount(userId, adminId) {
     `coding accounts of ${user._id} suspended by ${adminId} | profiles=${deleted.profiles} snapshots=${deleted.snapshots} ` +
       `scores=${deleted.scoreHistory} heatmapDays=${deleted.heatmapDays}`
   );
-  return { deleted };
+  const email = notify
+    ? await notifyStudent({
+        user,
+        adminId,
+        type: "account_removed",
+        scope: "account",
+        platforms: removedProfiles.map((profile) => ({ key: profile.platform, username: profile.username })),
+        deleted,
+      })
+    : null;
+  return { deleted, email };
 }
 
-module.exports = { listAccounts, previewSuspension, suspendAccount };
+/**
+ * Removes one linked platform of the account: the username and its stats, the platform's daily
+ * progress, its score and rank history and its days of the activity heatmap (the same removal a
+ * student does when they unlink a platform, without the student's waiting time). The other
+ * platforms are untouched. The account's total score and rank are worked out again at the next
+ * ranking run.
+ *
+ * @param {string} userId  the account
+ * @param {string} platform  one of the platforms the account has linked (for example "leetcode")
+ * @param {string} adminId  who asked (for the log)
+ * @param {{notify?: boolean}} [options]  notify: email the student about it (default true)
+ * @returns {Promise<{platform: string, deleted: {snapshots: number, scoreHistory: number}, email: object|null}>}
+ */
+async function suspendPlatform(userId, platform, adminId, { notify = true } = {}) {
+  assertUserId(userId);
+  if (!Profile.PLATFORMS.includes(platform)) throw new ServiceError(400, "That is not a coding platform");
+  const user = await User.findById(userId).select("_id name email").lean();
+  if (!user) throw new ServiceError(404, "Account not found");
+  const linked = await Profile.findOne({ userId: user._id, platform }).select("username").lean();
+  if (!linked) throw new ServiceError(404, "This platform is not linked to the account");
+
+  const { historyDeleted, scoreHistoryCleared } = await profileSyncService.removePlatform(user._id, platform);
+  log.info(`${platform} of ${user._id} removed by ${adminId} | snapshots=${historyDeleted} scores=${scoreHistoryCleared}`);
+  const deleted = { snapshots: historyDeleted, scoreHistory: scoreHistoryCleared };
+  const email = notify
+    ? await notifyStudent({ user, adminId, type: "platform_removed", scope: "platform", platforms: [{ key: platform, username: linked.username }], deleted })
+    : null;
+  return { platform, deleted, email };
+}
+
+module.exports = { listAccounts, previewSuspension, suspendAccount, suspendPlatform };

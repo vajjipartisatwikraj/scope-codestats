@@ -4,6 +4,19 @@ import { accountSuspensionApi, apiErrorMessage } from '../../services/accountSus
 
 const SEARCH_DELAY_MS = 300;
 
+/** What to tell the admin about the email that went with a removal: nothing when none was asked for */
+const emailNote = (message, email) => {
+  if (!email) return message;
+  return email.status === 'sent' ? `${message}. An email was sent to the student.` : `${message}, but the email to the student could not be sent.`;
+};
+
+/** The toast of a removal: green when all went well, a warning when the removal worked and the email did not */
+const announce = (message, email) => {
+  if (email && email.status !== 'sent') toast.warn(`${emailNote(message, email)} See Emails history.`);
+  else toast.success(emailNote(message, email));
+};
+
+
 /**
  * The data of the suspend accounts page: one page of accounts (searchable, with or without the
  * ones that have no coding profile), a preview of what removing one account would delete, and the
@@ -12,6 +25,7 @@ const SEARCH_DELAY_MS = 300;
  *   GET    /api/admin/suspend-accounts?search=&linkedOnly=&page=&limit=
  *   GET    /api/admin/suspend-accounts/:userId   (the preview)
  *   DELETE /api/admin/suspend-accounts/:userId
+ *   DELETE /api/admin/suspend-accounts/:userId/platforms/:platform   (one platform of the account)
  *
  * The search waits for a pause in typing before asking the server. A failed load shows a toast
  * (and the page a notice with Retry); `review` and `suspend` never throw, they resolve with
@@ -86,15 +100,18 @@ export default function useSuspendAccounts() {
     }
   }, []);
 
-  /** Remove the coding profiles and all history of an account. Resolves { ok, message, deleted }. */
+  /**
+   * Remove the coding profiles and all history of an account. `notify` also emails the student.
+   * Resolves { ok, message, deleted, email }.
+   */
   const suspend = useCallback(
-    async (account) => {
+    async (account, notify = true) => {
       try {
-        const result = await accountSuspensionApi.suspend(account._id);
+        const result = await accountSuspensionApi.suspend(account._id, { notify });
         const message = `Coding accounts of ${account.name} removed`;
-        toast.success(message);
+        announce(message, result.email);
         await load();
-        return { ok: true, message, deleted: result.deleted };
+        return { ok: true, message: emailNote(message, result.email), deleted: result.deleted, email: result.email };
       } catch (failure) {
         toast.error(apiErrorMessage(failure, 'Could not remove the coding accounts'));
         // The account may be gone already; show what is true now
@@ -104,6 +121,24 @@ export default function useSuspendAccounts() {
     },
     [load]
   );
+  /** Remove one linked platform of an account and its history. `notify` also emails the student. Resolves { ok, message, email }. */
+  const removePlatform = useCallback(
+    async (account, platform, platformName, notify = true) => {
+      try {
+        const result = await accountSuspensionApi.suspendPlatform(account._id, platform, { notify });
+        const message = `${platformName} of ${account.name} removed`;
+        announce(message, result.email);
+        await load();
+        return { ok: true, message: emailNote(message, result.email), email: result.email };
+      } catch (failure) {
+        toast.error(apiErrorMessage(failure, `Could not remove ${platformName}`));
+        // The platform may be gone already; show what is true now
+        if (failure?.response?.status === 404) await load();
+        return { ok: false };
+      }
+    },
+    [load]
+  );
 
-  return { query, setQuery, search, scope, setScope, page, setPage, pageSize, setPageSize, accounts, total, loading, error, load, review, suspend };
+  return { query, setQuery, search, scope, setScope, page, setPage, pageSize, setPageSize, accounts, total, loading, error, load, review, suspend, removePlatform };
 }

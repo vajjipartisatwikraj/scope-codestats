@@ -66,7 +66,7 @@ const findUserByUsername = async (username, select) => {
 };
 
 // Fields no page needs. The unauthenticated profile route leaves them out.
-const PRIVATE_USER_FIELDS = "-password -sessionToken -pushSubscriptions";
+const PRIVATE_USER_FIELDS = "-password -sessionToken -sessionEndedReason -pushSubscriptions";
 
 // Fields of an achievement shown on the public profile page.
 const PUBLIC_ACHIEVEMENT_FIELDS =

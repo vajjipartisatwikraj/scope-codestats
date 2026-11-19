@@ -6,7 +6,8 @@
  *   Display       Badge, Chip, Avatar, OrgLogo (a company or issuer logo with an initials fallback), Tip,
  *                 ReviewItem (one rating and comment; put the items in a ul.ui-reviews),
  *                 Prose (teacher-written HTML, sanitized, in the reading typography)
- *   Forms         TextField, SelectField, Checkbox, Switch, SearchField, RollNumberInput (upload or paste roll numbers)
+ *   Forms         TextField, SelectField, Checkbox, Switch, SearchField, RollNumberInput (upload or paste roll numbers),
+ *                 NotifySwitch (the "email this person" choice of a confirmation dialog)
  *   Overlays      Dialog, ConfirmDialog, Drawer, DetailPanel (the sliding detail view of a list item)
  *   Feedback      EmptyState, Notice, Skeleton, SkeletonRows
  *   Layout        Page (narrow), PageHeader, Card, Pagination, BulkBar, Toolbar,
@@ -31,6 +32,7 @@ export { default as ReviewItem } from './ReviewItem';
 export { default as Prose } from './Prose';
 export { OrgLogo, cleanDomain, logoDomainOf } from './OrgLogo';
 export { TextField, SelectField, Checkbox, Switch, SearchField } from './Field';
+export { default as NotifySwitch } from './NotifySwitch';
 export { default as RollNumberInput } from './RollNumberInput';
 export { Dialog, ConfirmDialog, Drawer } from './Overlays';
 export { default as DetailPanel } from './DetailPanel';

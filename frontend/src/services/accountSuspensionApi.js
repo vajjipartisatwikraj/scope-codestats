@@ -20,6 +20,8 @@ export const accountSuspensionApi = {
     unwrap(axios.get(base, { params: { search: search || undefined, linkedOnly: linkedOnly ? "true" : undefined, page, limit } })),
   /** What suspending the account would delete: { user, profiles, counts: { profiles, snapshots, scoreHistory, heatmapDays } } */
   preview: (userId) => unwrap(axios.get(`${base}/${userId}`)),
-  /** Deletes the coding profiles and all history of the account. Permanent. */
-  suspend: (userId) => unwrap(axios.delete(`${base}/${userId}`)),
+  /** Deletes the coding profiles and all history of the account. Permanent. `notify` emails the student (default true). */
+  suspend: (userId, { notify = true } = {}) => unwrap(axios.delete(`${base}/${userId}`, { data: { notify } })),
+  /** Deletes one linked platform of the account (for example "leetcode") with its history. Permanent. `notify` emails the student (default true). */
+  suspendPlatform: (userId, platform, { notify = true } = {}) => unwrap(axios.delete(`${base}/${userId}/platforms/${platform}`, { data: { notify } })),
 };

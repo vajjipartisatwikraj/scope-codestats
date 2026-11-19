@@ -11,6 +11,7 @@ const mongoose = require("mongoose");
 const TeacherRequest = require("../models/TeacherRequest");
 const User = require("../models/User");
 const { ServiceError } = require("../utils/ServiceError");
+const { sendRequestApproved, sendRequestReceived } = require("./emails/teacherRequestEmails");
 const log = require("../utils/logger").scope("TEACHER-REQUESTS");
 
 /** How long someone waits after a rejection before asking again. */
@@ -59,7 +60,7 @@ async function statusFor(user) {
 
 /** Create a pending request for the signed-in person. */
 async function submitRequest(userId, { note }) {
-  const user = await User.findById(userId).select("userType signupIntent");
+  const user = await User.findById(userId).select("name email userType signupIntent");
   if (!user) throw new ServiceError(404, "User not found");
 
   if (user.userType !== "user") {
@@ -75,7 +76,7 @@ async function submitRequest(userId, { note }) {
 
   const latest = await latestRequestOf(userId);
   if (latest?.status === "pending") {
-    throw new ServiceError(409, "Your request is already waiting for an admin", {
+    throw new ServiceError(409, "Your request is already under review", {
       reason: "already_pending",
     });
   }
@@ -95,11 +96,13 @@ async function submitRequest(userId, { note }) {
       note: cleanText(note, "The note"),
     });
     log.debug(`Teacher access requested by ${userId}`);
+    // Tell the person it arrived; it is sent in the background and its result is in the emails history
+    sendRequestReceived(user, request);
     return { request: describe(request) };
   } catch (err) {
     // The unique index on pending requests: two requests raced.
     if (err.code === 11000) {
-      throw new ServiceError(409, "Your request is already waiting for an admin", {
+      throw new ServiceError(409, "Your request is already under review", {
         reason: "already_pending",
       });
     }
@@ -201,8 +204,9 @@ async function approve(requestId, adminId) {
     await notify(
       promoted._id,
       "Teacher access approved",
-      "An admin approved your request. You now have teacher access."
+      "Your request is approved. Your teacher tools are ready."
     );
+    sendRequestApproved(promoted, { adminId, requestId: request._id });
   }
 
   return { message: "Request approved", request: { _id: request._id, status: "approved" } };
@@ -223,10 +227,10 @@ async function reject(requestId, adminId, { reason }) {
   log.debug(`Teacher access rejected for ${request.user} by ${adminId}`);
   await notify(
     request.user,
-    "Teacher access request declined",
+    "Update on your teacher access request",
     rejectionReason
-      ? `Your request was declined: ${rejectionReason}`
-      : "An admin declined your request for teacher access."
+      ? `We could not approve your request: ${rejectionReason}`
+      : "We could not approve your request this time. You can send a new request after 24 hours."
   );
 
   return { message: "Request rejected", request: { _id: request._id, status: "rejected" } };

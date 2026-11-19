@@ -20,6 +20,9 @@ router.get("/:id/progress", auth, analyticsController.getCohortProgress);
 // The cohort's students ranked by score
 router.get("/:cohortId/leaderboard", auth, analyticsController.getCohortLeaderboard);
 
+// Question-wise scores of everyone in the cohort, for the progress export (admin or teacher)
+router.get("/:id/question-progress", [auth, adminAuth], analyticsController.getCohortQuestionProgress);
+
 // ─── Exam report (admin or teacher) ──────────────────────────────────────────
 
 // Excel report of an exam cohort

@@ -541,14 +541,20 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
         });
       }
       
-      // Calculate enrolled count based on filtered or all leaderboard data
-      const enrolledCount = exportedLeaderboard.length;
+      // The leaderboard has students and the teachers and admins who took part. The overview numbers and the
+      // department, year and module analyses stay about the students; the rankings list everyone,
+      // with a Role column.
+      const isTeacherEntry = (entry) => entry.user?.userType === "teacher" || entry.user?.userType === "admin";
+      const roleOf = (entry) => (entry.user?.userType === "admin" ? "Admin" : entry.user?.userType === "teacher" ? "Teacher" : "Student");
+      const enrolledCount = exportedLeaderboard.filter((entry) => !isTeacherEntry(entry)).length;
+      const teacherCount = exportedLeaderboard.length - enrolledCount; // teachers and admins
       const cohortTitle = cohort?.title || cohort?.name || "Untitled Cohort";
 
       // Sort leaderboard by score descending for consistent ranking
       const sortedLeaderboard = [...exportedLeaderboard].sort(
         (a, b) => (b.totalScore || 0) - (a.totalScore || 0)
       );
+      const studentBoard = sortedLeaderboard.filter((entry) => !isTeacherEntry(entry));
 
       // ═══════════════════════════════════════════════════════════════
       // SHEET 1 ─ COHORT OVERVIEW
@@ -570,6 +576,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
         ...(exportGraduationYears.length > 0 ? [["Graduation Years (Filtered)", exportGraduationYears.sort().join(", ")]] : []),
         ["Total Eligible Students", stats?.totalEnrolled || "-"],
         ["Enrolled Students", enrolledCount],
+        ["Teachers And Admins Who Took Part", teacherCount],
         ["Active Students", stats?.activeUsers || 0],
         ["Completed Students", stats?.completionRate ? Math.round((stats.completionRate / 100) * enrolledCount) : 0],
         ["Overall Completion Rate", stats?.completionRate ? `${stats.completionRate}%` : "0%"],
@@ -608,7 +615,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
         properties: { tabColor: { argb: "FF2196F3" } },
       });
 
-      const lbCols = ["Rank", "Name", "Roll Number", "Department", "Section", "Grad. Year", "Modules Done", "Total Score", "Status"];
+      const lbCols = ["Rank", "Name", "Roll Number", "Role", "Department", "Section", "Grad. Year", "Modules Done", "Total Score", "Status"];
       const lbColCount = lbCols.length;
 
       addTitle(lbSheet, `STUDENT RANKINGS  —  ${cohortTitle}`, lbColCount);
@@ -616,7 +623,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
       // Subtitle row with student count
       lbSheet.mergeCells(2, 1, 2, lbColCount);
       const subtitleCell = lbSheet.getCell("A2");
-      subtitleCell.value = `Total Students: ${sortedLeaderboard.length}`;
+      subtitleCell.value = `Total: ${sortedLeaderboard.length} (${enrolledCount} students, ${teacherCount} teachers and admins)`;
       subtitleCell.font = { size: 10, italic: true, color: { argb: COLORS.gray } };
       subtitleCell.alignment = { horizontal: "center" };
 
@@ -630,6 +637,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
           rank,
           entry.user?.name || "Unknown",
           entry.user?.rollNumber || "-",
+          roleOf(entry),
           entry.user?.department || "-",
           entry.user?.section || "-",
           entry.user?.graduatingYear || entry.user?.graduationYear || "-",
@@ -652,7 +660,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
         }
 
         // Center-align columns
-        [1, 5, 6, 7, 8].forEach((c) => {
+        [1, 6, 7, 8, 9].forEach((c) => {
           lbSheet.getRow(r).getCell(c).alignment = { horizontal: "center" };
         });
       });
@@ -661,7 +669,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
       addBorders(lbSheet, 3, sortedLeaderboard.length + 3, lbColCount);
 
       // Column widths
-      [8, 24, 16, 18, 10, 12, 16, 14, 12].forEach((w, i) => {
+      [8, 24, 16, 10, 18, 10, 12, 16, 14, 12].forEach((w, i) => {
         lbSheet.getColumn(i + 1).width = w;
       });
 
@@ -737,6 +745,70 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
       }
 
       // ═══════════════════════════════════════════════════════════════
+      // SHEET 3b ─ QUESTION PROGRESS (one row per person, one column per question)
+      // ═══════════════════════════════════════════════════════════════
+      try {
+        const { data: questionData } = await axios.get(`${apiUrl}/cohorts/${cohort._id}/question-progress`, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
+        const questionList = questionData?.questions || [];
+        if (questionList.length > 0) {
+          const qSheet = workbook.addWorksheet("Question Progress", {
+            properties: { tabColor: { argb: "FFFF9800" } },
+          });
+          const qCols = [
+            "Rank", "Name", "Roll Number", "Role",
+            ...questionList.map((q, i) => `${i + 1}. ${q.title} (/${q.marks})\n${q.moduleTitle}`),
+            "Total Score",
+          ];
+          const qColCount = qCols.length;
+          addTitle(qSheet, `QUESTION-WISE PROGRESS  —  ${cohortTitle}`, qColCount, "FFFF9800");
+          qSheet.mergeCells(2, 1, 2, qColCount);
+          const qNote = qSheet.getCell("A2");
+          qNote.value = "A number is the score for a solved question. Attempted means tried but not solved. A dash means not tried.";
+          qNote.font = { size: 10, italic: true, color: { argb: COLORS.gray } };
+          qNote.alignment = { horizontal: "center" };
+          qSheet.getRow(3).values = qCols;
+          styleHeader(qSheet, 3, qColCount, "FFEF6C00");
+          qSheet.getRow(3).height = 48;
+          qSheet.getRow(3).alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+          sortedLeaderboard.forEach((entry, idx) => {
+            const r = idx + 4;
+            const mine = questionData.progress?.[entry.user?._id] || {};
+            const cells = questionList.map((q) => {
+              const p = mine[q._id];
+              if (!p) return "-";
+              if (p.solved) return p.score;
+              return p.attempts > 0 ? "Attempted" : "-";
+            });
+            qSheet.getRow(r).values = [entry.rank || idx + 1, entry.user?.name || "Unknown", entry.user?.rollNumber || "-", roleOf(entry), ...cells, entry.totalScore ?? 0];
+            altRowFill(qSheet, r, qColCount);
+            for (let c = 1; c <= qColCount; c++) {
+              if (c !== 2 && c !== 3) qSheet.getRow(r).getCell(c).alignment = { horizontal: "center" };
+            }
+            questionList.forEach((q, qi) => {
+              const p = mine[q._id];
+              if (!p) return;
+              const fill = p.solved ? COLORS.greenLight : p.attempts > 0 ? COLORS.yellowLight : null;
+              if (fill) qSheet.getRow(r).getCell(5 + qi).fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+            });
+            qSheet.getRow(r).getCell(qColCount).font = { bold: true };
+          });
+          addBorders(qSheet, 3, sortedLeaderboard.length + 3, qColCount);
+          [8, 24, 16, 10].forEach((w, i) => {
+            qSheet.getColumn(i + 1).width = w;
+          });
+          questionList.forEach((_, qi) => {
+            qSheet.getColumn(5 + qi).width = 22;
+          });
+          qSheet.getColumn(qColCount).width = 12;
+          qSheet.views = [{ state: "frozen", xSplit: 4, ySplit: 3 }];
+        }
+      } catch (questionError) {
+        // The other sheets are still worth having
+        console.error("Could not add the question-wise sheet:", questionError);
+      }
+      // ═══════════════════════════════════════════════════════════════
       // SHEET 4 ─ DEPARTMENT ANALYSIS
       // ═══════════════════════════════════════════════════════════════
       const deptSheet = workbook.addWorksheet("Department Analysis", {
@@ -745,7 +817,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
 
       // Build department-level aggregates
       const deptMap = {};
-      sortedLeaderboard.forEach((entry) => {
+      studentBoard.forEach((entry) => {
         const dept = entry.user?.department || "Unknown";
         if (!deptMap[dept]) {
           deptMap[dept] = { students: 0, totalScore: 0, totalModulesDone: 0, topScore: 0, statusCounts: {} };
@@ -814,7 +886,7 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
       });
 
       const yearMap = {};
-      sortedLeaderboard.forEach((entry) => {
+      studentBoard.forEach((entry) => {
         const yr = entry.user?.graduatingYear || entry.user?.graduationYear || "Unknown";
         if (!yearMap[yr]) {
           yearMap[yr] = { students: 0, totalScore: 0, totalModulesDone: 0, topScore: 0 };
@@ -2051,6 +2123,9 @@ const CohortProgress = ({ cohort, userProgress, isAdmin, populatedModules }) => 
                                   <Typography variant="body1" fontWeight="medium">
                                     {entry.user?.name || "Anonymous"}
                                   </Typography>
+                                  {(entry.user?.userType === "teacher" || entry.user?.userType === "admin") && (
+                                    <Chip size="small" label={entry.user.userType === "admin" ? "Admin" : "Teacher"} variant="outlined" sx={{ height: 20, fontSize: "0.7rem" }} />
+                                  )}
                                   {isCurrentUser && (
                                     <Chip
                                       size="small"

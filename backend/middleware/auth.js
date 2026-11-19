@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const accessList = require('../services/accessListService');
+const { MESSAGES: SESSION_END_MESSAGES } = require('../services/sessionService');
 
 module.exports = async (req, res, next) => {
   // Check for Bearer token in Authorization header
@@ -33,7 +34,7 @@ module.exports = async (req, res, next) => {
     };
     
     // Get the full user information from database including userType and sessionToken
-    const user = await User.findById(decoded.userId).select('userType sessionToken email');
+    const user = await User.findById(decoded.userId).select('userType sessionToken sessionEndedReason email');
     if (!user) {
       return res.status(401).json({ 
         message: 'User not found',
@@ -44,6 +45,14 @@ module.exports = async (req, res, next) => {
     // Check if session token matches (single active login enforcement)
     // If sessionToken exists in DB and doesn't match the one in JWT, reject
     if (user.sessionToken && decoded.sessionToken !== user.sessionToken) {
+      // Ended by the server (for example the role was changed): say why, so the app can explain it
+      if (user.sessionEndedReason && SESSION_END_MESSAGES[user.sessionEndedReason]) {
+        res.locals.logMessage = 'Session ended: ' + user.sessionEndedReason;
+        return res.status(401).json({
+          message: SESSION_END_MESSAGES[user.sessionEndedReason],
+          code: 'ROLE_CHANGED'
+        });
+      }
       return res.status(401).json({ 
         message: 'Your session has been invalidated. You have logged in from another device.',
         code: 'SESSION_EXPIRED',

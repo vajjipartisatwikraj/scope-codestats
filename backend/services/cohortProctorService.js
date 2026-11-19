@@ -21,6 +21,7 @@ const Question = require("../models/Question");
 const Submission = require("../models/Submission");
 const UserCohort = require("../models/UserCohort");
 const User = require("../models/User");
+const { syncStaffEnrollments } = require("./cohorts/staffParticipationService");
 const { EXAM_MODE } = require("../utils/examAccess");
 
 const MAX_VIOLATION_LOG = CohortProctor.MAX_VIOLATION_LOG;
@@ -165,7 +166,7 @@ async function recordExamSubmission(cohort, userId, submittedAt, totalScore) {
 async function buildExamReport(cohortId) {
   const cohort = await Cohort.findById(cohortId).populate(
     "eligibleUsers",
-    "name email rollNumber department section graduatingYear"
+    "name email rollNumber department section graduatingYear userType"
   );
 
   if (!cohort) {
@@ -178,6 +179,9 @@ async function buildExamReport(cohortId) {
     error.status = 400;
     throw error;
   }
+
+  // Teachers and admins who submitted before they had an enrollment get theirs now
+  await syncStaffEnrollments(cohort);
 
   const moduleIds = cohort.modules || [];
 
@@ -241,14 +245,26 @@ async function buildExamReport(cohortId) {
   }
 
   // ── per-student rows ────────────────────────────────────────────────────
-  const roster =
+  const studentRoster =
     cohort.accessType === "global"
       ? await User.find(studentFilter)
-          .select("name email rollNumber department section graduatingYear")
+          .select("name email rollNumber department section graduatingYear userType")
           .lean()
       : cohort.eligibleUsers || [];
-  const students = roster.map((user) => {
+
+  // Teachers and admins who took part (a submission gave them an enrollment) are listed with the students (the Role column tells them apart).
+  // They are not eligible users, so they come from the enrollments.
+  const listed = new Set(studentRoster.map((user) => user._id.toString()));
+  const teacherIds = userCohorts.map((uc) => uc.user).filter((id) => !listed.has(id.toString()));
+  const teacherRoster = teacherIds.length
+    ? await User.find({ _id: { $in: teacherIds }, userType: { $in: ["teacher", "admin"] } })
+        .select("name email rollNumber department section graduatingYear userType")
+        .lean()
+    : [];
+
+  const students = [...studentRoster, ...teacherRoster].map((user) => {
     const userId = user._id.toString();
+    const isStaff = user.userType === "teacher" || user.userType === "admin";
     const progress = progressByUser.get(userId);
     const proctor = proctorByUser.get(userId);
 
@@ -298,6 +314,8 @@ async function buildExamReport(cohortId) {
 
     return {
       userId,
+      isStaff,
+      role: user.userType === "admin" ? "Admin" : user.userType === "teacher" ? "Teacher" : "Student",
       name: user.name || "",
       email: user.email || "",
       rollNumber: user.rollNumber || "",
@@ -320,6 +338,11 @@ async function buildExamReport(cohortId) {
       questionScores,
     };
   });
+
+  // The summary and the breakdowns stay about the students, as the report always was. Teachers who
+  // took part are rows of the results (with their rank and score) and are counted on their own.
+  const studentRows = students.filter((s) => !s.isStaff);
+  const staffRows = students.filter((s) => s.isStaff);
 
   // Rank by score, then by the faster completion. Equal scores and equal times
   // share a rank.
@@ -347,9 +370,9 @@ async function buildExamReport(cohortId) {
     const solvers = solvedByQuestion.get(questionId);
     const module = moduleById.get(q.module?.toString());
 
-    const scores = students
-      .map((s) => bestScore.get(`${s.userId}:${questionId}`) || 0)
-      .filter((_, i) => students[i].attended);
+    const scores = studentRows
+      .filter((s) => s.attended)
+      .map((s) => bestScore.get(`${s.userId}:${questionId}`) || 0);
 
     return {
       questionId,
@@ -374,7 +397,7 @@ async function buildExamReport(cohortId) {
     );
     const maxMarks = moduleQuestions.reduce((sum, q) => sum + (q.marks || 0), 0);
 
-    const attendedStudents = students.filter((s) => s.attended);
+    const attendedStudents = studentRows.filter((s) => s.attended);
     const scores = attendedStudents.map(
       (s) =>
         s.moduleScores.find((m) => m.moduleId === moduleId)?.score || 0
@@ -396,8 +419,8 @@ async function buildExamReport(cohortId) {
     };
   });
 
-  const attended = students.filter((s) => s.attended);
-  const submitted = students.filter((s) => s.submittedAt);
+  const attended = studentRows.filter((s) => s.attended);
+  const submitted = studentRows.filter((s) => s.submittedAt);
   const totalMarksPossible = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
 
   const summary = {
@@ -406,12 +429,13 @@ async function buildExamReport(cohortId) {
     mode: cohort.mode,
     examStartTime: cohort.examStartTime,
     examEndTime: cohort.examEndTime,
-    totalEligibleUsers: students.length,
+    totalEligibleUsers: studentRows.length,
+    staffTookPart: staffRows.length,
     attendedCount: attended.length,
-    notAttendedCount: students.length - attended.length,
+    notAttendedCount: studentRows.length - attended.length,
     submittedCount: submitted.length,
     totalMarksPossible,
-    totalMarksAchieved: students.reduce((sum, s) => sum + s.totalScore, 0),
+    totalMarksAchieved: studentRows.reduce((sum, s) => sum + s.totalScore, 0),
     averageScore: attended.length
       ? Number(
           (
@@ -422,8 +446,8 @@ async function buildExamReport(cohortId) {
     highestScore: attended.length
       ? Math.max(...attended.map((s) => s.totalScore))
       : 0,
-    totalTabSwitches: students.reduce((sum, s) => sum + s.tabSwitchCount, 0),
-    totalFullscreenExits: students.reduce(
+    totalTabSwitches: studentRows.reduce((sum, s) => sum + s.tabSwitchCount, 0),
+    totalFullscreenExits: studentRows.reduce(
       (sum, s) => sum + s.fullscreenExitCount,
       0
     ),
@@ -432,7 +456,7 @@ async function buildExamReport(cohortId) {
 
   // Persist the refreshed roll-up so the stored record matches the report.
   if (record) {
-    for (const student of students) {
+    for (const student of studentRows) {
       const participant = record.findParticipant(student.userId);
       if (!participant) continue;
       participant.totalScore = student.totalScore;
@@ -440,7 +464,7 @@ async function buildExamReport(cohortId) {
       participant.timeTakenMs = student.timeTakenMs;
       if (student.submittedAt) participant.submittedAt = student.submittedAt;
     }
-    record.recomputeTotals(students.length);
+    record.recomputeTotals(studentRows.length);
     await record.save();
   }
 

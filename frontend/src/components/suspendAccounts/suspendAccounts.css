@@ -110,3 +110,58 @@
   width: 100%;
   margin-top: 4px;
 }
+
+/* ---- One platform chip: the name and a cross that removes just that platform ------------------------- */
+.sa-platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 4px 0 12px;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-raised);
+  color: var(--ds-text);
+  font: var(--ds-type-caption);
+  font-weight: 600;
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+.sa-platform__remove {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-fast) var(--ds-ease),
+    color var(--ds-duration-fast) var(--ds-ease);
+}
+
+.sa-platform__remove:hover {
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+}
+
+.sa-platform__remove:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-raised),
+    0 0 0 4px var(--ds-focus);
+}
+
+/* A finger needs 44px: the chip stays slim, the area that answers a press grows around the cross */
+@media (pointer: coarse) {
+  .sa-platform__remove::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
+}

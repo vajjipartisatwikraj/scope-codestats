@@ -18,6 +18,7 @@ const { refreshScopeCodestats } = require("../../services/profileSyncService");
 const { respondSqlError } = require("./sqlHelpers");
 const { toJudgeTestCases, limitsOf, toStudentResult } = require("../../services/cohorts/questionExecution");
 const { updateCohortLeaderboard } = require("../../services/cohorts/leaderboardService");
+const { ensureStaffEnrollment } = require("../../services/cohorts/staffParticipationService");
 const log = require("../../utils/logger").scope("COHORT-SUBMISSIONS");
 
 // Submit answer to a question
@@ -46,9 +47,11 @@ const submitAnswer = async (req, res) => {
     // Check if user is admin or teacher
     const isAdminOrTeacher =
       req.user.userType === "admin" || req.user.userType === "teacher";
+    // Teachers and admins take part like students: what they submit is scored, and they are on the
+    // leaderboard and in the exports. Their enrollment is created on their first submission.
 
     // PARALLEL BATCH 1: Fetch cohort, question, userCohort, and enforce submission limit simultaneously
-    const [cohort, question, enrollmentCheck] = await Promise.all([
+    let [cohort, question, enrollmentCheck] = await Promise.all([
       Cohort.findById(cohortId),
       Question.findOne({ _id: questionId, module: moduleId }),
       isAdminOrTeacher
@@ -99,6 +102,8 @@ const submitAnswer = async (req, res) => {
     if (!question) {
       return res.status(404).json({ message: "Question not found" });
     }
+
+    if (isAdminOrTeacher) enrollmentCheck = await ensureStaffEnrollment(cohort, userId);
 
     // Create a submission based on question type
     let submission;
@@ -393,8 +398,8 @@ const submitAnswer = async (req, res) => {
       ),
     ]);
 
-    // Update user progress (skip for admins/teachers as they don't have UserCohort entries)
-    if (!isAdminOrTeacher) {
+    // Update user progress. Everyone is scored: students, teachers and admins.
+    {
       // Reuse enrollmentCheck from PARALLEL BATCH 1 instead of querying again
       const userCohort = enrollmentCheck;
 
@@ -515,12 +520,15 @@ const submitAnswer = async (req, res) => {
         // Refresh the Scope-CodeStats profile (cohort score, problems solved and the
         // never-decreasing lifetime values). The leaderboard reads it from Profile,
         // so a failure here must not fail the submission.
-        await refreshScopeCodestats(userId).catch((err) =>
-          log.error(
-            `Failed to refresh scopecodestats profile for user ${userId}:`,
-            err.message
-          )
-        );
+        // (Not for staff: their cohort score is not part of the student profiles and rankings.)
+        if (!isAdminOrTeacher) {
+          await refreshScopeCodestats(userId).catch((err) =>
+            log.error(
+              `Failed to refresh scopecodestats profile for user ${userId}:`,
+              err.message
+            )
+          );
+        }
         // Check if the entire cohort is completed
         // Reuse cohort from PARALLEL BATCH 1 instead of querying DB again
         const cohortModules = cohort.modules || [];
@@ -546,7 +554,7 @@ const submitAnswer = async (req, res) => {
 
         // Fire-and-forget: record activity heatmap increment when a problem
         // is solved for the first time (Trigger 1 — in-app submissions).
-        if (newlySolvedProblem) {
+        if (newlySolvedProblem && !isAdminOrTeacher) {
           ActivityHeatmap.incrementActivity(userId, "cohort", 1).catch((err) =>
             log.error("Heatmap increment (cohort) failed:", err.message)
           );
@@ -586,18 +594,6 @@ const submitAnswer = async (req, res) => {
           ...(programmingExecution && { execution: programmingExecution }),
         });
       }
-    } else {
-      // Admin/Teacher response - no progress tracking
-      log.debug(
-        `✅ Admin/Teacher submission saved - User: ${userId}, Question: ${questionId}, Score: ${submission.score}`
-      );
-      res.json({
-        submission,
-        isCorrect: submissionIsCorrect,
-        summary: programmingSummary,
-        ...(programmingExecution && { execution: programmingExecution }),
-        message: "Submission saved (admin/teacher - no progress tracking)",
-      });
     }
   } catch (err) {
     log.error("Error submitting answer:", err);

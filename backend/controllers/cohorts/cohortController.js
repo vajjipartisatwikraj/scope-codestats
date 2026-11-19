@@ -20,6 +20,7 @@ const { EXAM_MODE, EXAM_STATE, getExamAttempt, getExamWindow } = require("../../
 const { blockedByExamWindow, ensureExamAttemptStarted } = require("../../services/cohorts/examGateService");
 const { isAdmin: isAdminUser, isAdminOrTeacher } = require("../../utils/userHelpers");
 const { runWithOptionalTransaction } = require("../../utils/mongoTransaction");
+const { syncStaffEnrollments } = require("../../services/cohorts/staffParticipationService");
 const log = require("../../utils/logger").scope("COHORTS");
 
 // Admins manage every cohort. A teacher manages only the cohorts they created, never an
@@ -273,17 +274,17 @@ const getCohort = async (req, res) => {
       )
       .lean();
 
-    // Get cohort leaderboard excluding admin and teacher users
+    // Get the cohort leaderboard: students, and the teachers and admins who took part
+    await syncStaffEnrollments(cohort);
     const leaderboard = await UserCohort.find({ cohort: cohortId })
       .sort({ totalScore: -1 })
       .limit(10)
       .populate({
         path: "user",
-        match: { userType: { $nin: ["admin", "teacher"] } }, // Exclude admin and teacher users
         select: "name rollNumber department userType",
       });
 
-    // Filter out entries where user is null (admin users filtered out by populate match)
+    // Filter out entries where the account no longer exists
     const filteredLeaderboard = leaderboard.filter(
       (entry) => entry.user !== null
     );

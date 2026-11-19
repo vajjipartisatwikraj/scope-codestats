@@ -285,6 +285,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Why the sessions were ended from the server (see services/sessionService.js); cleared at the next sign-in
+    sessionEndedReason: {
+      type: String,
+      default: null,
+    },
     lastLoginAt: {
       type: Date,
       default: null,

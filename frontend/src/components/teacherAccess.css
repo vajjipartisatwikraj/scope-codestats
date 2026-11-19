@@ -1,0 +1,188 @@
+/*
+ * Teacher access (the page of someone who signed in as a teacher and waits for access).
+ * Plain CSS on the design tokens, no Material UI. Two columns from 900px (DESIGN.md, Layout, and
+ * design/screens.md section 4): the accent brand panel on the left is the one drenched area, the
+ * request on the canvas on the right. Below 900px the panel is a 96px band.
+ * Everything is prefixed ta-.
+ */
+.ta {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 96px 1fr;
+  background-color: var(--ds-canvas);
+  color: var(--ds-text);
+  font: var(--ds-type-body);
+}
+
+/* ---- the brand panel ---- */
+.ta__panel {
+  background-color: var(--ds-accent);
+  color: var(--ds-on-accent);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+}
+.ta__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ta__logo {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+.ta__brand-name {
+  font: var(--ds-type-title);
+  letter-spacing: var(--ds-tracking-title);
+}
+.ta__pitch {
+  display: none;
+}
+
+/* ---- the request ---- */
+.ta__main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px 40px;
+}
+.ta__content {
+  width: 100%;
+  max-width: 440px;
+  animation: ta-in 320ms var(--ds-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+.ta__badge {
+  margin: 0 0 16px;
+}
+.ta__title {
+  margin: 0 0 8px;
+  font: var(--ds-type-headline);
+  letter-spacing: var(--ds-tracking-headline);
+  color: var(--ds-text);
+  text-wrap: balance;
+}
+.ta__lead {
+  margin: 0 0 24px;
+  font: var(--ds-type-body-lg);
+  color: var(--ds-muted);
+  max-width: 65ch;
+}
+.ta__notice {
+  margin: 0 0 24px;
+}
+.ta__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* what was sent: label and value rows, a hairline between them */
+.ta__facts {
+  margin: 0 0 24px;
+  padding: 0;
+  border-top: 1px solid var(--ds-line);
+}
+.ta__facts > div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+.ta__facts dt {
+  margin: 0;
+  font: var(--ds-type-body);
+  color: var(--ds-muted);
+}
+.ta__facts dd {
+  margin: 0;
+  font: var(--ds-type-label);
+  color: var(--ds-text);
+  overflow-wrap: anywhere;
+}
+
+.ta__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* who is signed in, and the way out */
+.ta__account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ds-line);
+}
+.ta__account-text {
+  margin: 0;
+  min-width: 0;
+  font: var(--ds-type-body-sm);
+  color: var(--ds-muted);
+  overflow-wrap: anywhere;
+}
+.ta__account-text strong {
+  font-weight: 600;
+  color: var(--ds-text);
+}
+
+@keyframes ta-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .ta {
+    grid-template-columns: minmax(380px, 5fr) 7fr;
+    grid-template-rows: none;
+  }
+  .ta__panel {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 48px;
+    min-height: 100vh;
+  }
+  .ta__pitch {
+    display: block;
+    max-width: 380px;
+  }
+  .ta__pitch-icon {
+    display: block;
+    margin: 0 0 20px;
+  }
+  .ta__pitch-title {
+    margin: 0 0 12px;
+    font: var(--ds-type-display);
+    letter-spacing: var(--ds-tracking-display);
+    text-wrap: balance;
+  }
+  .ta__pitch-text {
+    margin: 0;
+    font: var(--ds-type-body-lg);
+    /* white tinted toward the blue, not grey */
+    color: color-mix(in srgb, var(--ds-on-accent) 86%, var(--ds-accent));
+  }
+  .ta__main {
+    align-items: center;
+    padding: 48px 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ta__content {
+    animation: none;
+  }
+}

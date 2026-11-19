@@ -56,6 +56,7 @@ import OpportunityManagement from "./components/opportunityManagement";
 import NotificationManagement from "./components/notificationManagement";
 import { AlertManagement, AnnouncementManagement } from "./components/noticeManagement";
 import NoticeLayer from "./components/notices";
+import EmailsHistory from "./components/emailsHistory";
 import ManageUsers from "./components/manageUsers";
 import Monitoring from "./components/monitoring";
 import UserGroups, { UserGroupPage } from "./components/userGroupManagement";
@@ -272,6 +273,7 @@ const MainContent = () => {
       "/admin/my-students",
       "/admin/alerts",
       "/admin/announcements",
+      "/admin/emails-history",
     ].includes(location.pathname) ||
     location.pathname.startsWith("/admin/bank-library") ||
     location.pathname.startsWith("/admin/user-groups") ||
@@ -321,6 +323,7 @@ const MainContent = () => {
     "/admin/notifications",
     "/admin/alerts",
     "/admin/announcements",
+    "/admin/emails-history",
     "/admin/manage-users",
     "/admin/monitoring",
     "/admin/suspend-accounts",
@@ -738,6 +741,14 @@ const MainContent = () => {
                   element={
                     <PrivateRoute adminOnly={true} strictAdmin={true}>
                       <AnnouncementManagement />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/admin/emails-history"
+                  element={
+                    <PrivateRoute adminOnly={true} strictAdmin={true}>
+                      <EmailsHistory />
                     </PrivateRoute>
                   }
                 />

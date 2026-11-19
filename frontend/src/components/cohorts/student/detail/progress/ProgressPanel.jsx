@@ -28,6 +28,12 @@ function Row({ entry, mine }) {
           <div className="ui-table__cell-text">
             <span className="ui-table__title">
               {user.name}
+              {user.userType === 'teacher' || user.userType === 'admin' ? (
+                <>
+                  {' '}
+                  <Badge tone="neutral">{user.userType === 'admin' ? 'Admin' : 'Teacher'}</Badge>
+                </>
+              ) : null}
               {mine ? (
                 <>
                   {' '}
@@ -48,6 +54,8 @@ function Row({ entry, mine }) {
  * The student's standing in the cohort: their rank (the one inverted tile), their score and how many
  * questions they have solved, then the leaderboard of the top ten. A student outside the top ten is
  * shown after them, on its own line, so they always find themselves.
+ *
+ * Teachers and admins who took part are on the leaderboard too, marked with a Teacher or Admin badge.
  *
  * The rank comes from the leaderboard when it has loaded, so the tile and the table never disagree;
  * until then the figure the cohort carries is used.

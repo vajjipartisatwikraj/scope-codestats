@@ -1,9 +1,9 @@
 import React from 'react';
 import { UserMinusIcon } from '@phosphor-icons/react/dist/csr/UserMinus';
+import { XIcon } from '@phosphor-icons/react/dist/csr/X';
 import { Avatar, Badge, Button, formatNumber } from '../ui';
-import { PLATFORMS } from '../publicProfile/profileModel';
+import { platformName } from '../StudentDashboard/dashboardModel';
 
-const platformName = (key) => PLATFORMS.find((platform) => platform.key === key)?.name || key;
 const ROLE_LABEL = { admin: 'Admin', teacher: 'Teacher' };
 
 /** The person a row is about: picture, name, email, and a badge when they are staff */
@@ -22,16 +22,21 @@ function Person({ account }) {
   );
 }
 
-/** The linked coding platforms, one badge each (the username is the tooltip), or a word when there are none */
-function Profiles({ profiles }) {
+/**
+ * The linked coding platforms, one chip each (the username is the tooltip) with a cross that removes
+ * just that platform, or a word when there are none
+ */
+function Profiles({ account, onRemovePlatform }) {
+  const { profiles } = account;
   if (!profiles.length) return <span className="ui-muted">None linked</span>;
   return (
     <ul className="sa-platforms" aria-label="Linked coding platforms">
       {profiles.map((profile) => (
-        <li key={profile.platform}>
-          <Badge className="sa-platform">
-            <span title={profile.username}>{platformName(profile.platform)}</span>
-          </Badge>
+        <li key={profile.platform} className="sa-platform">
+          <span title={profile.username}>{platformName(profile.platform)}</span>
+          <button type="button" className="sa-platform__remove" aria-label={`Remove ${platformName(profile.platform)} of ${account.name}`} title={`Remove ${platformName(profile.platform)}`} onClick={() => onRemovePlatform(account, profile)}>
+            <XIcon size={12} weight="bold" aria-hidden="true" />
+          </button>
         </li>
       ))}
     </ul>
@@ -62,8 +67,9 @@ function RemoveButton({ account, reviewing, disabled, onRemove }) {
  *   compact      render rows instead of a table
  *   reviewingId  the account whose preview is loading (its button shows the spinner)
  *   onRemove(account)  opens the confirmation for that account
+ *   onRemovePlatform(account, profile)  opens the confirmation for one platform of that account
  */
-export default function AccountList({ accounts, compact, reviewingId, onRemove }) {
+export default function AccountList({ accounts, compact, reviewingId, onRemove, onRemovePlatform }) {
   // Only one preview at a time: the other buttons wait
   const busy = Boolean(reviewingId);
 
@@ -77,7 +83,7 @@ export default function AccountList({ accounts, compact, reviewingId, onRemove }
               {account.rollNumber}
               {account.department ? ` · ${account.department}` : ''}
             </p>
-            <Profiles profiles={account.profiles} />
+            <Profiles account={account} onRemovePlatform={onRemovePlatform} />
             <RemoveButton account={account} reviewing={reviewingId === account._id} disabled={busy && reviewingId !== account._id} onRemove={onRemove} />
           </li>
         ))}
@@ -113,7 +119,7 @@ export default function AccountList({ accounts, compact, reviewingId, onRemove }
                 </div>
               </td>
               <td>
-                <Profiles profiles={account.profiles} />
+                <Profiles account={account} onRemovePlatform={onRemovePlatform} />
               </td>
               <td className="sa-num">{formatNumber(totalScore(account.profiles))}</td>
               <td>

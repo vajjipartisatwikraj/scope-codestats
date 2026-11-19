@@ -4,6 +4,7 @@
  *   list     accounts with their linked coding profiles, searchable and paged
  *   preview  what suspending one account would delete
  *   suspend  delete the coding profiles and all history of one account
+ *   suspendPlatform  delete one linked platform of one account, with its history
  *
  * Wired to URLs in routes/accountSuspension.js, which applies the login and admin checks.
  * The rules live in services/accountSuspensionService.js.
@@ -31,9 +32,17 @@ const list = handle("listing accounts", (req) =>
 
 const preview = handle("reading an account to suspend", (req) => service.previewSuspension(req.params.userId));
 
+// `notify` in the body (default true) says whether the student is emailed about it
+const wantsEmail = (req) => req.body?.notify !== false;
+
 const suspend = handle("suspending an account", async (req) => {
-  const result = await service.suspendAccount(req.params.userId, req.user.id);
+  const result = await service.suspendAccount(req.params.userId, req.user.id, { notify: wantsEmail(req) });
   return { success: true, message: "Coding accounts removed", ...result };
 });
 
-module.exports = { list, preview, suspend };
+const suspendPlatform = handle("removing one platform of an account", async (req) => {
+  const result = await service.suspendPlatform(req.params.userId, req.params.platform, req.user.id, { notify: wantsEmail(req) });
+  return { success: true, message: "Platform removed", ...result };
+});
+
+module.exports = { list, preview, suspend, suspendPlatform };

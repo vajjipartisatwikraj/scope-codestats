@@ -7,6 +7,7 @@ import { ChalkboardTeacherIcon } from '@phosphor-icons/react/dist/csr/Chalkboard
 import { ChartBarIcon } from '@phosphor-icons/react/dist/csr/ChartBar';
 import { ChatsIcon } from '@phosphor-icons/react/dist/csr/Chats';
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code';
+import { EnvelopeSimpleIcon } from '@phosphor-icons/react/dist/csr/EnvelopeSimple';
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText';
 import { HandshakeIcon } from '@phosphor-icons/react/dist/csr/Handshake';
 import { MegaphoneIcon } from '@phosphor-icons/react/dist/csr/Megaphone';
@@ -237,6 +238,14 @@ const GROUPS = [
         icon: UserMinusIcon,
         // Admins only: remove a student's coding profiles and all history stored with them
         path: () => '/admin/suspend-accounts',
+        visible: (user) => isAdminUser(user),
+      },
+      {
+        id: 'emails-history',
+        label: 'Emails history',
+        icon: EnvelopeSimpleIcon,
+        // Admins only: every email the platform sent to a person, and whether it went
+        path: () => '/admin/emails-history',
         visible: (user) => isAdminUser(user),
       },
     ],

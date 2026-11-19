@@ -13,6 +13,7 @@ const https = require("https");
 const User = require("../models/User");
 const escapeRegex = require("../utils/escapeRegex");
 const teacherRequestService = require("../services/teacherRequestService");
+const { changeUserRole } = require("../services/userRoleService");
 const {
   PRIVATE_USER_FIELDS,
   PUBLIC_ACHIEVEMENT_FIELDS,
@@ -232,9 +233,7 @@ const setUserType = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json(NOT_FOUND);
 
-    const previous = user.userType || "user";
-    user.userType = userType;
-    await user.save();
+    const previous = await changeUserRole(user, userType, { adminId: req.user.id, notify: req.body.notify !== false });
 
     // Role changes are security events: logged with ids, never emails.
     log.info(`user type changed by ${req.user.id}: ${user._id} ${previous} -> ${userType}`);

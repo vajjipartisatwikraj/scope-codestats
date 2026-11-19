@@ -1,0 +1,126 @@
+/*
+ * Emails history
+ *
+ * Plain CSS on the design tokens (--ds-*), on top of the shared kit (components/ui/ui.css). Only what
+ * the kit does not have lives here: the figures above the table, the cells of the table, the rows
+ * that replace it on a phone and the content of the detail panel. The fixed top is AdminTop and the
+ * table is the kit's band table. design/screens.md sections 16 and 19.
+ */
+
+.eh-stats {
+  margin: 8px 0 20px;
+}
+
+.eh-body {
+  min-height: 160px;
+}
+
+/* ---- Table cells ------------------------------------------------------------------------------- */
+
+.eh .ui-band-table {
+  min-width: 940px;
+}
+
+.eh-subject-cell {
+  width: 30%;
+  min-width: 240px;
+}
+
+.eh-subject {
+  display: -webkit-box;
+  max-width: 52ch;
+  overflow: hidden;
+  font: var(--ds-type-label);
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.eh-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.eh-result__error {
+  display: -webkit-box;
+  max-width: 34ch;
+  overflow: hidden;
+  color: var(--ds-danger);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ---- Rows on a phone --------------------------------------------------------------------------- */
+
+.eh-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.eh-item:last-child {
+  border-bottom: 0;
+}
+
+.eh-item .ui-table__cell-main {
+  width: 100%;
+}
+
+.eh-item__when {
+  margin: 0;
+  color: var(--ds-muted);
+  font: var(--ds-type-caption);
+  letter-spacing: var(--ds-tracking-caption);
+}
+
+/* ---- The detail panel ---------------------------------------------------------------------------- */
+
+.eh-error {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-danger-soft);
+  color: var(--ds-danger);
+  font: var(--ds-type-body-sm);
+  overflow-wrap: anywhere;
+}
+
+.eh-removed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eh-removed__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--ds-radius-md);
+  background-color: var(--ds-raised);
+  list-style: none;
+  font: var(--ds-type-body-sm);
+}
+
+.eh-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* The email as the student saw it: a light page of its own, in a frame with the tile radius */
+.eh-frame {
+  display: block;
+  width: 100%;
+  height: 720px;
+  border: 0;
+  border-radius: var(--ds-radius-lg);
+}

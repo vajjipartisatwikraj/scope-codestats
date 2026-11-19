@@ -67,6 +67,7 @@ router.get('/callback', (req, res, next) => {
     // Update user with new session token (invalidates previous sessions)
     await User.findByIdAndUpdate(user._id, {
       sessionToken: sessionToken,
+      sessionEndedReason: null,
       lastLoginAt: new Date(),
       lastLoginDevice: req.headers['user-agent'] || 'Unknown'
     });

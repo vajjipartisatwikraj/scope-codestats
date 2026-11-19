@@ -184,6 +184,7 @@ const Login = ({ variant = 'student' }) => {
     'not-allowed': 'This email address is not on the access list. Ask your coordinator to add it, then try again.',
     'domain-not-allowed': `Use your ${brand.names.institution} college email address (${domainHint}).`,
     'access-revoked': 'Your email address no longer has access. Contact your coordinator.',
+    'role-changed': 'Your access was updated, so you were signed out. Please sign in again.',
   };
   const signInProblem = errorParam
     ? /^(google-)?auth-failed$/.test(errorParam)

@@ -8,7 +8,7 @@ import { DEPARTMENTS, EMPTY_FILTERS, countRoles, filterUsers, hasFilters, roleIn
  * has always had:
  *
  *   GET /api/admin/manage-users      every user (name, email, roll number, role, department, ...)
- *   PUT /api/admin/change-user-type  { userId, newUserType }
+ *   PUT /api/admin/change-user-type  { userId, newUserType, notify }   (notify: also email the person)
  *
  * Only an admin loads anything. The filters, the page and the roles are worked out on the client.
  *
@@ -87,20 +87,20 @@ export default function useManageUsers() {
 
   /** Change one person's role. Resolves true when the server accepted it. */
   const changeRole = useCallback(
-    async (person, newUserType) => {
+    async (person, newUserType, notify = true) => {
       setChanging(true);
       try {
         const response = await fetch('/api/admin/change-user-type', {
           method: 'PUT',
           headers,
-          body: JSON.stringify({ userId: person._id, newUserType }),
+          body: JSON.stringify({ userId: person._id, newUserType, notify }),
         });
         if (!response.ok) {
           const failure = await response.json().catch(() => ({}));
           throw new Error(failure.message || 'Failed to update user type');
         }
         setUsers((previous) => previous.map((candidate) => (candidate._id === person._id ? { ...candidate, userType: newUserType } : candidate)));
-        toast.success(`Successfully changed ${person.name}'s role from ${roleInfo(person.userType).label} to ${roleInfo(newUserType).label}`);
+        toast.success(`Changed ${person.name}'s role from ${roleInfo(person.userType).label} to ${roleInfo(newUserType).label}${notify ? `. ${person.name} is being emailed.` : ''}`);
         return true;
       } catch (failure) {
         console.error('Error updating user type:', failure);

@@ -19,4 +19,7 @@ router.get("/:userId", auth, adminOnly, controller.preview);
 // Delete the coding profiles and all history of this account
 router.delete("/:userId", auth, adminOnly, controller.suspend);
 
+// Delete one linked platform of this account (for example leetcode) with its history
+router.delete("/:userId/platforms/:platform", auth, adminOnly, controller.suspendPlatform);
+
 module.exports = router;

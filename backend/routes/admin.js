@@ -6,6 +6,7 @@ const auth = require("../middleware/auth");
 const adminAuth = require("../middleware/adminAuth");
 const adminOnly = require("../middleware/adminOnly");
 const User = require("../models/User");
+const { changeUserRole } = require("../services/userRoleService");
 const Profile = require("../models/Profile");
 const AcademicYearConfig = require("../models/AcademicYearConfig");
 const {
@@ -823,10 +824,10 @@ router.put("/change-user-type", [auth, adminOnly], async (req, res) => {
       );
     }
 
-    // Update user type
-    targetUser.userType = newUserType;
+    // Update user type (also ends their sessions and emails them, see services/userRoleService.js)
     targetUser.lastActive = new Date(); // Update last active time
-    await targetUser.save();
+    const notify = req.body.notify !== false;
+    await changeUserRole(targetUser, newUserType, { adminId: req.user.id, notify });
 
     log.debug(
       `Admin ${req.user.email} changed user ${targetUser.name} (${targetUser.email}) from ${oldUserType} to ${newUserType}`
@@ -863,6 +864,7 @@ router.put("/change-user-type", [auth, adminOnly], async (req, res) => {
         userType: targetUser.userType,
         department: targetUser.department,
       },
+      emailed: notify,
       change: {
         from: oldUserType,
         to: newUserType,

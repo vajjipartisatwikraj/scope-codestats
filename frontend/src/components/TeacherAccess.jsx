@@ -1,43 +1,37 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Paper,
-  TextField,
-  Typography,
-} from "@mui/material";
-import HourglassTopIcon from "@mui/icons-material/HourglassTop";
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import { GraduationCapIcon } from "@phosphor-icons/react/dist/csr/GraduationCap";
+import { HourglassMediumIcon } from "@phosphor-icons/react/dist/csr/HourglassMedium";
+import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
+import { SignOutIcon } from "@phosphor-icons/react/dist/csr/SignOut";
 import { toast } from "react-toastify";
+import brand from "../brand";
 import { useAuth } from "../contexts/AuthContext";
 import { getDashboardPath, isPendingTeacher } from "../utils/userHelpers";
 import { apiErrorMessage, teacherRequestApi } from "../services/teacherRequestApi";
+import { Badge, Button, Notice, Skeleton, TextField, formatDateTime } from "./ui";
+import "./teacherAccess.css";
 
 const POLL_MS = 20000;
 
-const formatDate = (value) =>
-  value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
-
 /**
- * Where someone who signed in from the teacher sign-in page waits for teacher access.
+ * Where someone who signed in from the teacher sign-in page waits for teacher access
+ * (DESIGN.md and design/screens.md, section 4: two columns, the brand panel in accent on the left,
+ * the card on the canvas on the right; below 900px the panel is a band).
  * Students never get here (PrivateRoute only shows it to pending teachers).
  *
- * Asks for access, shows the state of the request, and moves on by itself once an admin
- * approves: the same JWT keeps working, only the stored role changes.
+ * Asks for access, shows the state of the request and what happens next, and moves on by itself once
+ * an admin approves: the same JWT keeps working, only the stored role changes.
  */
 const TeacherAccess = () => {
   const { user, logout, refreshUserData } = useAuth();
   const navigate = useNavigate();
-
   const [status, setStatus] = useState(null); // { eligibleToRequest, request }
   const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const leaving = useRef(false);
-
   // The context creates a new refreshUserData on every render; keep the latest one in a
   // ref so the loading and polling effects below do not restart because of it.
   const refreshRef = useRef(refreshUserData);
@@ -53,7 +47,7 @@ const TeacherAccess = () => {
       leaving.current = false;
       return;
     }
-    toast.success("Your teacher access was approved");
+    toast.success("Welcome aboard! Your teacher access is active.");
     navigate(getDashboardPath(fresh), { replace: true });
   }, [navigate]);
 
@@ -69,7 +63,7 @@ const TeacherAccess = () => {
           if (!isPendingTeacher(fresh)) navigate(getDashboardPath(fresh), { replace: true });
         }
       } catch (error) {
-        if (!quiet) toast.error(apiErrorMessage(error, "Could not load your request"));
+        if (!quiet) toast.error(apiErrorMessage(error, "We couldn't load your request. Please refresh the page."));
       } finally {
         setLoading(false);
       }
@@ -95,15 +89,22 @@ const TeacherAccess = () => {
     };
   }, [isPending, load]);
 
-  const submit = async () => {
+  const checkNow = async () => {
+    setChecking(true);
+    await load();
+    setChecking(false);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
     setSubmitting(true);
     try {
       await teacherRequestApi.submit(note);
-      toast.success("Request sent to the admins");
+      toast.success("Request sent. We'll email you once it has been reviewed.");
       setNote("");
       await load();
     } catch (error) {
-      toast.error(apiErrorMessage(error, "Could not send your request"));
+      toast.error(apiErrorMessage(error, "We couldn't send your request. Please try again."));
       await load({ quiet: true });
     } finally {
       setSubmitting(false);
@@ -111,100 +112,113 @@ const TeacherAccess = () => {
   };
 
   const retryAt = request?.status === "rejected" ? new Date(request.canRequestAgainAt) : null;
-  const mustWait = retryAt && retryAt > new Date();
+  const mustWait = Boolean(retryAt && retryAt > new Date());
   const canAsk = !loading && status?.eligibleToRequest && (!request || (request.status === "rejected" && !mustWait));
+  const declined = request?.status === "rejected";
+
+  let badge = null;
+  let title = "Request teacher access";
+  let lead = "Share your department and designation, and we will confirm your details faster.";
+  if (isPending) {
+    badge = (
+      <Badge tone="info" icon={<HourglassMediumIcon size={14} weight="bold" aria-hidden="true" />}>
+        Under review
+      </Badge>
+    );
+    title = "Request submitted";
+    lead = "Thank you for applying. We are reviewing your details and will email you as soon as your access is ready.";
+  } else if (declined) {
+    badge = <Badge tone="warning">Not approved</Badge>;
+    title = mustWait ? "We could not approve your request" : "Send a new request";
+    lead = mustWait ? `You can send a new request after ${formatDateTime(retryAt)}.` : "Update your details below and we will take another look.";
+  }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#0585E0",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 2,
-      }}
-    >
-      <Paper elevation={0} sx={{ width: "100%", maxWidth: 520, p: { xs: 3, sm: 4 }, borderRadius: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-          {isPending ? (
-            <HourglassTopIcon color="primary" sx={{ fontSize: 34 }} />
+    <div className="ta">
+      <aside className="ta__panel">
+        <div className="ta__brand">
+          <img className="ta__logo" src={brand.shared.authIcon} alt="" width="36" height="36" />
+          <span className="ta__brand-name">{brand.platform.name}</span>
+        </div>
+        <div className="ta__pitch">
+          <GraduationCapIcon size={40} weight="duotone" aria-hidden="true" className="ta__pitch-icon" />
+          <h2 className="ta__pitch-title">Teach on {brand.platform.name}</h2>
+          <p className="ta__pitch-text">Create cohorts, schedule tests and follow how every student is progressing.</p>
+        </div>
+      </aside>
+
+      <main className="ta__main">
+        <div className="ta__content">
+          {loading ? (
+            <div className="ta__loading" aria-busy="true" aria-label="Loading your request">
+              <Skeleton width={120} height={24} radius={999} />
+              <Skeleton width="80%" height={32} />
+              <Skeleton width="100%" height={16} />
+              <Skeleton width="100%" height={88} radius={14} />
+            </div>
           ) : (
-            <SchoolOutlinedIcon color="primary" sx={{ fontSize: 34 }} />
+            <>
+              {badge ? <div className="ta__badge">{badge}</div> : null}
+              <h1 className="ta__title">{title}</h1>
+              <p className="ta__lead">{lead}</p>
+
+              {declined && request.rejectionReason ? (
+                <Notice tone="warning" title={`Reviewed on ${formatDateTime(request.reviewedAt)}`} className="ta__notice">
+                  {request.rejectionReason}
+                </Notice>
+              ) : null}
+
+              {isPending ? (
+                <>
+                  <dl className="ta__facts">
+                    <div>
+                      <dt>Submitted</dt>
+                      <dd>{formatDateTime(request.createdAt)}</dd>
+                    </div>
+                    {request.note ? (
+                      <div>
+                        <dt>Your details</dt>
+                        <dd>{request.note}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  <Button variant="secondary" fullWidth loading={checking} startIcon={<ArrowsClockwiseIcon size={18} weight="bold" aria-hidden="true" />} onClick={checkNow}>
+                    Refresh status
+                  </Button>
+                </>
+              ) : null}
+
+              {canAsk ? (
+                <form className="ta__form" onSubmit={submit}>
+                  <TextField
+                    label="Department and designation"
+                    hint="Optional. For example, Assistant Professor, CSE."
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    maxLength={500}
+                    multiline
+                    rows={3}
+                    disabled={submitting}
+                  />
+                  <Button type="submit" variant="primary" fullWidth loading={submitting}>
+                    Request access
+                  </Button>
+                </form>
+              ) : null}
+            </>
           )}
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            {isPending ? "Waiting for approval" : "Request teacher access"}
-          </Typography>
-        </Box>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-          Signed in as <b>{user?.email}</b>
-        </Typography>
-
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : isPending ? (
-          <>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Your request was sent on {formatDate(request.createdAt)}. An admin will review it. You
-              get teacher access as soon as it is approved, and this page updates by itself.
-            </Alert>
-            {request.note && (
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                <b>Your note:</b> {request.note}
-              </Typography>
-            )}
-            <Button variant="outlined" onClick={() => load()} sx={{ textTransform: "none", mr: 1 }}>
-              Check status
+          <div className="ta__account">
+            <p className="ta__account-text">
+              Signed in as <strong>{user?.email}</strong>
+            </p>
+            <Button variant="ghost" size="sm" startIcon={<SignOutIcon size={18} weight="bold" aria-hidden="true" />} onClick={logout}>
+              Sign out
             </Button>
-          </>
-        ) : (
-          <>
-            {request?.status === "rejected" && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                Your last request was declined on {formatDate(request.reviewedAt)}
-                {request.rejectionReason ? `: ${request.rejectionReason}` : "."}
-                {mustWait ? ` You can ask again after ${formatDate(retryAt)}.` : ""}
-              </Alert>
-            )}
-            {canAsk && (
-              <>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  An admin reviews every request. Add your department and designation so they can
-                  recognise you.
-                </Typography>
-                <TextField
-                  label="Department / designation (optional)"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  inputProps={{ maxLength: 500 }}
-                  multiline
-                  minRows={2}
-                  fullWidth
-                  disabled={submitting}
-                  sx={{ mb: 2 }}
-                />
-                <Button
-                  variant="contained"
-                  onClick={submit}
-                  disabled={submitting}
-                  startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : null}
-                  sx={{ textTransform: "none", mr: 1 }}
-                >
-                  Request teacher access
-                </Button>
-              </>
-            )}
-          </>
-        )}
-
-        <Button onClick={logout} color="inherit" sx={{ textTransform: "none", mt: loading ? 0 : 1 }}>
-          Sign out
-        </Button>
-      </Paper>
-    </Box>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 };
 

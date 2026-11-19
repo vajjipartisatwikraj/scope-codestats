@@ -7,16 +7,16 @@ const log = require("../../utils/logger").scope("COHORT-LEADERBOARD");
 // Helper function to update cohort leaderboard rankings
 async function updateCohortLeaderboard(cohortId) {
   try {
-    // Get all user cohorts for this cohort, sorted by total score, excluding admin and teacher users
+    // Get all user cohorts for this cohort, sorted by total score. Students, teachers and admins who took
+    // part are ranked together.
     const userCohorts = await UserCohort.find({ cohort: cohortId })
       .populate({
         path: "user",
-        match: { userType: { $nin: ["admin", "teacher"] } }, // Exclude admin and teacher users
         select: "userType",
       })
       .sort({ totalScore: -1 });
 
-    // Filter out entries where user is null (admin and teacher users filtered out by populate match)
+    // Filter out entries where the account no longer exists
     const filteredUserCohorts = userCohorts.filter(
       (entry) => entry.user !== null
     );

@@ -4,7 +4,8 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGl
 import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users';
 import { useAuth } from '../../contexts/AuthContext';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import { AdminTop, Button, Card, Dialog, EmptyState, Notice, Page, PageHeader, Pagination, PillTabs, SearchField, SkeletonRows, TextField, formatNumber, pluralize } from '../ui';
+import { AdminTop, Button, Card, ConfirmDialog, Dialog, EmptyState, Notice, NotifySwitch, Page, PageHeader, Pagination, PillTabs, SearchField, SkeletonRows, TextField, formatNumber, pluralize } from '../ui';
+import { platformName } from '../StudentDashboard/dashboardModel';
 import AccountList from './AccountList';
 import useSuspendAccounts from './useSuspendAccounts';
 import './suspendAccounts.css';
@@ -15,8 +16,17 @@ import './suspendAccounts.css';
  * progress and the activity heatmap). The student's account and coursework stay, and they can still
  * sign in; their rank and consistency index go back to zero.
  *
+ * Both removals (all of them, or one platform) can email the student: a switch in the confirmation,
+ * on by default, sends an automated email that says what was removed, what stays, what happens next
+ * and who to write to. The email is recorded in the Emails history (components/emailsHistory).
+ *
+ * A single platform can be removed too: each platform chip of a student has a cross that removes
+ * just that one (for example LeetCode) with its history, after a confirmation. The other platforms
+ * stay.
+ *
  * It cannot be undone, so removing is always a two step action: the button opens a confirmation
- * that lists exactly what will be deleted, and the admin has to type the student's roll number.
+ * that lists exactly what will be deleted, and the admin has to type the student's roll number (a
+ * single platform asks with a plain confirmation that names the platform and the username).
  * design/screens.md section 16 (Admin management screens).
  */
 
@@ -42,6 +52,9 @@ export default function SuspendAccounts() {
   const [reviewingId, setReviewingId] = useState(null);
   const [target, setTarget] = useState(null); // { account, preview }
   const [typed, setTyped] = useState('');
+  const [platformTarget, setPlatformTarget] = useState(null); // { account, profile } while the single platform confirmation is open
+  const [platformBusy, setPlatformBusy] = useState(false);
+  const [notify, setNotify] = useState(true); // email the student; on again each time a dialog opens
   const [busy, setBusy] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const bodyRef = useRef(null);
@@ -70,6 +83,7 @@ export default function SuspendAccounts() {
     setReviewingId(null);
     if (!result.ok) return;
     setTyped('');
+    setNotify(true);
     setTarget({ account, preview: result.preview });
   };
 
@@ -87,11 +101,23 @@ export default function SuspendAccounts() {
   const confirm = async () => {
     if (!confirmed || nothingStored || busy) return;
     setBusy(true);
-    const result = await data.suspend(person);
+    const result = await data.suspend(person, notify);
     setBusy(false);
     // Either it worked or the account is gone: the list was reloaded, so the dialog is done
     setTarget(null);
     setTyped('');
+    if (result.ok) setAnnouncement(result.message);
+    window.requestAnimationFrame(() => bodyRef.current && bodyRef.current.focus());
+  };
+
+  const platformLabel = platformTarget ? platformName(platformTarget.profile.platform) : '';
+
+  const confirmPlatform = async () => {
+    if (!platformTarget || platformBusy) return;
+    setPlatformBusy(true);
+    const result = await data.removePlatform(platformTarget.account, platformTarget.profile.platform, platformLabel, notify);
+    setPlatformBusy(false);
+    setPlatformTarget(null);
     if (result.ok) setAnnouncement(result.message);
     window.requestAnimationFrame(() => bodyRef.current && bodyRef.current.focus());
   };
@@ -146,7 +172,10 @@ export default function SuspendAccounts() {
               />
             )
           ) : (
-            <AccountList accounts={accounts} compact={compact} reviewingId={reviewingId} onRemove={openRemoval} />
+            <AccountList accounts={accounts} compact={compact} reviewingId={reviewingId} onRemove={openRemoval} onRemovePlatform={(account, profile) => {
+              setNotify(true);
+              setPlatformTarget({ account, profile });
+            }} />
           )}
         </div>
 
@@ -158,6 +187,23 @@ export default function SuspendAccounts() {
       <p className="ui-sr" role="status" aria-live="polite">
         {announcement}
       </p>
+
+      <ConfirmDialog
+        open={Boolean(platformTarget)}
+        onClose={() => !platformBusy && setPlatformTarget(null)}
+        busy={platformBusy}
+        danger
+        title={platformTarget ? `Remove ${platformLabel} of ${platformTarget.account.name}?` : 'Remove this platform?'}
+        description={
+          platformTarget
+            ? `This permanently deletes the ${platformLabel} username (${platformTarget.profile.username}), its stats, its progress history, its score and rank history and its days of the activity heatmap. ${platformTarget.account.name}'s other platforms and coursework stay. Their total score and rank are worked out again at the next ranking run. This cannot be undone.`
+            : ''
+        }
+        confirmLabel={`Remove ${platformLabel || 'platform'}`}
+        onConfirm={confirmPlatform}
+      >
+        {platformTarget ? <NotifySwitch label="Email the student about this" receives="an email that says what was removed and who to contact." name={platformTarget.account.name} checked={notify} onChange={setNotify} disabled={platformBusy} /> : null}
+      </ConfirmDialog>
 
       <Dialog
         open={Boolean(target)}
@@ -204,6 +250,7 @@ export default function SuspendAccounts() {
                   autoComplete="off"
                   spellCheck={false}
                 />
+                <NotifySwitch label="Email the student about this" receives="an email that says what was removed and who to contact." name={person.name} checked={notify} onChange={setNotify} disabled={busy} />
               </>
             )}
           </div>

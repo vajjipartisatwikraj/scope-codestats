@@ -425,6 +425,7 @@ app.use("/api/bank-library", require("./routes/bankLibrary")); // banks of quest
 app.use("/api/notices", require("./routes/notices")); // alerts and announcements a signed-in user sees, and closing them
 app.use("/api/admin/alerts", require("./routes/alerts")); // admin: the alert band across the top of the app
 app.use("/api/admin/announcements", require("./routes/announcements")); // admin: the announcement card shown after sign-in
+app.use("/api/admin/emails-history", require("./routes/emailsHistory")); // admin: every email the platform sent, and how it went
 
 // NOTE: the CodeChef/LeetCode test routes and /api/profiles/verify were removed.
 // Platform fetching now lives in services/platformScraper and is only reachable

@@ -40,6 +40,9 @@ axios.interceptors.response.use(
         console.log("Session invalidated - User logged in from another device");
         // Redirect to login with message
         window.location.href = `${window.location.origin}/login?sessionExpired=true`;
+      } else if (errorCode === "ROLE_CHANGED") {
+        // An admin changed this account's role: every session ended, so sign in again
+        window.location.href = `${window.location.origin}/login?error=role-changed`;
       } else if (errorCode === "ACCESS_REVOKED") {
         // An admin took this email address off the access list (LOGIN_MODE=allowlist)
         console.log("Access revoked - the email address is no longer on the access list");

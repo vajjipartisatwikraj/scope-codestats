@@ -8,6 +8,7 @@ const User = require("../models/User");
 const { saveUsernames } = require("../services/profileSyncService");
 const { normalizeSkillSets } = require("../utils/skillSets");
 const accessList = require("../services/accessListService");
+const { MESSAGES: SESSION_END_MESSAGES } = require("../services/sessionService");
 const { loginMode, publicConfig } = require("../config/loginAccess");
 const log = require("../utils/logger").scope("AUTH");
 
@@ -31,6 +32,9 @@ const auth = async (req, res, next) => {
 
     // Same single active login rule as middleware/auth.js
     if (user.sessionToken && decoded.sessionToken !== user.sessionToken) {
+      if (user.sessionEndedReason && SESSION_END_MESSAGES[user.sessionEndedReason]) {
+        return res.status(401).json({ message: SESSION_END_MESSAGES[user.sessionEndedReason], code: "ROLE_CHANGED" });
+      }
       return res.status(401).json({
         message: "Your session has been invalidated. You have logged in from another device.",
         code: "SESSION_EXPIRED",
